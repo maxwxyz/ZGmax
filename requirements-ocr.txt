@@ -1,0 +1,3 @@
+# Optional: Texterkennung (OCR) fuer Text, Massezahlen und Schriftfeld in Bildern (nicht noetig fuer PDF mit Text).
+# Wird in die App eingebaut, wenn beim Bauen installiert.
+rapidocr-onnxruntime==1.2.3

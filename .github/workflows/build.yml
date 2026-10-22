@@ -1,0 +1,35 @@
+# Baut die portablen Apps automatisch (Windows, macOS Apple-Chip, macOS Intel), sobald das Projekt auf GitHub liegt.
+# Start: bei jedem Tag "v*" (z. B. v2.0) oder von Hand unter "Actions" -> "Apps bauen" -> "Run workflow".
+name: Apps bauen
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: packaging\build_windows.bat
+          - os: macos-14          # Apple-Chip (arm64)
+            script: packaging/build_mac.sh
+          - os: macos-13          # Intel (x86_64)
+            script: packaging/build_mac.sh
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bauen und testen
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then echo | cmd //c "${{ matrix.script }}"; else bash ${{ matrix.script }}; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZGmax-${{ matrix.os }}
+          path: dist/*.zip

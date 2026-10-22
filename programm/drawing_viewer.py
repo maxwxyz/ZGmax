@@ -1,0 +1,1088 @@
+#!/usr/bin/env python3
+"""ZGmax - Zeichnungen ansehen, vergleichen und pruefen.
+
+Start:  App "ZGmax" oder Doppelklick auf "Start ZGmax" im Hauptordner,
+        oder  python drawing_viewer.py [ALT [NEU]]   (eine Datei = nur ansehen)
+Anleitung: Menue Hilfe > Anleitung (F1).
+"""
+from ui_common import *  # noqa: F401,F403
+from ui_theme import *  # noqa: F401,F403
+from ui_canvas import Canvas, build_color_pyramids, build_pyramids
+from ui_dialogs import BatchDialog, RevisionDialog, VectorFilterDialog
+from ui_widgets import Job, SafeStream, WheelGuard
+from ui_regions import RegionsMixin
+from ui_annotations import AnnotationsMixin
+from ui_project import ProjectMixin
+from ui_export import ExportMixin
+from ui_layout import LayoutMixin
+from ui_features import FeaturesMixin
+
+VERSION = "2.0"
+WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
+
+
+class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+    def __init__(self, path_a=None, path_b=None):
+        super().__init__()
+        self.setWindowTitle(APP)
+        self.resize(1440, 900)
+        self.setMinimumSize(900, 600)
+        self.setAcceptDrops(True)
+        self.settings = app_settings()
+        self.theme_mode = theme_setting(self.settings)
+        hints = QGuiApplication.styleHints()
+        if hasattr(hints, "colorSchemeChanged"):          # Systemwechsel hell/dunkel bei "Automatisch"
+            hints.colorSchemeChanged.connect(self._system_theme_changed)
+        self.path_a = self.path_b = None
+        self.n_pages_a = self.n_pages_b = 1
+        self.running = False
+        self.pending = False
+        self.jobs = []
+        self.current_job = None
+        self.cache = {}
+        self.payload = None
+        self.view_only = False
+        self.page_summary = {}
+        self.crop_b = None                # selbst zugeordneter Bereich in B (x, y, b, h) oder None
+        # Anmerkungen und Zonen werden global (Koordinaten des ganzen Blatts A) verstanden. self.anns
+        # und die Canvas-Zonen sind die lokalen Ansichten relativ zu self.origin (Ursprung des gerade
+        # angezeigten Ergebnisses, = Ausschnitt-Ecke). self.zones ist immer global.
+        self.zones = []
+        self.anns = []
+        self.origin = (0, 0)
+        self.project_path = None
+        self.undo_stack, self.redo_stack, self._cur_state = [], [], None
+        self.crop = None                  # (x, y, b, h) in Koordinaten des ganzen Blatts A
+        self._crop_seen = None
+        self.index_info = None
+        self.next_nr = 1
+        self._prev_tool = "hand"
+        self.restore_regs = None          # aus Projekt: Aenderungsliste nach dem Vergleich wiederherstellen
+        self.canvas = Canvas()
+        self.canvas.anns = self.anns
+        cv = self.canvas
+        cv.cursor.connect(self._on_cursor)
+        cv.zoneDrawn.connect(self._add_zone)
+        cv.cropDrawn.connect(self._crop_drawn)
+        cv.regionClicked.connect(self._select_region_nr)
+        cv.annCreated.connect(self._ann_created)
+        cv.placeRequested.connect(self._place)
+        cv.annSelected.connect(self._ann_selected)
+        cv.annChanged.connect(self._ann_changed)
+        cv.annEdit.connect(self._ann_edit)
+        cv.annContext.connect(self._ann_context)
+        cv.contextRequested.connect(self._canvas_menu)
+        cv.escapePressed.connect(lambda: self._set_tool("hand"))
+        cv.regionDrawn.connect(self._region_drawn)
+        cv.blinkClicked.connect(lambda: self.act_pause.toggle())
+        cv.viewChanged.connect(self._on_view_changed)
+        cv.zoomBoxDone.connect(self._zoom_box_done)
+        cv.filesDropped.connect(self._files_dropped)
+        self.debounce = QTimer(self)
+        self.debounce.setSingleShot(True)
+        self.debounce.timeout.connect(self.start_compute)
+        self.page_timer = QTimer(self)
+        self.page_timer.setSingleShot(True)
+        self.page_timer.timeout.connect(self.start_compute)
+        self.blink = QTimer(self)
+        self.blink.setInterval(550)
+        self.blink.timeout.connect(self._blink)
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.setInterval(60_000)
+        self.autosave_timer.timeout.connect(self.autosave)
+        self.autosave_timer.start()
+        self.wheel_guard = WheelGuard(self)
+        QApplication.instance().installEventFilter(self.wheel_guard)
+
+        self._icon_buttons = []
+        self._build_actions()
+        self._build_menubar()
+        self._build_toolbar()
+        self._build_left()
+        self._build_right()
+        split = QSplitter()
+        split.addWidget(self.left)
+        split.addWidget(self._build_center())
+        split.addWidget(self.right)
+        split.setSizes([320, 900, 380])
+        split.setStretchFactor(1, 1)
+        split.setChildrenCollapsible(False)
+        self.split = split
+        self.setCentralWidget(split)
+        self._build_statusbar()
+        self.left.hide()
+        self.right.hide()
+        self.act_expert.setChecked(self.settings.value("expert", "false") == "true")
+        self._set_expert(self.act_expert.isChecked())
+        self.canvas.show_overview = self.act_overview.isChecked()
+        self.canvas.reg_clouds = self.act_clouds.isChecked()
+        self.canvas.invert = self.act_invert.isChecked()
+        self.canvas.show_color = self.act_color.isChecked()
+        self._update_options()
+        self.show_start()
+
+        self._reset_history()
+        self._update_title()
+        self._update_units()
+        if path_a:
+            self._set_file("A", path_a, compute=False)
+        if path_b:
+            self._set_file("B", path_b, compute=False)
+        if path_a:
+            self.start_compute()
+        QTimer.singleShot(400, self.check_autosave)
+
+
+    # --- Hilfe
+    def _open_doc(self, p):
+        if not os.path.isfile(p):
+            QMessageBox.information(self, APP, f"{os.path.basename(p)} wurde nicht gefunden.")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(p))
+
+    def open_help(self):
+        self._open_doc(os.path.join(HERE, "Anleitung_Viewer.html"))
+
+    def set_theme(self, mode):
+        self.theme_mode = mode
+        self.settings.setValue("theme", mode)
+        apply_theme(QApplication.instance(), mode)
+        self._theme_applied()
+
+    def _system_theme_changed(self, *_):
+        if self.theme_mode == "auto" and (THEME["canvas"] == THEMES["dark"]["canvas"]) != system_is_dark():
+            apply_theme(QApplication.instance(), "auto")
+            self._theme_applied()
+
+    def _theme_applied(self):
+        self._set_color_btn(self.canvas.ann_color)
+        self._refresh_icons()
+        self.canvas.update()
+
+    def make_shortcut(self):
+        bat = sys.executable if FROZEN else os.path.join(ROOT, "Start ZGmax.bat")
+        if not os.path.isfile(bat):
+            QMessageBox.information(self, APP, "Start ZGmax.bat wurde nicht gefunden.")
+            return
+        ico = os.path.join(HERE, "icon.ico")
+        icon_loc = f"{sys.executable},0" if FROZEN else (f"{ico},0" if os.path.isfile(ico) else "shell32.dll,22")
+        script = ("$d=[Environment]::GetFolderPath('Desktop');"
+                  "$s=(New-Object -COM WScript.Shell).CreateShortcut(\"$d\\ZGmax.lnk\");"
+                  f"$s.TargetPath='{bat}';$s.WorkingDirectory='{ROOT}';$s.WindowStyle=7;"
+                  f"$s.IconLocation='{icon_loc}';$s.Save()")
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True, capture_output=True)
+            self._log("Desktop-Verkn\u00fcpfung \u201eZGmax\u201c wurde erstellt.")
+            QMessageBox.information(self, APP, "Die Verkn\u00fcpfung \u201eZGmax\u201c liegt jetzt auf dem Desktop.")
+        except Exception as e:                      # noqa: BLE001
+            QMessageBox.warning(self, APP, f"Verkn\u00fcpfung konnte nicht erstellt werden:\n{e}")
+
+    def open_batch(self):
+        BatchDialog(self).exec()
+
+    # --- Vektordaten (PDF)
+    def _vec_inspect(self, which, path):
+        """PDF auf Vektordaten pruefen - im Hintergrund, damit das Fenster bei grossen PDF nicht haengt."""
+        self.vinfo[which] = None
+        self.vfilter = (None, None)
+        self._vec_status()
+        if not (path.lower().endswith(".pdf") and dv.available()):
+            return
+
+        def work():
+            try:
+                return dv.inspect_pdf(path, 1)
+            except Exception:                                # noqa: BLE001
+                return None
+
+        def done(info):
+            if (self.path_a if which == "A" else self.path_b) == path:
+                self.vinfo[which] = info
+                self._vec_status()
+        self.run_background(work, done)
+
+    def _vec_status(self):
+        def txt(w):
+            i = self.vinfo[w]
+            if i is None:
+                return f"{w}: keine PDF-Datei"
+            if not i["vector"]:
+                return f"{w}: Pixelbild im PDF"
+            return f"{w}: Vektordaten ({i['paths']} Linien/Fl\u00e4chen, {i['texts']} Texte)"
+        both = all(self.vinfo[w] and self.vinfo[w]["vector"] for w in "AB")
+        self.lbl_vec.setText(txt("A") + "\n" + txt("B") + ("" if both else
+                             "\nVektorvergleich und Filter brauchen echte Vektordaten in beiden PDF."))
+        self.chk_vec.setEnabled(both)
+        self.btn_vfilter.setEnabled(both)
+        if not both:
+            self.chk_vec.setChecked(False)
+        lay, col = self.vfilter
+        parts = []
+        if lay is not None:
+            parts.append(f"{len(lay)} Ebenen")
+        if col is not None:
+            parts.append(f"{len(col)} Farben")
+        self.lbl_vfilter.setText("Filter: " + (", ".join(parts) if parts else "alles"))
+        self._update_vec_visibility()
+
+    def open_vfilter(self):
+        layers, colors = {}, {}
+        for w in "AB":
+            i = self.vinfo[w]
+            if i:
+                for k, v in i["layers"].items():
+                    layers[k] = layers.get(k, 0) + v
+                for k, v in i["colors"].items():
+                    colors[k] = colors.get(k, 0) + v
+        dlg = VectorFilterDialog(self, layers, colors, self.vfilter)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.vfilter = dlg.result_filter()
+            self._vec_status()
+            self._param_changed()
+            if self.path_a and self.path_b:
+                self.start_compute()
+
+    def run_pdftext(self):
+        if not self.payload:
+            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            return
+        if not (self.path_a.lower().endswith(".pdf") and self.path_b.lower().endswith(".pdf") and dv.available()):
+            QMessageBox.information(self, APP, "Der PDF-Text steht nur bei PDF-Dateien mit eingebettetem Text zur "
+                                    "Verf\u00fcgung. Bei Bildern hilft \u201eText lesen (OCR)\u201c.")
+            return
+        pl, pa, pb = self.payload, self.path_a, self.path_b
+        na, nb, dpi = self.sp_pa.value(), self.sp_pb.value(), self.dpi_value()
+
+        def work(log):
+            self._ensure_regs(log)
+            wa, wb = dv.pdf_words(pa, na), dv.pdf_words(pb, nb)
+            if not (wa or wb):
+                log("Kein eingebetteter Text gefunden (Pixelbild?). Bitte OCR verwenden.")
+            dv.fill_text(pl["regs"], wa, wb, dpi, log)
+        self._run_job(work, "Lese PDF-Text \u2026", lambda _: (self._fill_table(), self._busy(False, "PDF-Text gelesen")))
+
+    # --- Datei-Handling
+    def open_file(self, which):
+        d = self.settings.value("dir", "")
+        path, _ = QFileDialog.getOpenFileName(self, f"Zeichnung {which} \u00f6ffnen", d, FILE_FILTER)
+        if path:
+            self._set_file(which, path)
+
+    def _set_file(self, which, path, compute=True):
+        self.settings.setValue("dir", os.path.dirname(path))
+        lbl = self.lbl_a if which == "A" else self.lbl_b
+        if not os.path.isfile(path):
+            self.banner.show_msg(f"Datei nicht gefunden: {path}", "error")
+            return
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".dwg":
+            self.banner.show_msg("DWG-Dateien kann das Programm nicht direkt lesen. Bitte im CAD-Programm als DXF "
+                                 "oder PDF speichern.", "warn")
+            return
+        if which == "A":
+            self.path_a = path
+        else:
+            self.path_b = path
+        lbl.setText(os.path.basename(path))
+        lbl.setToolTip(path)
+        self.start.set_files(self.path_a, self.path_b)
+        self.crop_b = None
+        self._vec_inspect(which, path)
+        if which == "A":
+            self._detect_dpi(path)
+            self._crop_reset(silent=True)
+            self.canvas.reset_rotation()
+        self._setup_pages(which, path)
+        if compute:
+            self.start_compute()
+
+    def _detect_dpi(self, path):
+        if dp.is_vector(path):
+            self.lbl_dpi.setText("PDF/SVG: Die Aufl\u00f6sung bestimmt die Rendergenauigkeit (Standard 200).")
+            return
+        d = dp.file_dpi(path)
+        self.sp_dpi.blockSignals(True)
+        if d:
+            self.sp_dpi.setValue(int(d))
+            self.lbl_dpi.setText(f"Aus der Datei gelesen: {d} dpi.")
+        else:
+            self.lbl_dpi.setText("Die Datei enth\u00e4lt keine Aufl\u00f6sung. Es gilt der eingestellte Wert; "
+                                 "bei Bedarf mit Kalibrieren pr\u00fcfen.")
+            self.sec_file.set_open(True)
+        self.sp_dpi.blockSignals(False)
+        self._update_units()
+
+    def _setup_pages(self, which, path):
+        n = dp.page_count(path)
+        spin = self.sp_pa if which == "A" else self.sp_pb
+        spin.blockSignals(True)
+        spin.setRange(1, n)
+        spin.setValue(1)
+        spin.blockSignals(False)
+        if which == "A":
+            self.n_pages_a = n
+        else:
+            self.n_pages_b = n
+        multi = self.n_pages_a > 1 or self.n_pages_b > 1
+        self.sec_pages.setVisible(multi)
+        if multi:
+            self.sec_pages.set_open(True)
+        if which == "A":
+            self._fill_pages(path, n)
+
+    def _fill_pages(self, path, n):
+        self.page_summary = {}
+        self.list_pages.blockSignals(True)
+        self.list_pages.clear()
+        for i in range(min(n, 200)):
+            self.list_pages.addItem(QListWidgetItem(f"Seite {i + 1}"))
+        if self.list_pages.count():
+            self.list_pages.setCurrentRow(0)
+        self.list_pages.blockSignals(False)
+        if not (dp.is_vector(path) and n > 1):
+            return
+
+        def work():                                          # Vorschaubilder im Hintergrund (QImage ist threadsicher)
+            out = []
+            try:
+                import pymupdf
+                with pymupdf.open(path) as pm:
+                    for i in range(min(n, 60)):
+                        pg = pm.load_page(i)
+                        z = 120.0 / max(pg.rect.width, pg.rect.height)
+                        pix = pg.get_pixmap(matrix=pymupdf.Matrix(z, z), alpha=False)
+                        out.append(QImage(pix.samples, pix.width, pix.height, pix.stride,
+                                          QImage.Format.Format_RGB888).copy())
+            except Exception:                                # noqa: BLE001
+                pass
+            return out
+
+        def done(imgs):
+            if self.path_a != path:
+                return
+            for i, img in enumerate(imgs):
+                it = self.list_pages.item(i)
+                if it is not None:
+                    it.setIcon(QIcon(QPixmap.fromImage(img)))
+        self.run_background(work, done)
+
+    def _page_row(self, row):
+        if row >= 0:
+            self.sp_pa.setValue(row + 1)
+
+    def _page_changed(self, which, v):
+        if self.chk_couple.isChecked():
+            other = self.sp_pb if which == "A" else self.sp_pa
+            if other.maximum() >= v and other.value() != v:
+                other.blockSignals(True)
+                other.setValue(v)
+                other.blockSignals(False)
+        if which == "A" and 0 <= v - 1 < self.list_pages.count() and self.list_pages.currentRow() != v - 1:
+            self.list_pages.blockSignals(True)
+            self.list_pages.setCurrentRow(v - 1)
+            self.list_pages.blockSignals(False)
+        if self.path_a and self.path_b:
+            self.page_timer.start(450)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):
+        self._files_dropped([u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()])
+
+    def _files_dropped(self, files):
+        proj = [f for f in files if f.lower().endswith(PROJECT_EXT)]
+        if proj:
+            self.project_open(proj[0])
+            return
+        if len(files) >= 2:
+            self._set_file("A", files[0], compute=False)
+            self._set_file("B", files[1])
+        elif files:
+            self._set_file("B" if self.path_a else "A", files[0])
+
+    # --- Parameter, Einheiten
+    def dpi_value(self):
+        return self.sp_dpi.value()
+
+    def scale_n(self):
+        return float(self.sp_scale.value())
+
+    def _update_units(self, *_):
+        self.canvas.mm_px = 25.4 / max(1, self.dpi_value()) * self.scale_n()
+        if hasattr(self, "lbl_meas_scale"):
+            n = self.scale_n()
+            txt = f"1 : {n:g}" if n >= 1 else f"{1 / n:g} : 1"
+            self.lbl_meas_scale.setText(f"Ma\u00dfstab {txt}")
+            self.lbl_meas_scale.setToolTip(f"Aufl\u00f6sung {self.dpi_value()} dpi. Klick = Ma\u00dfstab eingeben")
+        if hasattr(self, "list_anns"):
+            for i, a in enumerate(self.anns):
+                it = self.list_anns.item(i)
+                if it:
+                    it.setText(self._ann_label(a))
+        self.canvas.update()
+        if self.payload:
+            self._fill_table()
+
+    def _dpi_changed(self):
+        self._update_units()
+        if self.path_a and self.path_b and any(dp.is_vector(p) for p in (self.path_a, self.path_b)):
+            self._param_changed()
+
+    def _calibrate(self, d=None):
+        """Massstab so setzen, dass eine gemessene Strecke ihre wahre Laenge hat. Ohne Messung: erst messen
+        lassen (zwei Punkte), danach erscheint die Abfrage von selbst."""
+        d = d or self.canvas.measure_px()
+        if not d:
+            self._calib_pending = True
+            self.cb_mkind.setCurrentIndex(0)                 # Laenge
+            self._set_tool("measure")
+            self.banner.show_msg("Kalibrieren: Eine Strecke mit bekannter L\u00e4nge messen (zwei Punkte anklicken, "
+                                 "z. B. an einem Ma\u00df der Zeichnung). Danach die wahre L\u00e4nge eingeben.",
+                                 "info", timeout=25)
+            return
+        self._calib_pending = False
+        self.banner.hide()
+        paper = d * 25.4 / max(1, self.dpi_value())
+        val, ok = QInputDialog.getDouble(
+            self, "Kalibrieren", f"Wahre L\u00e4nge der gemessenen Strecke (mm):\n"
+            f"(gemessen auf dem Blatt: {paper:.2f} mm)", paper * self.scale_n(), 0.001, 1e7, 2)
+        if ok and val > 0:
+            self.sp_scale.setValue(val / paper)
+            self._log(f"Ma\u00dfstab kalibriert: 1 : {val / paper:.3f}")
+
+    def params(self):
+        return dp.Params(
+            thr=int(self.s_thr.value()), align=self.cb_align.currentText(), cell=int(self.s_cell.value()),
+            max_shift=int(self.s_maxs.value()), tol=int(self.s_tol.value()), hatch=int(self.s_hatch.value()),
+            move=int(self.s_move.value()), obj_shift=int(self.s_obj.value()), obj_rotate=float(self.s_rot.value()),
+            min_area=int(self.s_area.value()), ignore=self._local_zones(self._compute_origin()),
+            ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked())
+
+    def _param_changed(self):
+        if not (self.path_a and self.path_b):
+            return
+        if self.chk_live.isChecked():
+            self.debounce.start(700)
+        self.btn_run.setText("Vergleichen \u25cf")
+        self.act_compare.setText("Vergleichen \u25cf")
+
+    def _reset_params(self):
+        for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
+                  self.s_cell, self.s_maxs):
+            w.reset()
+        self.cb_align.setCurrentText("affine")
+        self.chk_edges.setChecked(True)
+
+    # --- Zonen und Ausschnitt
+    def _add_zone(self, x, y, w, h):
+        ox, oy = self.origin                      # vom Bild kommen lokale Koordinaten -> global speichern
+        self.zones.append((x + ox, y + oy, w, h))
+        self._refresh_zones()
+        self._set_tool("hand")
+        self._param_changed()
+        self._commit()
+
+    def _remove_zone(self):
+        i = self.list_zones.currentRow()
+        if 0 <= i < len(self.zones):
+            del self.zones[i]
+            self._refresh_zones()
+            self._param_changed()
+            self._commit()
+
+    def _clear_zones(self):
+        if self.zones:
+            self.zones.clear()
+            self._refresh_zones()
+            self._param_changed()
+            self._commit()
+
+    def _local_zones(self, origin=None):
+        ox, oy = origin if origin is not None else self.origin
+        return [(x - ox, y - oy, w, h) for x, y, w, h in self.zones]
+
+    def _refresh_zones(self):
+        self.list_zones.clear()
+        for z in self.zones:
+            self.list_zones.addItem("x=%d y=%d  %d\u00d7%d px" % z)
+        self.canvas.zones = self._local_zones()
+        self.canvas.update()
+
+    def _compute_origin(self):
+        """Ursprung des Ergebnisses: Ecke des Ausschnitts (Vektorvergleich nutzt immer das ganze Blatt)."""
+        vec = self.chk_vec.isChecked() and self.chk_vec.isEnabled()
+        return (self.crop[0], self.crop[1]) if (self.crop and not vec) else (0, 0)
+
+    def _set_origin(self, new):
+        """Rechnet Anmerkungen auf einen neuen Ursprung um, damit sie am Blatt haften bleiben."""
+        dx, dy = self.origin[0] - new[0], self.origin[1] - new[1]
+        self.origin = tuple(new)
+        if dx or dy:
+            for a in self.anns:
+                shift_ann(a, dx, dy)
+            self._ann_refresh(None)
+        self._refresh_zones()
+
+    def _crop_drawn(self, x, y, w, h):
+        if w < 200 or h < 200:
+            self._log("Ausschnitt zu klein (mindestens 200 x 200 Pixel).")
+            return
+        ox, oy = self.origin
+        self.crop = (ox + x, oy + y, w, h)
+        self.btn_crop_off.setEnabled(True)
+        self.lbl_crop.setText(f"Aktuell: Ausschnitt {w} \u00d7 {h} px")
+        self._set_tool("hand")
+        self.start_compute()
+
+    def _crop_reset(self, silent=False):
+        if self.crop is None:
+            return
+        self.crop = None
+        self.crop_b = None
+        self.btn_crop_off.setEnabled(False)
+        self.lbl_crop.setText("Aktuell: ganzes Blatt")
+        if not silent:
+            self.start_compute()
+
+    # --- Jobs
+    def _run_job(self, fn, text, done, on_abort=None):
+        """Startet eine Hintergrundberechnung (nur eine gleichzeitig) mit Fortschritt und Abbrechen."""
+        if self.running:
+            self._log("Bitte warten, es l\u00e4uft noch eine Berechnung.")
+            return False
+        self.running = True
+        self._busy(True, text)
+        job = Job(fn, self)
+        self.jobs.append(job)
+        self.current_job = job
+        job.log.connect(self._log)
+        job.progress.connect(self._on_progress)
+        job.preview.connect(lambda pv: self.canvas.set_preview(*pv))
+
+        def ok(r):
+            self.running = False
+            self._busy(False, "Fertig")
+            done(r)
+
+        def bad(m):
+            self.running = False
+            self._failed(m, job.details)
+
+        def aborted():
+            self.running = False
+            self.pending = False
+            self._busy(False, "Abgebrochen")
+            self.canvas.set_preview(None, None)
+            self.banner.show_msg("Berechnung abgebrochen.", "info", timeout=6)
+            if on_abort:
+                on_abort()
+        job.done.connect(ok)
+        job.failed.connect(bad)
+        job.aborted.connect(aborted)
+        job.finished.connect(lambda j=job: self.jobs.remove(j) if j in self.jobs else None)
+        job.start()
+        return True
+
+    def cancel_job(self):
+        if self.current_job is not None and self.current_job.isRunning():
+            self.current_job.cancel()
+            self.lbl_status.setText("Breche ab \u2026")
+            self.btn_cancel.setEnabled(False)
+
+    def _on_progress(self, frac, text):
+        self.progress.setRange(0, 1000)
+        self.progress.setValue(int(frac * 1000))
+        if text:
+            self.lbl_status.setText(f"{text} \u2026  {frac * 100:.0f} %")
+
+    def start_compute(self):
+        if not (self.path_a or self.path_b):
+            self.show_start()
+            return
+        if self.running:
+            self.pending = True
+            return
+        self.debounce.stop()
+        single = not (self.path_a and self.path_b)
+        pa_, pb_ = self.path_a or self.path_b, self.path_b or self.path_a
+        if self.path_a:
+            ga_, gb_ = self.sp_pa.value(), self.sp_pa.value() if single else self.sp_pb.value()
+        else:
+            ga_ = gb_ = self.sp_pb.value()
+        snap = dict(pa=pa_, pb=pb_, page_a=ga_, page_b=gb_,
+                    dpi=self.dpi_value(), params=self.params(), crop=self.crop, crop_b=self.crop_b,
+                    vf=self.vfilter, origin=self._compute_origin(), single=single,
+                    vec=(not single) and self.chk_vec.isChecked() and self.chk_vec.isEnabled(),
+                    vtol=self.sp_vtol.value())
+        self.pending = False
+        self.btn_run.setText("Vergleichen")
+        self.act_compare.setText("Vergleichen")
+        self.banner.hide()
+        if self.payload is None:
+            self.stack.setCurrentWidget(self.work)
+        self._run_job(lambda ctx: self._compute(snap, ctx),
+                      "Lade \u2026" if single else "Vergleiche \u2026", lambda r: self._computed(r, snap))
+
+    def _gray(self, path, page, dpi, log, vf=(None, None)):
+        filt = vf if (path.lower().endswith(".pdf") and vf != (None, None)) else (None, None)
+        try:                                         # Datei auf der Platte geaendert -> neu laden
+            stt = os.stat(path)
+            stamp = (stt.st_mtime_ns, stt.st_size)
+        except OSError:
+            stamp = None
+        key = ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt))
+        if self.cache.get("gk_" + path) != key:
+            log(f"Lade {os.path.basename(path)} \u2026")
+            if filt != (None, None):
+                self.cache["g_" + path] = dv.render_gray(path, page, dpi, *filt)
+                self.cache["c_" + path] = None
+            else:
+                img = dc.read_image(path, page, dpi)
+                self.cache["g_" + path] = img.min(axis=2)            # dunkelster Kanal (wie load_gray)
+                self.cache["c_" + path] = img if dp.is_colored(img) else None   # Farbfassung nur, wenn farbig
+            self.cache["gk_" + path] = key
+        return self.cache["g_" + path]
+
+    def _color(self, path):
+        return self.cache.get("c_" + path)
+
+    def _compute_vec(self, snap, log):
+        log.progress(0.05, "Lese Vektordaten")
+        p = snap["params"]
+        if snap["crop"]:
+            log("Hinweis: Im Vektorvergleich wird immer das ganze Blatt verglichen (Ausschnitt ignoriert).")
+        fa = snap["vf"]
+        a, b, oa, ob, both = dv.vector_diff(snap["pa"], snap["pb"], snap["page_a"], snap["page_b"], snap["dpi"],
+                                            fa, fa, snap["vtol"], log)
+        zone = dp.make_zone(a.shape, p.ignore, p.ignore_border)
+        if zone is not None:
+            oa[zone] = ob[zone] = False
+            both[zone] = a[zone] > 0
+        if p.min_area > 0:
+            dp.filter_small(oa, ob, p.min_area, both=both)
+        res = dp.Result(a, b, oa, ob, both, np.zeros_like(oa), zone)
+        log("Erzeuge Ansichten \u2026")
+        pa, pb, pd, po = build_pyramids(res)
+        return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po)
+
+    def _compute(self, snap, log):
+        p = snap["params"]
+        if snap.get("vec"):
+            return self._compute_vec(snap, log)
+        log.progress(0.01, "Lade " + os.path.basename(snap["pa"]))
+        ga = self._gray(snap["pa"], snap["page_a"], snap["dpi"], log, snap["vf"])
+        log.check()
+        if self.payload is None:                     # erste Berechnung: schon mal Zeichnung A zeigen
+            k = min(1.0, 2400 / max(ga.shape))
+            log.preview((cv2.resize(ga, None, fx=k, fy=k, interpolation=cv2.INTER_AREA), ga.shape))
+        if snap.get("single"):                       # nur eine Datei: anzeigen, nicht vergleichen
+            a = dp.ink_from_gray(ga, p.thr)
+            z = np.zeros(a.shape, bool)              # calloc: kostet erst Speicher, wenn beschrieben
+            res = dp.Result(a, a, z, z, a > 0, z, None)
+            log.progress(0.6, "Erzeuge Ansicht")
+            pa, pb, pd, po = build_pyramids(res)
+            ca = self._color(snap["pa"])
+            pc = build_color_pyramids(ca, len(pa))
+            return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
+        log.progress(0.12, "Lade " + os.path.basename(snap["pb"]))
+        gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"])
+        log.check()
+        key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.align,
+               snap["crop"], snap.get("crop_b"))
+        if self.cache.get("key") != key:
+            self.cache["key"] = None
+            log.progress(0.22, "Richte aus")
+            a_full, b_full = dp.ink_from_gray(ga, p.thr), dp.ink_from_gray(gb, p.thr)
+            if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet
+                a, b0 = dc.crop(a_full, snap["crop"]), dc.crop(b_full, snap["crop_b"])
+                box_b = snap["crop_b"]
+                log(f"Zugeordnete Bereiche: A {snap['crop']}  B {snap['crop_b']}")
+            else:
+                a, b0, box_b = dp.crop_pair(a_full, b_full, snap["crop"], log)
+            log.check()
+            self.cache["b"], tf = dp.prepare_pair_tf(a, b0, p.align, log)
+            self.cache["a"] = a
+            # Farbfassungen (nur Anzeige von Alt/Neu) genauso zuschneiden und ausrichten wie die Tinte
+            ca, cb = self._color(snap["pa"]), self._color(snap["pb"])
+            if ca is not None or cb is not None:
+                ca = dc.crop(ca if ca is not None else cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR), snap["crop"])
+                cb = dp.apply_tf(dc.crop(cb if cb is not None else cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR), box_b), tf)
+            self.cache["color"] = (ca, cb)
+            self.cache["key"] = key
+        log.check()
+        res = dp.run_compare(self.cache["a"], self.cache["b"], p, log, cancel=log.cancelled,
+                             progress=lambda f, t: log.progress(0.3 + 0.62 * f, t))
+        log.progress(0.93, "Erzeuge Ansichten")
+        pa, pb, pd, po = build_pyramids(res)
+        ca, cb = self.cache.get("color", (None, None))
+        return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, cb),
+                    pc=(build_color_pyramids(ca, len(pa)), build_color_pyramids(cb, len(pa))))
+
+    def _computed(self, r, snap):
+        keep = self.payload is not None and snap["crop"] == self._crop_seen
+        self.payload = r
+        self.index_info = None
+        self.canvas.selected = None
+        self._set_origin(snap["origin"])           # Anmerkungen/Zonen haften am Blatt, nicht am Ausschnitt
+        self.canvas.set_data(r["res"], r["pa"], r["pb"], r["pd"], r["regs"], keep_view=keep, po=r["po"],
+                             pc=r.get("pc"))
+        self._crop_seen = snap["crop"]
+        self.canvas.zones = self._local_zones()
+        self.canvas.set_preview(None, None)
+        self.stack.setCurrentWidget(self.work)
+        was_view_only = self.view_only
+        self._set_view_only(bool(snap.get("single")))
+        if snap.get("single"):
+            self._set_mode("A")
+            self.canvas.labels = ("A", "A")
+        else:
+            self.canvas.labels = ("A  " + os.path.basename(self.path_a), "B  " + os.path.basename(self.path_b))
+            if was_view_only or self.canvas.mode not in self.mode_actions:
+                self._set_mode("D")
+            if not self.act_left.isChecked() and not getattr(self, "_left_auto_done", False):
+                self.act_left.setChecked(True)     # beim ersten Vergleich Einstellungen zeigen
+                self._left_auto_done = True
+        if self.restore_regs is not None and not snap.get("single"):
+            r["regs"][:] = self.restore_regs   # Pruefstand aus dem Projekt
+            r["regs_done"] = True
+            self.restore_regs = None
+        recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
+        self._update_enabled()
+        self._fill_table()
+        self._update_title()
+        self.canvas.setFocus()
+        if snap.get("single"):
+            self._busy(False, "Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen.")
+        else:
+            self._busy(False, "Fertig. \u201e\u00c4nderungen suchen\u201c (rechte Leiste) nummeriert die Unterschiede.")
+        if self.pending or (self.chk_live.isChecked() and self.btn_run.text().endswith("\u25cf")):
+            self.start_compute()
+
+    def _failed(self, msg, details=""):
+        self._busy(False, "Fehler")
+        self._log("FEHLER: " + msg)
+        self.canvas.set_preview(None, None)
+        if self.payload is None:
+            self.show_start()
+            QMessageBox.warning(self, APP, msg)
+        else:
+            self.banner.show_msg(msg, "error", details)
+
+    def _busy(self, on, text):
+        self.progress.setVisible(on)
+        self.progress.setRange(0, 0)                 # unbestimmt, bis die erste Fortschrittsmeldung kommt
+        self.btn_cancel.setVisible(on)
+        self.btn_cancel.setEnabled(True)
+        self.lbl_status.setText(text)
+        self.btn_run.setEnabled(not on)
+        self.btn_regs.setEnabled(not on)
+        self.act_compare.setEnabled(not on and bool(self.path_a and self.path_b))
+
+    def _log(self, text):
+        self.log.appendPlainText(text)
+        self.lbl_status.setText(text.strip())
+
+    # --- Ansicht und Werkzeuge
+    def _set_mode(self, m):
+        if self.view_only and m != "A":
+            return
+        self.mode_actions[m].setChecked(True)
+        fit_after = (m == "Y") != (self.canvas.mode == "Y")      # Nebeneinander halbiert die Breite
+        self.canvas.mode = m
+        if fit_after:
+            self.canvas.fit()
+        if m == "K" and self.act_pause.isChecked():
+            self.act_pause.setChecked(False)       # Klick auf \u201eBlinken\u201c hebt eine Pause immer auf
+        self.act_blink_cb.setVisible(m == "K")
+        self.act_pause.setVisible(m == "K")
+        if m == "K" and not self.act_pause.isChecked():
+            self.blink.start()
+        else:
+            self.blink.stop()
+        self.canvas.update()
+
+    def _pause_blink(self, on):
+        if on:
+            self.blink.stop()
+        elif self.canvas.mode == "K":
+            self.blink.start()
+        self.canvas.update()
+
+    def _blink(self):
+        self.canvas.blink_b = not self.canvas.blink_b
+        self.canvas.update()
+
+    def _space(self):
+        if self.canvas.mode != "K":
+            self._set_mode("K")
+            self.act_pause.setChecked(True)        # Leertaste = von Hand schalten
+        self.canvas.blink_b = not self.canvas.blink_b
+        self.canvas.update()
+
+    def swap_ab(self):
+        a, b = self.path_a, self.path_b
+        if not (a and b):
+            return
+        pa, pb = self.sp_pa.value(), self.sp_pb.value()
+        self.path_a, self.path_b = b, a
+        ta, tb_ = self.lbl_a.text(), self.lbl_b.text()
+        ua, ub = self.lbl_a.toolTip(), self.lbl_b.toolTip()
+        self.lbl_a.setText(tb_)
+        self.lbl_a.setToolTip(ub)
+        self.lbl_b.setText(ta)
+        self.lbl_b.setToolTip(ua)
+        self.n_pages_a, self.n_pages_b = self.n_pages_b, self.n_pages_a
+        for sp, n, v in ((self.sp_pa, self.n_pages_a, pb), (self.sp_pb, self.n_pages_b, pa)):
+            sp.blockSignals(True)
+            sp.setRange(1, max(1, n))
+            sp.setValue(v)
+            sp.blockSignals(False)
+        self._vec_inspect("A", self.path_a)
+        self._vec_inspect("B", self.path_b)
+        self.start_compute()
+
+    def copy_result(self):
+        if not self._need_result():
+            return
+        mode, overlays = self.canvas.mode, self.act_overlays.isChecked()
+        out = np.ascontiguousarray(self.export_render(mode, overlays))
+        h, w = out.shape[:2]
+        fmt = QImage.Format.Format_BGR888 if out.ndim == 3 else QImage.Format.Format_Grayscale8
+        img = QImage(out.data, w, h, out.strides[0], fmt).copy()
+        QGuiApplication.clipboard().setImage(img)
+        self._log("Ergebnis in die Zwischenablage kopiert.")
+
+    def _canvas_menu(self, gpos):
+        m = QMenu(self)
+        m.addAction(self.act_fit)
+        m.addAction(self.act_100)
+        m.addAction(self.act_rotate)
+        m.addSeparator()
+        for key in ("hand", "measure", "text", "cloud", "arrow", "highlight"):
+            m.addAction(self.tool_actions[key])
+        m.addSeparator()
+        if self.path_a and self.path_b:
+            m.addAction("A und B tauschen", self.swap_ab)
+        m.addAction(self.act_copy)
+        m.addAction(self.act_export_img)
+        m.exec(gpos)
+
+    def _zoom_box_done(self):
+        """Zoom-Rahmen ueber Taste/Menue: einmalig, danach zurueck. Ueber die Palette gewaehlt: bleibt aktiv."""
+        if not self.tool_actions["zoom"].isChecked():
+            self._set_tool(self._prev_tool)
+
+    def _set_tool(self, t):
+        c = self.canvas
+        if t == "zoom" and c.tool != "zoom":
+            self._prev_tool = c.tool                   # Zoom-Rahmen ist einmalig, danach zurueck
+        c.tool = t
+        c.measure = []
+        c.snap_hint = None
+        c.hover = None
+        c._ann_prev = None
+        c._rubber = None
+        if t in self.tool_actions:
+            self.tool_actions[t].setChecked(True)
+        else:                                  # Zone/Ausschnitt/Zoom: kein Knopf in der Palette
+            for a in self.tool_actions.values():
+                if a.isChecked():
+                    a.actionGroup().setExclusive(False)
+                    a.setChecked(False)
+                    a.actionGroup().setExclusive(True)
+        if t in ("text", "number", "rect", "arrow", "approval", "zone", "crop", "measure", "region", "cloud",
+                 "highlight"):
+            self.act_overlays.setChecked(True)
+        self._update_options()
+        c.setCursor(Qt.CursorShape.OpenHandCursor if t == "hand" else Qt.CursorShape.CrossCursor)
+        self.statusBar().showMessage(TOOL_HINTS.get(t, ""), 8000)
+        c.setFocus()
+        c.update()
+
+    def _toggle_loupe(self, on):
+        self.canvas.loupe = on
+        self._update_options()
+        self.canvas.update()
+
+    def _mkind_changed(self, *_):
+        self.canvas.measure_kind = self.cb_mkind.currentData()
+        self._set_tool("measure")
+
+    def _toggle_overlays(self, on):
+        self.canvas.show_overlays = on
+        self.canvas.update()
+
+    def _toggle_regs(self, on):
+        self.canvas.show_regs = on
+        self.canvas.update()
+
+    def _toggle_snap(self, on):
+        self.canvas.snap = on
+        self.canvas.snap_hint = None
+
+    def _zoom100(self):
+        c = self.canvas
+        if c.res is not None:
+            c.zoom_to(1.0, c.ox + c.width() / 2 / c.scale, c.oy + c.height() / 2 / c.scale)
+
+    def _on_cursor(self, ix, iy, s):
+        mm = self.canvas.mm_px
+        self.lbl_pos.setText(f"x {ix}  y {iy} px   |   {ix * mm:.1f} / {iy * mm:.1f} mm")
+
+    def _on_view_changed(self, s):
+        self.lbl_zoom.setText(f"{s * 100:.0f} %")
+
+
+class _FileOpenFilter(QObject):
+    """macOS: Dateien, die im Finder auf das Programm gezogen oder mit ihm geoeffnet werden."""
+
+    def __init__(self, win):
+        super().__init__()
+        self.win, self.files = win, []
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self._flush)
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Type.FileOpen and ev.file():
+            self.files.append(ev.file())
+            self.timer.start(300)                    # mehrere Dateien kommen einzeln nacheinander
+            return True
+        return False
+
+    def _flush(self):
+        files, self.files = self.files, []
+        act = QApplication.activeWindow()
+        win = act if isinstance(act, MainWindow) else (WINDOWS[-1] if WINDOWS else None)
+        if files and win is not None:
+            win._files_dropped(files)
+
+
+def setup_logging():
+    """Logdatei im Benutzerordner (rotierend) und unbehandelte Fehler dort eintragen statt abzustuerzen."""
+    import logging.handlers
+    try:
+        fh = logging.handlers.RotatingFileHandler(os.path.join(app_data_dir(), "zeichnungsvergleich.log"),
+                                                  maxBytes=1_000_000, backupCount=2, encoding="utf-8")
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        root = logging.getLogger()
+        root.addHandler(fh)
+        root.setLevel(logging.INFO)
+    except OSError:
+        pass
+
+    def hook(et, ev, tb):
+        import traceback
+        text = "".join(traceback.format_exception(et, ev, tb))
+        log.error("Unbehandelter Fehler:\n" + text)
+        app = QApplication.instance()
+        for w in (app.topLevelWidgets() if app else []):
+            if isinstance(w, MainWindow):
+                w.banner.show_msg(f"Unerwarteter Fehler: {et.__name__}: {ev}", "error", text)
+                break
+    sys.excepthook = hook
+
+
+def selftest():
+    """Prueft im fertigen Programm, ob alle Bausteine laden und rechnen (Aufruf mit --selbsttest)."""
+    import tempfile
+    out, ok = [], True
+
+    def step(name, fn):
+        nonlocal ok
+        try:
+            r = fn()
+            out.append(f"OK      {name}" + (f": {r}" if r else ""))
+        except Exception as e:                       # noqa: BLE001
+            ok = False
+            out.append(f"FEHLER  {name}: {type(e).__name__}: {e}")
+    tmp = tempfile.mkdtemp()
+    img = np.full((600, 800), 255, np.uint8)
+    cv2.rectangle(img, (50, 50), (700, 500), 0, 3)
+    cv2.putText(img, "Massstab 1:5", (80, 300), cv2.FONT_HERSHEY_SIMPLEX, 1.2, 0, 2)
+    img2 = img.copy()
+    cv2.circle(img2, (500, 200), 60, 0, 3)
+    pa, pb = os.path.join(tmp, "a.png"), os.path.join(tmp, "b.png")
+    cv2.imwrite(pa, img)
+    cv2.imwrite(pb, img2)
+
+    def compare():
+        p = dp.Params()
+        a = dp.ink_from_gray(dp.load_gray(pa), p.thr)
+        b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb), p.thr), p.align, lambda *_: None)
+        r = dp.run_compare(a, b, p, lambda *_: None)
+        assert r.ob.any(), "Aenderung nicht gefunden"
+        return f"{len(rep.find_regions(r))} Aenderung(en)"
+
+    def pdf():
+        import pymupdf
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 72), "Test")
+        f = os.path.join(tmp, "t.pdf")
+        d.save(f)
+        return f"{dc.read_image(f, dpi=72).shape}"
+
+    def dxf():
+        import ezdxf
+        d = ezdxf.new()
+        d.modelspace().add_line((0, 0), (100, 50))
+        f = os.path.join(tmp, "t.dxf")
+        d.saveas(f)
+        return f"{dc.read_image(f, dpi=72).shape}"
+
+    def ocr():
+        if not rep.ocr_available():
+            return "nicht enthalten"
+        return " ".join(t[-1] for t in rep.ocr_image(img))
+    step("Vergleich", compare)
+    step("PDF", pdf)
+    step("DXF", dxf)
+    step("Texterkennung", ocr)
+    step("Schrift", lambda: os.path.basename(str(dc._font_path())))
+    text = f"{APP} {VERSION} Selbsttest\n" + "\n".join(out)
+    log.info(text)
+    print(text)
+    return 0 if ok else 1
+
+
+def main():
+    if "--selbsttest" in sys.argv:
+        setup_logging()
+        sys.exit(selftest())
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is not None:
+            setattr(sys, name, SafeStream(getattr(sys, name)))
+    if os.name == "nt":                          # eigenes Symbol in der Taskleiste (nicht das von Python)
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ZGmax.Viewer.2")
+        except Exception:                        # noqa: BLE001
+            pass
+    app = QApplication(sys.argv)
+    app.setApplicationName(APP)
+    app.setOrganizationName("ZGmax")
+    app.setApplicationVersion(VERSION)
+    app.setStyle("Fusion")
+    setup_logging()
+    log.info(f"Start {APP} {VERSION} ({sys.platform}, Python {sys.version.split()[0]})")
+    apply_theme(app, theme_setting(app_settings()))
+    ico = os.path.join(HERE, "icon.png")
+    if os.path.isfile(ico):
+        app.setWindowIcon(QIcon(ico))
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    proj = [a for a in args if a.lower().endswith(PROJECT_EXT)]
+    args = [a for a in args if a not in proj]
+    w = MainWindow(args[0] if len(args) > 0 else None, args[1] if len(args) > 1 else None)
+    WINDOWS.append(w)
+    fo = _FileOpenFilter(w)
+    app.installEventFilter(fo)
+    w.show()
+    if proj:
+        QTimer.singleShot(0, lambda: w.project_open(proj[0]))
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

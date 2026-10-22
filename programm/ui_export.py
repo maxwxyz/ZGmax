@@ -1,0 +1,173 @@
+"""Hauptfenster: Bild, Liste, Bericht, Druck."""
+from ui_common import *  # noqa: F401,F403
+from ui_theme import *  # noqa: F401,F403
+from ui_widgets import ApprovalDialog
+
+
+class ExportMixin:
+    """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
+
+    # --- Export
+    def _need_result(self):
+        if not self.payload:
+            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            return False
+        return True
+
+    def _info(self):
+        p = self.params()
+        res = self.payload["res"]
+        s = (f"Toleranz {p.tol}px, Schraffur {p.hatch}, Verschiebung {p.move}, Objekt-Verschiebung "
+             f"{p.obj_shift}px, Objekt-Drehung {p.obj_rotate}Grad, Kacheln {res.nx}x{res.ny}, "
+             f"Ausrichtung {p.align}, Schwelle {p.thr}")
+        if self.crop:
+            s += f", Ausschnitt {self.crop[2]}x{self.crop[3]}px"
+        return s
+
+    def _save_dialog(self, title, flt, default):
+        d = self.settings.value("outdir", os.path.dirname(self.path_a or ""))
+        path, _ = QFileDialog.getSaveFileName(self, title, os.path.join(d, default), flt)
+        if path:
+            self.settings.setValue("outdir", os.path.dirname(path))
+        return path
+
+    def export_render(self, mode, overlays, legend=True):
+        """Baut das Ergebnisbild wie angezeigt (Ansicht + Markierungen + Anmerkungen + Legende)."""
+        pl = self.payload
+        res = pl["res"]
+        if mode in ("A", "B", "K"):
+            col = pl.get("color", (None, None))[1 if mode == "B" else 0] if self.canvas.show_color else None
+            out = col.copy() if col is not None else cv2.cvtColor(255 - (res.b if mode == "B" else res.a),
+                                                                   cv2.COLOR_GRAY2BGR)
+        elif mode == "O":
+            a, b = res.a > 0, res.b > 0
+            out = dc.render(a & ~b, b & ~a, a & b, None)
+        elif mode == "N":
+            b = res.b > 0
+            out = dc.render(np.zeros_like(res.ob), res.ob, b & ~res.ob, None)
+        elif mode == "R":
+            a = res.a > 0
+            out = dc.render(res.oa, np.zeros_like(res.oa), a & ~res.oa, None)
+        else:
+            out = dp.render_result(res)
+        if overlays:
+            if pl["regs"] and self.canvas.show_regs:
+                rep.draw_marks(out, pl["regs"], cloud=self.act_clouds.isChecked())
+            rep.draw_annotations(out, self.anns, mm=self.canvas.mm_px)
+        if legend and mode in ("D", "S", "O", "N", "R"):
+            out = dc.add_legend(out, os.path.basename(self.path_a), os.path.basename(self.path_b),
+                                bool(res.moved.any()) and mode in ("D", "S"), self._info())
+        return out
+
+    def print_scaled(self):
+        """Drucken im Massstab: 100 % = Originalgroesse des Blatts (aus dpi), sonst Einpassen oder Prozent.
+        Ist das Papier kleiner als das Bild, wird auf mehrere Seiten verteilt."""
+        if not self._need_result():
+            return
+        from PySide6.QtGui import QPageLayout
+        from PySide6.QtPrintSupport import QPrintDialog, QPrinter
+        opts = ["Auf Papier einpassen", "100 % (Originalgr\u00f6\u00dfe des Blatts)", "50 %", "25 %", "200 %"]
+        item, ok = QInputDialog.getItem(self, "Drucken im Ma\u00dfstab", "Gr\u00f6\u00dfe auf dem Papier:", opts, 1, False)
+        if not ok:
+            return
+        mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
+        out = np.ascontiguousarray(self.export_render(mode, True, False))
+        h, w = out.shape[:2]
+        img = QImage(out.data, w, h, out.strides[0], QImage.Format.Format_BGR888).copy()
+        pr = QPrinter(QPrinter.PrinterMode.HighResolution)
+        pr.setPageOrientation(QPageLayout.Orientation.Landscape if w >= h else QPageLayout.Orientation.Portrait)
+        if QPrintDialog(pr, self).exec() != QDialog.DialogCode.Accepted:
+            return
+        pg = pr.pageRect(QPrinter.Unit.DevicePixel)
+        dev_mm = pr.resolution() / 25.4
+        if item.startswith("Auf"):
+            f = min(pg.width() / w, pg.height() / h)
+        else:
+            pct = 100.0 if item.startswith("100") else float(item.split(" ")[0])
+            f = 25.4 / max(1, self.dpi_value()) * pct / 100.0 * dev_mm
+        tw, th = pg.width() / f, pg.height() / f
+        p = QPainter(pr)
+        first = True
+        y = 0.0
+        while y < h:
+            x = 0.0
+            while x < w:
+                if not first:
+                    pr.newPage()
+                first = False
+                sw, sh = min(tw, w - x), min(th, h - y)
+                p.drawImage(QRectF(0, 0, sw * f, sh * f), img, QRectF(x, y, sw, sh))
+                x += tw
+            y += th
+        p.end()
+        self._log(f"Gedruckt: {item}")
+
+    def export_image(self):
+        if not self._need_result():
+            return
+        path = self._save_dialog("Ergebnisbild speichern", "PNG (*.png);;JPEG (*.jpg);;TIFF (*.tif);;PDF (*.pdf)",
+                                 "diff.png")
+        if not path:
+            return
+        mode, overlays, dpi = self.canvas.mode, self.act_overlays.isChecked(), self.dpi_value()
+
+        def work(log):
+            out = self.export_render(mode, overlays)
+            fp, fmt = dc.resolve_output(path, None)
+            return dc.save_output(out, fp, fmt, dpi, 95)
+        self._run_job(work, "Speichere \u2026", lambda p: self._log(f"Bild gespeichert: {path}"))
+
+    def export_csv(self):
+        if not self._need_result():
+            return
+        path = self._save_dialog("\u00c4nderungsliste speichern", "CSV (*.csv)", "diff_aenderungen.csv")
+        if not path:
+            return
+        pl, dpi, sn = self.payload, self.dpi_value(), self.scale_n()
+
+        def work(log):
+            self._ensure_regs(log)
+            rep.write_csv(path, pl["regs"], dpi, sn)
+            return path
+        self._run_job(work, "Speichere \u2026", lambda p: (self._fill_table(), self._log(f"Liste gespeichert: {p}")))
+
+    def export_pdf(self):
+        if not self._need_result():
+            return
+        path = self._save_dialog("PDF-Bericht speichern", "PDF (*.pdf)", "diff_bericht.pdf")
+        if not path:
+            return
+        pl, info, dpi, idx = self.payload, self._info(), self.dpi_value(), self.index_info
+        sn, anns = self.scale_n(), (copy.deepcopy(self.anns) if self.act_overlays.isChecked() else [])
+        names = (os.path.basename(self.path_a), os.path.basename(self.path_b))
+
+        def work(log):
+            self._ensure_regs(log)
+            rep.build_report(path, pl["res"], pl["regs"], names[0], names[1], dpi, info, idx, 40, log,
+                             anns=anns, scale_n=sn)
+            return path
+        self._run_job(work, "Erstelle Bericht \u2026",
+                      lambda p: (self._fill_table(), self._log(f"Bericht gespeichert: {p}")))
+
+    def copy_cli(self):
+        if not (self.path_a and self.path_b):
+            return
+        p, d = self.params(), dp.Params()
+        parts = ["python", "drawing_diff.py", self.path_a, self.path_b]
+        for attr, flag in (("thr", "--thr"), ("align", "--align"), ("cell", "--cell"), ("max_shift", "--max-shift"),
+                           ("tol", "--tol"), ("hatch", "--hatch"), ("move", "--move"), ("obj_shift", "--obj-shift"),
+                           ("obj_rotate", "--obj-rotate"), ("min_area", "--min-area"),
+                           ("ignore_border", "--ignore-border")):
+            if getattr(p, attr) != getattr(d, attr):
+                parts += [flag, str(getattr(p, attr))]
+        for z in p.ignore:
+            parts += ["--ignore", ",".join(map(str, z))]
+        if self.crop:
+            parts += ["--crop-a", ",".join(map(str, self.crop))]
+        if self.dpi_value() != 200:
+            parts += ["--dpi", str(self.dpi_value())]
+        if not p.edge_noise:
+            parts += ["--keep-edges"]
+        cmd = " ".join(f'"{x}"' if (" " in x or "\\" in x) else x for x in parts)
+        QGuiApplication.clipboard().setText(cmd)
+        self._log("Befehl in Zwischenablage (im Ordner \u201eprogramm\u201c ausf\u00fchren): " + cmd)

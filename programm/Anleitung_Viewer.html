@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anleitung ZGmax</title>
+<style>
+  :root{--fg:#1f2937;--muted:#6b7280;--bg:#ffffff;--accent:#2563eb;--line:#d6dbe3;--th:#f0f4f8;--code:#eef2ff;
+        --tip-bg:#fff8e1;--tip-line:#f5a623;--quick-bg:#eef6ff;--quick-line:#b9d7f5;--kbd:#f3f4f6}
+  @media (prefers-color-scheme: dark){
+    :root{--fg:#e5e7eb;--muted:#9ca3af;--bg:#1c1f24;--accent:#60a5fa;--line:#3a4049;--th:#262a31;--code:#262a31;
+          --tip-bg:#3a3114;--tip-line:#d4a017;--quick-bg:#1e2b42;--quick-line:#34507f;--kbd:#2d323a}}
+  body{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;max-width:920px;margin:2rem auto;padding:0 1rem;
+       line-height:1.6;color:var(--fg);background:var(--bg)}
+  h1{border-bottom:3px solid var(--accent);padding-bottom:.3rem}
+  h2{margin-top:2.4rem;color:var(--accent)}
+  h3{margin-top:1.4rem}
+  code{background:var(--code);padding:1px 5px;border-radius:3px}
+  table{border-collapse:collapse;width:100%;margin:.6rem 0}
+  th,td{border:1px solid var(--line);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--th)}
+  .sw{display:inline-block;width:1em;height:1em;border:1px solid #888;vertical-align:middle;margin-right:.4em}
+  .tip{background:var(--tip-bg);border-left:4px solid var(--tip-line);padding:.6rem 1rem;margin:1rem 0}
+  .quick{background:var(--quick-bg);border:1px solid var(--quick-line);border-radius:10px;padding:.2rem 1.2rem 1rem;margin:1rem 0}
+  .quick h2{margin-top:.8rem}
+  kbd{background:var(--kbd);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:.9em}
+  nav{columns:3;font-size:.95em} nav a{display:block}
+  a{color:var(--accent)}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>ZGmax – Anleitung</h1>
+<p><b>ZGmax</b> zeigt technische Zeichnungen an und vergleicht zwei Stände (alt und neu): Unterschiede werden farbig
+markiert, nummeriert und lassen sich Schritt für Schritt prüfen, kommentieren, vermessen und als Bild, PDF oder Liste
+speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Kommandozeile.html">Anleitung Kommandozeile</a>.</p>
+<p class="muted">Tastenkürzel: <kbd>Strg</kbd> steht auf dem Mac für <kbd>⌘</kbd>. Einzeltasten wie <kbd>F</kbd> oder
+<kbd>N</kbd> wirken, wenn das Bild den Fokus hat (einmal hineinklicken).</p>
+
+<nav>
+<a href="#schnell">Schnellstart</a><a href="#start">Programm starten</a><a href="#fenster">Das Fenster</a>
+<a href="#navigation">Zoomen und Verschieben</a><a href="#ansichten">Ansichten</a><a href="#ansehen">Nur ansehen, Fenster, Schließen</a>
+<a href="#empfindlich">Empfindlichkeit, Automatisch einstellen</a><a href="#messen">Messen und Kalibrieren</a>
+<a href="#markieren">Markieren</a><a href="#pruefen">Änderungen prüfen</a><a href="#texte">Texte und Maße lesen</a>
+<a href="#seiten">Mehrseitige Dateien</a><a href="#bereiche">Ausschnitt, Zuordnen, Zonen</a>
+<a href="#formate">PDF-Vektordaten, DXF</a><a href="#speichern">Speichern und Drucken</a>
+<a href="#stapel">Stapel und Revisionen</a><a href="#erweitert">Alle Einstellungen</a><a href="#tasten">Tastenkürzel</a><a href="#faq">Fragen</a>
+</nav>
+
+<div class="quick">
+<h2 id="schnell">Schnellstart</h2>
+<ol>
+  <li><b>Starten:</b> Programm <i>ZGmax</i> öffnen. Es erscheint die Startseite.</li>
+  <li><b>Zeichnungen wählen:</b> Links die <b>alte</b>, rechts die <b>neue</b> Zeichnung wählen – oder beide Dateien
+      zusammen ins Fenster ziehen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt.</li>
+  <li><b>Ansehen:</b> <span class="sw" style="background:#e5173f"></span><b>Rot</b> = nur in der alten Zeichnung
+      (entfernt), <span class="sw" style="background:#1f3fff"></span><b>Blau</b> = nur in der neuen (neu),
+      <span class="sw" style="background:#969696"></span>Grau = gleich, <span class="sw" style="background:#00aa00"></span>Grün =
+      nur verschoben. Mausrad = zoomen, Papier ziehen = verschieben, <kbd>F</kbd> = ganze Zeichnung.</li>
+  <li><b>Prüfen (optional):</b> Rechts „Änderungen suchen“, dann mit <kbd>N</kbd> von Änderung zu Änderung,
+      <kbd>G</kbd> = geprüft, <kbd>X</kbd> = abgelehnt.</li>
+  <li><b>Speichern:</b> Oben rechts <i>Speichern</i> → Ergebnisbild, PDF oder Projekt.</li>
+</ol>
+<p><b>Viele kleine Fundstellen?</b> Links „Automatisch einstellen“ klicken: Das Programm misst, wie genau die beiden
+Zeichnungen übereinanderliegen, und stellt Toleranz und Suchbereiche passend ein.</p>
+</div>
+
+<h2 id="start">Programm starten</h2>
+<table>
+<tr><th>Variante</th><th>So geht's</th></tr>
+<tr><td><b>App (empfohlen)</b></td><td><b>Mac:</b> <code>ZGmax.app</code> in den Ordner
+<i>Programme</i> ziehen und öffnen. Beim ersten Start meldet macOS evtl. „nicht verifizierter Entwickler“: App mit
+Rechtsklick → <i>Öffnen</i> → <i>Öffnen</i> bestätigen (nur einmal nötig). Zeichnungen und Projekte lassen sich auf das
+Programmsymbol ziehen.<br><b>Windows:</b> ZIP entpacken (z. B. nach <code>C:\Programme\ZGmax</code> oder
+auf einen USB-Stick) und <code>ZGmax.exe</code> starten. Keine Installation, kein Python nötig. Desktop-Symbol:
+<i>Datei → Desktop-Verknüpfung erstellen</i>.</td></tr>
+<tr><td>Mit Python</td><td>Doppelklick auf <code>Start ZGmax.command</code> (Mac) bzw.
+<code>Start ZGmax.bat</code> (Windows). Beim ersten Mal werden die nötigen Pakete in getesteten Versionen
+installiert (Internet nötig). Direkt: <code>python programm/drawing_viewer.py [alt [neu]]</code>.</td></tr>
+</table>
+
+<h2 id="fenster">Das Fenster</h2>
+<table>
+<tr><th>Bereich</th><th>Inhalt</th></tr>
+<tr><td>Menüleiste</td><td>Alle Funktionen: <i>Datei</i>, <i>Bearbeiten</i>, <i>Ansicht</i>, <i>Werkzeuge</i>, <i>Prüfen</i>, <i>Hilfe</i>.</td></tr>
+<tr><td>Leiste oben</td><td><i>Öffnen</i>, <i>Vergleichen</i>, die Ansichten (Alt, Neu, Vergleich, Nebeneinander, Überlagern,
+Blinken, ▾ weitere), Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten
+<i>Einstellungen</i> und <i>Änderungen und Markierungen</i>.</td></tr>
+<tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Zoom, Messen, Text, Wolke, Rahmen, Pfeil, Marker, Nummer, Stempel;
+unten Lupe und Übersicht. Das gewählte Werkzeug ist blau.</td></tr>
+<tr><td>Optionszeile (über dem Bild)</td><td>Erscheint nur bei Bedarf und zeigt die Einstellungen des gewählten Werkzeugs,
+z. B. beim Messen Messart, Einrasten, Maßstab und <i>Kalibrieren</i>; beim Markieren Farbe und Größe.</td></tr>
+<tr><td>Hinweisleiste</td><td>Blau = Information, gelb = Warnung, rot = Fehler (mit <i>Details</i>). Statt vieler Meldungsfenster.</td></tr>
+<tr><td>Statusleiste (unten)</td><td>Was gerade passiert, Fortschritt in Prozent mit <i>Abbrechen</i>, Mausposition in px und mm.</td></tr>
+</table>
+<p>Was selten gebraucht wird, ist zunächst verborgen. <i>Ansicht → Alle Einstellungen zeigen</i> blendet zusätzlich
+Ausschnitt/Zonen, Vektordaten, erweiterte Optionen und das Protokoll ein.</p>
+
+<h2 id="navigation">Zoomen und Verschieben</h2>
+<p>Das geht <b>immer</b>, egal welches Werkzeug gewählt ist:</p>
+<table>
+<tr><th>Aktion</th><th>Wirkung</th></tr>
+<tr><td>Mausrad</td><td>Zoomen an der Mausposition</td></tr>
+<tr><td>Trackpad: zwei Finger schieben / aufziehen</td><td>Verschieben / Zoomen (<kbd>Strg</kbd>+zwei Finger = zoomen)</td></tr>
+<tr><td>Leeres Papier mit der linken Maustaste ziehen</td><td>Verschieben (Werkzeug <i>Auswahl</i>)</td></tr>
+<tr><td>Mittlere Maustaste (Rad) ziehen</td><td>Verschieben</td></tr>
+<tr><td><b>Rechte Maustaste ziehen</b></td><td><b>Zoom-Rahmen</b>: genau in den aufgezogenen Bereich zoomen</td></tr>
+<tr><td>Kurzer Rechtsklick</td><td>Menü (u. a. <i>Ganze Zeichnung</i>, Werkzeuge, Kopieren)</td></tr>
+<tr><td><kbd>F</kbd>, Doppelklick ins Leere, Doppelklick mit dem Mausrad, Knopf <i>Ganze Zeichnung</i></td><td>Ganze Zeichnung zeigen</td></tr>
+<tr><td>Klick auf die Zoomstufe (z. B. „35 %“)</td><td>Originalgröße 100 %</td></tr>
+<tr><td><kbd>+</kbd> / <kbd>−</kbd>, Pfeiltasten</td><td>Zoomen / Verschieben</td></tr>
+<tr><td>Werkzeug <i>Zoom</i> (<kbd>Z</kbd>)</td><td>Zoom-Rahmen mit Fadenkreuz mit der linken Maustaste, beliebig oft
+hintereinander; einfacher Klick = ganze Zeichnung; <kbd>Esc</kbd> = zurück zur Auswahl.</td></tr>
+<tr><td><i>Übersicht</i> (unten in der Palette)</td><td>Sobald hineingezoomt ist, zeigt unten rechts eine kleine Karte
+die ganze Zeichnung mit dem sichtbaren Ausschnitt. Klicken oder ziehen springt dorthin.</td></tr>
+<tr><td><i>Lupe</i> (<kbd>L</kbd>)</td><td>Vergrößert den Bereich unter dem Mauszeiger (2× bis 8×, Optionszeile).</td></tr>
+<tr><td><kbd>R</kbd></td><td>Ansicht um 90° drehen (nur Anzeige; Messen und Markieren funktionieren weiter)</td></tr>
+</table>
+
+<h2 id="ansichten">Ansichten</h2>
+<table>
+<tr><th>Ansicht</th><th>Taste</th><th>Zeigt</th></tr>
+<tr><td>Alt / Neu</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Nur die alte bzw. neue Zeichnung, schwarz auf weiß</td></tr>
+<tr><td>Vergleich</td><td><kbd>3</kbd></td><td>Das Ergebnis in Farbe (Legende unten links)</td></tr>
+<tr><td>Nebeneinander</td><td><kbd>9</kbd></td><td>Alt links, neu rechts; beide Hälften zoomen und verschieben gemeinsam</td></tr>
+<tr><td>Überlagern</td><td><kbd>4</kbd></td><td>Beide ohne Toleranz übereinander – zeigt, was die Automatik herausrechnet</td></tr>
+<tr><td>Blinken</td><td><kbd>6</kbd></td><td>Wechselt zwischen alt und neu; Geschwindigkeit und Pause erscheinen in der Leiste.
+<kbd>Leertaste</kbd> wechselt von Hand.</td></tr>
+<tr><td>▾ Schieber</td><td><kbd>5</kbd></td><td>Links alt, rechts neu; Trennlinie mit der Maus ziehen</td></tr>
+<tr><td>▾ Nur Neu / Nur Alt</td><td><kbd>7</kbd> / <kbd>8</kbd></td><td>Eine Zeichnung, darin nur neue (blau) bzw. entfernte (rot) Stellen hervorgehoben</td></tr>
+</table>
+<p><b>Farbe:</b> Farbige Zeichnungen (z. B. PDF mit farbigen Ebenen) erscheinen in den Ansichten Alt, Neu,
+Nebeneinander, Blinken und Schieber in ihren Originalfarben. Vergleich, Überlagern, Nur Neu und Nur Alt arbeiten immer
+schwarz-weiß (rot/blau/grau). Abschaltbar: <i>Ansicht → Zeichnungen in Farbe</i>.</p>
+<p><b>Farben umkehren</b> (<kbd>I</kbd>, <i>Ansicht → Farben umkehren</i>): helle Linien auf dunklem Grund – angenehm
+im Dunkeln oder bei langer Bildschirmarbeit. Im Vergleich wird nur das Papier dunkel, Rot/Blau/Grün bleiben. Gilt nur
+für die Anzeige; gespeicherte Bilder und Ausdrucke bleiben normal. Unabhängig davon stellt <i>Ansicht → Darstellung</i>
+(Automatisch, Hell, Dunkel) das Erscheinungsbild der Bedienoberfläche ein.</p>
+
+<h2 id="ansehen">Nur ansehen, mehrere Fenster, Schließen</h2>
+<ul>
+<li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Zeichnung
+ansehen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
+Markieren, Drucken und Speichern. Ist bereits ein Vergleich offen, öffnet sich die Zeichnung in einem <b>neuen
+Fenster</b>; der Vergleich bleibt erhalten.</li>
+<li><b>Mehrere Vergleiche gleichzeitig:</b> <i>Datei → Neues Fenster</i> (<kbd>Strg</kbd>+<kbd>N</kbd>). Jedes Fenster
+ist unabhängig (eigene Dateien, Markierungen, Einstellungen der Ansicht).</li>
+<li><b>Schließen, ohne das Programm zu beenden:</b> <i>Datei → Schließen</i> (<kbd>Strg</kbd>+<kbd>W</kbd>). Bei ungespeicherten
+Markierungen oder Prüfergebnissen fragt das Programm nach; danach erscheint wieder die Startseite.</li>
+<li><b>Zuletzt verwendet:</b> auf der Startseite und unter <i>Datei → Zuletzt verwendet</i> (Paare, Einzeldateien, Projekte).</li>
+</ul>
+
+<h2 id="empfindlich">Empfindlichkeit und „Automatisch einstellen“</h2>
+<p><b>Toleranz</b> ist die wichtigste Einstellung: Linien, die weniger als n Pixel auseinanderliegen, gelten als gleich
+(bei 200 dpi ist 1 Pixel etwa 0,13 mm). Viele dünne rote/blaue Doppellinien → erhöhen; kleine Änderungen fehlen →
+verringern. <b>Mindestgröße</b>: kleinere Unterschiede (Staub, Punkte) werden ignoriert. Danach <i>Vergleichen</i>; ein
+Punkt (●) am Knopf zeigt, dass sich seit der letzten Berechnung etwas geändert hat.</p>
+<p><b>Automatisch einstellen</b> misst am aktuellen Zeichnungspaar:</p>
+<ul>
+<li><i>Linienschwelle</i> – trennt Papier und Linien (wichtig bei grauen oder vergilbten Scans).</li>
+<li><i>Toleranz</i> – wie viel Abweichung nur „ungenau übereinanderliegende Linien“ sind: Das Programm zählt die
+Unterschiede bei Toleranz 0, 1, 2 … und wählt die Stelle, ab der mehr Toleranz kaum noch etwas entfernt (sonst würde
+sie echte Änderungen verschlucken).</li>
+<li><i>Mindestgröße</i> – aus der gemessenen Strichstärke.</li>
+<li><i>Suchbereiche</i> (Kacheln, Verschiebungen, Schraffur) – auf die Auflösung (dpi) umgerechnet.</li>
+</ul>
+<p>Was eine <i>wichtige</i> Änderung ist, kann das Programm nicht wissen; die Vorschläge stehen in der Hinweisleiste und
+lassen sich jederzeit von Hand ändern.</p>
+<div class="tip"><b>Kantensäume:</b> Liegen Linien in der neuen Zeichnung um einen Pixel versetzt oder sind sie etwas
+dicker gescannt/gerendert, entstehen dünne rote/blaue Säume direkt an grauen Linien. Diese werden standardmäßig
+ignoriert (bleiben grau). Eigene Linien mit Abstand zur alten Linie bleiben Änderungen. Abschaltbar unter
+<i>Alle Einstellungen → Erweiterte Optionen → Kantensäume an Linien ignorieren</i>.</div>
+
+<h2 id="messen">Messen, Maßstab und Kalibrieren</h2>
+<p>Werkzeug <b>Messen</b> (<kbd>M</kbd>) wählen. In der Optionszeile stehen Messart, Einrasten, der aktuelle Maßstab und
+<i>Kalibrieren</i>.</p>
+<table>
+<tr><th>Messart</th><th>Bedienung</th><th>Ergebnis</th></tr>
+<tr><td>Länge</td><td>2 Punkte</td><td>mm</td></tr>
+<tr><td>Linienzug</td><td>beliebig viele Punkte, Ende mit Doppelklick, <kbd>Enter</kbd> oder Rechtsklick</td><td>Gesamtlänge mm</td></tr>
+<tr><td>Winkel</td><td>3 Punkte: Schenkel – Scheitel – Schenkel</td><td>Grad</td></tr>
+<tr><td>Radius</td><td>3 Punkte auf dem Kreis/Bogen</td><td>Radius und Durchmesser</td></tr>
+<tr><td>Fläche</td><td>Eckpunkte, Ende wie Linienzug</td><td>mm²</td></tr>
+</table>
+<p><b>Einrasten:</b> Der Zeiger rastet an Linien ein (grünes Quadrat); an zwei parallelen Linien wird automatisch der
+senkrechte Abstand gemessen. <kbd>Umschalt</kbd> gedrückt = frei messen. Messungen bleiben als Maß im Bild, lassen sich mit
+<i>Auswahl</i> verschieben und an den weißen Punkten ändern.</p>
+<p><b>Stimmen die mm?</b> Umgerechnet wird mit <i>mm = Pixel × 25,4 ÷ dpi × Maßstab</i>. Die Auflösung liest das Programm
+aus der Datei (sonst 200 dpi).</p>
+<ul>
+<li><b>Kalibrieren</b> (sicherste Methode): Knopf <i>Kalibrieren …</i> in der Messen-Zeile. Ist noch nichts gemessen,
+misst man nun eine bekannte Strecke (z. B. ein Maß der Zeichnung) – danach fragt das Programm sofort nach ihrer wahren
+Länge. Damit stimmen alle Maße, auch bei falscher Auflösung.</li>
+<li><b>Maßstab eingeben:</b> Klick auf „Maßstab 1 : n“ in der Messen-Zeile. Für 2:1 bitte 0,5 eingeben.</li>
+<li><b>Aus Schriftfeld:</b> liest Maßstab, Zeichnungsnummer und Index aus dem Schriftfeld rechts unten (bei PDF mit
+Text direkt, bei Bildern per Texterkennung) und bietet den Maßstab zur Übernahme an.</li>
+</ul>
+
+<h2 id="markieren">Markieren</h2>
+<table>
+<tr><th>Werkzeug</th><th>Bedienung</th></tr>
+<tr><td>Text (<kbd>T</kbd>)</td><td>Ins Bild klicken, Text eingeben (mehrzeilig möglich)</td></tr>
+<tr><td>Wolke (<kbd>W</kbd>)</td><td>Revisionswolke aufziehen</td></tr>
+<tr><td>Rahmen / Pfeil</td><td>Aufziehen bzw. vom Anfang zur Spitze ziehen</td></tr>
+<tr><td>Marker</td><td>Fläche farbig hinterlegen (Textmarker, Standard gelb)</td></tr>
+<tr><td>Nummer</td><td>Jeder Klick setzt den nächsten nummerierten Kreis; Startnummer in der Optionszeile</td></tr>
+<tr><td>Stempel</td><td>Klick, dann Status (FREIGEGEBEN, GEPRÜFT …), Name und Datum</td></tr>
+</table>
+<p>Farbe und Größe stehen in der Optionszeile. Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die
+Größe ändern; Doppelklick = bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> =
+rückgängig. Alle Markierungen stehen im Reiter <i>Markierungen</i> rechts. <kbd>H</kbd> blendet alle Markierungen,
+Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht gespeichert.</p>
+
+<h2 id="pruefen">Änderungen prüfen</h2>
+<ol>
+<li>Rechte Leiste öffnen (<i>Änderungen und Markierungen</i>) und <b>Änderungen suchen und nummerieren</b>
+(<kbd>Strg</kbd>+<kbd>F</kbd>). Jede Änderung bekommt eine Nummer und einen Rahmen (auf Wunsch als Revisionswolke:
+<i>Ansicht → Änderungen als Revisionswolken</i>).</li>
+<li><b>Nächste</b> (<kbd>N</kbd>) springt zur nächsten noch offenen Änderung und zoomt hin; <b>Vorige</b> (<kbd>P</kbd>) zurück.</li>
+<li><b>Geprüft</b> (<kbd>G</kbd>, springt weiter), <b>Abgelehnt</b> (<kbd>X</kbd>), <b>Kommentar</b> (<kbd>C</kbd>).
+Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style="color:#16a34a">● geprüft</span>,
+<span style="color:#7c3aed">● abgelehnt</span> – in der Liste und an den Rahmen im Bild.</li>
+</ol>
+<p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „Maße“ (geänderte
+Maßzahlen) oder „offen“ filterbar. Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
+Doppelklick bearbeitet Text A/B und Beschreibung. <i>Selbst markieren</i> nimmt einen aufgezogenen Bereich als eigene
+Änderung auf; <i>Löschen</i> entfernt unerwünschte Funde. Status und Kommentare werden im <b>Projekt</b> gespeichert und
+erscheinen in CSV, PDF-Bericht und PDF mit Anmerkungen – das ist das Prüfprotokoll.</p>
+
+<h2 id="texte">Texte und Maße lesen</h2>
+<p>Im Bereich <i>Texte und Maße lesen</i> (rechte Leiste, aufklappen):</p>
+<ul>
+<li><b>Text aus PDF lesen</b>: eingebetteter Text jeder Änderung (A → B), exakt, nur bei PDF mit echtem Text.</li>
+<li><b>Maßzahlen vergleichen</b>: liest die Zahlen jeder Änderung und meldet „12,5 → 12,8“ getrennt von rein grafischen
+Änderungen (auch R- und M-Angaben). Filter „Maße“ zeigt nur diese.</li>
+<li><b>Text lesen (OCR)</b> und <b>Index prüfen</b>: Texterkennung für Scans. In der App enthalten; im Python-Betrieb
+bietet das Programm beim ersten Gebrauch die Installation an (ca. 60 MB, Internet nötig).</li>
+<li><b>Gruppierung</b>: wie nah beieinander liegende Unterschiede zu einem Eintrag zusammengefasst werden.</li>
+</ul>
+
+<h2 id="seiten">Mehrseitige Dateien</h2>
+<p>Bei mehrseitigen PDF/TIFF erscheint links der Bereich <i>Seiten</i> (bei PDF mit Vorschaubildern). Seite anklicken oder
+<i>Seite A / Seite B</i> einstellen; <i>A und B gemeinsam blättern</i> ist Standard. <b>Alle Seiten vergleichen</b>
+vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (rot = geändert, grün = gleich).</p>
+
+<h2 id="bereiche">Ausschnitt, Bereiche zuordnen, Zonen</h2>
+<p class="muted">Sichtbar mit <i>Ansicht → Alle Einstellungen zeigen</i>.</p>
+<ul>
+<li><b>Ausschnitt</b>: nur einen Teil vergleichen (schneller). Rahmen in A aufziehen; der passende Bereich in B wird automatisch gesucht.</li>
+<li><b>Bereiche zuordnen (A ↔ B)</b>: Bereich in A und passenden Bereich in B selbst wählen – z. B. wenn eine Ansicht auf dem
+Blatt verschoben oder anders skaliert wurde. Größenunterschiede gleicht das Programm aus.</li>
+<li><b>Zonen</b>: Bereiche, die nicht verglichen werden (Schriftfeld, Stempel). <b>Randstreifen</b>: Blattrand ausnehmen.</li>
+</ul>
+<p>Markierungen, Maße und Zonen gehören zum Blatt: Bei Ausschnittwechsel bleiben sie an derselben Stelle der Zeichnung.</p>
+
+<h2 id="formate">PDF-Vektordaten und DXF</h2>
+<p><b>Dateiformate:</b> PNG, JPG, TIF (auch mehrseitig), BMP, WEBP, JP2, GIF, PDF, SVG, XPS und <b>DXF</b>. DXF wird
+schwarz auf weiß aus dem Modellbereich gezeichnet (Einheit mm; sehr große Zeichnungen werden auf A0 verkleinert).
+DWG kann nicht direkt gelesen werden – im CAD-Programm als DXF oder PDF speichern.</p>
+<p><b>Vektordaten (PDF):</b> Enthalten beide PDF echte Linien und Text (aus dem CAD-System), erscheint links der Bereich
+<i>Vektordaten (PDF)</i>: <b>Vektorvergleich</b> vergleicht Linie gegen Linie und Text gegen Text, ohne Rastern
+(Toleranz Standard 0,05 mm; beide Zeichnungen brauchen denselben Blattursprung). <b>Ebenen und Farben …</b> wählt aus,
+was verglichen wird (z. B. alles außer Bemaßung).</p>
+
+<h2 id="speichern">Speichern und Drucken</h2>
+<table>
+<tr><th>Speichern ▾</th><th>Ergebnis</th></tr>
+<tr><td>Ergebnisbild</td><td>Wie angezeigt (Ansicht, Markierungen, Legende) als PNG, JPG, TIFF oder PDF</td></tr>
+<tr><td>PDF mit Anmerkungen (Acrobat)</td><td>Ergebnis als PDF; Änderungen als Revisionswolken und eigene Markierungen
+als <b>echte PDF-Kommentare</b> (in Acrobat &amp; Co. anklicken, beantworten, abhaken)</td></tr>
+<tr><td>PDF-Bericht</td><td>Übersicht, Liste und Detailbilder je Änderung, mit Prüfstatus und Kommentaren</td></tr>
+<tr><td>Änderungsliste (CSV)</td><td>Für Excel: Nummer, Art, Position, Texte, Maß, Beschreibung, Status, Kommentar</td></tr>
+<tr><td>Drucken im Maßstab</td><td>100 % = Originalgröße des Blatts, auf mehrere Seiten verteilt, oder eingepasst</td></tr>
+<tr><td>Projekt (.zgmax)</td><td>Dateien, Einstellungen, Markierungen, Zonen und Prüfstand. Zieht man Projekt und Zeichnungen
+gemeinsam um, findet das Projekt sie wieder.</td></tr>
+</table>
+<p><b>Automatische Sicherung:</b> Ungespeicherte Markierungen und Prüfergebnisse werden jede Minute gesichert. Stürzt das
+Programm ab, bietet es beim nächsten Start die Wiederherstellung an.</p>
+
+<h2 id="stapel">Stapel und Revisionen</h2>
+<p><i>Datei → Stapelvergleich</i>: alle gleich benannten Dateien zweier Ordner paarweise vergleichen und je Paar ein
+Ergebnisbild (optional CSV und PDF-Bericht) speichern. <i>Datei → Revisionen vergleichen</i>: mehrere Stände einer
+Zeichnung der Reihe nach (A → B → C …) mit Änderungshistorie. Beide nutzen die aktuellen Einstellungen.</p>
+
+<h2 id="erweitert">Alle Einstellungen (Expertenmodus)</h2>
+<table>
+<tr><th>Einstellung</th><th>Einfach erklärt</th></tr>
+<tr><td>Linienschwelle</td><td>Ab welcher Dunkelheit etwas als Linie gilt. Blasse/gelbe Linien fehlen → erhöhen.</td></tr>
+<tr><td>Ausrichtung</td><td>affine (Verschiebung, Drehung, Maßstab), euclidean (ohne Maßstab), translation (nur Verschiebung), none</td></tr>
+<tr><td>Schraffur-Unterdrückung</td><td>Gleich dichte Schraffuren zählen nicht als Änderung (Wert = größter Linienabstand)</td></tr>
+<tr><td>Blöcke verschoben</td><td>Wie weit ein ganzer Bereich verschoben sein darf, um grün statt rot/blau zu erscheinen</td></tr>
+<tr><td>Objekt-Verschiebung / -Drehung</td><td>Einzelne leicht verrutschte Maße/Texte gelten nicht als Änderung (grün); geänderte Zahlen bleiben Änderungen</td></tr>
+<tr><td>Kachelgröße / Max. Kachelverschiebung</td><td>Feinausrichtung in kleinen Feldern (Scans sind oft ungleichmäßig verzogen)</td></tr>
+<tr><td>Kantensäume an Linien ignorieren</td><td>Siehe <a href="#empfindlich">Kantensäume</a></td></tr>
+<tr><td>Automatisch neu berechnen</td><td>Nach jeder Regleränderung sofort neu vergleichen</td></tr>
+</table>
+
+<h2 id="tasten">Tastenkürzel</h2>
+<table>
+<tr><th>Taste</th><th>Wirkung</th></tr>
+<tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>9</kbd> <kbd>4</kbd> <kbd>6</kbd> <kbd>5</kbd> <kbd>7</kbd> <kbd>8</kbd></td><td>Alt, Neu, Vergleich, Nebeneinander, Überlagern, Blinken, Schieber, Nur Neu, Nur Alt</td></tr>
+<tr><td><kbd>Leertaste</kbd></td><td>Zwischen alt und neu wechseln</td></tr>
+<tr><td><kbd>F</kbd> / <kbd>Strg</kbd>+<kbd>0</kbd></td><td>Ganze Zeichnung / 100 %</td></tr>
+<tr><td><kbd>V</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Auswahl, Zoom, Messen, Text, Wolke</td></tr>
+<tr><td><kbd>N</kbd> / <kbd>P</kbd> / <kbd>G</kbd> / <kbd>X</kbd> / <kbd>C</kbd></td><td>Nächste / vorige Änderung, geprüft, abgelehnt, Kommentar</td></tr>
+<tr><td><kbd>H</kbd> / <kbd>L</kbd> / <kbd>R</kbd> / <kbd>I</kbd></td><td>Markierungen aus/ein, Lupe, Ansicht drehen, Farben umkehren</td></tr>
+<tr><td><kbd>Entf</kbd> / <kbd>Esc</kbd></td><td>Markierung löschen / Werkzeug beenden</td></tr>
+<tr><td><kbd>Strg</kbd>+<kbd>Z</kbd> / <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>Z</kbd></td><td>Rückgängig / Wiederholen</td></tr>
+<tr><td><kbd>Strg</kbd>+<kbd>O</kbd> / <kbd>S</kbd> / <kbd>P</kbd> / <kbd>W</kbd> / <kbd>N</kbd></td><td>Projekt öffnen / speichern, drucken, schließen, neues Fenster</td></tr>
+<tr><td><kbd>F1</kbd></td><td>Diese Anleitung</td></tr>
+</table>
+
+<h2 id="faq">Fragen</h2>
+<table>
+<tr><th>Frage</th><th>Antwort</th></tr>
+<tr><td>Viele kleine rote/blaue Stellen, die keine Änderung sind.</td><td><i>Automatisch einstellen</i>; sonst Toleranz um 1 erhöhen oder Mindestgröße erhöhen.</td></tr>
+<tr><td>Nach dem Verstellen eines Reglers ändert sich nichts.</td><td><i>Vergleichen</i> klicken (oder <i>Automatisch neu berechnen</i> einschalten).</td></tr>
+<tr><td>Die mm-Werte stimmen nicht.</td><td>In der Messen-Zeile <i>Kalibrieren …</i> oder den Maßstab eintragen.</td></tr>
+<tr><td>Eine Markierung lässt sich nicht ändern.</td><td><kbd>Esc</kbd> (zurück zur Auswahl), anklicken, Doppelklick = bearbeiten.</td></tr>
+<tr><td>Der Vergleich dauert lange / braucht viel Speicher.</td><td>Sehr große Scans (über 100 Megapixel) brauchen einige Sekunden und einige GB Speicher. Mit
+<i>Abbrechen</i> stoppen; mit Ausschnitt nur den relevanten Teil vergleichen; bei PDF die dpi verringern (z. B. 150).</td></tr>
+<tr><td>Etwas funktioniert nicht.</td><td>Die Hinweisleiste zeigt den Fehler (<i>Details</i>). Die Logdatei öffnet <i>Hilfe → Logdatei öffnen</i>.</td></tr>
+</table>
+</body>
+</html>

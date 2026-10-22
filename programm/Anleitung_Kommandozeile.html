@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anleitung Kommandozeile</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;line-height:1.55;color:#222}
+  h1{border-bottom:3px solid #0066b1;padding-bottom:.3rem}
+  h2{margin-top:2rem;color:#0066b1}
+  pre{background:#1e1e1e;color:#e8e8e8;padding:.8rem 1rem;border-radius:6px;overflow-x:auto}
+  code{background:#eef;padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:#f0f4f8}
+  .sw{display:inline-block;width:1em;height:1em;border:1px solid #888;vertical-align:middle;margin-right:.4em}
+  .tip{background:#fff8e1;border-left:4px solid #f5a623;padding:.6rem 1rem;margin:1rem 0}
+  .quick{background:#eef6ff;border:1px solid #b9d7f5;border-radius:8px;padding:.2rem 1.2rem 1rem;margin:1rem 0}
+  .quick h2{margin-top:.8rem}
+  h3{color:#234;margin-top:1.4rem}
+  kbd{background:#f3f3f3;border:1px solid #bbb;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:.9em}
+</style>
+</head>
+<body>
+
+<h1>Anleitung: Kommandozeile (drawing_diff.py)</h1>
+<p>Diese Anleitung ist für <b>Fortgeschrittene</b>: Sie beschreibt das Skript <code>drawing_diff.py</code>, mit dem sich Vergleiche ohne Fenster ausführen lassen (z. B. in Skripten, über Nacht oder für viele Dateien). Für die normale Arbeit mit der Maus gibt es den Viewer, siehe <a href="Anleitung_Viewer.html"><b>Anleitung Viewer</b></a>. Dort sind auch Messen, Anmerkungen, Freigabe-Stempel und Stapelvergleich im Fenster erklärt.</p>
+<p><b>Inhalt:</b> 1 Voraussetzungen · 2 Grundaufruf · 2a Dateiformate · 3 Ergebnisbild · 4 Empfohlener Aufruf · 5 Ausschnitt · 6 Optionen · 7 Ablauf · 8 Fehlersuche · 9 Beispiele · 10 Zonen, Filter, Auswertung · 11 Stapelbetrieb · 12 Ordnerstruktur</p>
+<div class="tip">Alle Befehle werden im Ordner <code>programm</code> ausgeführt (dort liegt <code>drawing_diff.py</code>). In PowerShell: <code>cd "C:\...\Tmp\programm"</code>. Pfade mit Leerzeichen in Anführungszeichen setzen.</div>
+
+<h2>1. Voraussetzungen</h2>
+<ul>
+  <li>Python 3 ist installiert.</li>
+  <li>Pakete einmalig installieren:</li>
+</ul>
+<pre><code>pip install opencv-python numpy pillow pymupdf PySide6</code></pre>
+<p><code>PySide6</code> ist für den Viewer nötig, <code>pymupdf</code> nur für PDF und SVG, <code>pillow</code> für Legende und TIF-/PDF-Ausgabe. Für die optionale Texterkennung (OCR): <code>pip install rapidocr-onnxruntime</code>.</p>
+
+<h2>2. Grundaufruf</h2>
+<p>Eine Übersicht aller Optionen mit Beispielen zeigt das Skript selbst an:</p>
+<pre><code>python drawing_diff.py -h</code></pre>
+<p>(oder <code>--help</code>). Die Optionen sind dort nach Themen gruppiert, mit Standardwerten und Beispielaufrufen.</p>
+<p>In PowerShell in den Ordner mit dem Skript wechseln und starten:</p>
+<pre><code>cd "C:\Users\Q529121\Downloads\Tmp"
+python drawing_diff.py ALT.tif NEU.tif --out diff.png</code></pre>
+<ul>
+  <li><b>Bild A</b> (erstes) ist die Referenz, meist der alte Stand. Das Ergebnis hat die Größe von A.</li>
+  <li><b>Bild B</b> (zweites) ist der neue Stand. Es wird auf A ausgerichtet.</li>
+  <li>Ohne weitere Angaben sind sinnvolle Standardwerte aktiv: automatische Kachel-Feinausrichtung, Schraffur-Unterdrückung und Erkennung verschobener Bereiche (siehe Abschnitt 6).</li>
+</ul>
+
+<h2>2a. Dateiformate (Eingabe und Ausgabe)</h2>
+<h3>Eingabe</h3>
+<p>Das Format wird an der Dateiendung erkannt. A und B dürfen <b>unterschiedliche Formate</b> haben, z. B. ein PDF gegen ein TIF.</p>
+<table>
+  <tr><th>Format</th><th>Endung</th><th>Hinweis</th></tr>
+  <tr><td>TIFF</td><td><code>.tif .tiff</code></td><td>Auch mehrseitig (Seite mit <code>--page-a</code> / <code>--page-b</code> wählen), auch 1-Bit-Scans (CCITT G4)</td></tr>
+  <tr><td>PNG, JPG, BMP, WebP, JPEG 2000, GIF</td><td><code>.png .jpg .jpeg .bmp .webp .jp2 .gif</code></td><td>JPG ist verlustbehaftet und kann an dünnen Linien Rauschen erzeugen. Wenn möglich TIF oder PNG verwenden.</td></tr>
+  <tr><td>PDF</td><td><code>.pdf</code></td><td>Die Seite wird mit <code>--dpi</code> (Standard 200) in ein Bild umgerechnet. Vektor-PDFs aus dem CAD-System liefern die saubersten Linien. Bei mehrseitigen PDFs mit <code>--page-a</code> / <code>--page-b</code> die Seite wählen.</td></tr>
+  <tr><td>SVG, XPS</td><td><code>.svg .xps</code></td><td>Wie PDF, werden mit <code>--dpi</code> gerendert.</td></tr>
+</table>
+<div class="tip"><b>DXF</b> wird direkt gelesen (Modellbereich, schwarz auf weiß, mit <code>--dpi</code> gerastert).
+<b>Nicht direkt lesbar:</b> DWG, STEP oder JT – aus dem CAD-System vorher als DXF, PDF (Vektor) oder TIF exportieren.
+Beide Zeichnungen sollten mit gleichen Exporteinstellungen entstehen.</div>
+<div class="tip"><b>Nur im Programmfenster (Viewer):</b> Vektorvergleich, Ebenen-/Farbfilter, Text aus PDF, Revisionen (A → B → C), Messen, Anmerkungen, Lupe und Drucken im Maßstab. Siehe <a href="Anleitung_Viewer.html">Anleitung Viewer</a>.</div>
+<p><b>Wichtig bei PDF:</b> Ein PDF hat keine feste Pixelzahl. Das Skript rechnet jede Seite mit <code>--dpi</code> (Standard 200) in ein Bild um, A und B mit demselben Wert. Unterschiedliche Bildgrößen von A und B gleicht das Skript anschließend durch Skalieren und Ausrichten aus. Ein höherer Wert gibt feinere Linien, braucht aber deutlich mehr Speicher (A1 bei 200 dpi sind etwa 6600 × 4700 Pixel).</p>
+
+<h3>Ausgabe</h3>
+<p>Das Ausgabeformat folgt der Endung von <code>--out</code> oder wird mit <code>--format</code> festgelegt:</p>
+<pre><code>python drawing_diff.py alt.pdf neu.pdf --out diff.pdf
+python drawing_diff.py alt.tif neu.tif --format jpg --quality 90
+python drawing_diff.py alt.tif neu.tif --out ergebnis --format tif</code></pre>
+<table>
+  <tr><th>Format</th><th>Eigenschaft</th></tr>
+  <tr><td><code>png</code> (Standard)</td><td>Verlustfrei, kleine Dateien, überall lesbar</td></tr>
+  <tr><td><code>tif</code></td><td>Verlustfrei, komprimiert (LZW), mit DPI-Angabe</td></tr>
+  <tr><td><code>pdf</code></td><td>Eine Seite mit dem Ergebnisbild, gut zum Weitergeben und Drucken</td></tr>
+  <tr><td><code>jpg</code></td><td>Kleine Dateien, aber verlustbehaftet (<code>--quality</code>, Standard 95). Farbkanten werden unscharf.</td></tr>
+  <tr><td><code>webp</code></td><td>Klein, aber höchstens 16383 Pixel je Seite. Bei größeren Bildern speichert das Skript automatisch als PNG und warnt.</td></tr>
+  <tr><td><code>bmp</code></td><td>Unkomprimiert, sehr große Dateien</td></tr>
+</table>
+<p>Hat <code>--out</code> keine Endung und ist kein <code>--format</code> angegeben, wird PNG gespeichert. Wenn <code>--format</code> und die Endung verschieden sind, gilt <code>--format</code> und die Endung wird ersetzt.</p>
+
+<h2>3. Ergebnisbild und Legende</h2>
+<p>Das Ergebnisbild zeigt die beiden Zeichnungen übereinandergelegt. <b>Rechts daneben</b> steht auf weißem Hintergrund eine <b>Legende</b> mit den Farben, den Dateinamen von A und B und den verwendeten Einstellungen. Die Legende wird <b>neben</b> das Bild gesetzt, sie überdeckt keinen Bildinhalt. Das Ergebnisbild ist deshalb um die Legendenbreite breiter als Bild A.</p>
+<table>
+  <tr><th>Farbe</th><th>Bedeutung</th></tr>
+  <tr><td><span class="sw" style="background:#f00"></span>Rot</td><td>Nur in A vorhanden (entfernt oder geändert)</td></tr>
+  <tr><td><span class="sw" style="background:#00f"></span>Blau</td><td>Nur in B vorhanden (neu oder geändert)</td></tr>
+  <tr><td><span class="sw" style="background:#969696"></span>Grau</td><td>In beiden vorhanden (unverändert)</td></tr>
+  <tr><td><span class="sw" style="background:#00aa00"></span>Grün</td><td>Gleicher Inhalt, aber an anderer Stelle: ein Block oder ein einzelnes Objekt (z. B. ein Maß) wurde verschoben oder leicht gedreht. Erscheint nur, wenn so etwas erkannt wurde (siehe <code>--move</code>, <code>--obj-shift</code>, <code>--obj-rotate</code>).</td></tr>
+  <tr><td><span class="sw" style="background:#fff"></span>Weiß</td><td>Hintergrund</td></tr>
+</table>
+<p>Farbige Inhalte (z. B. Gelb) zählen als Inhalt. Nur Weiß und Hellgrau gelten als Hintergrund.</p>
+<p>Wenn du die Legende nicht möchtest, hänge <code>--no-legend</code> an den Aufruf an.</p>
+
+<h2>4. Empfohlener Aufruf</h2>
+<p>Für die meisten Fälle reicht der Grundaufruf, denn die Standardwerte passen für normale Scans:</p>
+<pre><code>python drawing_diff.py ALT.tif NEU.tif --out diff.png</code></pre>
+
+<h2>5. Nur einen Ausschnitt vergleichen</h2>
+<p>Nützlich, wenn mehrere Zeichnungen auf einem Blatt liegen oder nur ein Detail interessiert.</p>
+
+<h3>a) Mit der Maus (empfohlen)</h3>
+<pre><code>python drawing_diff.py ALT.tif NEU.tif --select --out diff.png</code></pre>
+<ol>
+  <li>Es öffnet sich eine verkleinerte Ansicht von A. Rechteck mit der Maus aufziehen, mit <b>ENTER</b> bestätigen.</li>
+  <li>Der passende Bereich in B wird <b>automatisch gesucht</b> (<code>--fit auto</code>, Standard). Das funktioniert unabhängig von Maßstab und Auflösung. Beide Ausschnitte haben danach dasselbe Seitenverhältnis.</li>
+  <li>Die gefundenen Koordinaten erscheinen in der Konsole (<code>--crop-a ... --crop-b ...</code>) und können wiederverwendet werden.</li>
+</ol>
+
+<h3>b) Ausschnitt in B selbst wählen</h3>
+<pre><code>python drawing_diff.py ALT.tif NEU.tif --select --fit manual</code></pre>
+<p>Nach der Auswahl in A öffnet sich B. Das Seitenverhältnis ist auf das von A gesperrt: Du ziehst die Breite auf, die Höhe folgt automatisch. <b>ENTER</b> oder Leertaste bestätigt, <b>ESC</b> nimmt das ganze Bild.</p>
+
+<h3>c) Mit Koordinaten</h3>
+<p>Format: <code>x,y,Breite,Höhe</code> in Pixeln des Originalbilds.</p>
+<pre><code># nur A angeben, B wird automatisch gesucht
+python drawing_diff.py ALT.tif NEU.tif --crop-a 4000,1500,4000,2500
+
+# beide Ausschnitte fest vorgeben
+python drawing_diff.py ALT.tif NEU.tif --crop-a 1000,500,4000,3000 --crop-b 800,400,3000,2250 --fit off</code></pre>
+<div class="tip">Ein ungleiches Seitenverhältnis der Ausschnitte ist die häufigste Ursache für schlechte Ausrichtung, weil B dann auf die Form von A gestreckt wird. Die automatische Suche (<code>--fit auto</code>) vermeidet das. Weichen die Seitenverhältnisse trotzdem stark ab, gibt das Skript eine Warnung aus.</div>
+
+<h3>Grenzen der automatischen Suche</h3>
+<ul>
+  <li>Der Ausschnitt in A muss genug Linien enthalten. Leere Flächen lassen sich nicht zuordnen.</li>
+  <li>Gedrehte Scans werden nicht erkannt.</li>
+  <li>Bei einer Übereinstimmung unter 0,15 gibt das Skript eine Warnung aus. Dann einen größeren Ausschnitt wählen oder <code>--fit manual</code> nutzen.</li>
+</ul>
+
+<h2>6. Optionen einfach erklärt</h2>
+<p><b>Vorab: Was ist ein Pixel?</b> Ein Pixel ist ein einzelner Bildpunkt des Scans. Deine Zeichnungen sind sehr groß (z. B. 14576 × 6635 Pixel bei 200 dpi). Dabei sind <b>200 Pixel = 1 Zoll = 2,54 cm</b> auf dem Papier, also <b>1 Pixel ≈ 0,13 mm</b>. Eine typische Linie ist etwa 3 bis 6 Pixel dick.</p>
+
+<h3>6.1 Toleranz <code>--tol</code> (Linienversatz ignorieren)</h3>
+<p>Zwei Scans derselben Zeichnung liegen nie auf den Pixel genau übereinander. Eine Linie ist in A oft 1 oder 2 Pixel neben der gleichen Linie in B. Ohne Toleranz würde sie als Unterschied erscheinen (rot neben blau). Die Toleranz gibt an, <b>wie viele Pixel Abstand noch als „gleiche Linie" gelten</b>.</p>
+<table>
+  <tr><th>Wert</th><th>Entspricht bei 200 dpi</th><th>Wirkung</th></tr>
+  <tr><td><code>--tol 0</code></td><td>0 mm</td><td>Streng: Jeder Pixelversatz wird als Unterschied markiert. Viel Rauschen, nur bei perfekt ausgerichteten Bildern sinnvoll.</td></tr>
+  <tr><td><code>--tol 1</code></td><td>ca. 0,13 mm</td><td>Fast streng. Zeigt auch sehr kleine Änderungen, aber noch einiges Rauschen.</td></tr>
+  <tr><td><code>--tol 2</code> (Standard)</td><td>ca. 0,25 mm</td><td>Guter Kompromiss für die meisten Scans.</td></tr>
+  <tr><td><code>--tol 3 – 4</code></td><td>ca. 0,4 – 0,5 mm</td><td>Locker: Wenig Rauschen, aber kleine Änderungen (z. B. leicht verschobene Linie) können verschwinden.</td></tr>
+</table>
+<div class="tip"><b>Faustregel:</b> Viele dünne rote/blaue Doppellinien → Toleranz erhöhen. Echte kleine Änderungen fehlen → Toleranz verringern.</div>
+
+<h3>6.2 Kacheln <code>--tiles</code> und <code>--cell</code> (lokale Feinausrichtung)</h3>
+<p>Scans sind selten überall gleich verzogen: Links kann alles 1 Pixel nach rechts versetzt sein, rechts 2 Pixel nach oben. Das Skript teilt das Bild deshalb in Kacheln und richtet jede einzeln auf ganze Pixel genau aus.</p>
+<ul>
+  <li><code>--tiles auto</code> (Standard): Kacheln von etwa <code>--cell 400</code> Pixeln (ca. 5 cm bei 200 dpi).</li>
+  <li><code>--tiles 6x3</code>: festes Raster aus 6 Spalten und 3 Zeilen (18 Kacheln).</li>
+  <li><code>--tiles 1x1</code>: Feinausrichtung aus, nur eine Ausrichtung für das ganze Bild.</li>
+  <li>Kleinere Kacheln gleichen mehr Verzerrung aus, brauchen aber mehr Rechenzeit. Zu kleine Kacheln mit wenig Linien lassen sich nicht zuverlässig ausrichten.</li>
+</ul>
+
+<h3>6.2a Schraffur <code>--hatch</code></h3>
+<p>Schraffuren bestehen aus vielen dünnen Parallellinien. Liegen sie in beiden Zeichnungen nur um einen halben Linienabstand versetzt, sähe das wie eine riesige Änderung aus. Mit <code>--hatch 16</code> (Standard) werden Schraffurflächen erkannt, die in beiden Bildern vorkommen und etwa gleich dicht sind, und dort nicht als Änderung markiert. Der Wert ist der größte Linienabstand der Schraffur in Pixeln. Fehlt die Schraffur in einem Bild oder ändert sich ihre Dichte, bleibt sie markiert. <code>--hatch 0</code> schaltet die Unterdrückung ab.</p>
+
+<h3>6.2b Verschobene Bereiche <code>--move</code></h3>
+<p>Wurde ein ganzer Block (z. B. Tabelle oder Ansicht) einfach nur verschoben, sähe er komplett rot/blau aus. Mit <code>--move 100</code> (Standard, bis 100 Pixel Verschiebung, ca. 12 mm bei 200 dpi) wird er erkannt, zurückgeschoben und <b>grün</b> eingefärbt: Inhalt gleich, nur an anderer Stelle. Echte Abweichungen im Block bleiben rot oder blau. <code>--move 0</code> schaltet das ab.</p>
+<p>Grün bedeutet also „unverändert, nur verschoben". Ob die Verschiebung selbst eine relevante Änderung ist, musst du beurteilen. Soll eine Verschiebung als Änderung gelten, nutze <code>--move 0</code>.</p>
+
+<h3>6.2c Einzelne Objekte verschoben oder gedreht: <code>--obj-shift</code> und <code>--obj-rotate</code></h3>
+<p>Manchmal ist nicht ein ganzer Block verschoben, sondern nur <b>ein einzelnes Objekt</b>, z. B. ein Maß, ein Text oder ein Symbol, das ein paar Pixel nach oben oder unten gerutscht ist. Ohne diese Suche erscheint es als Paar aus roter und blauer Kopie, obwohl sich inhaltlich nichts geändert hat.</p>
+<p>So funktioniert es: Jede übrig gebliebene Unterschiedsfläche (zusammengehörige Teile mit kleinem Abstand) wird einzeln betrachtet. Das Skript verschiebt B in diesem Bereich in kleinen Schritten und dreht es leicht, bis es zu A passt. Sinkt der Unterschied dadurch auf weniger als die Hälfte, gilt das Objekt als <b>nur verschoben oder gedreht</b> und wird <b>grün</b> statt rot/blau gezeichnet. Das Skript wiederholt das einmal mit kleineren Gruppen, damit auch einzelne Teile eines Maßes (Zahl, Pfeil, Linie) getrennt erkannt werden.</p>
+<p><b>Zweite Stufe („Tinten-Abgleich"):</b> Liegen neben einem verschobenen Maß unveränderte Linien, stören diese die erste Stufe. Deshalb prüft das Skript zusätzlich nur die Unterschiedspixel: Passen die Nur-A-Pixel nach einer Verschiebung auf die Tinte von B <i>und</i> die Nur-B-Pixel entgegengesetzt auf die Tinte von A, und stimmt dabei auch das ganze betroffene Zeichen bzw. die ganze Linie, ist das Objekt nur verschoben. Eine echte Änderung (z. B. Zahl 0,1 → 0,2, gelöschte oder neue Linie) besteht diese Prüfung nicht und bleibt rot/blau. Es gilt derselbe Grenzwert <code>--obj-shift</code>.</p>
+<table>
+  <tr><th>Option</th><th>Bedeutung</th><th>Standard</th></tr>
+  <tr><td><code>--obj-shift PX</code></td><td>Größte Verschiebung eines Objekts in Pixeln (horizontal und vertikal). 40 Pixel entsprechen bei 200 dpi etwa 5 mm. <code>0</code> schaltet die Objekt-Suche (auch ohne Drehung) ab.</td><td>40</td></tr>
+  <tr><td><code>--obj-rotate GRAD</code></td><td>Größte zusätzliche Drehung in Grad. Die Drehung wird nur verwendet, wenn sie den Abstand deutlich stärker verringert als eine reine Verschiebung. <code>0</code> = keine Drehung.</td><td>3</td></tr>
+  <tr><td><code>--verbose</code></td><td>Listet auf, welche Objekte wie weit verschoben oder gedreht wurden (Position, Verschiebung, Winkel, Unterschied vorher und nachher).</td><td>aus</td></tr>
+</table>
+<p>Beispiele:</p>
+<pre><code>python drawing_diff.py alt.tif neu.tif --obj-shift 60 --obj-rotate 5   # großzügiger
+python drawing_diff.py alt.tif neu.tif --obj-shift 10 --obj-rotate 0   # nur kleine Verschiebung
+python drawing_diff.py alt.tif neu.tif --obj-shift 0                   # Verschiebungen zählen als Änderung
+python drawing_diff.py alt.tif neu.tif --verbose                       # was wurde verschoben?</code></pre>
+<div class="tip"><b>Achtung:</b> Je größer die erlaubte Verschiebung, desto eher wird auch eine echte Änderung als „nur verschoben" gewertet, z. B. wenn ein Text durch einen ähnlichen ersetzt wurde. Hat sich ein Maß nur um wenige Pixel bewegt, reichen kleine Werte. Prüfe grüne Bereiche stichprobenartig, und nutze <code>--verbose</code>, um zu sehen, wie weit verschoben wurde. Die Objekt-Suche verlängert die Laufzeit, bei den Beispielzeichnungen von etwa 21 auf etwa 32 Sekunden.</div>
+
+<h3>6.3 Max. Verschiebung <code>--max-shift</code></h3>
+<p>Begrenzt, wie weit eine einzelne Kachel bei der Feinausrichtung verschoben werden darf (in Pixeln, Standard 30 ≈ 4 mm bei 200 dpi). Das verhindert, dass eine Kachel mit wenigen Linien falsch „weggezogen" wird. Nur ändern, wenn der Versatz zwischen den Scans größer ist.</p>
+
+<h3>6.4 Helligkeitsschwelle <code>--thr</code> (0 bis 255)</h3>
+<p>Das Skript entscheidet für jeden Pixel: Linie oder Hintergrund. Die Helligkeit geht von <b>0 (schwarz) bis 255 (weiß)</b>. Alles, was dunkler als die Schwelle ist, zählt als Linie.</p>
+<table>
+  <tr><th>Wert</th><th>Wirkung</th></tr>
+  <tr><td><code>--thr 100</code></td><td>Nur sehr dunkle Linien zählen. Blasse Linien werden übersehen.</td></tr>
+  <tr><td><code>--thr 128</code> (Standard)</td><td>Mittlere Schwelle, passt für die meisten Zeichnungen.</td></tr>
+  <tr><td><code>--thr 180 – 220</code></td><td>Auch hellgraue oder blasse Linien zählen, mehr Scanrauschen und Flecken werden aber mit erfasst.</td></tr>
+</table>
+<p>Gelbe oder andere farbige Linien werden erkannt, weil das Skript pro Pixel den dunkelsten Farbkanal prüft. Fehlen sie, die Schwelle erhöhen.</p>
+
+<h3>6.5 Ausrichtung <code>--align</code> (ganzes Bild oder Ausschnitt)</h3>
+<table>
+  <tr><th>Wert</th><th>Was wird korrigiert?</th><th>Wann nutzen?</th></tr>
+  <tr><td><code>none</code></td><td>Nichts</td><td>Bilder liegen schon exakt übereinander.</td></tr>
+  <tr><td><code>translation</code></td><td>Nur Verschiebung (rauf/runter, links/rechts)</td><td>Sicherste Variante, wenn <code>affine</code> schiefgeht.</td></tr>
+  <tr><td><code>euclidean</code></td><td>Verschiebung + leichte Drehung</td><td>Scan war leicht schief eingelegt.</td></tr>
+  <tr><td><code>affine</code> (Standard)</td><td>Verschiebung + Drehung + leichte Streckung/Stauchung</td><td>Normalfall bei Scans mit unterschiedlichem Maßstab.</td></tr>
+</table>
+
+<h3>6.6 Ausschnitte und Dateien</h3>
+<table>
+  <tr><th>Option</th><th>Bedeutung</th><th>Standard</th></tr>
+  <tr><td><code>--out DATEI</code></td><td>Name der Ergebnisdatei. Das Format folgt der Endung (<code>.png .jpg .tif .pdf .bmp .webp</code>).</td><td><code>diff.png</code></td></tr>
+  <tr><td><code>--format FORMAT</code></td><td>Ausgabeformat: <code>png, jpg, tif, pdf, bmp, webp</code>. Hat Vorrang vor der Endung von <code>--out</code>.</td><td>Endung von <code>--out</code></td></tr>
+  <tr><td><code>--quality 1-100</code></td><td>Qualität bei JPG und WebP</td><td>95</td></tr>
+  <tr><td><code>--dpi DPI</code></td><td>Auflösung beim Umrechnen von PDF/SVG in Bilder und DPI-Angabe in TIF/PDF-Ausgabe</td><td>200</td></tr>
+  <tr><td><code>--page-a N</code>, <code>--page-b N</code></td><td>Seite bei mehrseitigen PDF/TIFF in A bzw. B (zählt ab 1)</td><td>1</td></tr>
+  <tr><td><code>--no-legend</code></td><td>Keine Legende rechts am Ergebnisbild anhängen</td><td>Legende an</td></tr>
+  <tr><td><code>--crop-a / --crop-b</code></td><td>Ausschnitt als <code>x,y,Breite,Höhe</code> in Pixeln. <code>x,y</code> ist die obere linke Ecke, gemessen von der oberen linken Ecke des Bildes.</td><td>ganzes Bild</td></tr>
+  <tr><td><code>--select</code></td><td>Ausschnitt in A mit der Maus wählen</td><td>aus</td></tr>
+  <tr><td><code>--fit auto</code></td><td>Passenden Ausschnitt in B automatisch suchen</td><td>Standard</td></tr>
+  <tr><td><code>--fit manual</code></td><td>Ausschnitt in B per Maus wählen (Seitenverhältnis von A gesperrt)</td><td></td></tr>
+  <tr><td><code>--fit off</code></td><td>Keine Suche: ganzes B oder <code>--crop-b</code></td><td></td></tr>
+  <tr><td><code>--keep-aspect-check</code></td><td>Bricht ab, wenn die Ausschnitte stark unterschiedliche Seitenverhältnisse (Breite : Höhe) haben, statt nur zu warnen</td><td>aus</td></tr>
+</table>
+
+<h3>6.7 Typische Einstellungen im Überblick</h3>
+<table>
+  <tr><th>Situation</th><th>Empfehlung</th></tr>
+  <tr><td>Ganze Zeichnung, normaler Scan</td><td>Standardwerte, kein Zusatz nötig</td></tr>
+  <tr><td>Viel Rauschen / Doppellinien</td><td><code>--tol 3</code> oder <code>--cell 300</code></td></tr>
+  <tr><td>Kleine Änderungen sollen sichtbar bleiben</td><td><code>--tol 1</code></td></tr>
+  <tr><td>Schraffur erscheint als Änderung</td><td>Standard <code>--hatch 16</code> ist aktiv. Bei weiterem Abstand der Schraffurlinien höher setzen (z. B. <code>--hatch 24</code>).</td></tr>
+  <tr><td>Verschobene Bereiche sollen als Änderung gelten</td><td><code>--move 0 --obj-shift 0</code></td></tr>
+  <tr><td>Ein Maß ist nur etwas verschoben, erscheint aber rot/blau</td><td><code>--obj-shift</code> erhöhen (z. B. 60). Mit <code>--verbose</code> prüfen, wie weit es verschoben wurde.</td></tr>
+  <tr><td>Ein Objekt ist leicht gedreht</td><td><code>--obj-rotate 5</code></td></tr>
+  <tr><td>Kleiner Ausschnitt</td><td><code>--select</code></td></tr>
+  <tr><td>Blasse oder gelbe Linien fehlen</td><td><code>--thr 180</code></td></tr>
+  <tr><td>Ausrichtung geht schief</td><td><code>--align translation</code></td></tr>
+</table>
+
+<h2>7. Ablauf im Skript</h2>
+<ol>
+  <li>Bilder laden (PNG, JPG, TIF, PDF, SVG, …) und in eine Schwarz/Weiß-Maske umwandeln (dunkelster RGB-Kanal). PDF/SVG werden vorher mit <code>--dpi</code> gerendert.</li>
+  <li>Optional Ausschnitt in A wählen. Der passende Ausschnitt in B wird automatisch gefunden (Template-Matching über mehrere Maßstäbe) oder manuell mit gesperrtem Seitenverhältnis gewählt.</li>
+  <li>B auf die Größe von A bringen. Bei gleichem Maßstab wird B <b>nicht</b> skaliert, denn Interpolation würde Schraffuren verfälschen.</li>
+  <li>Globale Ausrichtung (Verschiebung, Drehung, Skalierung). Eine reine Verschiebung wird auf ganze Pixel gerundet.</li>
+  <li>Feinausrichtung pro Kachel auf ganze Pixel genau.</li>
+  <li>Vergleich mit Toleranz. Schraffurflächen mit gleicher Dichte werden ignoriert, verschobene Blöcke grün markiert.</li>
+  <li>Objekt-Suche: Jeder übrig gebliebene Unterschied wird einzeln etwas verschoben und gedreht. Passt er danach, wird er grün statt rot/blau gezeichnet. Danach folgt der Tinten-Abgleich (siehe 6.2c).</li>
+  <li>Ergebnisbild erzeugen und rechts die Legende mit Farben, Dateinamen und Einstellungen anhängen.</li>
+</ol>
+
+<h2>8. Tipps zur Fehlersuche</h2>
+<table>
+  <tr><th>Problem</th><th>Abhilfe</th></tr>
+  <tr><td>Viel Rauschen, dünne rote und blaue Doppellinien</td><td><code>--tol</code> auf 3 oder 4 erhöhen oder kleinere Kacheln wählen (<code>--cell 300</code>)</td></tr>
+  <tr><td>Schraffur wird als Änderung markiert</td><td><code>--hatch</code> prüfen (nicht 0, bei weiten Linienabständen erhöhen). Bei gleichem Maßstab nicht skalieren, das macht das Skript automatisch.</td></tr>
+  <tr><td>Ganzer Block erscheint rot/blau, ist aber nur verschoben</td><td><code>--move</code> größer setzen (z. B. <code>--move 200</code>), falls die Verschiebung mehr als 100 px beträgt</td></tr>
+  <tr><td>Grüne Flächen, die du nicht erwartest</td><td>Dort wurde ein Block oder Objekt als verschoben/gedreht erkannt. <code>--verbose</code> zeigt die Details. Abschalten mit <code>--move 0</code> (Blöcke) bzw. <code>--obj-shift 0</code> (Objekte), oder die Werte verkleinern.</td></tr>
+  <tr><td>Ausrichtung schiefgegangen</td><td><code>--align translation</code> versuchen oder engere Ausschnitte wählen</td></tr>
+  <tr><td>Feine Änderungen gehen verloren</td><td><code>--tol</code> verringern (1 oder 0)</td></tr>
+  <tr><td>Hellgraue oder gelbe Linien fehlen</td><td><code>--thr</code> erhöhen (z. B. 160 oder 200)</td></tr>
+  <tr><td>Warnung zum Seitenverhältnis</td><td>Die Ausschnitte passen nicht zusammen. <code>--fit auto</code> nutzen oder <code>--crop-b</code> prüfen.</td></tr>
+  <tr><td>Warnung „schwache Übereinstimmung"</td><td>Größeren oder linienreicheren Ausschnitt in A wählen oder <code>--fit manual</code> verwenden.</td></tr>
+  <tr><td>Ausrichtung schlägt fehl (ECC-Warnung)</td><td>Meist ungleiche Ausschnitte. <code>--fit auto</code> nutzen oder <code>--align translation</code> versuchen.</td></tr>
+  <tr><td>Sehr große Bilder, hoher Speicherbedarf</td><td>Mit Ausschnitten arbeiten, bei PDF <code>--dpi</code> verringern</td></tr>
+  <tr><td>„Kann … nicht lesen“ bei DWG/STEP</td><td>Diese CAD-Formate werden nicht unterstützt. Als DXF, PDF oder TIF exportieren.</td></tr>
+  <tr><td>Fehlermeldung und Rückgabewert</td><td>Bei einem Fehler (Datei fehlt, Seite gibt es nicht …) steht eine verständliche Meldung im Terminal, der Rückgabewert ist 1 (für Skripte).</td></tr>
+  <tr><td>PDF-Fehlermeldung zu PyMuPDF</td><td><code>pip install pymupdf</code></td></tr>
+  <tr><td>PDF oder TIFF zeigt die falsche Zeichnung</td><td>Datei hat mehrere Seiten. <code>--page-a</code> / <code>--page-b</code> verwenden. Das Skript meldet bei mehrseitigen Dateien, welche Seite es nimmt.</td></tr>
+  <tr><td>Linien in JPG-Eingabe wirken unsauber</td><td>JPG hat Kompressionsrauschen. Nach Möglichkeit als TIF/PNG/PDF exportieren oder <code>--tol 3</code> nutzen.</td></tr>
+  <tr><td>WebP wird als PNG gespeichert</td><td>WebP erlaubt höchstens 16383 Pixel je Seite. PNG, TIF oder PDF verwenden.</td></tr>
+</table>
+
+<h2>9. Beispiele</h2>
+<pre><code>python drawing_diff.py alt.tif neu.tif --out diff.png</code></pre>
+<p>Das Ergebnis <code>diff.png</code> enthält rechts die Legende mit den Farben und den Dateinamen <code>alt.tif</code> und <code>neu.tif</code>.</p>
+<p>Zwei große Zeichnungen mit anderen Dateinamen:</p>
+<pre><code>python drawing_diff.py P_8885521_001_C__E.tif P_8885521_001_F_EJU13F_V.tif --out diff_aligned.png</code></pre>
+<p>Ausschnitt in A, passender Bereich in B wird automatisch gefunden:</p>
+<pre><code>python drawing_diff.py P_8885521_001_C__E.tif P_8885521_001_F_EJU13F_V.tif --crop-a 4000,1500,4000,2500 --out test_fit.png</code></pre>
+<p>Dabei wurde in B der Bereich <code>3010,1131,2990,1869</code> gefunden (Übereinstimmung 0,94).</p>
+<p>PDF gegen Bild vergleichen und als PDF ausgeben:</p>
+<pre><code>python drawing_diff.py alt.pdf neu.png --dpi 200 --out diff.pdf</code></pre>
+
+<h2>10. Zonen, Filter und Auswertung</h2>
+<p>Alle Funktionen dieses Abschnitts sind <b>optional und standardmäßig aus</b>.</p>
+<table>
+  <tr><th>Option</th><th>Wirkung</th></tr>
+  <tr><td><code>--min-area PX</code></td><td>Unterschiede, die zusammen weniger als PX Pixel haben (Staub, Rauschen), werden ignoriert und bleiben grau.</td></tr>
+  <tr><td><code>--keep-edges</code></td><td>Kantensäume NICHT ausblenden. Standardmäßig gelten 1 px dünne Säume direkt an Linien, die in beiden Zeichnungen vorkommen, nicht als Änderung (Versatz/Strichstärke beim Scannen oder Rendern).</td></tr>
+  <tr><td><code>--ignore x,y,b,h</code></td><td>Zone, die nicht verglichen wird (Pixel von A), z. B. Schriftfeld oder Stempel. Mehrfach angebbar. Im Ergebnis hellgelb hinterlegt.</td></tr>
+  <tr><td><code>--ignore-border PX</code></td><td>Randstreifen (Zeichnungsrahmen) wird nicht verglichen.</td></tr>
+  <tr><td><code>--list [DATEI.csv]</code></td><td>Änderungsliste: Nr, Typ (entfernt, neu, geändert, verschoben), Position und Größe in px und mm, Pixelzahlen. CSV mit Semikolon, direkt in Excel lesbar.</td></tr>
+  <tr><td><code>--mark</code></td><td>Orange nummerierte Rahmen um jede Änderung im Ergebnisbild (Nummern passen zur Liste).</td></tr>
+  <tr><td><code>--report [DATEI.pdf]</code></td><td>PDF-Bericht: Übersicht, Änderungsliste, Detailansichten A | B | Vergleich. <code>--report-max N</code> begrenzt die Detailseiten (Standard 40).</td></tr>
+  <tr><td><code>--text-diff</code></td><td>Liest den Text in jedem geänderten Bereich per OCR aus A und B (z. B. „12,5 → 12,7"). Braucht <code>pip install rapidocr-onnxruntime</code>; dauert je nach Anzahl der Bereiche einige Minuten.</td></tr>
+  <tr><td><code>--index-check</code></td><td>Liest das Schriftfeld (rechts unten) per OCR, vergleicht den Index (z. B. AG → AH) und warnt, wenn Index und Änderungen nicht zusammenpassen. Der Index wird heuristisch bestimmt, bitte prüfen.</td></tr>
+</table>
+<pre><code>python drawing_diff.py alt.tif neu.tif --min-area 30 --ignore-border 40 --mark --list --report</code></pre>
+
+
+<h2 id="stapel">11. Stapelbetrieb (viele Dateien)</h2>
+<p>Statt zwei Dateien gibt man zwei <b>Ordner</b> an. Verglichen werden alle Dateien, die in beiden Ordnern <b>gleich heißen</b> (ohne Beachtung der Endung und der Groß-/Kleinschreibung, z. B. <code>Plan1.tif</code> gegen <code>plan1.pdf</code>).</p>
+<pre><code>python drawing_diff.py "D:\Zeichnungen\alt" "D:\Zeichnungen\neu" --out "D:\Ergebnisse" --list --report</code></pre>
+<ul>
+  <li><code>--out ORDNER</code>: Ausgabeordner (wird angelegt). Ohne Angabe: <code>Ergebnisse</code>. Je Paar entsteht <code>NAME_diff.png</code>, mit <code>--list</code> zusätzlich <code>NAME_diff_aenderungen.csv</code>, mit <code>--report</code> ein PDF-Bericht.</li>
+  <li>Alle anderen Optionen (<code>--tol</code>, <code>--hatch</code>, <code>--min-area</code> …) gelten für jedes Paar. <code>--select</code> und <code>--crop-a</code> werden im Stapelbetrieb ignoriert, weil sie nur für eine bestimmte Zeichnung gelten.</li>
+  <li>Tritt bei einem Paar ein Fehler auf, wird er gemeldet und der Stapel läuft weiter. Am Ende steht eine Zusammenfassung.</li>
+  <li>Im Viewer gibt es denselben Ablauf als Dialog: <i>Mehr → Stapelvergleich</i>.</li>
+</ul>
+
+<h2>12. Ordnerstruktur und Start</h2>
+<pre><code>Tmp\
+  Start ZGmax.bat                 Windows: Doppelklick startet den Viewer
+  Start ZGmax.command             macOS/Linux: Doppelklick startet den Viewer
+  Anleitung.html                      Einstieg: verweist auf beide Anleitungen
+  Beispiele\                          Testbilder alt/neu
+  programm\
+    launcher.py          prüft/installiert Pakete, startet den Viewer
+    drawing_viewer.py    Viewer (Fenster)
+    drawing_diff.py      Kommandozeile
+    diffcore.py, diffpipe.py, diffreport.py   Programmbausteine (nicht ändern)
+    Anleitung_Viewer.html, Anleitung_Kommandozeile.html</code></pre>
+<p>Zurück zur <a href="Anleitung_Viewer.html">Anleitung Viewer</a>.</p>
+</body>
+</html>
