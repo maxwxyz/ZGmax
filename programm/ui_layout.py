@@ -12,12 +12,14 @@ from ui_widgets import Banner, Collapsible, Section, SliderRow
 VIEWS = (("A", "Alt", "1", "Nur die alte Zeichnung A"),
          ("B", "Neu", "2", "Nur die neue Zeichnung B"),
          ("D", "Vergleich", "3", "Rot = nur alt, Blau = nur neu, Grün = nur verschoben"),
-         ("Y", "Nebeneinander", "9", "Alt und neu nebeneinander, gemeinsam zoomen und verschieben"),
          ("O", "Überlagern", "4", "Beide Zeichnungen ohne Toleranz übereinander"),
+         ("Y", "Nebeneinander", "9", "Alt und neu nebeneinander, gemeinsam zoomen und verschieben"),
+         ("S", "Schieber", "5", "Links alt, rechts neu; Trennlinie ziehen"),
          ("K", "Blinken", "6", "Wechselt zwischen alt und neu (Leertaste = von Hand)"))
-MORE_VIEWS = (("S", "Schieber", "5", "Links alt, rechts neu; Trennlinie ziehen"),
-              ("N", "Nur Neu", "7", "Neue Zeichnung, neue und geänderte Stellen blau"),
-              ("R", "Nur Alt", "8", "Alte Zeichnung, entfernte und geänderte Stellen rot"))
+# Alt/Neu mit hervorgehobenen Aenderungen: im Umschalter "Alt"/"Neu" + Haekchen in der Optionszeile
+MORE_VIEWS = (("N", "Neu mit Änderungen", "7", "Neue Zeichnung, neue und geänderte Stellen blau"),
+              ("R", "Alt mit Änderungen", "8", "Alte Zeichnung, entfernte und geänderte Stellen rot"))
+SEG_OF = {"N": "B", "R": "A"}
 TOOLS = (("hand", "Auswahl", "select", "V", "Anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben."),
          ("zoom", "Zoom", "zoom_box", "Z", "Zoom-Rahmen mit Fadenkreuz: Bereich aufziehen. Einfacher Klick = ganze "
                                             "Zeichnung. Geht auch jederzeit mit der rechten Maustaste."),
@@ -116,8 +118,9 @@ class LayoutMixin:
         self.act_invert = A("Farben umkehren", self._toggle_invert, "I", "Helle Linien auf dunklem Grund (nur "
                             "Anzeige; gespeicherte Bilder bleiben normal). Taste I", checkable=True, canvas_key=True)
         self.act_invert.setChecked(self.settings.value("invert", "false") == "true")
-        self.act_color = A("Zeichnungen in Farbe", self._toggle_color, tip="Alt und Neu in Originalfarben zeigen, "
-                           "wenn die Datei farbig ist (der Vergleich arbeitet immer schwarz-wei\u00df)", checkable=True)
+        self.act_color = A("Original anzeigen (Farbe, Graustufen)", self._toggle_color,
+                           tip="Alt, Neu, Nebeneinander, Schieber und Blinken zeigen die Datei, wie sie ist (Farbe oder "
+                           "Graustufen). Aus = Schwarz-Wei\u00df-Fassung, mit der verglichen wird.", checkable=True)
         self.act_color.setChecked(self.settings.value("color", "true") == "true")
         self.act_clouds = A("\u00c4nderungen als Revisionswolken", self._toggle_clouds,
                             tip="Nummerierte \u00c4nderungen als Wolke statt als Rahmen zeigen und speichern",
@@ -161,6 +164,8 @@ class LayoutMixin:
         self.act_comment = A("Kommentar …", self.review_comment, "C", "Kommentar zur gewählten Änderung (C)",
                              canvas_key=True)
         self.act_pages = A("Alle Seiten vergleichen", self.compare_all_pages)
+        self.act_rej_zones = A("Abgelehnte als Zonen übernehmen", self.zones_from_rejected,
+                               tip="Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen")
         self.act_title = A("Schriftfeld lesen", self.read_title_block)
         self.act_ocr = A("Text lesen (OCR)", self.run_ocr)
         self.act_pdftext = A("Text aus PDF lesen", self.run_pdftext)
@@ -250,7 +255,7 @@ class LayoutMixin:
         for a in (self.act_compare, self.act_find):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment):
+        for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_pages, self.act_title, self.act_pdftext, self.act_dims, self.act_ocr, self.act_index):
@@ -298,43 +303,30 @@ class LayoutMixin:
         self.btn_compare_tb = self._tb_button(tb, self.act_compare)
         self.act_compare_tb = tb.actions()[-1]
         self.sep_views = tb.addSeparator()
-        # Ansichten als Umschalter (Segmente)
-        self.view_box = QWidget()
+        # Ansichten als ruhiger Umschalter (eine Gruppe, gewaehlte Ansicht hell hervorgehoben)
+        self.view_box = QFrame()
+        self.view_box.setObjectName("segbox")
         vl = QHBoxLayout(self.view_box)
-        vl.setContentsMargins(0, 0, 0, 0)
-        vl.setSpacing(0)
-        keys = [v[0] for v in VIEWS]
-        for i, key in enumerate(keys):
+        vl.setContentsMargins(3, 3, 3, 3)
+        vl.setSpacing(2)
+        self.seg_buttons = {}
+        grp = QButtonGroup(self)
+        grp.setExclusive(True)
+        for key, label, k, tip in VIEWS:
             btn = QToolButton()
-            btn.setDefaultAction(self.mode_actions[key])
+            btn.setText(label)
+            btn.setToolTip(f"{tip} (Taste {k})")
+            btn.setCheckable(True)
             btn.setObjectName("seg")
-            btn.setProperty("pos", "first" if i == 0 else "mid")
+            btn.clicked.connect(lambda _=False, m=key: self._seg_clicked(m))
+            grp.addButton(btn)
             vl.addWidget(btn)
-        more = QMenu(self)
-        for key, *_ in MORE_VIEWS:
-            more.addAction(self.mode_actions[key])
-        mbtn = QToolButton()
-        mbtn.setText("▾")
-        mbtn.setToolTip("Weitere Ansichten: Schieber, Nur Neu, Nur Alt")
-        mbtn.setObjectName("seg")
-        mbtn.setProperty("pos", "last")
-        mbtn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        mbtn.setMenu(more)
-        vl.addWidget(mbtn)
+            self.seg_buttons[key] = btn
+        self.seg_buttons["D"].setChecked(True)
         self.act_view_box = tb.addWidget(self.view_box)
-        self.cb_blink = QComboBox()
-        for txt, ms in (("langsam", 1200), ("normal", 550), ("schnell", 250)):
-            self.cb_blink.addItem(txt, ms)
-        self.cb_blink.setCurrentIndex(1)
-        self.cb_blink.setToolTip("Blinkgeschwindigkeit")
-        self.cb_blink.currentIndexChanged.connect(lambda _: self.blink.setInterval(self.cb_blink.currentData()))
-        self.act_blink_cb = tb.addWidget(self.cb_blink)
         self.act_pause = QAction("Pause", self, checkable=True)
         self.act_pause.setToolTip("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)")
         self.act_pause.toggled.connect(self._pause_blink)
-        tb.addAction(self.act_pause)
-        self.act_blink_cb.setVisible(False)
-        self.act_pause.setVisible(False)
         tb.addSeparator()
         tb.addAction(self.act_zoom_out)
         self.lbl_zoom = QToolButton()
@@ -469,6 +461,30 @@ class LayoutMixin:
         l.addWidget(self.lbl_stamp)
         l.addWidget(self.sp_stamp)
         lay.addWidget(self.opt_ann)
+        self.opt_view = QWidget()                     # Optionen der Ansicht (Blinken, Hervorheben, Schieber)
+        l = QHBoxLayout(self.opt_view)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.lbl_blink = QLabel("Blinken")
+        self.cb_blink = QComboBox()
+        for txt, ms in (("langsam", 1200), ("normal", 550), ("schnell", 250)):
+            self.cb_blink.addItem(txt, ms)
+        self.cb_blink.setCurrentIndex(1)
+        self.cb_blink.setToolTip("Blinkgeschwindigkeit")
+        self.cb_blink.currentIndexChanged.connect(lambda _: self.blink.setInterval(self.cb_blink.currentData()))
+        self.btn_pause = QToolButton()
+        self.btn_pause.setDefaultAction(self.act_pause)
+        self.lbl_blink_hint = QLabel("Leertaste = von Hand wechseln, Klick ins Bild = Pause")
+        self.lbl_blink_hint.setObjectName("hint")
+        self.chk_highlight = QCheckBox("Änderungen hervorheben")
+        self.chk_highlight.setToolTip("In der alten Zeichnung entfernte Stellen rot, in der neuen neue Stellen blau "
+                                      "(Tasten 8 / 7)")
+        self.chk_highlight.toggled.connect(self._highlight_toggled)
+        self.lbl_slider_hint = QLabel("Schieber: die blaue Trennlinie mit der Maus ziehen (links alt, rechts neu)")
+        self.lbl_slider_hint.setObjectName("hint")
+        for w in (self.lbl_blink, self.cb_blink, self.btn_pause, self.lbl_blink_hint, self.chk_highlight,
+                  self.lbl_slider_hint):
+            l.addWidget(w)
+        lay.addWidget(self.opt_view)
         self.opt_loupe = QWidget()
         l = QHBoxLayout(self.opt_loupe)
         l.setContentsMargins(0, 0, 0, 0)
@@ -481,7 +497,7 @@ class LayoutMixin:
             lambda _: setattr(self.canvas, "loupe_zoom", self.cb_loupe.currentData()))
         l.addWidget(self.cb_loupe)
         lay.addWidget(self.opt_loupe)
-        for w in (self.opt_measure, self.opt_ann, self.opt_loupe):    # Bedienelemente nie zusammendruecken
+        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view):  # nie zusammendruecken
             w.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.lbl_tool_hint = QLabel("")
         self.lbl_tool_hint.setObjectName("hint")
@@ -491,8 +507,28 @@ class LayoutMixin:
         self._set_color_btn("#e11d48")
         return bar
 
+    def _seg_clicked(self, key):
+        if key in ("A", "B") and self.chk_highlight.isChecked() and not self.view_only:
+            key = {"A": "R", "B": "N"}[key]
+        self._set_mode(key)
+
+    def _highlight_toggled(self, on):
+        m = self.canvas.mode
+        if on and m in ("A", "B"):
+            self._set_mode({"A": "R", "B": "N"}[m])
+        elif not on and m in ("N", "R"):
+            self._set_mode({"N": "B", "R": "A"}[m])
+
     def _update_options(self):
         t = self.canvas.tool
+        m = self.canvas.mode
+        blink, single = m == "K", m in ("A", "B", "N", "R") and not self.view_only
+        for w in (self.lbl_blink, self.cb_blink, self.btn_pause, self.lbl_blink_hint):
+            w.setVisible(blink)
+        self.chk_highlight.setVisible(single)
+        self.lbl_slider_hint.setVisible(m == "S")
+        view_opts = blink or single or m == "S"
+        self.opt_view.setVisible(view_opts)
         self.opt_measure.setVisible(t == "measure")
         self.opt_ann.setVisible(t in ("text", "number", "approval", "rect", "arrow", "cloud", "highlight")
                                 or (t == "hand" and self.canvas.ann_selected is not None))
@@ -500,7 +536,8 @@ class LayoutMixin:
         self.sp_stamp.setVisible(t == "number")
         self.opt_loupe.setVisible(self.act_loupe.isChecked())
         self.lbl_tool_hint.setText(TOOL_HINTS.get(t, "") if t != "hand" else "")
-        self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or self.canvas.ann_selected is not None)
+        self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or self.canvas.ann_selected is not None
+                                    or (view_opts and self.payload is not None))
 
     # ----------------------------------------------------------------- Mitte: Startseite / Bild
     def _build_center(self):
@@ -765,6 +802,18 @@ class LayoutMixin:
                                   "gelten nicht als \u00c4nderung (Versatz oder Strichst\u00e4rke beim Scannen/Rendern).")
         self.chk_edges.toggled.connect(lambda _: self._param_changed())
         adv.body.addWidget(self.chk_edges)
+        self.chk_glyphs = QCheckBox("Zeichen genau pr\u00fcfen (\u00e4hnliche Ziffern)")
+        self.chk_glyphs.setChecked(True)
+        self.chk_glyphs.setToolTip("Ziffern und Buchstaben Form gegen Form vergleichen, damit z. B. 41.8 \u2192 43.2 "
+                                   "sicher als \u00c4nderung erkannt wird, obwohl sich die Ziffern stark \u00fcberdecken.")
+        self.chk_glyphs.toggled.connect(lambda _: self._param_changed())
+        adv.body.addWidget(self.chk_glyphs)
+        self.chk_flatten = QCheckBox("Ungleichm\u00e4\u00dfiges Papier ausgleichen")
+        self.chk_flatten.setToolTip("F\u00fcr Scans mit Schatten, Flecken oder vergilbtem Papier: die Helligkeit des "
+                                    "Papiers wird vor dem Vergleich ausgeglichen. \u201eAutomatisch einstellen\u201c "
+                                    "schaltet das bei Bedarf selbst ein.")
+        self.chk_flatten.toggled.connect(lambda _: self._param_changed())
+        adv.body.addWidget(self.chk_flatten)
         b = QPushButton("Standardwerte")
         b.clicked.connect(self._reset_params)
         adv.body.addWidget(b)
@@ -1013,6 +1062,8 @@ class LayoutMixin:
             a.setEnabled(has)
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
+        for b in self.seg_buttons.values():
+            b.setEnabled(has)
         for a in self.tool_actions.values():
             a.setEnabled(has)
         self.act_compare.setEnabled(bool(self.path_a and self.path_b) and not self.running)

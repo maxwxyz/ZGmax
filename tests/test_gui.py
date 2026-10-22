@@ -297,3 +297,43 @@ def test_side_by_side_drag_across_middle(app, win, pair):
     p_right = c._vp(QPointF(half + 10, 100))              # ... und geht ueber die Mitte nach rechts
     assert p_right.x() - p_left.x() == pytest.approx(20)  # kein Sprung um eine halbe Breite
     c._drag = None
+
+
+def test_vector_offer_and_rejected_zones(app, win, tmp_path):
+    import pymupdf
+    import diffreport as rep
+    paths = []
+    for name, extra in (("a.pdf", False), ("b.pdf", True)):
+        d = pymupdf.open()
+        pg = d.new_page(width=600, height=400)
+        for i in range(30):
+            pg.draw_line((20 + i * 15, 30), (20 + i * 15, 350))
+        if extra:
+            pg.draw_circle((300, 200), 40)
+        p = str(tmp_path / name)
+        d.save(p)
+        paths.append(p)
+    compare(app, win, *paths)
+    wait(app, lambda: win.banner.btn_action.isVisible())
+    assert "Vektor" in win.banner.btn_action.text()
+    win.banner.btn_action.click()
+    wait(app, lambda: not win.running)
+    assert win.chk_vec.isChecked()
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    rep.set_status(win.payload["regs"][0], "abgelehnt")
+    n = len(win.zones)
+    win.zones_from_rejected()
+    assert len(win.zones) == n + 1
+
+
+def test_view_switch_and_highlight(app, win, pair):
+    compare(app, win, *pair)
+    win.seg_buttons["B"].click()
+    assert win.canvas.mode == "B" and win.chk_highlight.isVisible()
+    win.chk_highlight.setChecked(True)
+    assert win.canvas.mode == "N" and win.seg_buttons["B"].isChecked()
+    win.seg_buttons["A"].click()
+    assert win.canvas.mode == "R"                                  # Hervorheben bleibt beim Wechsel
+    win.seg_buttons["K"].click()
+    assert win.cb_blink.isVisible() and not win.chk_highlight.isVisible()

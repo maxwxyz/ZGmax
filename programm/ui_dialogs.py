@@ -166,10 +166,10 @@ class RevisionDialog(QDialog):
 
         def work(log):
             quiet = lambda *_: None                          # noqa: E731
-            prev = dp.ink_from_gray(dp.load_gray(files[0], 1, dpi), params.thr)
+            prev = dp.ink_from_gray(dp.load_gray(files[0], 1, dpi), params.thr, params.flatten)
             for i in range(1, len(files)):
                 log(f"[{i}/{len(files) - 1}] {os.path.basename(files[i - 1])}  ->  {os.path.basename(files[i])}")
-                cur = dp.ink_from_gray(dp.load_gray(files[i], 1, dpi), params.thr)
+                cur = dp.ink_from_gray(dp.load_gray(files[i], 1, dpi), params.thr, params.flatten)
                 b = dp.prepare_pair(prev, cur, params.align, quiet)
                 res = dp.run_compare(prev, b, params, quiet)
                 regs = rep.find_regions(res)
@@ -336,8 +336,8 @@ class BatchDialog(QDialog):
                 log(f"[{i}/{len(names)}] {fa[n]}  <->  {fb[n]}")
                 try:
                     pa_, pb_ = os.path.join(da, fa[n]), os.path.join(db, fb[n])
-                    a = dp.ink_from_gray(dp.load_gray(pa_, 1, dpi), params.thr)
-                    b = dp.ink_from_gray(dp.load_gray(pb_, 1, dpi), params.thr)
+                    a = dp.ink_from_gray(dp.load_gray(pa_, 1, dpi), params.thr, params.flatten)
+                    b = dp.ink_from_gray(dp.load_gray(pb_, 1, dpi), params.thr, params.flatten)
                     b = dp.prepare_pair(a, b, params.align, quiet)
                     res = dp.run_compare(a, b, params, quiet)
                     img = dp.render_result(res)

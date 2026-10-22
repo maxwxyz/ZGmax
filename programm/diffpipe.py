@@ -27,6 +27,7 @@ class Params:
     obj_shift: int = 40
     obj_rotate: float = 3.0
     min_area: int = 20             # Unterschiedsgruppen mit weniger Pixeln werden ignoriert
+    flatten: bool = False          # ungleichmaessiges Papier (Schatten, Flecken) vor der Schwelle ausgleichen
     edge_noise: bool = True        # 1-px-Saeume an gemeinsamen Linien nicht als Aenderung werten
     glyphs: bool = True            # Zeichenpruefung: aehnliche Ziffern/Buchstaben (1 -> 3) sicher erkennen
     ignore: list = field(default_factory=list)    # Zonen (x, y, b, h) in Pixeln von A
@@ -63,8 +64,33 @@ def load_gray(path, page=1, dpi=200):
     return img.min(axis=2)
 
 
-def ink_from_gray(gray, thr):
+def ink_from_gray(gray, thr, flatten=False):
+    """Tinte (255) wo dunkler als thr. flatten=True: vorher ungleichmaessiges Papier ausgleichen (Schatten,
+    vergilbte oder fleckige Scans), damit die Schwelle ueberall gleich wirkt."""
+    if flatten:
+        gray = flatten_background(gray)
     return ((gray < thr).astype(np.uint8)) * 255
+
+
+def background(gray, k=31):
+    """Helligkeit des Papiers je Stelle (Linien herausgerechnet), auf 1/4 Groesse geschaetzt."""
+    s = 4
+    small = cv2.resize(gray, (max(1, gray.shape[1] // s), max(1, gray.shape[0] // s)), interpolation=cv2.INTER_AREA)
+    bg = cv2.dilate(small, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))   # helle Umgebung = Papier
+    bg = cv2.GaussianBlur(bg, (0, 0), k / 2)
+    return cv2.resize(bg, (gray.shape[1], gray.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+
+def flatten_background(gray):
+    bg = background(gray).astype(np.float32)
+    return np.clip(gray.astype(np.float32) * 255.0 / np.maximum(bg, 1.0), 0, 255).astype(np.uint8)
+
+
+def uneven_background(gray):
+    """Wie stark schwankt die Papierhelligkeit? (Grauwerte; ueber ~35 lohnt der Ausgleich)."""
+    bg = background(gray[::2, ::2])
+    lo, hi = np.percentile(bg, (2, 98))
+    return float(hi - lo)
 
 
 def is_vector(path):
@@ -175,12 +201,12 @@ def apply_tf(img, tf):
     if tf["resize"]:
         img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA if tf["shrink"] else cv2.INTER_LINEAR)
     else:
-        canvas = np.full((h, w) + img.shape[2:], 255, np.uint8)
+        canvas = np.full((h, w) + img.shape[2:], 255, np.uint8)        # Farbe (h, w, 3) oder grau (h, w)
         hh, ww = min(h, img.shape[0]), min(w, img.shape[1])
         canvas[:hh, :ww] = img[:hh, :ww]
         img = canvas
     if tf["M"] is not None:
-        img = cv2.warpAffine(img, tf["M"], (w, h), borderValue=(255, 255, 255),
+        img = cv2.warpAffine(img, tf["M"], (w, h), borderValue=(255, 255, 255) if img.ndim == 3 else 255,
                              flags=(cv2.INTER_NEAREST if tf["exact"] else cv2.INTER_LINEAR) | cv2.WARP_INVERSE_MAP)
     return img
 
@@ -346,6 +372,12 @@ def suggest_params(gray_a, gray_b, dpi=200, base=None, log=print, cancel=None):
     """
     p = (base or Params()).copy()
     why = []
+    unev = max(uneven_background(gray_a), uneven_background(gray_b))
+    p.flatten = unev > 35
+    if p.flatten:
+        why.append(f"Papier ungleichm\u00e4\u00dfig hell (Schwankung {unev:.0f} Graustufen): wird vor dem Vergleich "
+                   f"ausgeglichen.")
+        gray_a, gray_b = flatten_background(gray_a), flatten_background(gray_b)
     small = lambda g: cv2.resize(g, None, fx=min(1.0, 2500 / max(g.shape)), fy=min(1.0, 2500 / max(g.shape)),
                                  interpolation=cv2.INTER_AREA)
     both = np.concatenate([small(gray_a).ravel(), small(gray_b).ravel()])

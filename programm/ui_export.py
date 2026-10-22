@@ -37,8 +37,9 @@ class ExportMixin:
         res = pl["res"]
         if mode in ("A", "B", "K"):
             col = pl.get("color", (None, None))[1 if mode == "B" else 0] if self.canvas.show_color else None
-            out = col.copy() if col is not None else cv2.cvtColor(255 - (res.b if mode == "B" else res.a),
-                                                                   cv2.COLOR_GRAY2BGR)
+            if col is None:
+                col = 255 - (res.b if mode == "B" else res.a)
+            out = col.copy() if col.ndim == 3 else cv2.cvtColor(col, cv2.COLOR_GRAY2BGR)
         elif mode == "O":
             a, b = res.a > 0, res.b > 0
             out = dc.render(a & ~b, b & ~a, a & b, None)

@@ -477,7 +477,8 @@ class Canvas(QWidget):
         if mode in ("A", "B"):
             pc = self.pc[0 if mode == "A" else 1] if self.show_color else None
             if pc is not None and L < len(pc):
-                return pc[L][sl]
+                part = pc[L][sl]
+                return part if part.ndim == 3 else cv2.cvtColor(part, cv2.COLOR_GRAY2BGR)
             return cv2.cvtColor(255 - (self.pa if mode == "A" else self.pb)[L][sl], cv2.COLOR_GRAY2BGR)
         if mode == "O":
             a, b = self.pa[L][sl] > 0, self.pb[L][sl] > 0
@@ -588,7 +589,9 @@ class Canvas(QWidget):
         top = self.pa[-1]
         if self.mode in ("A", "B", "K", "S") or self.pd[-1] is None:
             pc = self.pc[1 if self.mode == "B" else 0] if self.show_color else None
-            img = pc[-1] if pc is not None else cv2.cvtColor(255 - top, cv2.COLOR_GRAY2BGR)
+            img = pc[-1] if pc is not None else 255 - top
+            if img.ndim == 2:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         else:
             img = self.pd[-1]
         img = np.ascontiguousarray(np.rot90(img, -self.rot % 4) if self.rot else img)

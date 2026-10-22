@@ -199,6 +199,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             if (self.path_a if which == "A" else self.path_b) == path:
                 self.vinfo[which] = info
                 self._vec_status()
+                self._suggest_vector()
         self.run_background(work, done)
 
     def _vec_status(self):
@@ -224,6 +225,19 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             parts.append(f"{len(col)} Farben")
         self.lbl_vfilter.setText("Filter: " + (", ".join(parts) if parts else "alles"))
         self._update_vec_visibility()
+
+    def _suggest_vector(self):
+        """Beide PDF mit echten Vektordaten (aus CAD): exakten Vektorvergleich anbieten (kein Pixelrauschen)."""
+        both = all(self.vinfo.get(w) and self.vinfo[w]["vector"] for w in "AB")
+        if both and not self.chk_vec.isChecked() and not getattr(self, "_vec_offered", None) == (self.path_a, self.path_b):
+            self._vec_offered = (self.path_a, self.path_b)
+
+            def on():
+                self.chk_vec.setChecked(True)
+                self.start_compute()
+            self.banner.show_msg("Beide PDF enthalten echte Vektordaten (aus dem CAD-System). Der Vektorvergleich "
+                                 "vergleicht Linie gegen Linie \u2013 exakt und ohne Pixelrauschen.", "info",
+                                 timeout=40, action=("Vektorvergleich einschalten", on))
 
     def open_vfilter(self):
         layers, colors = {}, {}
@@ -458,7 +472,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             max_shift=int(self.s_maxs.value()), tol=int(self.s_tol.value()), hatch=int(self.s_hatch.value()),
             move=int(self.s_move.value()), obj_shift=int(self.s_obj.value()), obj_rotate=float(self.s_rot.value()),
             min_area=int(self.s_area.value()), ignore=self._local_zones(self._compute_origin()),
-            ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked())
+            ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked(),
+            flatten=self.chk_flatten.isChecked(), glyphs=self.chk_glyphs.isChecked())
 
     def _param_changed(self):
         if not (self.path_a and self.path_b):
@@ -474,6 +489,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             w.reset()
         self.cb_align.setCurrentText("affine")
         self.chk_edges.setChecked(True)
+        self.chk_glyphs.setChecked(True)
+        self.chk_flatten.setChecked(False)
 
     # --- Zonen und Ausschnitt
     def _add_zone(self, x, y, w, h):
@@ -678,23 +695,24 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             k = min(1.0, 2400 / max(ga.shape))
             log.preview((cv2.resize(ga, None, fx=k, fy=k, interpolation=cv2.INTER_AREA), ga.shape))
         if snap.get("single"):                       # nur eine Datei: anzeigen, nicht vergleichen
-            a = dp.ink_from_gray(ga, p.thr)
+            a = dp.ink_from_gray(ga, p.thr, p.flatten)
             z = np.zeros(a.shape, bool)              # calloc: kostet erst Speicher, wenn beschrieben
             res = dp.Result(a, a, z, z, a > 0, z, None)
             log.progress(0.6, "Erzeuge Ansicht")
             pa, pb, pd, po = build_pyramids(res)
             ca = self._color(snap["pa"])
+            ca = ca if ca is not None else ga                # Original: Farbe oder Graustufen
             pc = build_color_pyramids(ca, len(pa))
             return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
         log.progress(0.12, "Lade " + os.path.basename(snap["pb"]))
         gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"])
         log.check()
-        key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.align,
+        key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
                snap["crop"], snap.get("crop_b"))
         if self.cache.get("key") != key:
             self.cache["key"] = None
             log.progress(0.22, "Richte aus")
-            a_full, b_full = dp.ink_from_gray(ga, p.thr), dp.ink_from_gray(gb, p.thr)
+            a_full, b_full = dp.ink_from_gray(ga, p.thr, p.flatten), dp.ink_from_gray(gb, p.thr, p.flatten)
             if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet
                 a, b0 = dc.crop(a_full, snap["crop"]), dc.crop(b_full, snap["crop_b"])
                 box_b = snap["crop_b"]
@@ -705,10 +723,15 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             self.cache["b"], tf = dp.prepare_pair_tf(a, b0, p.align, log)
             self.cache["a"] = a
             # Farbfassungen (nur Anzeige von Alt/Neu) genauso zuschneiden und ausrichten wie die Tinte
+            # Originalfassungen fuer Alt/Neu (Farbe, sonst Graustufen) genauso zuschneiden und ausrichten
             ca, cb = self._color(snap["pa"]), self._color(snap["pb"])
-            if ca is not None or cb is not None:
-                ca = dc.crop(ca if ca is not None else cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR), snap["crop"])
-                cb = dp.apply_tf(dc.crop(cb if cb is not None else cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR), box_b), tf)
+            if (ca is None) != (cb is None):                 # eine farbig, eine grau: beide farbig fuehren
+                ca = ca if ca is not None else cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR)
+                cb = cb if cb is not None else cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR)
+            ca = ca if ca is not None else ga
+            cb = cb if cb is not None else gb
+            ca = dc.crop(ca, snap["crop"])
+            cb = dp.apply_tf(dc.crop(cb, box_b), tf)
             self.cache["color"] = (ca, cb)
             self.cache["key"] = key
         log.check()
@@ -789,14 +812,19 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         if self.view_only and m != "A":
             return
         self.mode_actions[m].setChecked(True)
+        seg = {"N": "B", "R": "A"}.get(m, m)
+        if seg in self.seg_buttons:
+            self.seg_buttons[seg].setChecked(True)
+        self.chk_highlight.blockSignals(True)
+        self.chk_highlight.setChecked(m in ("N", "R"))
+        self.chk_highlight.blockSignals(False)
         fit_after = (m == "Y") != (self.canvas.mode == "Y")      # Nebeneinander halbiert die Breite
         self.canvas.mode = m
         if fit_after:
             self.canvas.fit()
         if m == "K" and self.act_pause.isChecked():
             self.act_pause.setChecked(False)       # Klick auf \u201eBlinken\u201c hebt eine Pause immer auf
-        self.act_blink_cb.setVisible(m == "K")
-        self.act_pause.setVisible(m == "K")
+        self._update_options()
         if m == "K" and not self.act_pause.isChecked():
             self.blink.start()
         else:

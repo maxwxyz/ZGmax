@@ -94,7 +94,8 @@ class ProjectMixin:
             "saved": dt.datetime.now().isoformat(timespec="seconds"),
             "files": {"a": pa, "b": pb, "page_a": self.sp_pa.value(), "page_b": self.sp_pb.value()},
             "dpi": self.dpi_value(), "scale": self.scale_n(),
-            "params": dict(sliders, align=self.cb_align.currentText(), edge_noise=self.chk_edges.isChecked()),
+            "params": dict(sliders, align=self.cb_align.currentText(), edge_noise=self.chk_edges.isChecked(),
+                           glyphs=self.chk_glyphs.isChecked(), flatten=self.chk_flatten.isChecked()),
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -197,8 +198,9 @@ class ProjectMixin:
                   "s_group"):
             if k in pr:
                 getattr(self, k).set_silent(pr[k])
-        if "edge_noise" in pr:
-            quiet(self.chk_edges, lambda: self.chk_edges.setChecked(bool(pr["edge_noise"])))
+        for key, chk in (("edge_noise", self.chk_edges), ("glyphs", self.chk_glyphs), ("flatten", self.chk_flatten)):
+            if key in pr:
+                quiet(chk, lambda chk=chk, key=key: chk.setChecked(bool(pr[key])))
         if pr.get("align"):
             quiet(self.cb_align, lambda: self.cb_align.setCurrentText(pr["align"]))
         vc = data.get("vector", {})

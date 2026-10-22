@@ -88,6 +88,10 @@ def make_case(seed, scenario):
     b[y6 - 25:y6 + 8, 135:925] = np.minimum(b[y6 - 25:y6 + 8, 135:925], blk)
     moved.append((110, y6 - 25, 815, 33))
     # --- Stoerungen je Szenario
+    if scenario == "fleckig":                                       # Schatten und vergilbtes Papier (nur B)
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        shade = 1.0 - 0.45 * np.clip((xx / W) * (yy / H) * 1.6, 0, 1)        # dunkle Ecke unten rechts
+        b = np.clip(b.astype(np.float32) * shade * 0.92, 0, 255).astype(np.uint8)
     if scenario in ("scan", "verzug", "strich", "alles"):
         if scenario in ("scan", "alles"):                          # leicht gedreht/skaliert/verschoben gescannt
             M = cv2.getRotationMatrix2D((W / 2, H / 2), 0.25, 0.998)
@@ -116,8 +120,8 @@ def _overlap(r, box, pad=8):
 def evaluate(a_gray, b_gray, gt, moved, params=None, log=lambda *_: None):
     p = params or dp.Params()
     t = time.time()
-    a = dp.ink_from_gray(a_gray, p.thr) if not getattr(p, "adaptive", False) else dp.ink_adaptive(a_gray)
-    bi = dp.ink_from_gray(b_gray, p.thr) if not getattr(p, "adaptive", False) else dp.ink_adaptive(b_gray)
+    a = dp.ink_from_gray(a_gray, p.thr, p.flatten)
+    bi = dp.ink_from_gray(b_gray, p.thr, p.flatten)
     b = dp.prepare_pair(a, bi, p.align, log)
     res = dp.run_compare(a, b, p, log)
     regs = [r for r in rep.find_regions(res) if r["typ"] != "verschoben"]
@@ -127,7 +131,7 @@ def evaluate(a_gray, b_gray, gt, moved, params=None, log=lambda *_: None):
                 im_verschobenen=sum(1 for r in false if any(_overlap(r, m) for m in moved)), zeit=time.time() - t)
 
 
-SCENARIOS = ("sauber", "scan", "verzug", "strich", "alles")
+SCENARIOS = ("sauber", "scan", "verzug", "strich", "fleckig", "alles")
 
 
 def run_all(params=None, seeds=(1, 2)):
@@ -150,7 +154,8 @@ def summary(rows):
 if __name__ == "__main__":
     variants = {"Standard": dp.Params()}
     if "--compare" in sys.argv:
-        variants = {"ohne Kantenfilter": dp.Params(edge_noise=False), "Standard": dp.Params()}
+        variants = {"Version 1": dp.Params(edge_noise=False, glyphs=False), "Standard": dp.Params(),
+                    "Standard + Papierausgleich": dp.Params(flatten=True)}
         for k, v in getattr(dp, "BENCH_VARIANTS", {}).items():
             variants[k] = v
     for name, p in variants.items():

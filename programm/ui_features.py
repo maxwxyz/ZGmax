@@ -172,6 +172,7 @@ class FeaturesMixin:
 
         def done(r):
             p, why = r
+            self.chk_flatten.setChecked(p.flatten)
             for w, v in ((self.s_thr, p.thr), (self.s_tol, p.tol), (self.s_area, p.min_area), (self.s_cell, p.cell),
                          (self.s_maxs, p.max_shift), (self.s_move, p.move), (self.s_obj, p.obj_shift),
                          (self.s_hatch, p.hatch)):
@@ -198,8 +199,8 @@ class FeaturesMixin:
                 ctx.check()
                 lo, hi = (i - 1) / n, i / n
                 ctx.progress(lo, f"Seite {i} von {n}")
-                a = dp.ink_from_gray(dp.load_gray(pa, i, dpi), params.thr)
-                b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb, i, dpi), params.thr), params.align, quiet)
+                a = dp.ink_from_gray(dp.load_gray(pa, i, dpi), params.thr, params.flatten)
+                b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb, i, dpi), params.thr, params.flatten), params.align, quiet)
                 res = dp.run_compare(a, b, params, quiet, cancel=ctx.cancelled,
                                      progress=lambda f, t, lo=lo, hi=hi, i=i: ctx.progress(lo + (hi - lo) * f,
                                                                                           f"Seite {i} von {n}"))
@@ -360,6 +361,21 @@ class FeaturesMixin:
             self._select_region_nr(r["nr"])
             self._dirty = True
             self._update_title()
+
+    def zones_from_rejected(self):
+        """Abgelehnte Aenderungen (z. B. wiederkehrender Stempel, Datum im Schriftfeld) werden Zonen, die beim
+        naechsten Vergleich nicht mehr verglichen werden - auch in Projekten fuer spaetere Staende."""
+        regs = [r for r in (self.payload["regs"] if self.payload else []) if rep.reg_status(r) == "abgelehnt"]
+        if not regs:
+            QMessageBox.information(self, APP, "Es gibt keine als \u201eabgelehnt\u201c markierten \u00c4nderungen.")
+            return
+        ox, oy = self.origin
+        for r in regs:
+            self.zones.append((int(r["x"] - 10 + ox), int(r["y"] - 10 + oy), int(r["w"] + 20), int(r["h"] + 20)))
+        self._refresh_zones()
+        self._commit()
+        self.banner.show_msg(f"{len(regs)} abgelehnte \u00c4nderungen als Zonen \u00fcbernommen; sie werden nicht mehr "
+                             f"verglichen.", "info", timeout=12, action=("Jetzt neu vergleichen", self.start_compute))
 
     # ----------------------------------------------------------------- Automatische Sicherung
     # Je Fenster eine Datei "wiederherstellen-<Prozess>-<Fenster>.zgmax". Normales Schliessen loescht sie;

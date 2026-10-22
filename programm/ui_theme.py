@@ -12,7 +12,7 @@ THEMES = {
         window="#f4f5f7", surface="#ffffff", border="#e0e3e8", border2="#cfd5de",
         text="#1f2937", text2="#374151", muted="#6b7280", disabled="#9ca3af",
         hover="#eef1f6", sel_bg="#dbe7fd", sel_fg="#111827", grid="#eef0f3", groove="#dde1e8", track="#e5e8ee",
-        canvas="#e6e9ef", frame="#9aa3b2", legend_bg=(255, 255, 255, 225),
+        canvas="#e6e9ef", frame="#9aa3b2", legend_bg=(255, 255, 255, 225), segbg="#eceef2", seghover="#e2e5ea",
         info_bg="#e8f0fe", info_fg="#1e3a8a", warn_bg="#fef3c7", warn_fg="#78350f", err_bg="#fee2e2", err_fg="#7f1d1d",
         name="light"),
     "dark": dict(
@@ -20,7 +20,7 @@ THEMES = {
         window="#1c1f24", surface="#262a31", border="#353b44", border2="#4a515c",
         text="#e5e7eb", text2="#d1d5db", muted="#9ca3af", disabled="#6b7280",
         hover="#323842", sel_bg="#1e3a6e", sel_fg="#f3f4f6", grid="#30353c", groove="#3a4049", track="#353b44",
-        canvas="#15171b", frame="#5b6472", legend_bg=(38, 42, 49, 230),
+        canvas="#15171b", frame="#5b6472", legend_bg=(38, 42, 49, 230), segbg="#1c1f24", seghover="#2c3139",
         info_bg="#1e2f52", info_fg="#dbe7fd", warn_bg="#463710", warn_fg="#fde68a", err_bg="#4c1d1d", err_fg="#fecaca",
         name="dark"),
 }
@@ -67,10 +67,12 @@ QProgressBar::chunk {{ background: {t['accent']}; border-radius: 3px; }}
 QLabel#hint {{ color: {t['muted']}; }}
 QLabel#file {{ background: {t['window']}; border: 1px solid {t['border']}; border-radius: 5px; padding: 4px 8px; }}
 QToolBar#main QToolButton {{ padding: 5px 9px; }}
-QToolButton#seg {{ border: 1px solid {t['border2']}; border-radius: 0; padding: 5px 11px; margin: 0; }}
-QToolButton#seg[pos="first"] {{ border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}
-QToolButton#seg[pos="last"] {{ border-top-right-radius: 6px; border-bottom-right-radius: 6px; }}
-QToolButton#seg:checked {{ border-color: {t['accent']}; }}
+QFrame#segbox {{ background: {t['segbg']}; border-radius: 9px; }}
+QToolButton#seg {{ background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 4px 11px;
+                  color: {t['text2']}; }}
+QToolButton#seg:hover {{ background: {t['seghover']}; }}
+QToolButton#seg:checked {{ background: {t['surface']}; border: 1px solid {t['border2']}; color: {t['accent']};
+                          font-weight: 600; }}
 QFrame#palette {{ background: {t['surface']}; border-right: 1px solid {t['border']}; }}
 QFrame#palette QToolButton {{ padding: 4px 2px; border-radius: 8px; font-size: 8.5pt; }}
 QFrame#banner {{ border-radius: 0; border-bottom: 1px solid {t['border']}; }}

@@ -110,11 +110,16 @@ class Banner(QFrame):
         self.lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.btn_details = QPushButton("Details")
         self.btn_details.clicked.connect(self._show_details)
+        self.btn_action = QPushButton()
+        self.btn_action.setObjectName("primary")
+        self.btn_action.clicked.connect(self._action)
+        self._action_fn = None
         self.btn_close = QToolButton()
         self.btn_close.setText("\u2715")
         self.btn_close.setToolTip("Schlie\u00dfen")
         self.btn_close.clicked.connect(self.hide)
         lay.addWidget(self.lbl, 1)
+        lay.addWidget(self.btn_action)
         lay.addWidget(self.btn_details)
         lay.addWidget(self.btn_close)
         self.details = ""
@@ -123,7 +128,17 @@ class Banner(QFrame):
         self.timer.timeout.connect(self.hide)
         self.hide()
 
-    def show_msg(self, text, kind="info", details="", timeout=0):
+    def _action(self):
+        fn, self._action_fn = self._action_fn, None
+        self.hide()
+        if fn:
+            fn()
+
+    def show_msg(self, text, kind="info", details="", timeout=0, action=None):
+        """action = (Beschriftung, Funktion): Knopf in der Leiste, z. B. "Einschalten"."""
+        self._action_fn = action[1] if action else None
+        self.btn_action.setText(action[0] if action else "")
+        self.btn_action.setVisible(bool(action))
         self.setProperty("kind", kind)
         self.style().unpolish(self)
         self.style().polish(self)
