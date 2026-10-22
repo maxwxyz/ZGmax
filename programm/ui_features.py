@@ -377,6 +377,84 @@ class FeaturesMixin:
         self.banner.show_msg(f"{len(regs)} abgelehnte \u00c4nderungen als Zonen \u00fcbernommen; sie werden nicht mehr "
                              f"verglichen.", "info", timeout=12, action=("Jetzt neu vergleichen", self.start_compute))
 
+    # ----------------------------------------------------------------- Manuell ausrichten (3 Punkte)
+    def start_manual_align(self):
+        if not (self.payload and self.path_a and self.path_b) or self.view_only:
+            QMessageBox.information(self, APP, "Bitte zuerst zwei Zeichnungen vergleichen.")
+            return
+        self._align_prev_mode = self.canvas.mode
+        self.canvas.align_pts = {"A": [], "B": []}
+        self._set_mode("Y")
+        self._set_tool("align")
+        self._align_hint()
+
+    def _align_hint(self):
+        a, b = self.canvas.align_pts["A"], self.canvas.align_pts["B"]
+        n = len(b) + 1
+        if len(a) == len(b):
+            txt = f"Punkt {n} von 3: In der <b>alten</b> Zeichnung (links) einen markanten Punkt anklicken " \
+                  "(Ecke, Kreuzung, Kreismitte)."
+            if len(b) == 2:
+                txt += " Oder <b>Enter</b>: mit zwei Punkten ausrichten (Verschieben, Drehen, Ma\u00dfstab)."
+        else:
+            txt = f"Punkt {len(a)} von 3: Denselben Punkt in der <b>neuen</b> Zeichnung (rechts) anklicken."
+        self.banner.show_msg("Manuell ausrichten \u2013 " + txt + "  Esc = abbrechen.", "info",
+                             action=("Abbrechen", lambda: self._set_tool("hand")))
+
+    def _align_point(self, side, x, y):
+        pts = self.canvas.align_pts
+        if side == "done":
+            if len(pts["A"]) == len(pts["B"]) >= 2:
+                self._apply_alignment()
+            return
+        want = "A" if len(pts["A"]) == len(pts["B"]) else "B"
+        if side != want:
+            self.banner.show_msg(f"Bitte jetzt in der {'alten (linken)' if want == 'A' else 'neuen (rechten)'} "
+                                 f"Zeichnung klicken.", "warn", timeout=6)
+            QTimer.singleShot(1500, self._align_hint)
+            return
+        pts[side].append((x, y))
+        self.canvas.update()
+        if len(pts["A"]) == len(pts["B"]) == 3:
+            self._apply_alignment()
+        else:
+            self._align_hint()
+
+    def _apply_alignment(self):
+        """Transformation, die die Punkte von B auf die von A legt; wirkt zusaetzlich zur automatischen."""
+        a = np.float32(self.canvas.align_pts["A"])
+        b = np.float32(self.canvas.align_pts["B"])
+        if len(a) >= 3:
+            M = cv2.getAffineTransform(b[:3], a[:3])
+        else:
+            M, _ = cv2.estimateAffinePartial2D(b, a)
+        if M is None or not np.isfinite(M).all() or abs(np.linalg.det(M[:, :2])) < 0.5:
+            self.banner.show_msg("Die Punkte passen nicht zusammen (z. B. vertauscht). Bitte neu setzen.", "warn",
+                                 timeout=10)
+            self.canvas.align_pts = {"A": [], "B": []}
+            self._align_hint()
+            return
+        old = np.vstack([np.float32(self.manual_tf), [0, 0, 1]]) if self.manual_tf is not None else np.eye(3, dtype=np.float32)
+        self.manual_tf = (np.vstack([M, [0, 0, 1]]) @ old)[:2].tolist()
+        self.canvas.align_pts = {"A": [], "B": []}
+        self._set_tool("hand")
+        self._set_mode(getattr(self, "_align_prev_mode", "D") if self._align_prev_mode != "Y" else "D")
+        self.act_align_reset.setEnabled(True)
+        self._dirty = True
+        res = float(np.abs(cv2.transform(b[None], M)[0] - a).max())
+        self.banner.show_msg(f"Ausgerichtet (Restabweichung der Punkte {res:.1f} px). Es wird neu verglichen.",
+                             "info", timeout=10, action=("R\u00fcckg\u00e4ngig", self.reset_manual_align))
+        self.start_compute()
+
+    def reset_manual_align(self):
+        if self.manual_tf is None:
+            return
+        self.manual_tf = None
+        self.act_align_reset.setEnabled(False)
+        self._dirty = True
+        self.banner.show_msg("Manuelle Ausrichtung entfernt.", "info", timeout=6)
+        self.start_compute()
+
     # ----------------------------------------------------------------- Automatische Sicherung
     # Je Fenster eine Datei "wiederherstellen-<Prozess>-<Fenster>.zgmax". Normales Schliessen loescht sie;
     # liegt beim Start eine Datei eines nicht mehr laufenden Prozesses herum, war es ein Absturz.

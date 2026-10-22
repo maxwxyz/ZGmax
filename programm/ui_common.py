@@ -40,6 +40,8 @@ TOOL_HINTS = {
     "measure": "Punkte anklicken (L\u00e4nge 2, Winkel/Radius 3). Linienzug/Fl\u00e4che: Doppelklick, Enter oder "
                "Rechtsklick beendet. Esc = abbrechen.",
     "zoom": "Bereich aufziehen, dann wird hineingezoomt. Einfacher Klick = ganze Zeichnung.",
+    "align": "Manuell ausrichten: Punkt links in Alt, dann denselben rechts in Neu anklicken (3 Paare; nach 2 Paaren "
+             "Enter = ohne Verzerrung). Esc = abbrechen.",
     "region": "Rahmen um den ge\u00e4nderten Bereich aufziehen; er kommt in die \u00c4nderungsliste.",
     "text": "Ins Bild klicken, dann den Text eingeben.",
     "number": "Ins Bild klicken. Jeder Klick setzt die n\u00e4chste Nummer. Esc = fertig.",

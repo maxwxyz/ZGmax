@@ -148,6 +148,11 @@ class LayoutMixin:
         self.act_crop = A("Ausschnitt wählen", lambda: self._set_tool("crop"))
         self.act_crop_off = A("Ganzes Blatt vergleichen", lambda: self._crop_reset())
         self.act_match = A("Bereiche zuordnen (A ↔ B) …", self.match_regions)
+        self.act_align = A("Manuell ausrichten (3 Punkte)", self.start_manual_align,
+                           tip="Wenn die automatische Ausrichtung danebenliegt: drei gleiche Punkte in Alt und Neu "
+                               "anklicken")
+        self.act_align_reset = A("Manuelle Ausrichtung zurücksetzen", self.reset_manual_align)
+        self.act_align_reset.setEnabled(False)
         self.act_auto = A("Automatisch einstellen", self.auto_params, tip="Toleranz, Schwelle und Suchbereiche aus "
                           "diesem Zeichnungspaar bestimmen", ico="magic")
         self.act_compare = A("Vergleichen", self.start_compute, "Ctrl+Return", "Vergleich (neu) berechnen", "compare")
@@ -248,6 +253,9 @@ class LayoutMixin:
             m.addAction(self.tool_actions[key])
         m.addSeparator()
         m.addAction(self.act_auto)
+        m.addAction(self.act_align)
+        m.addAction(self.act_align_reset)
+        m.addSeparator()
         for a in (self.act_crop, self.act_crop_off, self.act_match, self.act_zone):
             m.addAction(a)
 
@@ -612,7 +620,13 @@ class LayoutMixin:
         b.setToolTip(self.act_auto.toolTip())
         b.clicked.connect(self.auto_params)
         self.btn_auto = b
-        sec.body.addWidget(b)
+        row = QHBoxLayout()
+        row.addWidget(b)
+        b2 = QPushButton("Manuell ausrichten")
+        b2.setToolTip(self.act_align.toolTip())
+        b2.clicked.connect(self.start_manual_align)
+        row.addWidget(b2)
+        sec.body.addLayout(row)
         h = QLabel("Viele dünne rote/blaue Doppellinien? Toleranz erhöhen. "
                    "Kleine Änderungen fehlen? Toleranz verringern.")
         h.setObjectName("hint")

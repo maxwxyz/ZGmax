@@ -44,6 +44,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         self.view_only = False
         self.page_summary = {}
         self.crop_b = None                # selbst zugeordneter Bereich in B (x, y, b, h) oder None
+        self.manual_tf = None             # manuelles Ausrichten: 2x3-Matrix (ausgerichtetes B -> A) oder None
         # Anmerkungen und Zonen werden global (Koordinaten des ganzen Blatts A) verstanden. self.anns
         # und die Canvas-Zonen sind die lokalen Ansichten relativ zu self.origin (Ursprung des gerade
         # angezeigten Ergebnisses, = Ausschnitt-Ecke). self.zones ist immer global.
@@ -78,6 +79,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         cv.viewChanged.connect(self._on_view_changed)
         cv.zoomBoxDone.connect(self._zoom_box_done)
         cv.filesDropped.connect(self._files_dropped)
+        cv.alignPoint.connect(self._align_point)
         self.debounce = QTimer(self)
         self.debounce.setSingleShot(True)
         self.debounce.timeout.connect(self.start_compute)
@@ -301,6 +303,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         lbl.setToolTip(path)
         self.start.set_files(self.path_a, self.path_b)
         self.crop_b = None
+        self.manual_tf = None
+        if hasattr(self, "act_align_reset"):
+            self.act_align_reset.setEnabled(False)
         self._vec_inspect(which, path)
         if which == "A":
             self._detect_dpi(path)
@@ -548,6 +553,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             return
         ox, oy = self.origin
         self.crop = (ox + x, oy + y, w, h)
+        self.manual_tf = None                     # Punkte bezogen sich auf den alten Ausschnitt
         self.btn_crop_off.setEnabled(True)
         self.lbl_crop.setText(f"Aktuell: Ausschnitt {w} \u00d7 {h} px")
         self._set_tool("hand")
@@ -558,6 +564,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             return
         self.crop = None
         self.crop_b = None
+        self.manual_tf = None                     # Punkte bezogen sich auf den Ausschnitt
         self.btn_crop_off.setEnabled(False)
         self.lbl_crop.setText("Aktuell: ganzes Blatt")
         if not silent:
@@ -630,6 +637,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             ga_ = gb_ = self.sp_pb.value()
         snap = dict(pa=pa_, pb=pb_, page_a=ga_, page_b=gb_,
                     dpi=self.dpi_value(), params=self.params(), crop=self.crop, crop_b=self.crop_b,
+                    manual=self.manual_tf,
                     vf=self.vfilter, origin=self._compute_origin(), single=single,
                     vec=(not single) and self.chk_vec.isChecked() and self.chk_vec.isEnabled(),
                     vtol=self.sp_vtol.value())
@@ -708,7 +716,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"])
         log.check()
         key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
-               snap["crop"], snap.get("crop_b"))
+               snap["crop"], snap.get("crop_b"), repr(snap.get("manual")))
         if self.cache.get("key") != key:
             self.cache["key"] = None
             log.progress(0.22, "Richte aus")
@@ -732,6 +740,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             cb = cb if cb is not None else gb
             ca = dc.crop(ca, snap["crop"])
             cb = dp.apply_tf(dc.crop(cb, box_b), tf)
+            if snap.get("manual") is not None:           # manuelle Ausrichtung zusaetzlich anwenden
+                M = np.float32(snap["manual"])
+                h_, w_ = self.cache["a"].shape
+                bm = cv2.warpAffine(self.cache["b"], M, (w_, h_), flags=cv2.INTER_LINEAR, borderValue=0)
+                self.cache["b"] = ((bm > 127).astype(np.uint8)) * 255
+                cb = cv2.warpAffine(cb, M, (w_, h_), flags=cv2.INTER_LINEAR,
+                                    borderValue=(255, 255, 255) if cb.ndim == 3 else 255)
             self.cache["color"] = (ca, cb)
             self.cache["key"] = key
         log.check()

@@ -104,6 +104,7 @@ class ProjectMixin:
             "view": {"mode": self.canvas.mode, "overlays": self.act_overlays.isChecked()},
             "approval_name": self.settings.value("approval_name", ""),
             "crop_b": list(self.crop_b) if self.crop_b else None,
+            "manual_align": self.manual_tf,
             # Aenderungsliste mit Pruefstand (Status, Kommentar, eigene Eintraege)
             "regions": copy.deepcopy(self.payload["regs"]) if (self.payload and self.payload["regs_done"]) else None,
         }
@@ -219,6 +220,9 @@ class ProjectMixin:
             self.btn_crop_off.setEnabled(True)
             self.lbl_crop.setText(f"Aktuell: Ausschnitt {self.crop[2]} \u00d7 {self.crop[3]} px")
         self.zones[:] = [tuple(int(v) for v in z) for z in data.get("zones", [])]
+        ma = data.get("manual_align")
+        self.manual_tf = ma if (isinstance(ma, list) and len(ma) == 2) else None
+        self.act_align_reset.setEnabled(self.manual_tf is not None)
         self.anns[:] = rep.upgrade_annotations(copy.deepcopy(data.get("annotations", [])))   # global; origin = (0, 0)
         if data.get("approval_name"):
             self.settings.setValue("approval_name", data["approval_name"])

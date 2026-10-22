@@ -187,6 +187,7 @@ class Canvas(QWidget):
     viewChanged = Signal(float)              # Zoom geaendert (Massstab Bild -> Bildschirm)
     zoomBoxDone = Signal()                   # einmaliger Zoom-Rahmen fertig -> voriges Werkzeug
     filesDropped = Signal(list)
+    alignPoint = Signal(str, float, float)   # manuelles Ausrichten: Seite ("A"/"B") und Bildpunkt
 
     def __init__(self):
         super().__init__()
@@ -232,6 +233,7 @@ class Canvas(QWidget):
         self.show_color = True               # Alt/Neu in Farbe zeigen, wenn die Datei farbig ist
         self.invert = False                  # helle Linien auf dunklem Grund (nur Anzeige)
         self.show_legend = True
+        self.align_pts = {"A": [], "B": []}       # manuelles Ausrichten: gesetzte Punkte je Seite
         self.preview = None                  # (QImage, (h, w)) waehrend der ersten Berechnung
         self.labels = ("A (alt)", "B (neu)")
         self._side = "A"                     # Nebeneinander: Haelfte unter der Maus
@@ -401,7 +403,8 @@ class Canvas(QWidget):
             return ix, iy, None
         if QGuiApplication.keyboardModifiers() & Qt.KeyboardModifier.ShiftModifier:
             return ix, iy, None
-        src = self.res.b if self.mode in ("B", "N") else self.res.a
+        use_b = self.mode in ("B", "N") or (self.mode == "Y" and self._side == "B")
+        src = self.res.b if use_b else self.res.a
         h, w = src.shape
         r = int(max(3, min(60, 14 / self.scale)))
         xi, yi = int(round(ix)), int(round(iy))
@@ -892,6 +895,22 @@ class Canvas(QWidget):
             p.setPen(QColor(THEME["text2"]))
             p.drawText(10, 20, "A")
             p.drawText(self.width() - 20, 20, "B")
+        if self.tool == "align":                  # Punkte des manuellen Ausrichtens (je Haelfte)
+            side = "B" if self.mode == "B" else "A"
+            f = QFont(UI_FONT, 10)
+            f.setBold(True)
+            p.setFont(f)
+            for i, (qx, qy) in enumerate(self.align_pts[side]):
+                X, Y = self.to_wid(qx, qy)
+                p.setPen(QPen(QColor("#f59e0b"), 2))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(QPointF(X, Y), 9, 9)
+                p.drawLine(QPointF(X - 14, Y), QPointF(X + 14, Y))
+                p.drawLine(QPointF(X, Y - 14), QPointF(X, Y + 14))
+                r = QRectF(X + 8, Y - 26, 20, 18)
+                p.fillRect(r, QColor("#f59e0b"))
+                p.setPen(QColor("white"))
+                p.drawText(r, Qt.AlignmentFlag.AlignCenter, str(i + 1))
         if not self.show_overlays:
             return
         for x, y, zw, zh in self.zones:
@@ -1096,6 +1115,9 @@ class Canvas(QWidget):
             self._drag = ("rubber",)
         elif left and self.tool in ("text", "number", "approval"):
             self.placeRequested.emit(self.tool, ix, iy)
+        elif left and self.tool == "align":
+            sx, sy, _k = self.snap_point(ix, iy)
+            self.alignPoint.emit(self._side if self.mode == "Y" else "A", sx, sy)
         elif left and self.tool in ("rect", "arrow", "cloud", "highlight"):
             self._ann_prev = ((ix, iy), (ix, iy))
             self._drag = ("ann",)
@@ -1278,6 +1300,8 @@ class Canvas(QWidget):
             self.escapePressed.emit()
         elif k in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.tool == "measure" and self.measure:
             self.finish_measure()
+        elif k in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.tool == "align":
+            self.alignPoint.emit("done", 0.0, 0.0)
         elif k in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
             self.zoom_step(1.25)
         elif k == Qt.Key.Key_Minus:

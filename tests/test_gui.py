@@ -337,3 +337,32 @@ def test_view_switch_and_highlight(app, win, pair):
     assert win.canvas.mode == "R"                                  # Hervorheben bleibt beim Wechsel
     win.seg_buttons["K"].click()
     assert win.cb_blink.isVisible() and not win.chk_highlight.isVisible()
+
+
+def test_manual_three_point_alignment(app, win, tmp_path):
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from conftest import draw_sheet
+    a = draw_sheet(False)
+    M = np.float32([[1, 0, 9], [0, 1, -6]])                     # B um (9, -6) verschoben
+    b = cv2.warpAffine(draw_sheet(False), M, (a.shape[1], a.shape[0]), borderValue=255)
+    pa, pb = tmp_path / "a.png", tmp_path / "b.png"
+    Image.fromarray(a).save(pa)
+    Image.fromarray(b).save(pb)
+    win.cb_align.setCurrentText("none")                         # Automatik aus: Versatz bleibt sichtbar
+    for w in (win.s_maxs, win.s_move, win.s_obj):              # auch keine Feinausrichtung/Objektsuche
+        w.set_silent(0)
+    compare(app, win, str(pa), str(pb))
+    before = int(win.payload["res"].oa.sum())
+    assert before > 1000
+    win.start_manual_align()
+    assert win.canvas.mode == "Y" and win.canvas.tool == "align"
+    win.canvas.snap = False
+    for (x, y) in ((40, 40), (1560, 40), (40, 1060)):          # Rahmenecken in A und (verschoben) in B
+        win.canvas.alignPoint.emit("A", x, y)
+        win.canvas.alignPoint.emit("B", x + 9, y - 6)
+    wait(app, lambda: not win.running and win.manual_tf is not None)
+    wait(app, lambda: not win.running)
+    assert int(win.payload["res"].oa.sum()) < before * 0.2
+    assert win.canvas.tool == "hand"
