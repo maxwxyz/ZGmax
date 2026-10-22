@@ -516,6 +516,65 @@ def suppress_edge_noise(only_a, only_b, both, touch=1.5):
     return removed
 
 
+def glyph_check(a, b, only_a, only_b, both, moved, max_h=60, search=2, min_core=6, tick=None, hint=None):
+    """Zeichenpruefung (in place): kleine Objekte (Ziffern, Buchstaben, Symbole) Form gegen Form vergleichen.
+
+    Der Toleranzvergleich sieht bei aehnlichen Zeichen (1 -> 3, 8 -> 2, 6 -> 8) nur wenige Pixel Unterschied, weil
+    sich die Striche innerhalb der Toleranz ueberdecken; die fallen dann unter die Mindestgroesse. Geprueft werden
+    nur zeichengrosse Objekte (A und B zusammen), an denen der Vergleich schon eine kleine Abweichung gefunden hat
+    und die nicht als verschoben erkannt sind. Dort wird B um bis zu 'search' px bestmoeglich verschoben und ohne
+    Toleranz verglichen; es zaehlt nur der Kern der Abweichung (nach Abtragen eines 1-px-Randes). So fallen Versatz
+    und Strichstaerke heraus, eine andere Ziffer nicht. Gibt die Zahl der als geaendert erkannten Zeichen zurueck."""
+    union = ((a > 0) | (b > 0)).astype(np.uint8)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(union, connectivity=8)
+    H, W = a.shape
+    pad = search + 2
+    k3 = np.ones((3, 3), np.uint8)
+    diff = hint if hint is not None else (only_a | only_b)   # wo der Vergleich etwas gesehen hat
+    cand = [i for i in range(1, n) if 6 <= st[i, 3] <= max_h and st[i, 2] <= 3 * max_h and st[i, 4] >= 12]
+
+    def check(i):
+        x, y, w, h, _ = st[i]
+        x0, y0, x1, y1 = max(0, x - pad), max(0, y - pad), min(W, x + w + pad), min(H, y + h + pad)
+        comp = lab[y0:y1, x0:x1] == i
+        if not diff[y0:y1, x0:x1][comp].any() or moved[y0:y1, x0:x1][comp].any():
+            return None                       # nichts auffaellig oder als verschoben erkannt
+        aw = (a[y0:y1, x0:x1] > 0) & comp
+        bw = (b[y0:y1, x0:x1] > 0) & comp
+        if not aw.any() or not bw.any():
+            return None                       # ganz neu / ganz weg: findet schon der Vergleich
+        best = None
+        for dy in range(-search, search + 1):
+            for dx in range(-search, search + 1):
+                sb = np.zeros_like(bw)
+                sb[max(0, dy):bw.shape[0] + min(0, dy), max(0, dx):bw.shape[1] + min(0, dx)] = \
+                    bw[max(0, -dy):bw.shape[0] + min(0, -dy), max(0, -dx):bw.shape[1] + min(0, -dx)]
+                x_ = int(np.count_nonzero(aw ^ sb))
+                if best is None or x_ < best[0]:
+                    best = (x_, dx, dy, sb)
+        _, dx, dy, sb = best
+        if int(cv2.erode((aw ^ sb).astype(np.uint8), k3).sum()) < min_core:
+            return None
+        ra = aw & ~sb                         # ganze Formabweichung (nicht nur der Kern)
+        rb_s = sb & ~aw
+        rb = np.zeros_like(rb_s)              # zurueck in die Originallage von B
+        rb[max(0, -dy):rb.shape[0] + min(0, -dy), max(0, -dx):rb.shape[1] + min(0, -dx)] = \
+            rb_s[max(0, dy):rb.shape[0] + min(0, dy), max(0, dx):rb.shape[1] + min(0, dx)]
+        return (y0, y1, x0, x1), ra, rb
+
+    hits = 0
+    for k, r in enumerate(_pmap(check, cand)):
+        _tick(tick, k + 1, len(cand))
+        if r is None:
+            continue
+        (y0, y1, x0, x1), ra, rb = r
+        only_a[y0:y1, x0:x1] |= ra
+        only_b[y0:y1, x0:x1] |= rb
+        both[y0:y1, x0:x1] &= ~(ra | rb)
+        hits += 1
+    return hits
+
+
 def refine_objects(a, b, only_a, only_b, both, moved, tol, max_shift, max_rot,
                    grow=20, accept=0.5, step=0.5, rot_gain=0.7, tick=None):
     """Sucht fuer jedes verbliebene Unterschieds-Objekt eine kleine Verschiebung und Drehung.

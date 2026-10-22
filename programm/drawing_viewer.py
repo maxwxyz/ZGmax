@@ -879,6 +879,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
         if t == "zoom" and c.tool != "zoom":
             self._prev_tool = c.tool                   # Zoom-Rahmen ist einmalig, danach zurueck
         c.tool = t
+        if c.ann_selected is not None:            # Werkzeugwechsel hebt die Auswahl auf (Leiste zeigt Vorgabe)
+            c.ann_selected = None
+            self.list_anns.blockSignals(True)
+            self.list_anns.clearSelection()
+            self.list_anns.setCurrentRow(-1)
+            self.list_anns.blockSignals(False)
+            self._sync_ann_controls()
         c.measure = []
         c.snap_hint = None
         c.hover = None

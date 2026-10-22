@@ -8,33 +8,39 @@ class AnnotationsMixin:
     """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
 
     # --- Anmerkungen
-    def _set_color_btn(self, c):
+    # Farbe/Groesse in der Optionszeile: Ist eine Markierung gewaehlt, gelten sie fuer diese; sonst sind sie die
+    # Vorgabe fuer neue Markierungen (canvas.ann_color / ann_size). Auswaehlen aendert die Vorgabe nicht.
+    def _set_color_btn(self, c, default=True):
         self.btn_color.setStyleSheet(f"QPushButton {{ background: {c}; border: 1px solid {THEME['border2']}; "
                                      f"border-radius: 6px; padding: 6px 14px; color: white; font-weight: 600; }}")
-        self.canvas.ann_color = c
+        self.btn_color.setProperty("shown_color", c)
+        if default:
+            self.canvas.ann_color = c
 
     def _pick_color(self):
-        c = QColorDialog.getColor(QColor(self.canvas.ann_color), self, "Farbe der Anmerkung")
+        a = self._sel()
+        c = QColorDialog.getColor(QColor(a["color"] if a else self.canvas.ann_color), self, "Farbe")
         if c.isValid():
-            self._set_color_btn(c.name())
-            a = self._sel()
             if a:
                 a["color"] = c.name()
+                self._set_color_btn(c.name(), default=False)
                 self.canvas.update()
                 self._commit()
+            else:
+                self._set_color_btn(c.name())
 
     def _sel(self):
         i = self.canvas.ann_selected
         return self.anns[i] if i is not None and 0 <= i < len(self.anns) else None
 
     def _ann_size(self):
-        self.canvas.ann_size = self.s_asize.value()
         a = self._sel()
         if a:
             a["size"] = self.s_asize.value()
-        self.canvas.update()
-        if a:
             self._commit()
+        else:
+            self.canvas.ann_size = self.s_asize.value()
+        self.canvas.update()
 
     def _ann_label(self, a):
         t = a["type"]
@@ -69,11 +75,10 @@ class AnnotationsMixin:
         self.canvas.update()
 
     def _sync_ann_controls(self):
+        """Optionszeile zeigt die gewaehlte Markierung, sonst die Vorgabe fuer neue."""
         a = self._sel()
-        if a:
-            self.s_asize.set_silent(a["size"])
-            self._set_color_btn(a["color"])
-            self.canvas.ann_size = a["size"]
+        self.s_asize.set_silent(a["size"] if a else self.canvas.ann_size)
+        self._set_color_btn(a["color"] if a else self.canvas.ann_color, default=False)
 
     def _ann_created(self, a):
         self.anns.append(a)

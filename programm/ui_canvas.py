@@ -259,10 +259,12 @@ class Canvas(QWidget):
                 QTransform(0, -1, 1, 0, 0, H)][self.rot % 4]
 
     def _vp(self, pos):
-        """Widget-Position -> Position in der ungedrehten Ansicht (bei Nebeneinander: in der Haelfte)."""
+        """Widget-Position -> Position in der ungedrehten Ansicht (bei Nebeneinander: in der Haelfte).
+        Waehrend eines Ziehens gilt die Haelfte, in der es begonnen hat - so kann man ueber die Mitte weiterziehen."""
         if self.mode == "Y":
             half = QWidget.width(self) // 2
-            self._side = "B" if pos.x() >= half else "A"
+            if self._drag is None:
+                self._side = "B" if pos.x() >= half else "A"
             return QPointF(pos.x() - half if self._side == "B" else pos.x(), pos.y())
         return self._xform().inverted()[0].map(pos)
 

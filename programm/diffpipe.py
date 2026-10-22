@@ -28,6 +28,7 @@ class Params:
     obj_rotate: float = 3.0
     min_area: int = 20             # Unterschiedsgruppen mit weniger Pixeln werden ignoriert
     edge_noise: bool = True        # 1-px-Saeume an gemeinsamen Linien nicht als Aenderung werten
+    glyphs: bool = True            # Zeichenpruefung: aehnliche Ziffern/Buchstaben (1 -> 3) sicher erkennen
     ignore: list = field(default_factory=list)    # Zonen (x, y, b, h) in Pixeln von A
     ignore_border: int = 0         # Randstreifen (Pixel), der nicht verglichen wird
     verbose: bool = False
@@ -299,10 +300,17 @@ def run_compare(a, b, p, log=print, cancel=None, progress=None):
             for x_, y_, w_, h_, dx_, dy_, ang_, bf_, af_ in found:
                 log(f"    Objekt bei x={x_} y={y_} ({w_}x{h_}): Verschiebung dx={dx_:+d} dy={dy_:+d} px, "
                     f"Drehung {ang_:+.1f} Grad, Unterschied {bf_} -> {af_} px")
-    st(0.95, 1.0, "Filtere kleine Unterschiede")(0, 1)
+    st(0.95, 0.96, "Filtere Kantens\u00e4ume")(0, 1)
+    hint = (oa | ob) if p.glyphs else None          # Abweichungen vor dem Kantenfilter: Hinweis fuer Zeichenpruefung
     if p.edge_noise:
         n_edge = dc.suppress_edge_noise(oa, ob, both)
         log(f"  Kantens\u00e4ume: {n_edge} px an gemeinsamen Linien ignoriert")
+    if p.glyphs:                     # nach dem Kantenfilter: Formabweichungen der Zeichen bleiben erhalten
+        n_gl = dc.glyph_check(ac, bc, oa, ob, both, moved, max_h=max(30, int(round(p.cell * 0.15))),
+                              tick=st(0.96, 0.99, "Pr\u00fcfe Zeichen"), hint=hint)
+        del hint
+        log(f"  Zeichenpr\u00fcfung: {n_gl} ge\u00e4nderte Zeichen")
+    st(0.99, 1.0, "Filtere kleine Unterschiede")(0, 1)
     if p.min_area > 0:
         # Unterdrueckte Reste bleiben als normale (graue) Linie sichtbar
         rem = filter_small(oa, ob, p.min_area, both=both)

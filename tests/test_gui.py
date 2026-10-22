@@ -268,3 +268,32 @@ def test_color_views_and_invert(app, win, tmp_path):
     win.act_invert.setChecked(False)
     img = win.export_render("B", False, legend=False)
     assert (img[:, :, 2].astype(int) - img[:, :, 0] > 100).any()               # Export Neu in Farbe
+
+
+def test_selection_does_not_change_defaults(app, win, pair):
+    compare(app, win, *pair)
+    win._set_color_btn("#00aa00")                          # Vorgabe gruen
+    win.s_asize.setValue(3.0)
+    win._ann_created(dict(type="rect", x=10, y=10, x2=200, y2=200, text="", nr=0, color="#ff0000", size=6.0))
+    win._ann_selected(0)
+    assert win.btn_color.property("shown_color") == "#ff0000" and win.s_asize.value() == 6.0
+    assert win.canvas.ann_color == "#00aa00" and win.canvas.ann_size == 3.0       # Vorgabe unveraendert
+    win._set_tool("zoom")
+    win._set_tool("hand")
+    assert win.canvas.ann_selected is None
+    assert win.btn_color.property("shown_color") == "#00aa00" and win.s_asize.value() == 3.0
+
+
+def test_side_by_side_drag_across_middle(app, win, pair):
+    from PySide6.QtCore import QPointF
+    compare(app, win, *pair)
+    win._set_mode("Y")
+    c = win.canvas
+    half = c.rect().width() // 2
+    c._drag = None
+    start = c._vp(QPointF(half - 40, 100))                # Ziehen beginnt links ...
+    c._drag = ("pan", start, c.ox, c.oy)
+    p_left = c._vp(QPointF(half - 10, 100))
+    p_right = c._vp(QPointF(half + 10, 100))              # ... und geht ueber die Mitte nach rechts
+    assert p_right.x() - p_left.x() == pytest.approx(20)  # kein Sprung um eine halbe Breite
+    c._drag = None

@@ -56,18 +56,30 @@ def check_golden(key, d):
     assert d == gold[key], key
 
 
-@pytest.mark.parametrize("edges", [False, True])
-def test_golden_synthetic(pair, edges):
-    # edges=False: Verfahren ohne Kantenfilter muss unveraendert bleiben (Fingerabdruck von Version 1)
-    check_golden("synthetic" + ("+kanten" if edges else ""), digest(run(*pair, edge_noise=edges)))
+# "v1": Neuerungen aus -> muss exakt wie Version 1 rechnen. "standard": aktuelle Standardeinstellungen.
+MODES = {"v1": dict(edge_noise=False, glyphs=False), "standard": {}}
+
+
+@pytest.mark.parametrize("mode", list(MODES))
+def test_golden_synthetic(pair, mode):
+    check_golden("synthetic" + ("" if mode == "v1" else "+" + mode), digest(run(*pair, **MODES[mode])))
 
 
 @pytest.mark.skipif(not os.path.isfile(os.path.join(EXAMPLES, "alt1.tif")), reason="Ordner Beispiele fehlt")
 @pytest.mark.parametrize("na,nb", [("alt.tif", "neu.tif"), ("alt1.tif", "neu1.tif")])
-@pytest.mark.parametrize("edges", [False, True])
-def test_golden_examples(na, nb, edges):
-    d = digest(run(os.path.join(EXAMPLES, na), os.path.join(EXAMPLES, nb), edge_noise=edges))
-    check_golden(na + ("+kanten" if edges else ""), d)
+@pytest.mark.parametrize("mode", list(MODES))
+def test_golden_examples(na, nb, mode):
+    d = digest(run(os.path.join(EXAMPLES, na), os.path.join(EXAMPLES, nb), **MODES[mode]))
+    check_golden(na + ("" if mode == "v1" else "+" + mode), d)
+
+
+def test_bench_quality():
+    """Messstand (kuenstliche Zeichnungen mit bekannten Aenderungen): Mindestqualitaet halten."""
+    import bench
+    rows = bench.run_all(seeds=(1,))
+    found = sum(r["gefunden"] for _, _, r in rows)
+    false = sum(r["fehlalarm"] for _, _, r in rows)
+    assert found >= 24 and false <= 8, bench.summary(rows)
 
 
 def test_edge_noise_keeps_real_changes(pair):
