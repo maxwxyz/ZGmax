@@ -1,4 +1,5 @@
 """Hauptfenster: Anmerkungen."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
@@ -20,7 +21,7 @@ class AnnotationsMixin:
 
     def _pick_color(self):
         a = self._sel()
-        c = QColorDialog.getColor(QColor(a["color"] if a else self.canvas.ann_color), self, "Farbe")
+        c = QColorDialog.getColor(QColor(a["color"] if a else self.canvas.ann_color), self, tr("Farbe"))
         if c.isValid():
             if a:
                 a["color"] = c.name()
@@ -46,14 +47,14 @@ class AnnotationsMixin:
     def _ann_label(self, a):
         t = a["type"]
         if t == "number":
-            return f"Nummer {a['nr']}"
+            return tr("Nummer {}").format(a['nr'])
         if t == "text":
-            return "Text: " + a["text"].replace("\n", " ")[:32]
+            return tr("Text: ") + a["text"].replace("\n", " ")[:32]
         if t == "approval":
-            return "Stempel: " + " / ".join(a["text"].split("\n")[:2])
+            return tr("Stempel: ") + " / ".join(a["text"].split("\n")[:2])
         if t == "measure":
             return f"{rep.MEASURE_KINDS.get(a.get('kind'), 'Ma\u00df')}: {rep.measure_text(a, self.canvas.mm_px)}"
-        lbl = {"rect": "Rahmen", "cloud": "Wolke", "highlight": "Marker", "arrow": "Pfeil", "line": "Linie"}.get(t, t)
+        lbl = {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Marker"), "arrow": tr("Pfeil"), "line": tr("Linie")}.get(t, t)
         if a.get("comment"):
             lbl += ": " + a["comment"].replace("\n", " ")[:40]
         if a.get("author"):
@@ -102,7 +103,7 @@ class AnnotationsMixin:
         if tool == "number":
             self._ann_created(dict(base, type="number", nr=self.next_nr))
         elif tool == "text":
-            txt, ok = QInputDialog.getMultiLineText(self, "Text einf\u00fcgen", "Anmerkung:", "")
+            txt, ok = QInputDialog.getMultiLineText(self, tr("Text einf\u00fcgen"), tr("Anmerkung:"), "")
             if ok and txt.strip():
                 self._ann_created(dict(base, type="text", text=txt.strip()))
             else:
@@ -118,7 +119,7 @@ class AnnotationsMixin:
         lines = old.split("\n") if old else []
         name = lines[1] if len(lines) > 1 else self.settings.value("approval_name", "")
         date = lines[2] if len(lines) > 2 else dt.date.today().strftime("%d.%m.%Y")
-        dlg = ApprovalDialog(self, lines[0] if lines else "FREIGEGEBEN", name, date)
+        dlg = ApprovalDialog(self, lines[0] if lines else tr("FREIGEGEBEN"), name, date)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return None
         self.settings.setValue("approval_name", dlg.ed_name.text().strip())
@@ -150,11 +151,11 @@ class AnnotationsMixin:
             return
         a = self.anns[i]
         if a["type"] == "text":
-            txt, ok = QInputDialog.getMultiLineText(self, "Text \u00e4ndern", "Anmerkung:", a["text"])
+            txt, ok = QInputDialog.getMultiLineText(self, tr("Text \u00e4ndern"), tr("Anmerkung:"), a["text"])
             if ok and txt.strip():
                 a["text"] = txt.strip()
         elif a["type"] == "number":
-            n, ok = QInputDialog.getInt(self, "Nummer \u00e4ndern", "Nummer:", a["nr"], 1, 9999)
+            n, ok = QInputDialog.getInt(self, tr("Nummer \u00e4ndern"), tr("Nummer:"), a["nr"], 1, 9999)
             if ok:
                 a["nr"] = n
         elif a["type"] == "approval":
@@ -200,24 +201,24 @@ class AnnotationsMixin:
         m = QMenu(self)
         a = self.anns[i]
         if a["type"] in ("text", "number", "approval"):
-            m.addAction("Bearbeiten\u2026", lambda: self._ann_edit(i))
-        m.addAction("Farbe\u2026", self._pick_color)
-        m.addAction("Duplizieren", self._ann_duplicate)
+            m.addAction(tr("Bearbeiten\u2026"), lambda: self._ann_edit(i))
+        m.addAction(tr("Farbe\u2026"), self._pick_color)
+        m.addAction(tr("Duplizieren"), self._ann_duplicate)
         m.addSeparator()
-        m.addAction("L\u00f6schen", self._ann_delete)
+        m.addAction(tr("L\u00f6schen"), self._ann_delete)
         m.exec(pos)
 
     def ann_save(self):
-        path = self._save_dialog("Anmerkungen speichern", "Anmerkungen (*.json)", "anmerkungen.json")
+        path = self._save_dialog(tr("Anmerkungen speichern"), tr("Anmerkungen (*.json)"), "anmerkungen.json")
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"version": 3, "coords": "global", "annotations": self._state()["anns"]},
                           f, ensure_ascii=False, indent=1)
-            self._log(f"Anmerkungen gespeichert: {path}")
+            self._log(tr("Anmerkungen gespeichert: {}").format(path))
 
     def ann_load(self):
         d = self.settings.value("outdir", "")
-        path, _ = QFileDialog.getOpenFileName(self, "Anmerkungen laden", d, "Anmerkungen (*.json)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Anmerkungen laden"), d, tr("Anmerkungen (*.json)"))
         if path:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -227,7 +228,7 @@ class AnnotationsMixin:
                     shift_ann(a, -self.origin[0], -self.origin[1])
             self._ann_refresh(None)
             self._commit()
-            self._log(f"{len(self.anns)} Anmerkungen geladen")
+            self._log(tr("{} Anmerkungen geladen").format(len(self.anns)))
 
     # --- Kommentare austauschen (XFDF / PDF-Anmerkungen)
     def _sheet_geometry(self, side):
@@ -245,11 +246,11 @@ class AnnotationsMixin:
 
     def import_comments(self):
         if self.payload is None:
-            QMessageBox.information(self, APP, "Bitte zuerst eine Zeichnung \u00f6ffnen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst eine Zeichnung \u00f6ffnen."))
             return
         d = self.settings.value("outdir", os.path.dirname(self.path_a or ""))
-        path, _ = QFileDialog.getOpenFileName(self, "Kommentare einlesen", d,
-                                              "Kommentare (*.xfdf *.pdf);;XFDF (*.xfdf);;PDF mit Kommentaren (*.pdf)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Kommentare einlesen"), d,
+                                              tr("Kommentare (*.xfdf *.pdf);;XFDF (*.xfdf);;PDF mit Kommentaren (*.pdf)"))
         if not path:
             return
         side = "A"
@@ -258,9 +259,9 @@ class AnnotationsMixin:
             guess_b = os.path.splitext(os.path.basename(self.path_b))[0].lower() in stem
             box = QMessageBox(self)
             box.setWindowTitle(APP)
-            box.setText("Zu welcher Zeichnung geh\u00f6ren die Kommentare?")
-            ba = box.addButton("Alte Zeichnung (A)", QMessageBox.ButtonRole.AcceptRole)
-            bb = box.addButton("Neue Zeichnung (B)", QMessageBox.ButtonRole.AcceptRole)
+            box.setText(tr("Zu welcher Zeichnung geh\u00f6ren die Kommentare?"))
+            ba = box.addButton(tr("Alte Zeichnung (A)"), QMessageBox.ButtonRole.AcceptRole)
+            bb = box.addButton(tr("Neue Zeichnung (B)"), QMessageBox.ButtonRole.AcceptRole)
             box.addButton(QMessageBox.StandardButton.Cancel)
             box.setDefaultButton(bb if guess_b else ba)
             box.exec()
@@ -275,7 +276,7 @@ class AnnotationsMixin:
             else:
                 items, skipped = dx.parse_xfdf(path, page_h, page - 1)
         except Exception as e:                       # noqa: BLE001
-            self.banner.show_msg(f"Kommentare konnten nicht gelesen werden: {e}", "error")
+            self.banner.show_msg(tr("Kommentare konnten nicht gelesen werden: {}").format(e), "error")
             return
         ox, oy = self.origin
         vec = self.chk_vec.isChecked() and self.chk_vec.isEnabled()
@@ -287,7 +288,7 @@ class AnnotationsMixin:
                 return float(q[0]), float(q[1])
         new = dx.to_annotations(items, k, self.canvas.ann_size, mp)
         if not new:
-            self.banner.show_msg("In der Datei wurden keine \u00fcbernehmbaren Kommentare f\u00fcr diese Seite gefunden.",
+            self.banner.show_msg(tr("In der Datei wurden keine \u00fcbernehmbaren Kommentare f\u00fcr diese Seite gefunden."),
                                  "warn", timeout=10)
             return
         self.anns.extend(new)
@@ -295,16 +296,16 @@ class AnnotationsMixin:
         self._commit()
         self.act_right.setChecked(True)
         self.tabs.setCurrentIndex(1)
-        extra = f" ({skipped} Kommentare anderer Art \u00fcbersprungen)" if skipped else ""
-        self.banner.show_msg(f"{len(items)} Kommentare als {len(new)} Markierungen \u00fcbernommen{extra}.", "info",
+        extra = tr(" ({} Kommentare anderer Art übersprungen)").format(skipped) if skipped else ""
+        self.banner.show_msg(tr("{} Kommentare als {} Markierungen übernommen{}.").format(len(items), len(new), extra), "info",
                              timeout=12)
 
     def export_xfdf(self):
         if not self.anns:
-            QMessageBox.information(self, APP, "Es gibt keine Markierungen zum Speichern.")
+            QMessageBox.information(self, APP, tr("Es gibt keine Markierungen zum Speichern."))
             return
         base = os.path.splitext(os.path.basename(self.path_a or "markierungen"))[0]
-        path = self._save_dialog("Markierungen als XFDF speichern", "XFDF (*.xfdf)", base + ".xfdf")
+        path = self._save_dialog(tr("Markierungen als XFDF speichern"), tr("XFDF (*.xfdf)"), base + ".xfdf")
         if not path:
             return
         k, page_h = self._sheet_geometry("A")
@@ -312,5 +313,4 @@ class AnnotationsMixin:
         mm = self.canvas.mm_px
         name = os.path.basename(self.path_a) if (self.path_a or "").lower().endswith(".pdf") else ""
         n = dx.write_xfdf(path, anns, k, page_h, name, self.sp_pa.value() - 1, lambda a: rep.measure_text(a, mm))
-        self.banner.show_msg(f"{n} Markierungen gespeichert: {path}. In Acrobat: Kommentare \u2192 Importieren "
-                             f"(zur PDF der alten Zeichnung).", "info", timeout=15)
+        self.banner.show_msg(tr("{} Markierungen gespeichert: {}. In Acrobat: Kommentare → Importieren (zur PDF der alten Zeichnung).").format(n, path), "info", timeout=15)

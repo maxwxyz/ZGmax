@@ -5,6 +5,7 @@ Stufen:
   2. prepare_pair()   Ausschnitt, Groesse, globale Ausrichtung      (langsam, nur bei neuen Dateien/Ausrichtung)
   3. run_compare()    Kacheln, Verschiebung, Objekt-Suche, Filter   (Parameter des Vergleichs)
 """
+from i18n import tr
 from dataclasses import dataclass, field, replace
 
 import cv2
@@ -142,14 +143,14 @@ def crop_pair(a_full, b_full, box_a, log=print):
     if box_a is None:
         return a_full, b_full, None
     a = dc.crop(a_full, box_a)
-    log("Suche Ausschnitt A in B (automatisch) ...")
+    log(tr("Suche Ausschnitt A in B (automatisch) ..."))
     box_b, score = dc.autofit(a, b_full)
     if box_b is None:
-        log("  Warnung: nichts gefunden, nutze ganzes Bild B")
+        log(tr("  Warnung: nichts gefunden, nutze ganzes Bild B"))
         return a, b_full, None
-    log(f"  gefunden: {box_b}  (Uebereinstimmung {score:.2f})")
+    log(tr("  gefunden: {}  (Uebereinstimmung {:.2f})").format(box_b, score))
     if score < 0.15:
-        log("  Warnung: schwache Uebereinstimmung - Ergebnis pruefen, evtl. groesseren Ausschnitt waehlen")
+        log(tr("  Warnung: schwache Uebereinstimmung - Ergebnis pruefen, evtl. groesseren Ausschnitt waehlen"))
     return a, dc.crop(b_full, box_b), box_b
 
 
@@ -181,12 +182,12 @@ def prepare_pair_tf(a, b, align="affine", log=print):
     b = match_size(a, b)
     if align == "none":
         return b, tf
-    log(f"Richte aus ({align}) ...")
+    log(tr("Richte aus ({}) ...").format(align))
     warp = dc.align_global(a, b, align)
-    log("  Warp: " + str(np.round(warp, 4).tolist()))
+    log(tr("  Warp: ") + str(np.round(warp, 4).tolist()))
     if np.abs(warp[:, :2] - np.eye(2)).max() < 0.0005:
         M = np.float32([[1, 0, round(float(warp[0, 2]))], [0, 1, round(float(warp[1, 2]))]])
-        log(f"  Nur Verschiebung -> gerundet auf dx={M[0, 2]:+.0f} dy={M[1, 2]:+.0f}")
+        log(tr("  Nur Verschiebung -> gerundet auf dx={:+.0f} dy={:+.0f}").format(M[0, 2], M[1, 2]))
         tf.update(M=M, exact=True)
         return cv2.warpAffine(b, M, (a.shape[1], a.shape[0]),
                               flags=cv2.INTER_NEAREST | cv2.WARP_INVERSE_MAP, borderValue=0), tf
@@ -313,56 +314,54 @@ def run_compare(a, b, p, log=print, cancel=None, progress=None):
         nx, ny = max(1, round(a.shape[1] / p.cell)), max(1, round(a.shape[0] / p.cell))
     else:
         nx, ny = (int(v) for v in p.tiles.lower().split("x"))
-    log("Vergleiche ...")
+    log(tr("Vergleiche ..."))
     oa, ob, both, moved = dc.compare(ac, bc, p.tol, (nx, ny), p.max_shift, p.hatch, p.move,
-                                     tick=st(0.0, 0.45, "Vergleiche Kacheln"))
+                                     tick=st(0.0, 0.45, tr("Vergleiche Kacheln")))
     objs, found = (0, 0, 0, 0), []
     if p.obj_shift > 0:
         chk = acc = nsh = nrot = 0
         for grow, lo, hi in ((20, 0.45, 0.65), (8, 0.65, 0.75)):
             c_, a_, s_, r_, f_ = dc.refine_objects(ac, bc, oa, ob, both, moved, p.tol,
                                                    p.obj_shift, p.obj_rotate, grow=grow,
-                                                   tick=st(lo, hi, "Suche verschobene Objekte"))
+                                                   tick=st(lo, hi, tr("Suche verschobene Objekte")))
             chk, acc, nsh, nrot = chk + c_, acc + a_, nsh + s_, nrot + r_
             found += f_
         objs = (chk, acc, nsh, nrot)
         for grow, lo, hi in ((14, 0.75, 0.82), (6, 0.82, 0.88)):
             c_, a_, f_ = dc.refine_by_ink(ac, bc, oa, ob, both, moved, p.tol, p.obj_shift, grow=grow,
-                                          tick=st(lo, hi, "Suche verschobene Objekte"))
+                                          tick=st(lo, hi, tr("Suche verschobene Objekte")))
             objs = (objs[0] + c_, objs[1] + a_, objs[2] + a_, objs[3])
             found += f_
             acc += a_
         c_, a_, f_ = dc.refine_by_glyph(ac, bc, oa, ob, both, moved, p.tol, p.obj_shift,
-                                        tick=st(0.88, 0.95, "Suche verschobene Zeichen"))
+                                        tick=st(0.88, 0.95, tr("Suche verschobene Zeichen")))
         objs = (objs[0] + c_, objs[1] + a_, objs[2] + a_, objs[3])
         found += f_
         acc += a_
         chk, nsh = objs[0], objs[2]
-        log(f"  Objekt-Suche: {chk} Unterschiedsbereiche geprueft, {acc} als verschoben/gedreht "
-            f"erkannt ({nsh} nur Verschiebung, {nrot} mit Drehung)")
+        log(tr("  Objekt-Suche: {} Unterschiedsbereiche geprueft, {} als verschoben/gedreht erkannt ({} nur Verschiebung, {} mit Drehung)").format(chk, acc, nsh, nrot))
         if p.verbose:
             for x_, y_, w_, h_, dx_, dy_, ang_, bf_, af_ in found:
-                log(f"    Objekt bei x={x_} y={y_} ({w_}x{h_}): Verschiebung dx={dx_:+d} dy={dy_:+d} px, "
-                    f"Drehung {ang_:+.1f} Grad, Unterschied {bf_} -> {af_} px")
-    st(0.95, 0.96, "Filtere Kantens\u00e4ume")(0, 1)
+                log(tr("    Objekt bei x={} y={} ({}x{}): Verschiebung dx={:+d} dy={:+d} px, Drehung {:+.1f} Grad, Unterschied {} -> {} px").format(x_, y_, w_, h_, dx_, dy_, ang_, bf_, af_))
+    st(0.95, 0.96, tr("Filtere Kantens\u00e4ume"))(0, 1)
     hint = (oa | ob) if p.glyphs else None          # Abweichungen vor dem Kantenfilter: Hinweis fuer Zeichenpruefung
     if p.edge_noise:
         n_edge = dc.suppress_edge_noise(oa, ob, both)
-        log(f"  Kantens\u00e4ume: {n_edge} px an gemeinsamen Linien ignoriert")
+        log(tr("  Kantensäume: {} px an gemeinsamen Linien ignoriert").format(n_edge))
     if p.glyphs:                     # nach dem Kantenfilter: Formabweichungen der Zeichen bleiben erhalten
         n_gl = dc.glyph_check(ac, bc, oa, ob, both, moved, max_h=max(30, int(round(p.cell * 0.15))),
-                              tick=st(0.96, 0.99, "Pr\u00fcfe Zeichen"), hint=hint)
+                              tick=st(0.96, 0.99, tr("Pr\u00fcfe Zeichen")), hint=hint)
         del hint
-        log(f"  Zeichenpr\u00fcfung: {n_gl} ge\u00e4nderte Zeichen")
-    st(0.99, 1.0, "Filtere kleine Unterschiede")(0, 1)
+        log(tr("  Zeichenprüfung: {} geänderte Zeichen").format(n_gl))
+    st(0.99, 1.0, tr("Filtere kleine Unterschiede"))(0, 1)
     if p.min_area > 0:
         # Unterdrueckte Reste bleiben als normale (graue) Linie sichtbar
         rem = filter_small(oa, ob, p.min_area, both=both)
-        log(f"  Min-Area: {rem} kleine Unterschiedsgruppen (< {p.min_area} px) ignoriert")
+        log(tr("  Min-Area: {} kleine Unterschiedsgruppen (< {} px) ignoriert").format(rem, p.min_area))
     if zone is not None:
         both[zone] = a[zone] > 0
-    log(f"  nur A: {int(oa.sum())} px   nur B: {int(ob.sum())} px   gemeinsam: {int(both.sum())} px")
-    st(0.95, 1.0, "Fertig")(1, 1)
+    log(tr("  nur A: {} px   nur B: {} px   gemeinsam: {} px").format(int(oa.sum()), int(ob.sum()), int(both.sum())))
+    st(0.95, 1.0, tr("Fertig"))(1, 1)
     return Result(a, b, oa, ob, both, moved, zone, nx, ny, objs, found)
 
 
@@ -393,23 +392,21 @@ def suggest_params(gray_a, gray_b, dpi=200, base=None, log=print, cancel=None):
     unev = max(uneven_background(gray_a), uneven_background(gray_b))
     p.flatten = unev > 35
     if p.flatten:
-        why.append(f"Papier ungleichm\u00e4\u00dfig hell (Schwankung {unev:.0f} Graustufen): wird vor dem Vergleich "
-                   f"ausgeglichen.")
+        why.append(tr("Papier ungleichmäßig hell (Schwankung {:.0f} Graustufen): wird vor dem Vergleich ausgeglichen.").format(unev))
         gray_a, gray_b = flatten_background(gray_a), flatten_background(gray_b)
     small = lambda g: cv2.resize(g, None, fx=min(1.0, 2500 / max(g.shape)), fy=min(1.0, 2500 / max(g.shape)),
                                  interpolation=cv2.INTER_AREA)
     both = np.concatenate([small(gray_a).ravel(), small(gray_b).ravel()])
     otsu, _ = cv2.threshold(both.reshape(1, -1), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     p.thr = int(np.clip(otsu, 90, 210))
-    why.append(f"Linienschwelle {p.thr}: trennt Papier und Linien (gemessen).")
+    why.append(tr("Linienschwelle {}: trennt Papier und Linien (gemessen).").format(p.thr))
     k = max(0.25, dpi / 200.0)
     p.cell = int(np.clip(round(400 * k / 50) * 50, 150, 1200))
     p.max_shift = int(np.clip(round(30 * k), 5, 100))
     p.move = int(np.clip(round(100 * k), 20, 300))
     p.obj_shift = int(np.clip(round(40 * k), 8, 150))
     p.hatch = int(np.clip(round(16 * k), 4, 40))
-    why.append(f"Suchbereiche für {dpi} dpi umgerechnet (Kachel {p.cell} px, Objekt-Verschiebung "
-               f"{p.obj_shift} px, Schraffur {p.hatch} px).")
+    why.append(tr("Suchbereiche für {} dpi umgerechnet (Kachel {} px, Objekt-Verschiebung {} px, Schraffur {} px).").format(dpi, p.cell, p.obj_shift, p.hatch))
     if cancel is not None and cancel():
         raise dc.Cancelled()
     a = ink_from_gray(gray_a, p.thr)
@@ -432,10 +429,8 @@ def suggest_params(gray_a, gray_b, dpi=200, base=None, log=print, cancel=None):
         counts.append(int(((a > 0) & (bd == 0)).sum() + ((b > 0) & (ad == 0)).sum()))
     p.tol = next((t for t in range(1, 7) if counts[t + 1] > 0.6 * max(1, counts[t])), 6)
     drop = 100 * (1 - counts[p.tol] / max(1, counts[0]))
-    why.append(f"Toleranz {p.tol} px: bis dahin verschwinden {drop:.0f} % der Abweichungen (nur ungenau "
-               f"\u00fcbereinanderliegende Linien); mehr Toleranz w\u00fcrde vor allem echte \u00c4nderungen schlucken.")
+    why.append(tr("Toleranz {} px: bis dahin verschwinden {:.0f} % der Abweichungen (nur ungenau übereinanderliegende Linien); mehr Toleranz würde vor allem echte Änderungen schlucken.").format(p.tol, drop))
     p.min_area = int(np.clip(round(3 * stroke * stroke + 8 * k), 5, 400))
-    why.append(f"Mindestgröße {p.min_area} px: Linien sind etwa {stroke:.1f} px breit; kleinere Punkte "
-               f"gelten als Staub.")
-    log("Automatisch eingestellt: " + " ".join(why))
+    why.append(tr("Mindestgröße {} px: Linien sind etwa {:.1f} px breit; kleinere Punkte gelten als Staub.").format(p.min_area, stroke))
+    log(tr("Automatisch eingestellt: ") + " ".join(why))
     return p, why

@@ -473,3 +473,13 @@ def test_ui_scale_setting(app, win):
     assert ui_scale_setting(win.settings) == 1.3 and win.banner.btn_action.isVisible()   # auch auf der Startseite
     win.settings.setValue("ui_scale", "kaputt")
     assert ui_scale_setting(win.settings) == 1.0
+
+
+def test_english_ui():
+    """Oberflaeche auf Englisch: alle Bedienelemente uebersetzt, Bericht und Liste englisch."""
+    import subprocess
+    import sys
+    here = os.path.dirname(os.path.abspath(__file__))
+    r = subprocess.run([sys.executable, os.path.join(here, "english_check.py")], capture_output=True, text=True,
+                       timeout=300)
+    assert "ENGLISH-OK" in r.stdout, r.stdout[-3000:] + r.stderr[-2000:]

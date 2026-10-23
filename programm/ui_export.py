@@ -1,4 +1,5 @@
 """Hauptfenster: Bild, Liste, Bericht, Druck."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
@@ -10,18 +11,16 @@ class ExportMixin:
     # --- Export
     def _need_result(self):
         if not self.payload:
-            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return False
         return True
 
     def _info(self):
         p = self.params()
         res = self.payload["res"]
-        s = (f"Toleranz {p.tol}px, Schraffur {p.hatch}, Verschiebung {p.move}, Objekt-Verschiebung "
-             f"{p.obj_shift}px, Objekt-Drehung {p.obj_rotate}Grad, Kacheln {res.nx}x{res.ny}, "
-             f"Ausrichtung {p.align}, Schwelle {p.thr}")
+        s = (tr("Toleranz {}px, Schraffur {}, Verschiebung {}, Objekt-Verschiebung {}px, Objekt-Drehung {}Grad, Kacheln {}x{}, Ausrichtung {}, Schwelle {}").format(p.tol, p.hatch, p.move, p.obj_shift, p.obj_rotate, res.nx, res.ny, p.align, p.thr))
         if self.crop:
-            s += f", Ausschnitt {self.crop[2]}x{self.crop[3]}px"
+            s += tr(", Ausschnitt {}x{}px").format(self.crop[2], self.crop[3])
         return s
 
     def _save_dialog(self, title, flt, default):
@@ -67,8 +66,8 @@ class ExportMixin:
             return
         from PySide6.QtGui import QPageLayout
         from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-        opts = ["Auf Papier einpassen", "100 % (Originalgr\u00f6\u00dfe des Blatts)", "50 %", "25 %", "200 %"]
-        item, ok = QInputDialog.getItem(self, "Drucken im Ma\u00dfstab", "Gr\u00f6\u00dfe auf dem Papier:", opts, 1, False)
+        opts = [tr("Auf Papier einpassen"), tr("100 % (Originalgr\u00f6\u00dfe des Blatts)"), "50 %", "25 %", "200 %"]
+        item, ok = QInputDialog.getItem(self, tr("Drucken im Ma\u00dfstab"), tr("Gr\u00f6\u00dfe auf dem Papier:"), opts, 1, False)
         if not ok:
             return
         mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
@@ -101,12 +100,12 @@ class ExportMixin:
                 x += tw
             y += th
         p.end()
-        self._log(f"Gedruckt: {item}")
+        self._log(tr("Gedruckt: {}").format(item))
 
     def export_image(self):
         if not self._need_result():
             return
-        path = self._save_dialog("Ergebnisbild speichern", "PNG (*.png);;JPEG (*.jpg);;TIFF (*.tif);;PDF (*.pdf)",
+        path = self._save_dialog(tr("Ergebnisbild speichern"), tr("PNG (*.png);;JPEG (*.jpg);;TIFF (*.tif);;PDF (*.pdf)"),
                                  "diff.png")
         if not path:
             return
@@ -116,12 +115,12 @@ class ExportMixin:
             out = self.export_render(mode, overlays)
             fp, fmt = dc.resolve_output(path, None)
             return dc.save_output(out, fp, fmt, dpi, 95)
-        self._run_job(work, "Speichere \u2026", lambda p: self._log(f"Bild gespeichert: {path}"))
+        self._run_job(work, tr("Speichere \u2026"), lambda p: self._log(tr("Bild gespeichert: {}").format(path)))
 
     def export_csv(self):
         if not self._need_result():
             return
-        path = self._save_dialog("\u00c4nderungsliste speichern", "CSV (*.csv)", "diff_aenderungen.csv")
+        path = self._save_dialog(tr("\u00c4nderungsliste speichern"), tr("CSV (*.csv)"), "diff_aenderungen.csv")
         if not path:
             return
         pl, dpi, sn = self.payload, self.dpi_value(), self.scale_n()
@@ -130,12 +129,12 @@ class ExportMixin:
             self._ensure_regs(log)
             rep.write_csv(path, pl["regs"], dpi, sn)
             return path
-        self._run_job(work, "Speichere \u2026", lambda p: (self._fill_table(), self._log(f"Liste gespeichert: {p}")))
+        self._run_job(work, tr("Speichere \u2026"), lambda p: (self._fill_table(), self._log(tr("Liste gespeichert: {}").format(p))))
 
     def export_pdf(self):
         if not self._need_result():
             return
-        path = self._save_dialog("PDF-Bericht speichern", "PDF (*.pdf)", "diff_bericht.pdf")
+        path = self._save_dialog(tr("PDF-Bericht speichern"), tr("PDF (*.pdf)"), "diff_bericht.pdf")
         if not path:
             return
         pl, info, dpi, idx = self.payload, self._info(), self.dpi_value(), self.index_info
@@ -147,28 +146,28 @@ class ExportMixin:
             rep.build_report(path, pl["res"], pl["regs"], names[0], names[1], dpi, info, idx, 40, log,
                              anns=anns, scale_n=sn)
             return path
-        self._run_job(work, "Erstelle Bericht \u2026",
-                      lambda p: (self._fill_table(), self._log(f"Bericht gespeichert: {p}")))
+        self._run_job(work, tr("Erstelle Bericht \u2026"),
+                      lambda p: (self._fill_table(), self._log(tr("Bericht gespeichert: {}").format(p))))
 
     def copy_cli(self):
         if not (self.path_a and self.path_b):
             return
         p, d = self.params(), dp.Params()
         parts = ["python", "drawing_diff.py", self.path_a, self.path_b]
-        for attr, flag in (("thr", "--thr"), ("align", "--align"), ("cell", "--cell"), ("max_shift", "--max-shift"),
-                           ("tol", "--tol"), ("hatch", "--hatch"), ("move", "--move"), ("obj_shift", "--obj-shift"),
-                           ("obj_rotate", "--obj-rotate"), ("min_area", "--min-area"),
-                           ("ignore_border", "--ignore-border")):
+        for attr, flag in (("thr", tr("--thr")), ("align", tr("--align")), ("cell", tr("--cell")), ("max_shift", tr("--max-shift")),
+                           ("tol", tr("--tol")), ("hatch", tr("--hatch")), ("move", tr("--move")), ("obj_shift", tr("--obj-shift")),
+                           ("obj_rotate", tr("--obj-rotate")), ("min_area", tr("--min-area")),
+                           ("ignore_border", tr("--ignore-border"))):
             if getattr(p, attr) != getattr(d, attr):
                 parts += [flag, str(getattr(p, attr))]
         for z in p.ignore:
-            parts += ["--ignore", ",".join(map(str, z))]
+            parts += [tr("--ignore"), ",".join(map(str, z))]
         if self.crop:
-            parts += ["--crop-a", ",".join(map(str, self.crop))]
+            parts += [tr("--crop-a"), ",".join(map(str, self.crop))]
         if self.dpi_value() != 200:
-            parts += ["--dpi", str(self.dpi_value())]
+            parts += [tr("--dpi"), str(self.dpi_value())]
         if not p.edge_noise:
-            parts += ["--keep-edges"]
+            parts += [tr("--keep-edges")]
         cmd = " ".join(f'"{x}"' if (" " in x or "\\" in x) else x for x in parts)
         QGuiApplication.clipboard().setText(cmd)
-        self._log("Befehl in Zwischenablage (im Ordner \u201eprogramm\u201c ausf\u00fchren): " + cmd)
+        self._log(tr("Befehl in Zwischenablage (im Ordner \u201eprogramm\u201c ausf\u00fchren): ") + cmd)

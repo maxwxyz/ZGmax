@@ -5,6 +5,7 @@ inspect_pdf() zeigt, was vorliegt. Nur bei Vektordaten sind Vektorvergleich, Ebe
 Alle Bilder entstehen im Format der Rasterpipeline: uint8, 255 = Papier, 0 = Tinte (render_gray)
 bzw. uint8 0/255 Tinte (vector_diff).
 """
+from i18n import tr
 import numpy as np
 import cv2
 
@@ -51,7 +52,7 @@ def page_items(path, page=1):
     Element: dict kind ('l' Strecke, 'c' Kurve, 'f' Flaeche, 't' Text), pts (n x 2, in pt), w (Linienbreite),
     color ('#rrggbb'), layer (Name oder None), text."""
     if pymupdf is None:
-        raise RuntimeError("PyMuPDF fehlt: pip install pymupdf")
+        raise RuntimeError(tr("PyMuPDF fehlt: pip install pymupdf"))
     items = []
     with pymupdf.open(path) as doc:
         pg = doc[max(0, min(page, doc.page_count) - 1)]
@@ -228,7 +229,7 @@ def vector_diff(pa, pb, page_a, page_b, dpi, filt_a=None, filt_b=None, tol_mm=0.
     ib, sb = page_items(pb, page_b)
     ia = [i for i in ia if _keep(i, *fa)]
     ib = [i for i in ib if _keep(i, *fb)]
-    log(f"Vektorvergleich: {len(ia)} Elemente in A, {len(ib)} in B")
+    log(tr("Vektorvergleich: {} Elemente in A, {} in B").format(len(ia), len(ib)))
     oa_i, ob_i, bo_i = match_items(ia, ib, tol_mm / 25.4 * 72.0)
     shp = _shape(sa, sb, dpi)
     a = draw_items(ia, shp, dpi)
@@ -237,7 +238,7 @@ def vector_diff(pa, pb, page_a, page_b, dpi, filt_a=None, filt_b=None, tol_mm=0.
     ob = draw_items([ib[i] for i in ob_i], shp, dpi) > 0
     both = draw_items([ia[i] for i in bo_i], shp, dpi) > 0
     both &= ~(oa | ob)
-    log(f"  nur A: {len(oa_i)} Elemente   nur B: {len(ob_i)} Elemente   gleich: {len(bo_i)}")
+    log(tr("  nur A: {} Elemente   nur B: {} Elemente   gleich: {}").format(len(oa_i), len(ob_i), len(bo_i)))
     return a, b, oa, ob, both
 
 
@@ -294,5 +295,5 @@ def fill_text(regs, words_a, words_b, dpi, log=print):
     for r in regs:
         r["text_a"], r["text_b"] = inside(words_a, r), inside(words_b, r)
         n += bool(r["text_a"] or r["text_b"])
-    log(f"PDF-Text: {n} Aenderungen mit Text")
+    log(tr("PDF-Text: {} Aenderungen mit Text").format(n))
     return n

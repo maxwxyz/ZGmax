@@ -1,4 +1,5 @@
 """Hauptfenster: Textsuche in der Zeichnung (PDF-Text, sonst Texterkennung)."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
@@ -12,17 +13,17 @@ class SearchMixin:
         bar.setObjectName("searchbar")
         lay = QHBoxLayout(bar)
         lay.setContentsMargins(12, 4, 12, 4)
-        lay.addWidget(QLabel("Suchen"))
+        lay.addWidget(QLabel(tr("Suchen")))
         self.ed_search = QLineEdit()
-        self.ed_search.setPlaceholderText("Text in der Zeichnung, z. B. 25 H7 oder Bohrung")
+        self.ed_search.setPlaceholderText(tr("Text in der Zeichnung, z. B. 25 H7 oder Bohrung"))
         self.ed_search.setClearButtonEnabled(True)
         self.ed_search.setMinimumWidth(260)
         self.ed_search.returnPressed.connect(lambda: self.search_step(1))
         self.ed_search.textChanged.connect(lambda _: self.search_timer.start(300))
         lay.addWidget(self.ed_search)
         self.cb_search_in = QComboBox()
-        self.cb_search_in.addItem("in Neu", "B")
-        self.cb_search_in.addItem("in Alt", "A")
+        self.cb_search_in.addItem(tr("in Neu"), "B")
+        self.cb_search_in.addItem(tr("in Alt"), "A")
         self.cb_search_in.currentIndexChanged.connect(lambda _: self.run_search())
         lay.addWidget(self.cb_search_in)
         for act in (self.act_search_prev, self.act_search_next):
@@ -34,7 +35,7 @@ class SearchMixin:
         lay.addWidget(self.lbl_search, 1)
         close = QToolButton()
         close.setText("✕")
-        close.setToolTip("Suche schließen (Esc)")
+        close.setToolTip(tr("Suche schließen (Esc)"))
         close.clicked.connect(self.close_search)
         lay.addWidget(close)
         QShortcut(QKeySequence("Escape"), self.ed_search, activated=self.close_search).setContext(
@@ -97,13 +98,13 @@ class SearchMixin:
         lines = self.cache.get(key)
         if lines is None:
             if self.running:
-                self.lbl_search.setText("Bitte warten …")
+                self.lbl_search.setText(tr("Bitte warten …"))
                 self.search_timer.start(800)
                 return
             pdf = path.lower().endswith(".pdf") and dv.available()
             if not pdf and not rep.ocr_available():
-                if not self.ensure_ocr("Text in Bildern zu suchen"):
-                    self.lbl_search.setText("Ohne Texterkennung nur in PDF mit Text möglich.")
+                if not self.ensure_ocr(tr("Text in Bildern zu suchen")):
+                    self.lbl_search.setText(tr("Ohne Texterkennung nur in PDF mit Text möglich."))
                     return
             dpi = self.dpi_value()
 
@@ -112,9 +113,9 @@ class SearchMixin:
                 if not found:                            # Bild oder PDF ohne Text: Texterkennung
                     if not rep.ocr_available():
                         return []
-                    ctx.progress(0.02, "Lese Text in der Zeichnung")
+                    ctx.progress(0.02, tr("Lese Text in der Zeichnung"))
                     g = self._gray(path, page, dpi, ctx)
-                    found = rep.ocr_lines(g, progress=lambda f: ctx.progress(f, "Lese Text in der Zeichnung"),
+                    found = rep.ocr_lines(g, progress=lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung")),
                                           cancel=ctx.cancelled)
                 return found
 
@@ -123,8 +124,8 @@ class SearchMixin:
                 self.run_search()
             self.canvas.search_hits, self.canvas.search_cur = [], -1     # alte Treffer gelten nicht mehr
             self.canvas.update()
-            self.lbl_search.setText("Lese den Text der Zeichnung (einmalig) …")
-            self._run_job(work, "Lese Text …", done)
+            self.lbl_search.setText(tr("Lese den Text der Zeichnung (einmalig) …"))
+            self._run_job(work, tr("Lese Text …"), done)
             return
         raw = rep.find_text(lines, q)
         hits = [self._to_view(side, h) for h in raw]
@@ -133,7 +134,7 @@ class SearchMixin:
         self.canvas.search_hits = hits
         self.canvas.search_side = side
         self.canvas.search_cur = 0 if hits else -1
-        self.lbl_search.setText(f"{len(hits)} Treffer" if hits else "Nicht gefunden")
+        self.lbl_search.setText(tr("{} Treffer").format(len(hits)) if hits else tr("Nicht gefunden"))
         if hits:
             self._show_hit()
         self.canvas.update()
@@ -164,5 +165,5 @@ class SearchMixin:
         c = self.canvas
         x0, y0, x1, y1 = c.search_hits[c.search_cur]
         c.center_box(x0, y0, x1, y1)
-        self.lbl_search.setText(f"{c.search_cur + 1} von {len(c.search_hits)}")
+        self.lbl_search.setText(tr("{} von {}").format(c.search_cur + 1, len(c.search_hits)))
         c.update()

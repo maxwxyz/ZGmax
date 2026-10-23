@@ -1,4 +1,5 @@
 """Hauptfenster: Aenderungsliste, Texterkennung."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
@@ -11,7 +12,7 @@ class RegionsMixin:
     def _ensure_regs(self, log, force=False):
         pl = self.payload
         if force or not pl["regs_done"]:
-            log("Suche \u00c4nderungen \u2026")
+            log(tr("Suche \u00c4nderungen \u2026"))
             manual = [r for r in pl["regs"] if r.get("manuell")]
             auto = rep.find_regions(pl["res"], merge=max(1, int(self.s_group.value())))
             nr = len(auto)
@@ -27,13 +28,13 @@ class RegionsMixin:
         pl = self.payload
         rows = self.table.selectionModel().selectedRows() if pl else []
         if not rows:
-            self._log("Keine Zeile in der \u00c4nderungsliste gew\u00e4hlt.")
+            self._log(tr("Keine Zeile in der \u00c4nderungsliste gew\u00e4hlt."))
             return
         nrs = {int(self.table.item(r.row(), 1).text()) for r in rows}
         pl["regs"][:] = [r for r in pl["regs"] if r["nr"] not in nrs]
         self.canvas.selected = None
         self._fill_table()
-        self._log(f"{len(nrs)} Eintr\u00e4ge gel\u00f6scht")
+        self._log(tr("{} Einträge gelöscht").format(len(nrs)))
 
     def _reg_clear(self):
         pl = self.payload
@@ -53,8 +54,8 @@ class RegionsMixin:
         pl = self.payload
         if not pl:
             return
-        names = {"ge\u00e4ndert": "geaendert", "neu": "neu", "entfernt": "entfernt"}
-        item, ok = QInputDialog.getItem(self, "\u00c4nderung markieren", "Art der \u00c4nderung:", list(names), 0, False)
+        names = {tr("ge\u00e4ndert"): "geaendert", tr("neu"): "neu", tr("entfernt"): "entfernt"}
+        item, ok = QInputDialog.getItem(self, tr("\u00c4nderung markieren"), tr("Art der \u00c4nderung:"), list(names), 0, False)
         self._set_tool("hand")
         if not ok:
             return
@@ -69,21 +70,21 @@ class RegionsMixin:
         self.act_overlays.setChecked(True)
         self.chk_regs.setChecked(True)
         self.cb_filter.setCurrentIndex(0)
-        self._reg_edit_dialog(regs[-1], "\u00c4nderung beschreiben")
+        self._reg_edit_dialog(regs[-1], tr("\u00c4nderung beschreiben"))
         self._fill_table()
         self._select_region_nr(nr)
 
-    def _reg_edit_dialog(self, r, title="\u00c4nderung bearbeiten"):
+    def _reg_edit_dialog(self, r, title=tr("\u00c4nderung bearbeiten")):
         dlg = QDialog(self)
         dlg.setWindowTitle(title)
         form = QFormLayout(dlg)
         ea, eb, ed = QLineEdit(r.get("text_a", "")), QLineEdit(r.get("text_b", "")), QLineEdit(r.get("desc", ""))
-        ea.setPlaceholderText("z. B. 25 H7")
-        eb.setPlaceholderText("z. B. 30 H7")
-        ed.setPlaceholderText("z. B. Bohrung vergr\u00f6\u00dfert")
-        form.addRow("Text A (alt):", ea)
-        form.addRow("Text B (neu):", eb)
-        form.addRow("Beschreibung:", ed)
+        ea.setPlaceholderText(tr("z. B. 25 H7"))
+        eb.setPlaceholderText(tr("z. B. 30 H7"))
+        ed.setPlaceholderText(tr("z. B. Bohrung vergr\u00f6\u00dfert"))
+        form.addRow(tr("Text A (alt):"), ea)
+        form.addRow(tr("Text B (neu):"), eb)
+        form.addRow(tr("Beschreibung:"), ed)
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         bb.accepted.connect(dlg.accept)
         bb.rejected.connect(dlg.reject)
@@ -125,11 +126,11 @@ class RegionsMixin:
 
     def run_dims(self):
         if not self.payload:
-            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
         pdf = bool(self.path_a and self.path_b and self.path_a.lower().endswith(".pdf")
                    and self.path_b.lower().endswith(".pdf") and dv.available())
-        if not pdf and not self.ensure_ocr("Ma\u00dfzahlen in Bildern zu lesen"):
+        if not pdf and not self.ensure_ocr(tr("Ma\u00dfzahlen in Bildern zu lesen")):
             return
         pl, pa, pb = self.payload, self.path_a, self.path_b
         na, nb, dpi = self.sp_pa.value(), self.sp_pb.value(), self.dpi_value()
@@ -138,27 +139,27 @@ class RegionsMixin:
             self._ensure_regs(log)
             wa, wb = (dv.pdf_words(pa, na), dv.pdf_words(pb, nb)) if pdf else ([], [])
             if wa or wb:
-                log("Ma\u00dfzahlen aus dem PDF-Text \u2026")
+                log(tr("Ma\u00dfzahlen aus dem PDF-Text \u2026"))
                 dv.fill_text(pl["regs"], wa, wb, dpi, log)
             elif rep.ocr_available():
-                log("Ma\u00dfzahlen per OCR \u2026")
+                log(tr("Ma\u00dfzahlen per OCR \u2026"))
                 rep.text_diff(pl["res"], pl["regs"], log)
             else:
-                log("Weder PDF-Text noch OCR verf\u00fcgbar.")
+                log(tr("Weder PDF-Text noch OCR verf\u00fcgbar."))
             return rep.dim_changes(pl["regs"], log)
 
         def done(n):
             self._fill_table()
-            self._busy(False, f"{n} Ma\u00dfanderungen gefunden")
+            self._busy(False, tr("{} Maßanderungen gefunden").format(n))
             if n:
-                self.cb_filter.setCurrentText("Ma\u00dfe")
-        self._run_job(work, "Vergleiche Ma\u00dfzahlen \u2026", done)
+                self.cb_filter.setCurrentIndex(self.cb_filter.findData("dims"))
+        self._run_job(work, tr("Vergleiche Ma\u00dfzahlen \u2026"), done)
 
     def find_regs(self):
         if not self.payload:
-            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
-        self._run_job(lambda log: self._ensure_regs(log, True), "Suche \u00c4nderungen \u2026",
+        self._run_job(lambda log: self._ensure_regs(log, True), tr("Suche \u00c4nderungen \u2026"),
                       lambda n: self._regs_ready())
 
     def _regs_ready(self):
@@ -166,22 +167,22 @@ class RegionsMixin:
         self.chk_regs.setChecked(True)
         self.tabs.setCurrentIndex(0)
         self._fill_table()
-        self._busy(False, f"{len(self.payload['regs'])} \u00c4nderungen gefunden")
+        self._busy(False, tr("{} Änderungen gefunden").format(len(self.payload['regs'])))
 
     def _filter_types(self):
-        t = self.cb_filter.currentText()
-        if t in ("Ma\u00dfe", "offen", "\u00c4nderungen"):
+        t = self.cb_filter.currentData()
+        if t in ("dims", "open", "changes"):
             return {"entfernt", "neu", "geaendert"}  # nur verschobene Teile sind keine echte Aenderung
-        if t.startswith("Alle"):
+        if t == "all":
             return None
-        return {{v: k for k, v in TYPE_SHOW.items()}.get(t, t)}
+        return {t}
 
     def _fill_table(self):
         pl = self.payload
         regs = pl["regs"] if pl else []
         types = self._filter_types()
-        only_dims = self.cb_filter.currentText() == "Ma\u00dfe"
-        only_open = self.cb_filter.currentText() == "offen"
+        only_dims = self.cb_filter.currentData() == "dims"
+        only_open = self.cb_filter.currentData() == "open"
         self.canvas.visible_types = types
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
@@ -205,7 +206,7 @@ class RegionsMixin:
             self.table.setItem(row, 3, QTableWidgetItem(f"{r['x'] * mm:.0f} / {r['y'] * mm:.0f}"))
             txt = f"{r['text_a']} \u2192 {r['text_b']}" if (r["text_a"] or r["text_b"]) else ""
             if r.get("dim"):
-                txt = f"Ma\u00df {r['dim']}"
+                txt = tr("Maß {}").format(r['dim'])
             if r.get("desc"):
                 txt = (txt + " | " if txt else "") + r["desc"]
             if r.get("comment"):
@@ -213,24 +214,22 @@ class RegionsMixin:
             self.table.setItem(row, 4, QTableWidgetItem(txt))
         self.table.blockSignals(False)
         if not pl:
-            self.lbl_summary.setText("Erst zwei Zeichnungen vergleichen.")
+            self.lbl_summary.setText(tr("Erst zwei Zeichnungen vergleichen."))
         elif not pl["regs_done"]:
-            self.lbl_summary.setText("Noch keine Liste. \u201e\u00c4nderungen suchen\u201c nummeriert alle Unterschiede "
+            self.lbl_summary.setText(tr("Noch keine Liste. \u201e\u00c4nderungen suchen\u201c nummeriert alle Unterschiede "
                                      "und markiert sie im Bild. Das geschieht nur auf Wunsch, damit der Vergleich "
-                                     "schneller l\u00e4dt.")
+                                     "schneller l\u00e4dt."))
         else:
             cnt = {k: sum(1 for r in regs if r["typ"] == k) for k in rep.TYPE_LABEL}
             st = [rep.reg_status(r) for r in regs]
-            done = f"{st.count('ok')} gepr\u00fcft, {st.count('abgelehnt')} abgelehnt, {st.count('offen')} offen"
+            done = tr("{} geprüft, {} abgelehnt, {} offen").format(st.count('ok'), st.count('abgelehnt'), st.count('offen'))
             nd = sum(1 for r in regs if r.get("dim"))
-            s = (f"{len(regs)} Bereiche: {cnt['entfernt']} entfernt, {cnt['neu']} neu, {cnt['geaendert']} "
-                 f"ge\u00e4ndert, {cnt['verschoben']} verschoben.\nPr\u00fcfung: {done}  (N = n\u00e4chste, "
-                 f"G = gepr\u00fcft, X = abgelehnt)")
+            s = (tr("{} Bereiche: {} entfernt, {} neu, {} geändert, {} verschoben.\nPrüfung: {}  (N = nächste, G = geprüft, X = abgelehnt)").format(len(regs), cnt['entfernt'], cnt['neu'], cnt['geaendert'], cnt['verschoben'], done))
             if nd:
-                s += f"\nDavon {nd} mit ge\u00e4ndertem Ma\u00df (Filter \u201eMa\u00dfe\u201c)."
+                s += tr("\nDavon {} mit geändertem Maß (Filter „Maße“).").format(nd)
             if self.index_info:
                 i = self.index_info
-                s += f"\nIndex: A = {i['index_a']}, B = {i['index_b']}.  " + " ".join(i["notes"])
+                s += tr("\nIndex: A = {}, B = {}.  ").format(i['index_a'], i['index_b']) + " ".join(i["notes"])
             self.lbl_summary.setText(s)
         self.canvas.update()
 
@@ -255,7 +254,7 @@ class RegionsMixin:
             self.canvas.update()
             regs = self.payload["regs"]
             txt = self.lbl_summary.text().split("Gepr\u00fcft:")[0]
-            self.lbl_summary.setText(txt + f"Gepr\u00fcft: {sum(1 for x in regs if x['checked'])}")
+            self.lbl_summary.setText(txt + tr("Geprüft: {}").format(sum(1 for x in regs if x['checked'])))
 
     def _select_region_nr(self, nr):
         self.tabs.setCurrentIndex(0)
@@ -269,16 +268,16 @@ class RegionsMixin:
     # --- OCR
     def _need_ocr(self):
         if not self.payload:
-            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return False
-        return self.ensure_ocr("Text zu lesen")
+        return self.ensure_ocr(tr("Text zu lesen"))
 
     def ensure_ocr(self, purpose):
         """Texterkennung verfuegbar? Sonst Installation anbieten (nur im Python-Betrieb; die App enthaelt sie)."""
         if rep.ocr_available():
             return True
         if FROZEN:
-            QMessageBox.information(self, APP, "Diese Programmversion enth\u00e4lt keine Texterkennung (OCR).")
+            QMessageBox.information(self, APP, tr("Diese Programmversion enth\u00e4lt keine Texterkennung (OCR)."))
             return False
         if QMessageBox.question(self, APP, f"Um {purpose}, braucht das Programm die Texterkennung (OCR). Sie ist "
                                 "nicht installiert.\n\nJetzt installieren? (Internet n\u00f6tig, ca. 60 MB, "
@@ -287,13 +286,13 @@ class RegionsMixin:
 
         def work(ctx):
             import importlib
-            ctx.progress(0.1, "Installiere Texterkennung")
+            ctx.progress(0.1, tr("Installiere Texterkennung"))
             in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-            cmd = [sys.executable, "-m", "pip", "install"] + ([] if in_venv else ["--user"]) + \
-                  ["rapidocr-onnxruntime==1.2.3"]
+            cmd = [sys.executable, tr("-m"), "pip", "install"] + ([] if in_venv else [tr("--user")]) + \
+                  [tr("rapidocr-onnxruntime==1.2.3")]
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0:
-                raise dc.DiffError("Installation fehlgeschlagen:\n" + (r.stderr or r.stdout)[-800:])
+                raise dc.DiffError(tr("Installation fehlgeschlagen:\n") + (r.stderr or r.stdout)[-800:])
             importlib.invalidate_caches()
             import site
             if not in_venv and site.getusersitepackages() not in sys.path:
@@ -301,10 +300,10 @@ class RegionsMixin:
             return rep.ocr_available()
 
         def done(ok):
-            self.banner.show_msg("Texterkennung installiert. Bitte die Funktion noch einmal w\u00e4hlen." if ok else
-                                 "Texterkennung installiert, aber noch nicht geladen. Bitte das Programm neu starten.",
+            self.banner.show_msg(tr("Texterkennung installiert. Bitte die Funktion noch einmal w\u00e4hlen.") if ok else
+                                 tr("Texterkennung installiert, aber noch nicht geladen. Bitte das Programm neu starten."),
                                  "info", timeout=20)
-        self._run_job(work, "Installiere Texterkennung \u2026", done)
+        self._run_job(work, tr("Installiere Texterkennung \u2026"), done)
         return False
 
     def run_ocr(self):
@@ -315,7 +314,7 @@ class RegionsMixin:
         def work(log):
             self._ensure_regs(log)
             rep.text_diff(pl["res"], pl["regs"], log)
-        self._run_job(work, "Lese Text \u2026", lambda _: (self._fill_table(), self._busy(False, "Text gelesen")))
+        self._run_job(work, tr("Lese Text \u2026"), lambda _: (self._fill_table(), self._busy(False, tr("Text gelesen"))))
 
     def run_index(self):
         if not self._need_ocr():
@@ -329,5 +328,5 @@ class RegionsMixin:
         def ok(info):
             self.index_info = info
             self._fill_table()
-            self._busy(False, "Index gepr\u00fcft")
-        self._run_job(work, "Pr\u00fcfe Index \u2026", ok)
+            self._busy(False, tr("Index gepr\u00fcft"))
+        self._run_job(work, tr("Pr\u00fcfe Index \u2026"), ok)

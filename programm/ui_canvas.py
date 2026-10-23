@@ -1,4 +1,5 @@
 """Zeichenflaeche: Anzeige, Zoom, Messen, Anmerkungen."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 
@@ -226,7 +227,7 @@ class Canvas(QWidget):
         self._ann_prev = None
         self._moved = 0
         self.rot = 0                         # Ansichtsdrehung in 90-Grad-Schritten (nur Anzeige)
-        self.message = "Zeichnung A (alt) und B (neu) links \u00f6ffnen\noder hierher ziehen"
+        self.message = tr("Zeichnung A (alt) und B (neu) links \u00f6ffnen\noder hierher ziehen")
         self.show_overview = True            # Uebersichtsfenster unten rechts (nur wenn hineingezoomt)
         self.reg_clouds = False              # nummerierte Aenderungen als Revisionswolke statt Rahmen
         self.pc = (None, None)
@@ -236,7 +237,7 @@ class Canvas(QWidget):
         self.align_pts = {"A": [], "B": []}       # manuelles Ausrichten: gesetzte Punkte je Seite
         self.search_hits, self.search_cur, self.search_side = [], -1, "A"   # Textsuche
         self.preview = None                  # (QImage, (h, w)) waehrend der ersten Berechnung
-        self.labels = ("A (alt)", "B (neu)")
+        self.labels = (tr("A (alt)"), tr("B (neu)"))
         self._side = "A"                     # Nebeneinander: Haelfte unter der Maus
         self._pinch = None
         self.setAcceptDrops(True)
@@ -572,7 +573,7 @@ class Canvas(QWidget):
         f = QFont(UI_FONT, 13)
         f.setBold(True)
         p.setFont(f)
-        p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Vergleich l\u00e4uft \u2026")
+        p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, tr("Vergleich l\u00e4uft \u2026"))
 
     def overview_rect(self):
         """Rechteck des Uebersichtsfensters in Widget-Koordinaten oder None (nicht sichtbar)."""
@@ -730,15 +731,15 @@ class Canvas(QWidget):
     def _paint_legend(self, p):
         if not self.show_legend:
             return
-        items = {"D": (("#e5173f", "nur in A (alt)"), ("#1f3fff", "nur in B (neu)"), ("#969696", "gleich"),
-                       ("#00aa00", "verschoben")),
-                 "O": (("#e5173f", "nur in A (alt)"), ("#1f3fff", "nur in B (neu)"), ("#969696", "gleich")),
+        items = {"D": (("#e5173f", tr("nur in A (alt)")), ("#1f3fff", tr("nur in B (neu)")), ("#969696", tr("gleich")),
+                       ("#00aa00", tr("verschoben"))),
+                 "O": (("#e5173f", tr("nur in A (alt)")), ("#1f3fff", tr("nur in B (neu)")), ("#969696", tr("gleich"))),
                  "S": (), "A": (), "B": (), "K": (),
-                 "N": (("#1f3fff", "neu / ge\u00e4ndert"), ("#969696", "unver\u00e4ndert")),
-                 "R": (("#e5173f", "entfernt / ge\u00e4ndert"), ("#969696", "unver\u00e4ndert"))}[self.mode]
+                 "N": (("#1f3fff", tr("neu / ge\u00e4ndert")), ("#969696", tr("unver\u00e4ndert"))),
+                 "R": (("#e5173f", tr("entfernt / ge\u00e4ndert")), ("#969696", tr("unver\u00e4ndert")))}[self.mode]
         if self.mode in ("A", "B", "K"):            # gleiche Legende wie bei der \u00dcberlagerung: welche Version ist zu sehen
             which = ("B" if self.blink_b else "A") if self.mode == "K" else self.mode
-            items = (("#e5173f", "Zeichnung A (alt)"),) if which == "A" else (("#1f3fff", "Zeichnung B (neu)"),)
+            items = (("#e5173f", tr("Zeichnung A (alt)")),) if which == "A" else (("#1f3fff", tr("Zeichnung B (neu)")),)
         if not items:
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -1218,7 +1219,7 @@ class Canvas(QWidget):
             (ax, ay), (bx, by) = self._rubber
             rw, rh = abs(bx - ax), abs(by - ay)
             self.window().statusBar().showMessage(
-                f"Bereich: {rw:.0f} × {rh:.0f} px   =   {rw * self.mm_px:.1f} × {rh * self.mm_px:.1f} mm")
+                tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
         elif kind == "ann":
             self._ann_prev = (self._ann_prev[0], (ix, iy))
         elif kind == "move":

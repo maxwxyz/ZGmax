@@ -1,4 +1,5 @@
 """Gemeinsame Importe und Konstanten der Oberflaeche."""
+from i18n import tr
 import copy
 import datetime as dt
 import json
@@ -26,32 +27,32 @@ import diffpipe as dp
 import diffreport as rep
 import diffvector as dv
 
-APP = "ZGmax"
-APP_SUBTITLE = "Zeichnungen ansehen, vergleichen und pr\u00fcfen"
+APP = tr("ZGmax")
+APP_SUBTITLE = tr("Zeichnungen ansehen, vergleichen und pr\u00fcfen")
 ACCENT = "#2563eb"
-FILE_FILTER = ("Zeichnungen (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp *.jp2 *.gif *.pdf *.svg *.xps *.dxf);;"
-               "Alle Dateien (*)")
+FILE_FILTER = (tr("Zeichnungen (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp *.jp2 *.gif *.pdf *.svg *.xps *.dxf);;"
+               "Alle Dateien (*)"))
 FROZEN = bool(getattr(sys, "frozen", False))        # als App (PyInstaller) gestartet
 # Programmdateien (Anleitung, Symbole): im App-Paket im Ressourcenordner, sonst neben den .py-Dateien
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(HERE)
 TOOL_HINTS = {
-    "hand": "Auswahl: Markierungen anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben.",
-    "measure": "Punkte anklicken (L\u00e4nge 2, Winkel/Radius 3). Linienzug/Fl\u00e4che: Doppelklick, Enter oder "
-               "Rechtsklick beendet. Esc = abbrechen.",
-    "zoom": "Bereich aufziehen, dann wird hineingezoomt. Einfacher Klick = ganze Zeichnung.",
-    "align": "Manuell ausrichten: Punkt links in Alt, dann denselben rechts in Neu anklicken (3 Paare; nach 2 Paaren "
-             "Enter = ohne Verzerrung). Esc = abbrechen.",
-    "region": "Rahmen um den ge\u00e4nderten Bereich aufziehen; er kommt in die \u00c4nderungsliste.",
-    "text": "Ins Bild klicken, dann den Text eingeben.",
-    "number": "Ins Bild klicken. Jeder Klick setzt die n\u00e4chste Nummer. Esc = fertig.",
-    "rect": "Rahmen im Bild aufziehen.",
-    "cloud": "Revisionswolke im Bild aufziehen.",
-    "highlight": "Fl\u00e4che aufziehen, die farbig hinterlegt wird (Textmarker).",
-    "arrow": "Vom Pfeilanfang zur Spitze ziehen.",
-    "approval": "Ins Bild klicken, Status und Name w\u00e4hlen.",
-    "zone": "Rahmen aufziehen. Dieser Bereich wird beim n\u00e4chsten Vergleich nicht verglichen.",
-    "crop": "Rahmen aufziehen. Nur dieser Bereich wird verglichen (schneller).",
+    "hand": tr("Auswahl: Markierungen anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben."),
+    "measure": tr("Punkte anklicken (L\u00e4nge 2, Winkel/Radius 3). Linienzug/Fl\u00e4che: Doppelklick, Enter oder "
+               "Rechtsklick beendet. Esc = abbrechen."),
+    "zoom": tr("Bereich aufziehen, dann wird hineingezoomt. Einfacher Klick = ganze Zeichnung."),
+    "align": tr("Manuell ausrichten: Punkt links in Alt, dann denselben rechts in Neu anklicken (3 Paare; nach 2 Paaren "
+             "Enter = ohne Verzerrung). Esc = abbrechen."),
+    "region": tr("Rahmen um den ge\u00e4nderten Bereich aufziehen; er kommt in die \u00c4nderungsliste."),
+    "text": tr("Ins Bild klicken, dann den Text eingeben."),
+    "number": tr("Ins Bild klicken. Jeder Klick setzt die n\u00e4chste Nummer. Esc = fertig."),
+    "rect": tr("Rahmen im Bild aufziehen."),
+    "cloud": tr("Revisionswolke im Bild aufziehen."),
+    "highlight": tr("Fl\u00e4che aufziehen, die farbig hinterlegt wird (Textmarker)."),
+    "arrow": tr("Vom Pfeilanfang zur Spitze ziehen."),
+    "approval": tr("Ins Bild klicken, Status und Name w\u00e4hlen."),
+    "zone": tr("Rahmen aufziehen. Dieser Bereich wird beim n\u00e4chsten Vergleich nicht verglichen."),
+    "crop": tr("Rahmen aufziehen. Nur dieser Bereich wird verglichen (schneller)."),
 }
 
 
@@ -91,7 +92,7 @@ def ui_scale_setting(settings):
     return min(UI_SCALES, key=lambda s: abs(s - v))
 
 
-TYPE_SHOW = {"entfernt": "entfernt", "neu": "neu", "geaendert": "ge\u00e4ndert", "verschoben": "verschoben"}
+TYPE_SHOW = {"entfernt": tr("entfernt"), "neu": tr("neu"), "geaendert": tr("ge\u00e4ndert"), "verschoben": tr("verschoben")}
 
 
 def app_data_dir():
@@ -120,7 +121,7 @@ def recent_add(settings, a=None, b=None, project=None):
 
 def recent_label(r):
     if r.get("project"):
-        return "Projekt: " + os.path.basename(r["project"])
+        return tr("Projekt: ") + os.path.basename(r["project"])
     if r.get("a") and r.get("b"):
         return f"{os.path.basename(r['a'])}  →  {os.path.basename(r['b'])}"
     return os.path.basename(r.get("a") or r.get("b") or "?")

@@ -1,4 +1,5 @@
 """Kleine Bausteine: Hintergrundjob, Regler, Ueberschriften, Dialoge."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 
@@ -84,9 +85,9 @@ class Job(QThread):
         except (dc.DiffError, SystemExit) as e:
             self.failed.emit(str(e))
         except MemoryError:
-            self.details = "MemoryError"
-            self.failed.emit("Zu wenig Arbeitsspeicher f\u00fcr diese Zeichnung. Bitte mit geringerer Aufl\u00f6sung "
-                             "(dpi) oder einem Ausschnitt vergleichen.")
+            self.details = tr("MemoryError")
+            self.failed.emit(tr("Zu wenig Arbeitsspeicher f\u00fcr diese Zeichnung. Bitte mit geringerer Aufl\u00f6sung "
+                             "(dpi) oder einem Ausschnitt vergleichen."))
         except BaseException as e:                  # noqa: BLE001  der Job muss sich immer zurueckmelden
             try:
                 import traceback
@@ -108,7 +109,7 @@ class Banner(QFrame):
         self.lbl = QLabel()
         self.lbl.setWordWrap(True)
         self.lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.btn_details = QPushButton("Details")
+        self.btn_details = QPushButton(tr("Details"))
         self.btn_details.clicked.connect(self._show_details)
         self.btn_action = QPushButton()
         self.btn_action.setObjectName("primary")
@@ -116,7 +117,7 @@ class Banner(QFrame):
         self._action_fn = None
         self.btn_close = QToolButton()
         self.btn_close.setText("\u2715")
-        self.btn_close.setToolTip("Schlie\u00dfen")
+        self.btn_close.setToolTip(tr("Schlie\u00dfen"))
         self.btn_close.clicked.connect(self.hide)
         lay.addWidget(self.lbl, 1)
         lay.addWidget(self.btn_action)
@@ -153,16 +154,16 @@ class Banner(QFrame):
 
     def _show_details(self):
         dlg = QDialog(self.window())
-        dlg.setWindowTitle("Details")
+        dlg.setWindowTitle(tr("Details"))
         dlg.resize(720, 420)
         lay = QVBoxLayout(dlg)
         ed = QPlainTextEdit(self.details)
         ed.setReadOnly(True)
         lay.addWidget(ed)
         row = QHBoxLayout()
-        cp = QPushButton("In Zwischenablage kopieren")
+        cp = QPushButton(tr("In Zwischenablage kopieren"))
         cp.clicked.connect(lambda: QGuiApplication.clipboard().setText(self.details))
-        ok = QPushButton("Schlie\u00dfen")
+        ok = QPushButton(tr("Schlie\u00dfen"))
         ok.clicked.connect(dlg.accept)
         row.addWidget(cp)
         row.addStretch()
@@ -216,7 +217,7 @@ class SliderRow(QWidget):
         lay.setSpacing(2)
         lay.addLayout(top)
         lay.addWidget(self.slider)
-        self.setToolTip(tip + ("\n\n" if tip else "") + "Im Zahlenfeld kann auch ein gr\u00f6\u00dferer Wert als am Regler eingetippt werden.")
+        self.setToolTip(tip + ("\n\n" if tip else "") + tr("Im Zahlenfeld kann auch ein gr\u00f6\u00dferer Wert als am Regler eingetippt werden."))
         self.slider.valueChanged.connect(self._from_slider)
         self.spin.valueChanged.connect(self._from_spin)
 
@@ -308,20 +309,20 @@ class Collapsible(Section):
 class ApprovalDialog(QDialog):
     def __init__(self, parent, status, name, date):
         super().__init__(parent)
-        self.setWindowTitle("Stempel")
+        self.setWindowTitle(tr("Stempel"))
         lay = QFormLayout(self)
         self.cb = QComboBox()
         self.cb.addItems(rep.APPROVAL_TITLES)
         if status in rep.APPROVAL_TITLES:
             self.cb.setCurrentText(status)
         self.ed_name = QLineEdit(name)
-        self.ed_name.setPlaceholderText("Name oder K\u00fcrzel")
+        self.ed_name.setPlaceholderText(tr("Name oder K\u00fcrzel"))
         self.ed_date = QLineEdit(date)
-        lay.addRow("Status", self.cb)
-        lay.addRow("Name", self.ed_name)
-        lay.addRow("Datum", self.ed_date)
+        lay.addRow(tr("Status"), self.cb)
+        lay.addRow(tr("Name"), self.ed_name)
+        lay.addRow(tr("Datum"), self.ed_date)
         row = QHBoxLayout()
-        ok, cancel = QPushButton("OK"), QPushButton("Abbrechen")
+        ok, cancel = QPushButton("OK"), QPushButton(tr("Abbrechen"))
         ok.setObjectName("primary")
         ok.clicked.connect(self.accept)
         cancel.clicked.connect(self.reject)

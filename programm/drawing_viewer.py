@@ -5,6 +5,8 @@ Start:  App "ZGmax" oder Doppelklick auf "Start ZGmax" im Hauptordner,
         oder  python drawing_viewer.py [ALT [NEU]]   (eine Datei = nur ansehen)
 Anleitung: Menue Hilfe > Anleitung (F1).
 """
+import i18n
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_canvas import Canvas, build_color_pyramids, build_pyramids
@@ -139,12 +141,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
     # --- Hilfe
     def _open_doc(self, p):
         if not os.path.isfile(p):
-            QMessageBox.information(self, APP, f"{os.path.basename(p)} wurde nicht gefunden.")
+            QMessageBox.information(self, APP, tr("{} wurde nicht gefunden.").format(os.path.basename(p)))
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(p))
 
     def open_help(self):
-        self._open_doc(os.path.join(HERE, "Anleitung_Viewer.html"))
+        self._open_doc(os.path.join(HERE, i18n.doc("Anleitung_Viewer.html")))
 
     def set_theme(self, mode):
         self.theme_mode = mode
@@ -165,20 +167,20 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
     def make_shortcut(self):
         bat = sys.executable if FROZEN else os.path.join(ROOT, "Start ZGmax.bat")
         if not os.path.isfile(bat):
-            QMessageBox.information(self, APP, "Start ZGmax.bat wurde nicht gefunden.")
+            QMessageBox.information(self, APP, tr("Start ZGmax.bat wurde nicht gefunden."))
             return
         ico = os.path.join(HERE, "icon.ico")
-        icon_loc = f"{sys.executable},0" if FROZEN else (f"{ico},0" if os.path.isfile(ico) else "shell32.dll,22")
+        icon_loc = f"{sys.executable},0" if FROZEN else (f"{ico},0" if os.path.isfile(ico) else tr("shell32.dll,22"))
         script = ("$d=[Environment]::GetFolderPath('Desktop');"
                   "$s=(New-Object -COM WScript.Shell).CreateShortcut(\"$d\\ZGmax.lnk\");"
                   f"$s.TargetPath='{bat}';$s.WorkingDirectory='{ROOT}';$s.WindowStyle=7;"
                   f"$s.IconLocation='{icon_loc}';$s.Save()")
         try:
             subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True, capture_output=True)
-            self._log("Desktop-Verkn\u00fcpfung \u201eZGmax\u201c wurde erstellt.")
-            QMessageBox.information(self, APP, "Die Verkn\u00fcpfung \u201eZGmax\u201c liegt jetzt auf dem Desktop.")
+            self._log(tr("Desktop-Verkn\u00fcpfung \u201eZGmax\u201c wurde erstellt."))
+            QMessageBox.information(self, APP, tr("Die Verkn\u00fcpfung \u201eZGmax\u201c liegt jetzt auf dem Desktop."))
         except Exception as e:                      # noqa: BLE001
-            QMessageBox.warning(self, APP, f"Verkn\u00fcpfung konnte nicht erstellt werden:\n{e}")
+            QMessageBox.warning(self, APP, tr("Verknüpfung konnte nicht erstellt werden:\n{}").format(e))
 
     def open_batch(self):
         BatchDialog(self).exec()
@@ -209,13 +211,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         def txt(w):
             i = self.vinfo[w]
             if i is None:
-                return f"{w}: keine PDF-Datei"
+                return tr("{}: keine PDF-Datei").format(w)
             if not i["vector"]:
-                return f"{w}: Pixelbild im PDF"
-            return f"{w}: Vektordaten ({i['paths']} Linien/Fl\u00e4chen, {i['texts']} Texte)"
+                return tr("{}: Pixelbild im PDF").format(w)
+            return tr("{}: Vektordaten ({} Linien/Flächen, {} Texte)").format(w, i['paths'], i['texts'])
         both = all(self.vinfo[w] and self.vinfo[w]["vector"] for w in "AB")
         self.lbl_vec.setText(txt("A") + "\n" + txt("B") + ("" if both else
-                             "\nVektorvergleich und Filter brauchen echte Vektordaten in beiden PDF."))
+                             tr("\nVektorvergleich und Filter brauchen echte Vektordaten in beiden PDF.")))
         self.chk_vec.setEnabled(both)
         self.btn_vfilter.setEnabled(both)
         if not both:
@@ -223,10 +225,10 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         lay, col = self.vfilter
         parts = []
         if lay is not None:
-            parts.append(f"{len(lay)} Ebenen")
+            parts.append(tr("{} Ebenen").format(len(lay)))
         if col is not None:
-            parts.append(f"{len(col)} Farben")
-        self.lbl_vfilter.setText("Filter: " + (", ".join(parts) if parts else "alles"))
+            parts.append(tr("{} Farben").format(len(col)))
+        self.lbl_vfilter.setText(tr("Filter: ") + (", ".join(parts) if parts else "alles"))
         self._update_vec_visibility()
 
     def _suggest_vector(self):
@@ -238,9 +240,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             def on():
                 self.chk_vec.setChecked(True)
                 self.start_compute()
-            self.banner.show_msg("Beide PDF enthalten echte Vektordaten (aus dem CAD-System). Der Vektorvergleich "
-                                 "vergleicht Linie gegen Linie \u2013 exakt und ohne Pixelrauschen.", "info",
-                                 timeout=40, action=("Vektorvergleich einschalten", on))
+            self.banner.show_msg(tr("Beide PDF enthalten echte Vektordaten (aus dem CAD-System). Der Vektorvergleich "
+                                 "vergleicht Linie gegen Linie \u2013 exakt und ohne Pixelrauschen."), "info",
+                                 timeout=40, action=(tr("Vektorvergleich einschalten"), on))
 
     def open_vfilter(self):
         layers, colors = {}, {}
@@ -261,11 +263,11 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
 
     def run_pdftext(self):
         if not self.payload:
-            QMessageBox.information(self, APP, "Bitte zuerst vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
         if not (self.path_a.lower().endswith(".pdf") and self.path_b.lower().endswith(".pdf") and dv.available()):
-            QMessageBox.information(self, APP, "Der PDF-Text steht nur bei PDF-Dateien mit eingebettetem Text zur "
-                                    "Verf\u00fcgung. Bei Bildern hilft \u201eText lesen (OCR)\u201c.")
+            QMessageBox.information(self, APP, tr("Der PDF-Text steht nur bei PDF-Dateien mit eingebettetem Text zur "
+                                    "Verf\u00fcgung. Bei Bildern hilft \u201eText lesen (OCR)\u201c."))
             return
         pl, pa, pb = self.payload, self.path_a, self.path_b
         na, nb, dpi = self.sp_pa.value(), self.sp_pb.value(), self.dpi_value()
@@ -274,14 +276,14 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             self._ensure_regs(log)
             wa, wb = dv.pdf_words(pa, na), dv.pdf_words(pb, nb)
             if not (wa or wb):
-                log("Kein eingebetteter Text gefunden (Pixelbild?). Bitte OCR verwenden.")
+                log(tr("Kein eingebetteter Text gefunden (Pixelbild?). Bitte OCR verwenden."))
             dv.fill_text(pl["regs"], wa, wb, dpi, log)
-        self._run_job(work, "Lese PDF-Text \u2026", lambda _: (self._fill_table(), self._busy(False, "PDF-Text gelesen")))
+        self._run_job(work, tr("Lese PDF-Text \u2026"), lambda _: (self._fill_table(), self._busy(False, tr("PDF-Text gelesen"))))
 
     # --- Datei-Handling
     def open_file(self, which):
         d = self.settings.value("dir", "")
-        path, _ = QFileDialog.getOpenFileName(self, f"Zeichnung {which} \u00f6ffnen", d, FILE_FILTER)
+        path, _ = QFileDialog.getOpenFileName(self, tr("Zeichnung {} öffnen").format(which), d, FILE_FILTER)
         if path:
             self._set_file(which, path)
 
@@ -289,12 +291,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         self.settings.setValue("dir", os.path.dirname(path))
         lbl = self.lbl_a if which == "A" else self.lbl_b
         if not os.path.isfile(path):
-            self.banner.show_msg(f"Datei nicht gefunden: {path}", "error")
+            self.banner.show_msg(tr("Datei nicht gefunden: {}").format(path), "error")
             return
         ext = os.path.splitext(path)[1].lower()
         if ext == ".dwg":
-            self.banner.show_msg("DWG-Dateien kann das Programm nicht direkt lesen. Bitte im CAD-Programm als DXF "
-                                 "oder PDF speichern.", "warn")
+            self.banner.show_msg(tr("DWG-Dateien kann das Programm nicht direkt lesen. Bitte im CAD-Programm als DXF "
+                                 "oder PDF speichern."), "warn")
             return
         if which == "A":
             self.path_a = path
@@ -318,16 +320,16 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
 
     def _detect_dpi(self, path):
         if dp.is_vector(path):
-            self.lbl_dpi.setText("PDF/SVG: Die Aufl\u00f6sung bestimmt die Rendergenauigkeit (Standard 200).")
+            self.lbl_dpi.setText(tr("PDF/SVG: Die Aufl\u00f6sung bestimmt die Rendergenauigkeit (Standard 200)."))
             return
         d = dp.file_dpi(path)
         self.sp_dpi.blockSignals(True)
         if d:
             self.sp_dpi.setValue(int(d))
-            self.lbl_dpi.setText(f"Aus der Datei gelesen: {d} dpi.")
+            self.lbl_dpi.setText(tr("Aus der Datei gelesen: {} dpi.").format(d))
         else:
-            self.lbl_dpi.setText("Die Datei enth\u00e4lt keine Aufl\u00f6sung. Es gilt der eingestellte Wert; "
-                                 "bei Bedarf mit Kalibrieren pr\u00fcfen.")
+            self.lbl_dpi.setText(tr("Die Datei enth\u00e4lt keine Aufl\u00f6sung. Es gilt der eingestellte Wert; "
+                                 "bei Bedarf mit Kalibrieren pr\u00fcfen."))
             self.sec_file.set_open(True)
         self.sp_dpi.blockSignals(False)
         self._update_units()
@@ -355,7 +357,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         self.list_pages.blockSignals(True)
         self.list_pages.clear()
         for i in range(min(n, 200)):
-            self.list_pages.addItem(QListWidgetItem(f"Seite {i + 1}"))
+            self.list_pages.addItem(QListWidgetItem(tr("Seite {}").format(i + 1)))
         if self.list_pages.count():
             self.list_pages.setCurrentRow(0)
         self.list_pages.blockSignals(False)
@@ -434,8 +436,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         if hasattr(self, "lbl_meas_scale"):
             n = self.scale_n()
             txt = f"1 : {n:g}" if n >= 1 else f"{1 / n:g} : 1"
-            self.lbl_meas_scale.setText(f"Ma\u00dfstab {txt}")
-            self.lbl_meas_scale.setToolTip(f"Aufl\u00f6sung {self.dpi_value()} dpi. Klick = Ma\u00dfstab eingeben")
+            self.lbl_meas_scale.setText(tr("Maßstab {}").format(txt))
+            self.lbl_meas_scale.setToolTip(tr("Auflösung {} dpi. Klick = Maßstab eingeben").format(self.dpi_value()))
         if hasattr(self, "list_anns"):
             for i, a in enumerate(self.anns):
                 it = self.list_anns.item(i)
@@ -458,19 +460,18 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             self._calib_pending = True
             self.cb_mkind.setCurrentIndex(0)                 # Laenge
             self._set_tool("measure")
-            self.banner.show_msg("Kalibrieren: Eine Strecke mit bekannter L\u00e4nge messen (zwei Punkte anklicken, "
-                                 "z. B. an einem Ma\u00df der Zeichnung). Danach die wahre L\u00e4nge eingeben.",
+            self.banner.show_msg(tr("Kalibrieren: Eine Strecke mit bekannter L\u00e4nge messen (zwei Punkte anklicken, "
+                                 "z. B. an einem Ma\u00df der Zeichnung). Danach die wahre L\u00e4nge eingeben."),
                                  "info", timeout=25)
             return
         self._calib_pending = False
         self.banner.hide()
         paper = d * 25.4 / max(1, self.dpi_value())
         val, ok = QInputDialog.getDouble(
-            self, "Kalibrieren", f"Wahre L\u00e4nge der gemessenen Strecke (mm):\n"
-            f"(gemessen auf dem Blatt: {paper:.2f} mm)", paper * self.scale_n(), 0.001, 1e7, 2)
+            self, tr("Kalibrieren"), tr("Wahre Länge der gemessenen Strecke (mm):\n(gemessen auf dem Blatt: {:.2f} mm)").format(paper), paper * self.scale_n(), 0.001, 1e7, 2)
         if ok and val > 0:
             self.sp_scale.setValue(val / paper)
-            self._log(f"Ma\u00dfstab kalibriert: 1 : {val / paper:.3f}")
+            self._log(tr("Maßstab kalibriert: 1 : {:.3f}").format(val / paper))
 
     def params(self):
         return dp.Params(
@@ -486,8 +487,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             return
         if self.chk_live.isChecked():
             self.debounce.start(700)
-        self.btn_run.setText("Vergleichen \u25cf")
-        self.act_compare.setText("Vergleichen \u25cf")
+        self._params_dirty = True
+        self.btn_run.setText(tr("Vergleichen \u25cf"))
+        self.act_compare.setText(tr("Vergleichen \u25cf"))
 
     def _reset_params(self):
         for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
@@ -529,7 +531,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
     def _refresh_zones(self):
         self.list_zones.clear()
         for z in self.zones:
-            self.list_zones.addItem("x=%d y=%d  %d\u00d7%d px" % z)
+            self.list_zones.addItem(tr("x=%d y=%d  %d\u00d7%d px") % z)
         self.canvas.zones = self._local_zones()
         self.canvas.update()
 
@@ -550,13 +552,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
 
     def _crop_drawn(self, x, y, w, h):
         if w < 200 or h < 200:
-            self._log("Ausschnitt zu klein (mindestens 200 x 200 Pixel).")
+            self._log(tr("Ausschnitt zu klein (mindestens 200 x 200 Pixel)."))
             return
         ox, oy = self.origin
         self.crop = (ox + x, oy + y, w, h)
         self.manual_tf = None                     # Punkte bezogen sich auf den alten Ausschnitt
         self.btn_crop_off.setEnabled(True)
-        self.lbl_crop.setText(f"Aktuell: Ausschnitt {w} \u00d7 {h} px")
+        self.lbl_crop.setText(tr("Aktuell: Ausschnitt {} × {} px").format(w, h))
         self._set_tool("hand")
         self.start_compute()
 
@@ -567,7 +569,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         self.crop_b = None
         self.manual_tf = None                     # Punkte bezogen sich auf den Ausschnitt
         self.btn_crop_off.setEnabled(False)
-        self.lbl_crop.setText("Aktuell: ganzes Blatt")
+        self.lbl_crop.setText(tr("Aktuell: ganzes Blatt"))
         if not silent:
             self.start_compute()
 
@@ -575,7 +577,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
     def _run_job(self, fn, text, done, on_abort=None):
         """Startet eine Hintergrundberechnung (nur eine gleichzeitig) mit Fortschritt und Abbrechen."""
         if self.running:
-            self._log("Bitte warten, es l\u00e4uft noch eine Berechnung.")
+            self._log(tr("Bitte warten, es l\u00e4uft noch eine Berechnung."))
             return False
         self.running = True
         self._busy(True, text)
@@ -588,7 +590,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
 
         def ok(r):
             self.running = False
-            self._busy(False, "Fertig")
+            self._busy(False, tr("Fertig"))
             done(r)
 
         def bad(m):
@@ -598,9 +600,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         def aborted():
             self.running = False
             self.pending = False
-            self._busy(False, "Abgebrochen")
+            self._busy(False, tr("Abgebrochen"))
             self.canvas.set_preview(None, None)
-            self.banner.show_msg("Berechnung abgebrochen.", "info", timeout=6)
+            self.banner.show_msg(tr("Berechnung abgebrochen."), "info", timeout=6)
             if on_abort:
                 on_abort()
         job.done.connect(ok)
@@ -613,7 +615,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
     def cancel_job(self):
         if self.current_job is not None and self.current_job.isRunning():
             self.current_job.cancel()
-            self.lbl_status.setText("Breche ab \u2026")
+            self.lbl_status.setText(tr("Breche ab \u2026"))
             self.btn_cancel.setEnabled(False)
 
     def _on_progress(self, frac, text):
@@ -643,13 +645,14 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
                     vec=(not single) and self.chk_vec.isChecked() and self.chk_vec.isEnabled(),
                     vtol=self.sp_vtol.value())
         self.pending = False
-        self.btn_run.setText("Vergleichen")
-        self.act_compare.setText("Vergleichen")
+        self._params_dirty = False
+        self.btn_run.setText(tr("Vergleichen"))
+        self.act_compare.setText(tr("Vergleichen"))
         self.banner.hide()
         if self.payload is None:
             self.stack.setCurrentWidget(self.work)
         self._run_job(lambda ctx: self._compute(snap, ctx),
-                      "Lade \u2026" if single else "Vergleiche \u2026", lambda r: self._computed(r, snap))
+                      tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap))
 
     def _gray(self, path, page, dpi, log, vf=(None, None)):
         filt = vf if (path.lower().endswith(".pdf") and vf != (None, None)) else (None, None)
@@ -660,7 +663,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             stamp = None
         key = ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt))
         if self.cache.get("gk_" + path) != key:
-            log(f"Lade {os.path.basename(path)} \u2026")
+            log(tr("Lade {} …").format(os.path.basename(path)))
             if filt != (None, None):
                 self.cache["g_" + path] = dv.render_gray(path, page, dpi, *filt)
                 self.cache["c_" + path] = None
@@ -675,10 +678,10 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         return self.cache.get("c_" + path)
 
     def _compute_vec(self, snap, log):
-        log.progress(0.05, "Lese Vektordaten")
+        log.progress(0.05, tr("Lese Vektordaten"))
         p = snap["params"]
         if snap["crop"]:
-            log("Hinweis: Im Vektorvergleich wird immer das ganze Blatt verglichen (Ausschnitt ignoriert).")
+            log(tr("Hinweis: Im Vektorvergleich wird immer das ganze Blatt verglichen (Ausschnitt ignoriert)."))
         fa = snap["vf"]
         a, b, oa, ob, both = dv.vector_diff(snap["pa"], snap["pb"], snap["page_a"], snap["page_b"], snap["dpi"],
                                             fa, fa, snap["vtol"], log)
@@ -689,7 +692,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         if p.min_area > 0:
             dp.filter_small(oa, ob, p.min_area, both=both)
         res = dp.Result(a, b, oa, ob, both, np.zeros_like(oa), zone)
-        log("Erzeuge Ansichten \u2026")
+        log(tr("Erzeuge Ansichten \u2026"))
         pa, pb, pd, po = build_pyramids(res)
         return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po)
 
@@ -697,7 +700,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         p = snap["params"]
         if snap.get("vec"):
             return self._compute_vec(snap, log)
-        log.progress(0.01, "Lade " + os.path.basename(snap["pa"]))
+        log.progress(0.01, tr("Lade ") + os.path.basename(snap["pa"]))
         ga = self._gray(snap["pa"], snap["page_a"], snap["dpi"], log, snap["vf"])
         log.check()
         if self.payload is None:                     # erste Berechnung: schon mal Zeichnung A zeigen
@@ -707,25 +710,25 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             a = dp.ink_from_gray(ga, p.thr, p.flatten)
             z = np.zeros(a.shape, bool)              # calloc: kostet erst Speicher, wenn beschrieben
             res = dp.Result(a, a, z, z, a > 0, z, None)
-            log.progress(0.6, "Erzeuge Ansicht")
+            log.progress(0.6, tr("Erzeuge Ansicht"))
             pa, pb, pd, po = build_pyramids(res)
             ca = self._color(snap["pa"])
             ca = ca if ca is not None else ga                # Original: Farbe oder Graustufen
             pc = build_color_pyramids(ca, len(pa))
             return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
-        log.progress(0.12, "Lade " + os.path.basename(snap["pb"]))
+        log.progress(0.12, tr("Lade ") + os.path.basename(snap["pb"]))
         gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"])
         log.check()
         key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
                snap["crop"], snap.get("crop_b"), repr(snap.get("manual")))
         if self.cache.get("key") != key:
             self.cache["key"] = None
-            log.progress(0.22, "Richte aus")
+            log.progress(0.22, tr("Richte aus"))
             a_full, b_full = dp.ink_from_gray(ga, p.thr, p.flatten), dp.ink_from_gray(gb, p.thr, p.flatten)
             if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet
                 a, b0 = dc.crop(a_full, snap["crop"]), dc.crop(b_full, snap["crop_b"])
                 box_b = snap["crop_b"]
-                log(f"Zugeordnete Bereiche: A {snap['crop']}  B {snap['crop_b']}")
+                log(tr("Zugeordnete Bereiche: A {}  B {}").format(snap['crop'], snap['crop_b']))
             else:
                 a, b0, box_b = dp.crop_pair(a_full, b_full, snap["crop"], log)
             log.check()
@@ -754,7 +757,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         log.check()
         res = dp.run_compare(self.cache["a"], self.cache["b"], p, log, cancel=log.cancelled,
                              progress=lambda f, t: log.progress(0.3 + 0.62 * f, t))
-        log.progress(0.93, "Erzeuge Ansichten")
+        log.progress(0.93, tr("Erzeuge Ansichten"))
         pa, pb, pd, po = build_pyramids(res)
         ca, cb = self.cache.get("color", (None, None))
         return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, cb),
@@ -796,15 +799,15 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         self._update_title()
         self.canvas.setFocus()
         if snap.get("single"):
-            self._busy(False, "Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen.")
+            self._busy(False, tr("Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen."))
         else:
-            self._busy(False, "Fertig. \u201e\u00c4nderungen suchen\u201c (rechte Leiste) nummeriert die Unterschiede.")
-        if self.pending or (self.chk_live.isChecked() and self.btn_run.text().endswith("\u25cf")):
+            self._busy(False, tr("Fertig. \u201e\u00c4nderungen suchen\u201c (rechte Leiste) nummeriert die Unterschiede."))
+        if self.pending or (self.chk_live.isChecked() and getattr(self, "_params_dirty", False)):
             self.start_compute()
 
     def _failed(self, msg, details=""):
-        self._busy(False, "Fehler")
-        self._log("FEHLER: " + msg)
+        self._busy(False, tr("Fehler"))
+        self._log(tr("FEHLER: ") + msg)
         self.canvas.set_preview(None, None)
         if self.payload is None:
             self.show_start()
@@ -899,7 +902,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         fmt = QImage.Format.Format_BGR888 if out.ndim == 3 else QImage.Format.Format_Grayscale8
         img = QImage(out.data, w, h, out.strides[0], fmt).copy()
         QGuiApplication.clipboard().setImage(img)
-        self._log("Ergebnis in die Zwischenablage kopiert.")
+        self._log(tr("Ergebnis in die Zwischenablage kopiert."))
 
     def _canvas_menu(self, gpos):
         m = QMenu(self)
@@ -911,7 +914,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
             m.addAction(self.tool_actions[key])
         m.addSeparator()
         if self.path_a and self.path_b:
-            m.addAction("A und B tauschen", self.swap_ab)
+            m.addAction(tr("A und B tauschen"), self.swap_ab)
         m.addAction(self.act_copy)
         m.addAction(self.act_export_img)
         m.exec(gpos)
@@ -983,7 +986,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
 
     def _on_cursor(self, ix, iy, s):
         mm = self.canvas.mm_px
-        self.lbl_pos.setText(f"x {ix}  y {iy} px   |   {ix * mm:.1f} / {iy * mm:.1f} mm")
+        self.lbl_pos.setText(tr("x {}  y {} px   |   {:.1f} / {:.1f} mm").format(ix, iy, ix * mm, iy * mm))
 
     def _on_view_changed(self, s):
         self.lbl_zoom.setText(f"{s * 100:.0f} %")
@@ -1034,7 +1037,7 @@ def setup_logging():
         app = QApplication.instance()
         for w in (app.topLevelWidgets() if app else []):
             if isinstance(w, MainWindow):
-                w.banner.show_msg(f"Unerwarteter Fehler: {et.__name__}: {ev}", "error", text)
+                w.banner.show_msg(tr("Unerwarteter Fehler: {}: {}").format(et.__name__, ev), "error", text)
                 break
     sys.excepthook = hook
 
@@ -1048,14 +1051,14 @@ def selftest():
         nonlocal ok
         try:
             r = fn()
-            out.append(f"OK      {name}" + (f": {r}" if r else ""))
+            out.append(tr("OK      {}").format(name) + (f": {r}" if r else ""))
         except Exception as e:                       # noqa: BLE001
             ok = False
-            out.append(f"FEHLER  {name}: {type(e).__name__}: {e}")
+            out.append(tr("FEHLER  {}: {}: {}").format(name, type(e).__name__, e))
     tmp = tempfile.mkdtemp()
     img = np.full((600, 800), 255, np.uint8)
     cv2.rectangle(img, (50, 50), (700, 500), 0, 3)
-    cv2.putText(img, "Massstab 1:5", (80, 300), cv2.FONT_HERSHEY_SIMPLEX, 1.2, 0, 2)
+    cv2.putText(img, tr("Massstab 1:5"), (80, 300), cv2.FONT_HERSHEY_SIMPLEX, 1.2, 0, 2)
     img2 = img.copy()
     cv2.circle(img2, (500, 200), 60, 0, 3)
     pa, pb = os.path.join(tmp, "a.png"), os.path.join(tmp, "b.png")
@@ -1067,8 +1070,8 @@ def selftest():
         a = dp.ink_from_gray(dp.load_gray(pa), p.thr)
         b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb), p.thr), p.align, lambda *_: None)
         r = dp.run_compare(a, b, p, lambda *_: None)
-        assert r.ob.any(), "Aenderung nicht gefunden"
-        return f"{len(rep.find_regions(r))} Aenderung(en)"
+        assert r.ob.any(), tr("Aenderung nicht gefunden")
+        return tr("{} Aenderung(en)").format(len(rep.find_regions(r)))
 
     def pdf():
         import pymupdf
@@ -1088,14 +1091,14 @@ def selftest():
 
     def ocr():
         if not rep.ocr_available():
-            return "nicht enthalten"
+            return tr("nicht enthalten")
         return " ".join(t[-1] for t in rep.ocr_image(img))
-    step("Vergleich", compare)
+    step(tr("Vergleich"), compare)
     step("PDF", pdf)
     step("DXF", dxf)
-    step("Texterkennung", ocr)
-    step("Schrift", lambda: os.path.basename(str(dc._font_path())))
-    text = f"{APP} {VERSION} Selbsttest\n" + "\n".join(out)
+    step(tr("Texterkennung"), ocr)
+    step(tr("Schrift"), lambda: os.path.basename(str(dc._font_path())))
+    text = tr("{} {} Selbsttest\n").format(APP, VERSION) + "\n".join(out)
     log.info(text)
     print(text)
     return 0 if ok else 1
@@ -1121,9 +1124,9 @@ def main():
     app.setApplicationName(APP)
     app.setOrganizationName("ZGmax")
     app.setApplicationVersion(VERSION)
-    app.setStyle("Fusion")
+    app.setStyle(tr("Fusion"))
     setup_logging()
-    log.info(f"Start {APP} {VERSION} ({sys.platform}, Python {sys.version.split()[0]})")
+    log.info(tr("Start {} {} ({}, Python {})").format(APP, VERSION, sys.platform, sys.version.split()[0]))
     apply_theme(app, theme_setting(app_settings()))
     ico = os.path.join(HERE, "icon.png")
     if os.path.isfile(ico):

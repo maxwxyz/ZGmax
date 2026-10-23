@@ -1,4 +1,5 @@
 """Rechenkern des Zeichnungsvergleichs (ohne Kommandozeile und Oberflaeche)."""
+from i18n import tr
 import argparse
 import functools
 import logging
@@ -73,13 +74,12 @@ def _read_pdf_like(path, page, dpi):
         try:
             import fitz
         except ImportError:
-            raise DiffError("Fuer PDF/SVG wird PyMuPDF benoetigt:  pip install pymupdf")
+            raise DiffError(tr("Fuer PDF/SVG wird PyMuPDF benoetigt:  pip install pymupdf"))
     doc = fitz.open(path)
     if page < 1 or page > doc.page_count:
-        raise DiffError(f"{os.path.basename(path)}: Seite {page} existiert nicht (Seiten: 1-{doc.page_count})")
+        raise DiffError(tr("{}: Seite {} existiert nicht (Seiten: 1-{})").format(os.path.basename(path), page, doc.page_count))
     if doc.page_count > 1:
-        log.info(f"  {os.path.basename(path)}: {doc.page_count} Seiten, verwende Seite {page} "
-              f"(mit --page-a / --page-b waehlbar)")
+        log.info(tr("  {}: {} Seiten, verwende Seite {} (mit --page-a / --page-b waehlbar)").format(os.path.basename(path), doc.page_count, page))
     pix = doc[page - 1].get_pixmap(dpi=dpi, alpha=False, colorspace=fitz.csRGB)
     img = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width, 3)
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -94,11 +94,11 @@ def _read_dxf(path, dpi):
         from ezdxf.addons.drawing.pymupdf import PyMuPdfBackend
         import pymupdf
     except ImportError:
-        raise DiffError("F\u00fcr DXF werden ezdxf und PyMuPDF ben\u00f6tigt:  pip install ezdxf pymupdf")
+        raise DiffError(tr("F\u00fcr DXF werden ezdxf und PyMuPDF ben\u00f6tigt:  pip install ezdxf pymupdf"))
     try:
         doc = ezdxf.readfile(path)
     except (IOError, ezdxf.DXFStructureError) as e:
-        raise DiffError(f"DXF-Datei kann nicht gelesen werden: {os.path.basename(path)} ({e})")
+        raise DiffError(tr("DXF-Datei kann nicht gelesen werden: {} ({})").format(os.path.basename(path), e))
     backend = PyMuPdfBackend()
     cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE,
                                color_policy=config.ColorPolicy.BLACK)
@@ -118,10 +118,9 @@ def _read_with_pil(path, page):
     im = Image.open(path)
     n = getattr(im, "n_frames", 1)
     if page < 1 or page > n:
-        raise DiffError(f"{os.path.basename(path)}: Seite {page} existiert nicht (Seiten: 1-{n})")
+        raise DiffError(tr("{}: Seite {} existiert nicht (Seiten: 1-{})").format(os.path.basename(path), page, n))
     if n > 1:
-        log.info(f"  {os.path.basename(path)}: {n} Seiten, verwende Seite {page} "
-              f"(mit --page-a / --page-b waehlbar)")
+        log.info(tr("  {}: {} Seiten, verwende Seite {} (mit --page-a / --page-b waehlbar)").format(os.path.basename(path), n, page))
     im.seek(page - 1)
     rgba = im.convert("RGBA")
     bg = Image.new("RGBA", rgba.size, (255, 255, 255, 255))      # Transparenz -> weiss
@@ -132,14 +131,14 @@ def _read_with_pil(path, page):
 def read_image(path, page=1, dpi=200):
     """Liest ein Bild in beliebigem unterstuetzten Format als BGR-Array."""
     if not os.path.isfile(path):
-        raise DiffError(f"Datei nicht gefunden: {path}")
+        raise DiffError(tr("Datei nicht gefunden: {}").format(path))
     ext = os.path.splitext(path)[1].lower()
     if ext in VECTOR_EXT:
         return _read_pdf_like(path, page, dpi)
     if ext in CAD_EXT:
         return _read_dxf(path, dpi)
     if ext == ".dwg":
-        raise DiffError("DWG kann nicht direkt gelesen werden. Bitte im CAD-Programm als DXF oder PDF speichern.")
+        raise DiffError(tr("DWG kann nicht direkt gelesen werden. Bitte im CAD-Programm als DXF oder PDF speichern."))
     img = None
     if ext in {".tif", ".tiff", ".gif"} and page == 1:
         # Anzahl Seiten pruefen: bei mehrseitigen Dateien Pillow nutzen, damit die Wahl gilt
@@ -158,8 +157,7 @@ def read_image(path, page=1, dpi=200):
         try:
             img = _read_with_pil(path, page)
         except Exception as e:
-            raise DiffError(f"Kann '{path}' nicht lesen ({e}).\n"
-                     f"Unterstuetzt: {', '.join(sorted(RASTER_EXT | VECTOR_EXT))}")
+            raise DiffError(tr("Kann '{}' nicht lesen ({}).\nUnterstuetzt: {}").format(path, e, ', '.join(sorted(RASTER_EXT | VECTOR_EXT))))
     return img
 
 
@@ -196,7 +194,7 @@ def save_output(img_bgr, path, fmt, dpi=200, quality=95):
     Gibt (Pfad, Format) zurueck - bei Formatgrenzen kann auf PNG ausgewichen werden.
     """
     if fmt == "webp" and max(img_bgr.shape[:2]) > 16383:
-        log.warning("  Warnung: WebP erlaubt max. 16383 px je Seite - speichere stattdessen als PNG")
+        log.warning(tr("  Warnung: WebP erlaubt max. 16383 px je Seite - speichere stattdessen als PNG"))
         path, fmt = os.path.splitext(path)[0] + ".png", "png"
     if fmt in ("png", "bmp"):
         ok = cv2.imwrite(path, img_bgr)
@@ -214,7 +212,7 @@ def save_output(img_bgr, path, fmt, dpi=200, quality=95):
             im.save(path, "PDF", resolution=float(dpi))
         ok = True
     if not ok:
-        raise DiffError(f"Konnte Ergebnis nicht speichern: {path}")
+        raise DiffError(tr("Konnte Ergebnis nicht speichern: {}").format(path))
     return path, fmt
 
 
@@ -256,7 +254,7 @@ def select_roi(m, title, ratio=None):
         elif ev == cv2.EVENT_LBUTTONUP:
             st["drag"] = False
 
-    win = title if ratio is None else title + f"  [Seitenverhaeltnis fix {ratio:.3f}]"
+    win = title if ratio is None else title + tr("  [Seitenverhaeltnis fix {:.3f}]").format(ratio)
     cv2.namedWindow(win)
     cv2.setMouseCallback(win, cb)
     while True:
@@ -352,7 +350,7 @@ def align_global(a, b, mode="affine", work=2000):
         # inputMask/gaussFiltSize-Argumente sind je nach OpenCV-Version Pflicht
         _, warp = cv2.findTransformECC(fa, fb, warp, motion, crit, None, 5)
     except cv2.error as e:
-        log.warning(f"  Warnung: ECC fehlgeschlagen ({e}); nutze nur Verschiebung")
+        log.warning(tr("  Warnung: ECC fehlgeschlagen ({}); nutze nur Verschiebung").format(e))
     warp = warp.copy()
     warp[:, 2] /= scale        # Translation auf Vollaufloesung umrechnen
     return warp
@@ -492,8 +490,7 @@ def compare(a, b, tol, tiles, max_shift, hatch=16, move=100, tick=None):
             nmoved += 1
         only_a[y0:y1, x0:x1], only_b[y0:y1, x0:x1], both[y0:y1, x0:x1] = oa, ob, bo
     if nx * ny > 1:
-        log.info(f"  Feinausrichtung: {shifted} von {nx * ny} Kacheln verschoben; "
-              f"{nmoved} Kacheln als 'verschobener Bereich' erkannt")
+        log.info(tr("  Feinausrichtung: {} von {} Kacheln verschoben; {} Kacheln als 'verschobener Bereich' erkannt").format(shifted, nx * ny, nmoved))
     return only_a, only_b, both, moved
 
 
@@ -861,7 +858,7 @@ def refine_by_ink(a, b, only_a, only_b, both, moved, tol, max_shift, grow=14, co
 FONT_CANDIDATES = ("arial.ttf", "segoeui.ttf",                                     # Windows
                    "/System/Library/Fonts/Supplemental/Arial.ttf", "/Library/Fonts/Arial.ttf",
                    "/System/Library/Fonts/Helvetica.ttc",                           # macOS
-                   "DejaVuSans.ttf", "LiberationSans-Regular.ttf")                  # Linux
+                   tr("DejaVuSans.ttf"), tr("LiberationSans-Regular.ttf"))                  # Linux
 
 
 @functools.lru_cache(maxsize=None)
@@ -909,19 +906,19 @@ def add_legend(img, name_a, name_b, show_moved, info=""):
     pad = int(30 * s)
     f_h, f_t, f_s = _font(int(34 * s)), _font(int(26 * s)), _font(int(22 * s))
     entries = [
-        ((255, 0, 0), "Nur in A (rot)"),
-        ((0, 0, 255), "Nur in B (blau)"),
-        ((150, 150, 150), "In beiden Bildern gleich (grau)"),
+        ((255, 0, 0), tr("Nur in A (rot)")),
+        ((0, 0, 255), tr("Nur in B (blau)")),
+        ((150, 150, 150), tr("In beiden Bildern gleich (grau)")),
     ]
     if show_moved:
-        entries.append(((0, 170, 0), "Gleich, nur verschoben/gedreht (gruen)"))
-    entries.append(((255, 255, 255), "Hintergrund (weiss)"))
+        entries.append(((0, 170, 0), tr("Gleich, nur verschoben/gedreht (gruen)")))
+    entries.append(((255, 255, 255), tr("Hintergrund (weiss)")))
 
     panel = Image.new("RGB", (pw, h), (255, 255, 255))
     d = ImageDraw.Draw(panel)
     d.line([(0, 0), (0, h)], fill=(0, 0, 0), width=max(2, int(3 * s)))
     y = pad
-    d.text((pad, y), "Legende", font=f_h, fill=(0, 0, 0))
+    d.text((pad, y), tr("Legende"), font=f_h, fill=(0, 0, 0))
     y += int(f_h.size * 1.8)
     box = int(f_t.size * 1.3)
     for rgb, label in entries:                      # rgb hier in RGB-Reihenfolge
@@ -929,7 +926,7 @@ def add_legend(img, name_a, name_b, show_moved, info=""):
         d.text((pad + box + int(16 * s), y + (box - f_t.size) // 2), label, font=f_t, fill=(0, 0, 0))
         y += int(box * 1.5)
     y += int(f_h.size * 0.8)
-    for tag, name in (("A (Referenz):", name_a), ("B (Vergleich):", name_b)):
+    for tag, name in ((tr("A (Referenz):"), name_a), (tr("B (Vergleich):"), name_b)):
         d.text((pad, y), tag, font=f_t, fill=(0, 0, 0))
         y += int(f_t.size * 1.4)
         for ln in _wrap(d, name, f_s, pw - 2 * pad):
@@ -937,7 +934,7 @@ def add_legend(img, name_a, name_b, show_moved, info=""):
             y += int(f_s.size * 1.3)
         y += int(f_t.size * 0.8)
     if info:
-        d.text((pad, y), "Einstellungen:", font=f_t, fill=(0, 0, 0))
+        d.text((pad, y), tr("Einstellungen:"), font=f_t, fill=(0, 0, 0))
         y += int(f_t.size * 1.4)
         for ln in _wrap(d, info, f_s, pw - 2 * pad):
             d.text((pad, y), ln, font=f_s, fill=(60, 60, 60))

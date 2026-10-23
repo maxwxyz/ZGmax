@@ -3,34 +3,36 @@
 Grundsaetze: wenig auf einmal zeigen, alles beschriftet, Navigation (zoomen/verschieben) geht immer
 ohne Werkzeugwechsel. Selten gebrauchte Einstellungen erscheinen erst mit "Alle Einstellungen zeigen".
 """
+import i18n
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
 from ui_widgets import Banner, Collapsible, Section, SliderRow
 
-VIEWS = (("A", "Alt", "1", "Nur die alte Zeichnung A"),
-         ("B", "Neu", "2", "Nur die neue Zeichnung B"),
-         ("D", "Vergleich", "3", "Rot = nur alt, Blau = nur neu, Grün = nur verschoben"),
-         ("O", "Überlagern", "4", "Beide Zeichnungen ohne Toleranz übereinander"),
-         ("Y", "Nebeneinander", "9", "Alt und neu nebeneinander, gemeinsam zoomen und verschieben"),
-         ("S", "Schieber", "5", "Links alt, rechts neu; Trennlinie ziehen"),
-         ("K", "Blinken", "6", "Wechselt zwischen alt und neu (Leertaste = von Hand)"))
+VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
+         ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
+         ("D", tr("Vergleich"), "3", tr("Rot = nur alt, Blau = nur neu, Grün = nur verschoben")),
+         ("O", tr("Überlagern"), "4", tr("Beide Zeichnungen ohne Toleranz übereinander")),
+         ("Y", tr("Nebeneinander"), "9", tr("Alt und neu nebeneinander, gemeinsam zoomen und verschieben")),
+         ("S", tr("Schieber"), "5", tr("Links alt, rechts neu; Trennlinie ziehen")),
+         ("K", tr("Blinken"), "6", tr("Wechselt zwischen alt und neu (Leertaste = von Hand)")))
 # Alt/Neu mit hervorgehobenen Aenderungen: im Umschalter "Alt"/"Neu" + Haekchen in der Optionszeile
-MORE_VIEWS = (("N", "Neu mit Änderungen", "7", "Neue Zeichnung, neue und geänderte Stellen blau"),
-              ("R", "Alt mit Änderungen", "8", "Alte Zeichnung, entfernte und geänderte Stellen rot"))
+MORE_VIEWS = (("N", tr("Neu mit Änderungen"), "7", tr("Neue Zeichnung, neue und geänderte Stellen blau")),
+              ("R", tr("Alt mit Änderungen"), "8", tr("Alte Zeichnung, entfernte und geänderte Stellen rot")))
 SEG_OF = {"N": "B", "R": "A"}
-TOOLS = (("hand", "Auswahl", "select", "V", "Anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben."),
-         ("zoom", "Zoom", "zoom_box", "Z", "Zoom-Rahmen mit Fadenkreuz: Bereich aufziehen. Einfacher Klick = ganze "
-                                            "Zeichnung. Geht auch jederzeit mit der rechten Maustaste."),
-         ("measure", "Messen", "measure", "M", "Länge, Winkel, Radius, Fläche messen; rastet an Linien ein"),
-         ("text", "Text", "text", "T", "Ins Bild klicken und Text eingeben"),
-         ("cloud", "Wolke", "cloud", "W", "Revisionswolke aufziehen"),
-         ("rect", "Rahmen", "rect", "", "Rahmen aufziehen"),
-         ("arrow", "Pfeil", "arrow", "", "Pfeil vom Anfang zur Spitze ziehen"),
-         ("highlight", "Marker", "highlight", "", "Textmarker: Fläche farbig hinterlegen"),
-         ("number", "Nummer", "number", "", "Fortlaufend nummerierte Kreise setzen"),
-         ("approval", "Stempel", "stamp", "", "Stempel mit Status, Name und Datum"))
+TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben.")),
+         ("zoom", tr("Zoom"), "zoom_box", "Z", tr("Zoom-Rahmen mit Fadenkreuz: Bereich aufziehen. Einfacher Klick = ganze "
+                                            "Zeichnung. Geht auch jederzeit mit der rechten Maustaste.")),
+         ("measure", tr("Messen"), "measure", "M", tr("Länge, Winkel, Radius, Fläche messen; rastet an Linien ein")),
+         ("text", tr("Text"), "text", "T", tr("Ins Bild klicken und Text eingeben")),
+         ("cloud", tr("Wolke"), "cloud", "W", tr("Revisionswolke aufziehen")),
+         ("rect", tr("Rahmen"), "rect", "", tr("Rahmen aufziehen")),
+         ("arrow", tr("Pfeil"), "arrow", "", tr("Pfeil vom Anfang zur Spitze ziehen")),
+         ("highlight", tr("Marker"), "highlight", "", tr("Textmarker: Fläche farbig hinterlegen")),
+         ("number", tr("Nummer"), "number", "", tr("Fortlaufend nummerierte Kreise setzen")),
+         ("approval", tr("Stempel"), "stamp", "", tr("Stempel mit Status, Name und Datum")))
 
 
 class LayoutMixin:
@@ -58,84 +60,84 @@ class LayoutMixin:
     def _build_actions(self):
         self._icon_actions = []
         A = self._act
-        self.act_start = A("Startseite", self.show_start)
-        self.act_open_a = A("Alte Zeichnung (A) öffnen …", lambda: self.open_file("A"), "Ctrl+Shift+A", ico="open")
-        self.act_open_b = A("Neue Zeichnung (B) öffnen …", lambda: self.open_file("B"), "Ctrl+Shift+B")
-        self.act_open_view = A("Zeichnung ansehen …", self.open_view_only, "Ctrl+Shift+O")
-        self.act_proj_open = A("Projekt öffnen …", self.project_open, "Ctrl+O")
-        self.act_proj_save = A("Projekt speichern", self.project_save, "Ctrl+S")
-        self.act_proj_save_as = A("Projekt speichern unter …", lambda: self.project_save(True), "Ctrl+Shift+S")
-        self.act_export_img = A("Ergebnisbild speichern …", self.export_image, "Ctrl+E", ico="save")
-        self.act_export_annpdf = A("PDF mit Anmerkungen (Acrobat) …", self.export_annotated_pdf)
-        self.act_export_pdf = A("PDF-Bericht …", self.export_pdf)
-        self.act_export_csv = A("Änderungsliste (CSV) …", self.export_csv)
-        self.act_print = A("Drucken im Maßstab …", self.print_scaled, "Ctrl+P", ico="print")
-        self.act_ann_save = A("Markierungen speichern …", self.ann_save)
-        self.act_ann_load = A("Markierungen laden …", self.ann_load)
-        self.act_import_comments = A("Kommentare einlesen (XFDF, PDF) …", self.import_comments,
-                                     tip="Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF")
-        self.act_export_xfdf = A("Markierungen als XFDF speichern …", self.export_xfdf,
-                                 tip="Für Acrobat & Co.: Kommentare → Importieren")
-        self.act_batch = A("Stapelvergleich (viele Dateien) …", self.open_batch)
-        self.act_revisions = A("Revisionen vergleichen (A → B → C) …", self.open_revisions)
-        self.act_quit = A("Beenden", QApplication.instance().closeAllWindows, "Ctrl+Q")
-        self.act_close = A("Schlie\u00dfen", self.close_document, "Ctrl+W",
-                           "Vergleich bzw. Projekt schlie\u00dfen und zur Startseite (das Programm bleibt offen)")
-        self.act_new_window = A("Neues Fenster", self.new_window, "Ctrl+N",
-                                "Weiteres Fenster f\u00fcr einen anderen Vergleich")
+        self.act_start = A(tr("Startseite"), self.show_start)
+        self.act_open_a = A(tr("Alte Zeichnung (A) öffnen …"), lambda: self.open_file("A"), "Ctrl+Shift+A", ico="open")
+        self.act_open_b = A(tr("Neue Zeichnung (B) öffnen …"), lambda: self.open_file("B"), "Ctrl+Shift+B")
+        self.act_open_view = A(tr("Zeichnung ansehen …"), self.open_view_only, "Ctrl+Shift+O")
+        self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O")
+        self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S")
+        self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
+        self.act_export_img = A(tr("Ergebnisbild speichern …"), self.export_image, "Ctrl+E", ico="save")
+        self.act_export_annpdf = A(tr("PDF mit Anmerkungen (Acrobat) …"), self.export_annotated_pdf)
+        self.act_export_pdf = A(tr("PDF-Bericht …"), self.export_pdf)
+        self.act_export_csv = A(tr("Änderungsliste (CSV) …"), self.export_csv)
+        self.act_print = A(tr("Drucken im Maßstab …"), self.print_scaled, "Ctrl+P", ico="print")
+        self.act_ann_save = A(tr("Markierungen speichern …"), self.ann_save)
+        self.act_ann_load = A(tr("Markierungen laden …"), self.ann_load)
+        self.act_import_comments = A(tr("Kommentare einlesen (XFDF, PDF) …"), self.import_comments,
+                                     tip=tr("Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF"))
+        self.act_export_xfdf = A(tr("Markierungen als XFDF speichern …"), self.export_xfdf,
+                                 tip=tr("Für Acrobat & Co.: Kommentare → Importieren"))
+        self.act_batch = A(tr("Stapelvergleich (viele Dateien) …"), self.open_batch)
+        self.act_revisions = A(tr("Revisionen vergleichen (A → B → C) …"), self.open_revisions)
+        self.act_quit = A(tr("Beenden"), QApplication.instance().closeAllWindows, "Ctrl+Q")
+        self.act_close = A(tr("Schlie\u00dfen"), self.close_document, "Ctrl+W",
+                           tr("Vergleich bzw. Projekt schlie\u00dfen und zur Startseite (das Programm bleibt offen)"))
+        self.act_new_window = A(tr("Neues Fenster"), self.new_window, "Ctrl+N",
+                                tr("Weiteres Fenster f\u00fcr einen anderen Vergleich"))
         self.act_quit.setMenuRole(QAction.MenuRole.QuitRole)
 
-        self.act_undo = A("Rückgängig", self.undo, "Ctrl+Z", "Rückgängig (Markierungen, Maße, Zonen)", "undo")
-        self.act_redo = A("Wiederholen", self.redo, "Ctrl+Shift+Z", "Wiederholen", "redo")
+        self.act_undo = A(tr("Rückgängig"), self.undo, "Ctrl+Z", tr("Rückgängig (Markierungen, Maße, Zonen)"), "undo")
+        self.act_redo = A(tr("Wiederholen"), self.redo, "Ctrl+Shift+Z", tr("Wiederholen"), "redo")
         self.act_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self, activated=self.redo)
-        self.act_delete = A("Markierung löschen", self._ann_delete, "Delete", canvas_key=True)
-        self.act_ann_clear = A("Alle Markierungen löschen …", self._ann_clear)
-        self.act_copy = A("Ergebnis kopieren", self.copy_result, "Ctrl+C", canvas_key=True)
+        self.act_delete = A(tr("Markierung löschen"), self._ann_delete, "Delete", canvas_key=True)
+        self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
+        self.act_copy = A(tr("Ergebnis kopieren"), self.copy_result, "Ctrl+C", canvas_key=True)
 
         self.mode_actions = {}
         grp = QActionGroup(self)
         for key, label, k, tip in VIEWS + MORE_VIEWS:
-            a = A(label, lambda m=key: self._set_mode(m), k, f"{tip} (Taste {k})", checkable=False, canvas_key=True)
+            a = A(label, lambda m=key: self._set_mode(m), k, tr("{} (Taste {})").format(tip, k), checkable=False, canvas_key=True)
             a.setCheckable(True)
             grp.addAction(a)
             self.mode_actions[key] = a
         self.mode_actions["D"].setChecked(True)
-        self.act_fit = A("Ganze Zeichnung", lambda: self.canvas.fit(), "F", "Ganze Zeichnung zeigen (F oder Doppelklick)",
+        self.act_fit = A(tr("Ganze Zeichnung"), lambda: self.canvas.fit(), "F", tr("Ganze Zeichnung zeigen (F oder Doppelklick)"),
                          "fit", canvas_key=True)
-        self.act_100 = A("Originalgröße (100 %)", self._zoom100, "Ctrl+0")
-        self.act_zoom_in = A("Vergrößern", lambda: self.canvas.zoom_step(1.25), "Ctrl++", "Vergrößern (Mausrad, +)", "zoom_in")
-        self.act_zoom_out = A("Verkleinern", lambda: self.canvas.zoom_step(1 / 1.25), "Ctrl+-", "Verkleinern (Mausrad, −)", "zoom_out")
-        self.act_zoom_box = A("Zoom-Rahmen", lambda: self._set_tool("zoom"),
-                              tip="Bereich aufziehen und hineinzoomen (geht auch jederzeit mit der rechten Maustaste)",
+        self.act_100 = A(tr("Originalgröße (100 %)"), self._zoom100, "Ctrl+0")
+        self.act_zoom_in = A(tr("Vergrößern"), lambda: self.canvas.zoom_step(1.25), "Ctrl++", tr("Vergrößern (Mausrad, +)"), "zoom_in")
+        self.act_zoom_out = A(tr("Verkleinern"), lambda: self.canvas.zoom_step(1 / 1.25), "Ctrl+-", tr("Verkleinern (Mausrad, −)"), "zoom_out")
+        self.act_zoom_box = A(tr("Zoom-Rahmen"), lambda: self._set_tool("zoom"),
+                              tip=tr("Bereich aufziehen und hineinzoomen (geht auch jederzeit mit der rechten Maustaste)"),
                               ico="zoom_box")
-        self.act_rotate = A("Ansicht drehen (90°)", lambda: self.canvas.rotate_view(), "R",
-                            "Nur die Anzeige drehen (Taste R)", "rotate", canvas_key=True)
-        self.act_overview = A("Übersicht", self._toggle_overview, tip="Kleine Übersicht unten rechts, "
-                              "wenn hineingezoomt ist. Klicken oder ziehen springt dorthin.", ico="overview", checkable=True)
+        self.act_rotate = A(tr("Ansicht drehen (90°)"), lambda: self.canvas.rotate_view(), "R",
+                            tr("Nur die Anzeige drehen (Taste R)"), "rotate", canvas_key=True)
+        self.act_overview = A(tr("Übersicht"), self._toggle_overview, tip=tr("Kleine Übersicht unten rechts, "
+                              "wenn hineingezoomt ist. Klicken oder ziehen springt dorthin."), ico="overview", checkable=True)
         self.act_overview.setChecked(self.settings.value("overview", "true") == "true")
-        self.act_loupe = A("Lupe", self._toggle_loupe, "L", "Vergrößert den Bereich unter dem Mauszeiger (L)",
+        self.act_loupe = A(tr("Lupe"), self._toggle_loupe, "L", tr("Vergrößert den Bereich unter dem Mauszeiger (L)"),
                            "loupe", checkable=True, canvas_key=True)
-        self.act_overlays = A("Markierungen anzeigen", self._toggle_overlays, "H",
-                              "Nummern, Zonen, Markierungen und Maße ein-/ausblenden (H). "
-                              "Ausgeblendetes wird auch nicht gespeichert.", checkable=True, canvas_key=True)
+        self.act_overlays = A(tr("Markierungen anzeigen"), self._toggle_overlays, "H",
+                              tr("Nummern, Zonen, Markierungen und Maße ein-/ausblenden (H). "
+                              "Ausgeblendetes wird auch nicht gespeichert."), checkable=True, canvas_key=True)
         self.act_overlays.setChecked(True)
-        self.act_invert = A("Farben umkehren", self._toggle_invert, "I", "Helle Linien auf dunklem Grund (nur "
-                            "Anzeige; gespeicherte Bilder bleiben normal). Taste I", checkable=True, canvas_key=True)
+        self.act_invert = A(tr("Farben umkehren"), self._toggle_invert, "I", tr("Helle Linien auf dunklem Grund (nur "
+                            "Anzeige; gespeicherte Bilder bleiben normal). Taste I"), checkable=True, canvas_key=True)
         self.act_invert.setChecked(self.settings.value("invert", "false") == "true")
-        self.act_color = A("Original anzeigen (Farbe, Graustufen)", self._toggle_color,
-                           tip="Alt, Neu, Nebeneinander, Schieber und Blinken zeigen die Datei, wie sie ist (Farbe oder "
-                           "Graustufen). Aus = Schwarz-Wei\u00df-Fassung, mit der verglichen wird.", checkable=True)
+        self.act_color = A(tr("Original anzeigen (Farbe, Graustufen)"), self._toggle_color,
+                           tip=tr("Alt, Neu, Nebeneinander, Schieber und Blinken zeigen die Datei, wie sie ist (Farbe oder "
+                           "Graustufen). Aus = Schwarz-Wei\u00df-Fassung, mit der verglichen wird."), checkable=True)
         self.act_color.setChecked(self.settings.value("color", "true") == "true")
-        self.act_clouds = A("\u00c4nderungen als Revisionswolken", self._toggle_clouds,
-                            tip="Nummerierte \u00c4nderungen als Wolke statt als Rahmen zeigen und speichern",
+        self.act_clouds = A(tr("\u00c4nderungen als Revisionswolken"), self._toggle_clouds,
+                            tip=tr("Nummerierte \u00c4nderungen als Wolke statt als Rahmen zeigen und speichern"),
                             ico="cloud", checkable=True)
         self.act_clouds.setChecked(self.settings.value("clouds", "false") == "true")
-        self.act_left = A("Einstellungen", lambda on: self.left.setVisible(on), tip="Einstellungen ein-/ausblenden",
+        self.act_left = A(tr("Einstellungen"), lambda on: self.left.setVisible(on), tip=tr("Einstellungen ein-/ausblenden"),
                           ico="settings", checkable=True)
-        self.act_right = A("Änderungen und Markierungen", lambda on: self.right.setVisible(on),
-                           tip="Liste der Änderungen und Markierungen ein-/ausblenden", ico="list", checkable=True)
-        self.act_expert = A("Alle Einstellungen zeigen", self._set_expert, tip="Auch selten gebrauchte Einstellungen, "
-                            "Vektordaten, Zonen und das Protokoll zeigen", checkable=True)
+        self.act_right = A(tr("Änderungen und Markierungen"), lambda on: self.right.setVisible(on),
+                           tip=tr("Liste der Änderungen und Markierungen ein-/ausblenden"), ico="list", checkable=True)
+        self.act_expert = A(tr("Alle Einstellungen zeigen"), self._set_expert, tip=tr("Auch selten gebrauchte Einstellungen, "
+                            "Vektordaten, Zonen und das Protokoll zeigen"), checkable=True)
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
         self.act_space.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
 
@@ -148,64 +150,64 @@ class LayoutMixin:
             tgrp.addAction(a)
             self.tool_actions[key] = a
         self.tool_actions["hand"].setChecked(True)
-        self.act_zone = A("Zone zeichnen (nicht vergleichen)", lambda: self._set_tool("zone"))
-        self.act_crop = A("Ausschnitt wählen", lambda: self._set_tool("crop"))
-        self.act_crop_off = A("Ganzes Blatt vergleichen", lambda: self._crop_reset())
-        self.act_match = A("Bereiche zuordnen (A ↔ B) …", self.match_regions)
-        self.act_align = A("Manuell ausrichten (3 Punkte)", self.start_manual_align,
-                           tip="Wenn die automatische Ausrichtung danebenliegt: drei gleiche Punkte in Alt und Neu "
-                               "anklicken")
-        self.act_align_reset = A("Manuelle Ausrichtung zurücksetzen", self.reset_manual_align)
+        self.act_zone = A(tr("Zone zeichnen (nicht vergleichen)"), lambda: self._set_tool("zone"))
+        self.act_crop = A(tr("Ausschnitt wählen"), lambda: self._set_tool("crop"))
+        self.act_crop_off = A(tr("Ganzes Blatt vergleichen"), lambda: self._crop_reset())
+        self.act_match = A(tr("Bereiche zuordnen (A ↔ B) …"), self.match_regions)
+        self.act_align = A(tr("Manuell ausrichten (3 Punkte)"), self.start_manual_align,
+                           tip=tr("Wenn die automatische Ausrichtung danebenliegt: drei gleiche Punkte in Alt und Neu "
+                               "anklicken"))
+        self.act_align_reset = A(tr("Manuelle Ausrichtung zurücksetzen"), self.reset_manual_align)
         self.act_align_reset.setEnabled(False)
-        self.act_auto = A("Automatisch einstellen", self.auto_params, tip="Toleranz, Schwelle und Suchbereiche aus "
-                          "diesem Zeichnungspaar bestimmen", ico="magic")
-        self.act_compare = A("Vergleichen", self.start_compute, "Ctrl+Return", "Vergleich (neu) berechnen", "compare")
+        self.act_auto = A(tr("Automatisch einstellen"), self.auto_params, tip=tr("Toleranz, Schwelle und Suchbereiche aus "
+                          "diesem Zeichnungspaar bestimmen"), ico="magic")
+        self.act_compare = A(tr("Vergleichen"), self.start_compute, "Ctrl+Return", tr("Vergleich (neu) berechnen"), "compare")
 
-        self.act_find = A("Änderungen suchen", self.find_regs, "Ctrl+Shift+F")
-        self.act_search = A("Text suchen …", self.open_search, "Ctrl+F", "Text in der Zeichnung suchen (PDF-Text, "
-                            "bei Bildern Texterkennung)", "loupe")
-        self.act_search_next = A("Weitersuchen", lambda: self.search_step(1), "F3", "Nächster Treffer (F3, Enter)",
+        self.act_find = A(tr("Änderungen suchen"), self.find_regs, "Ctrl+Shift+F")
+        self.act_search = A(tr("Text suchen …"), self.open_search, "Ctrl+F", tr("Text in der Zeichnung suchen (PDF-Text, "
+                            "bei Bildern Texterkennung)"), "loupe")
+        self.act_search_next = A(tr("Weitersuchen"), lambda: self.search_step(1), "F3", tr("Nächster Treffer (F3, Enter)"),
                                  "next")
-        self.act_search_prev = A("Rückwärts suchen", lambda: self.search_step(-1), "Shift+F3", "Voriger Treffer "
-                                 "(Umschalt+F3)", "prev")
-        self.act_next = A("Nächste Änderung", lambda: self.review_step(1), "N", "Zur nächsten offenen "
-                          "Änderung (N)", "next", canvas_key=True)
-        self.act_prev = A("Vorige Änderung", lambda: self.review_step(-1), "P", "Zur vorigen Änderung (P)",
+        self.act_search_prev = A(tr("Rückwärts suchen"), lambda: self.search_step(-1), "Shift+F3", tr("Voriger Treffer "
+                                 "(Umschalt+F3)"), "prev")
+        self.act_next = A(tr("Nächste Änderung"), lambda: self.review_step(1), "N", tr("Zur nächsten offenen "
+                          "Änderung (N)"), "next", canvas_key=True)
+        self.act_prev = A(tr("Vorige Änderung"), lambda: self.review_step(-1), "P", tr("Zur vorigen Änderung (P)"),
                           "prev", canvas_key=True)
-        self.act_ok = A("Als geprüft markieren", lambda: self.review_set("ok"), "G",
-                        "Gewählte Änderung ist geprüft (G), weiter zur nächsten", "check", canvas_key=True)
-        self.act_reject = A("Als abgelehnt markieren", lambda: self.review_set("abgelehnt"), "X",
-                            "Gewählte Änderung ist nicht in Ordnung (X)", "reject", canvas_key=True)
-        self.act_comment = A("Kommentar …", self.review_comment, "C", "Kommentar zur gewählten Änderung (C)",
+        self.act_ok = A(tr("Als geprüft markieren"), lambda: self.review_set("ok"), "G",
+                        tr("Gewählte Änderung ist geprüft (G), weiter zur nächsten"), "check", canvas_key=True)
+        self.act_reject = A(tr("Als abgelehnt markieren"), lambda: self.review_set("abgelehnt"), "X",
+                            tr("Gewählte Änderung ist nicht in Ordnung (X)"), "reject", canvas_key=True)
+        self.act_comment = A(tr("Kommentar …"), self.review_comment, "C", tr("Kommentar zur gewählten Änderung (C)"),
                              canvas_key=True)
-        self.act_pages = A("Alle Seiten vergleichen", self.compare_all_pages)
-        self.act_rej_zones = A("Abgelehnte als Zonen übernehmen", self.zones_from_rejected,
-                               tip="Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen")
-        self.act_title = A("Schriftfeld lesen", self.read_title_block)
-        self.act_ocr = A("Text lesen (OCR)", self.run_ocr)
-        self.act_pdftext = A("Text aus PDF lesen", self.run_pdftext)
-        self.act_dims = A("Maßzahlen vergleichen", self.run_dims)
-        self.act_index = A("Index prüfen", self.run_index)
+        self.act_pages = A(tr("Alle Seiten vergleichen"), self.compare_all_pages)
+        self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
+                               tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
+        self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
+        self.act_ocr = A(tr("Text lesen (OCR)"), self.run_ocr)
+        self.act_pdftext = A(tr("Text aus PDF lesen"), self.run_pdftext)
+        self.act_dims = A(tr("Maßzahlen vergleichen"), self.run_dims)
+        self.act_index = A(tr("Index prüfen"), self.run_index)
 
-        self.act_help = A("Anleitung", self.open_help, "F1", ico="help")
-        self.act_help_cli = A("Anleitung Kommandozeile",
-                              lambda: self._open_doc(os.path.join(HERE, "Anleitung_Kommandozeile.html")))
-        self.act_keys = A("Tastenkürzel", self.show_keys)
-        self.act_logfile = A("Logdatei öffnen", self.open_logfile)
-        self.act_cli = A("Befehl für Kommandozeile kopieren", self.copy_cli)
-        self.act_shortcut = A("Desktop-Verknüpfung erstellen", self.make_shortcut)
-        self.act_about = A("Über ZGmax", self.show_about)
+        self.act_help = A(tr("Anleitung"), self.open_help, "F1", ico="help")
+        self.act_help_cli = A(tr("Anleitung Kommandozeile"),
+                              lambda: self._open_doc(os.path.join(HERE, i18n.doc("Anleitung_Kommandozeile.html"))))
+        self.act_keys = A(tr("Tastenkürzel"), self.show_keys)
+        self.act_logfile = A(tr("Logdatei öffnen"), self.open_logfile)
+        self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
+        self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
+        self.act_about = A(tr("Über ZGmax"), self.show_about)
         self.act_about.setMenuRole(QAction.MenuRole.AboutRole)
 
     def _build_menubar(self):
         mb = self.menuBar()
-        m = mb.addMenu("&Datei")
+        m = mb.addMenu(tr("&Datei"))
         m.addAction(self.act_new_window)
         m.addAction(self.act_start)
         m.addSeparator()
         for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_proj_open):
             m.addAction(a)
-        self.menu_recent = m.addMenu("Zuletzt verwendet")
+        self.menu_recent = m.addMenu(tr("Zuletzt verwendet"))
         self.menu_recent.aboutToShow.connect(self._fill_recent_menu)
         m.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as, self.act_close):
@@ -224,7 +226,7 @@ class LayoutMixin:
         m.addSeparator()
         m.addAction(self.act_quit)
 
-        m = mb.addMenu("&Bearbeiten")
+        m = mb.addMenu(tr("&Bearbeiten"))
         for a in (self.act_undo, self.act_redo):
             m.addAction(a)
         m.addSeparator()
@@ -234,7 +236,7 @@ class LayoutMixin:
         for a in (self.act_delete, self.act_ann_clear, self.act_copy):
             m.addAction(a)
 
-        m = mb.addMenu("&Ansicht")
+        m = mb.addMenu(tr("&Ansicht"))
         for key, *_ in VIEWS + MORE_VIEWS:
             m.addAction(self.mode_actions[key])
         m.addSeparator()
@@ -250,27 +252,35 @@ class LayoutMixin:
         for a in (self.act_left, self.act_right):
             m.addAction(a)
         m.addSeparator()
-        look = m.addMenu("Darstellung")
+        look = m.addMenu(tr("Darstellung"))
         self.theme_actions = {}
         tg = QActionGroup(self)
-        for key, txt in (("auto", "Automatisch (wie System)"), ("light", "Hell"), ("dark", "Dunkel")):
+        for key, txt in (("auto", tr("Automatisch (wie System)")), ("light", tr("Hell")), ("dark", tr("Dunkel"))):
             act = look.addAction(txt, lambda k=key: self.set_theme(k))
             act.setCheckable(True)
             tg.addAction(act)
             self.theme_actions[key] = act
         self.theme_actions[self.theme_mode].setChecked(True)
-        size = m.addMenu("Größe der Oberfläche")
+        lang = m.addMenu(tr("Sprache") + " / Language")
+        lg = QActionGroup(self)
+        cur_lang = i18n.setting()
+        for key, txt in (("auto", tr("Automatisch (wie System)")), ("de", "Deutsch"), ("en", "English")):
+            act = lang.addAction(txt, lambda k=key: self.set_language(k))
+            act.setCheckable(True)
+            act.setChecked(key == cur_lang)
+            lg.addAction(act)
+        size = m.addMenu(tr("Größe der Oberfläche"))
         sg = QActionGroup(self)
         cur = ui_scale_setting(self.settings)
         for v in UI_SCALES:
-            act = size.addAction(f"{v * 100:.0f} %" + ("  (Standard)" if v == 1.0 else ""),
+            act = size.addAction(f"{v * 100:.0f} %" + (tr("  (Standard)") if v == 1.0 else ""),
                                  lambda v=v: self.set_ui_scale(v))
             act.setCheckable(True)
             act.setChecked(abs(v - cur) < 0.01)
             sg.addAction(act)
         m.addAction(self.act_expert)
 
-        m = mb.addMenu("&Werkzeuge")
+        m = mb.addMenu(tr("&Werkzeuge"))
         for key, *_ in TOOLS:
             m.addAction(self.tool_actions[key])
         m.addSeparator()
@@ -281,7 +291,7 @@ class LayoutMixin:
         for a in (self.act_crop, self.act_crop_off, self.act_match, self.act_zone):
             m.addAction(a)
 
-        m = mb.addMenu("&Prüfen")
+        m = mb.addMenu(tr("&Prüfen"))
         for a in (self.act_compare, self.act_find):
             m.addAction(a)
         m.addSeparator()
@@ -291,7 +301,7 @@ class LayoutMixin:
         for a in (self.act_pages, self.act_title, self.act_pdftext, self.act_dims, self.act_ocr, self.act_index):
             m.addAction(a)
 
-        m = mb.addMenu("&Hilfe")
+        m = mb.addMenu(tr("&Hilfe"))
         for a in (self.act_help, self.act_help_cli, self.act_keys):
             m.addAction(a)
         m.addSeparator()
@@ -307,7 +317,7 @@ class LayoutMixin:
         return w
 
     def _build_toolbar(self):
-        tb = QToolBar("Hauptleiste")
+        tb = QToolBar(tr("Hauptleiste"))
         tb.setObjectName("main")
         tb.setMovable(False)
         tb.setIconSize(QSize(20, 20))
@@ -317,18 +327,18 @@ class LayoutMixin:
         open_menu = QMenu(self)
         for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_proj_open):
             open_menu.addAction(a)
-        self.menu_recent2 = open_menu.addMenu("Zuletzt verwendet")
+        self.menu_recent2 = open_menu.addMenu(tr("Zuletzt verwendet"))
         self.menu_recent2.aboutToShow.connect(lambda: self._fill_recent_menu(self.menu_recent2))
         open_menu.addSeparator()
         open_menu.addAction(self.act_start)
         b = QToolButton()
-        b.setText("Öffnen")
+        b.setText(tr("Öffnen"))
         b.setIcon(icon("open"))
         self._icon_buttons = [(b, "open")]
         b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         b.setMenu(open_menu)
-        b.setToolTip("Zeichnungen oder Projekt öffnen")
+        b.setToolTip(tr("Zeichnungen oder Projekt öffnen"))
         tb.addWidget(b)
         self.btn_compare_tb = self._tb_button(tb, self.act_compare)
         self.act_compare_tb = tb.actions()[-1]
@@ -345,7 +355,7 @@ class LayoutMixin:
         for key, label, k, tip in VIEWS:
             btn = QToolButton()
             btn.setText(label)
-            btn.setToolTip(f"{tip} (Taste {k})")
+            btn.setToolTip(tr("{} (Taste {})").format(tip, k))
             btn.setCheckable(True)
             btn.setObjectName("seg")
             btn.clicked.connect(lambda _=False, m=key: self._seg_clicked(m))
@@ -354,15 +364,15 @@ class LayoutMixin:
             self.seg_buttons[key] = btn
         self.seg_buttons["D"].setChecked(True)
         self.act_view_box = tb.addWidget(self.view_box)
-        self.act_pause = QAction("Pause", self, checkable=True)
-        self.act_pause.setToolTip("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)")
+        self.act_pause = QAction(tr("Pause"), self, checkable=True)
+        self.act_pause.setToolTip(tr("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)"))
         self.act_pause.toggled.connect(self._pause_blink)
         tb.addSeparator()
         tb.addAction(self.act_zoom_out)
         self.lbl_zoom = QToolButton()
         self.lbl_zoom.setObjectName("zoomlabel")
         self.lbl_zoom.setText("–")
-        self.lbl_zoom.setToolTip("Zoomstufe. Klick = Originalgröße (100 %)")
+        self.lbl_zoom.setToolTip(tr("Zoomstufe. Klick = Originalgröße (100 %)"))
         self.lbl_zoom.clicked.connect(self._zoom100)
         tb.addWidget(self.lbl_zoom)
         tb.addAction(self.act_zoom_in)
@@ -377,13 +387,13 @@ class LayoutMixin:
         for a in (self.act_proj_save, self.act_proj_save_as):
             save.addAction(a)
         b = QToolButton()
-        b.setText("Speichern")
+        b.setText(tr("Speichern"))
         b.setIcon(icon("save"))
         self._icon_buttons.append((b, "save"))
         b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         b.setMenu(save)
-        b.setToolTip("Ergebnis, Bericht oder Projekt speichern; drucken")
+        b.setToolTip(tr("Ergebnis, Bericht oder Projekt speichern; drucken"))
         tb.addWidget(b)
         tb.addSeparator()
         self._tb_button(tb, self.act_left)
@@ -394,7 +404,7 @@ class LayoutMixin:
             ext.setText("»")
             ext.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             ext.setMinimumSize(40, 30)
-            ext.setToolTip("Das Fenster ist zu schmal: weitere Schaltflächen hier öffnen")
+            ext.setToolTip(tr("Das Fenster ist zu schmal: weitere Schaltflächen hier öffnen"))
 
     # ----------------------------------------------------------------- Werkzeugpalette links am Bild
     def _build_palette(self):
@@ -437,54 +447,54 @@ class LayoutMixin:
         self.opt_measure = QWidget()
         l = QHBoxLayout(self.opt_measure)
         l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(QLabel("Messart"))
+        l.addWidget(QLabel(tr("Messart")))
         self.cb_mkind = QComboBox()
         for key, txt in rep.MEASURE_KINDS.items():
             self.cb_mkind.addItem(txt, key)
-        self.cb_mkind.setToolTip("Länge = 2 Punkte, Winkel und Radius = 3 Punkte, Linienzug und Fläche = "
-                                 "beliebig viele (Ende mit Doppelklick, Enter oder Rechtsklick)")
+        self.cb_mkind.setToolTip(tr("Länge = 2 Punkte, Winkel und Radius = 3 Punkte, Linienzug und Fläche = "
+                                 "beliebig viele (Ende mit Doppelklick, Enter oder Rechtsklick)"))
         self.cb_mkind.currentIndexChanged.connect(self._mkind_changed)
         l.addWidget(self.cb_mkind)
-        self.chk_snap = QCheckBox("An Linien einrasten")
+        self.chk_snap = QCheckBox(tr("An Linien einrasten"))
         self.chk_snap.setChecked(True)
-        self.chk_snap.setToolTip("Umschalt gedrückt halten = vorübergehend frei messen")
+        self.chk_snap.setToolTip(tr("Umschalt gedrückt halten = vorübergehend frei messen"))
         self.chk_snap.toggled.connect(self._toggle_snap)
         l.addWidget(self.chk_snap)
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         l.addWidget(sep)
         self.lbl_meas_scale = QToolButton()
-        self.lbl_meas_scale.setText("Ma\u00dfstab 1 : 1")
+        self.lbl_meas_scale.setText(tr("Ma\u00dfstab 1 : 1"))
         self.lbl_meas_scale.clicked.connect(self._scale_dialog)
         l.addWidget(self.lbl_meas_scale)
-        b = QPushButton("Kalibrieren \u2026")
-        b.setToolTip("Eine Strecke mit bekannter L\u00e4nge messen und ihre wahre L\u00e4nge eingeben; "
-                     "danach stimmen alle Ma\u00dfe (auch bei falscher Aufl\u00f6sung oder Ma\u00dfstab).")
+        b = QPushButton(tr("Kalibrieren \u2026"))
+        b.setToolTip(tr("Eine Strecke mit bekannter L\u00e4nge messen und ihre wahre L\u00e4nge eingeben; "
+                     "danach stimmen alle Ma\u00dfe (auch bei falscher Aufl\u00f6sung oder Ma\u00dfstab)."))
         b.clicked.connect(lambda: self._calibrate())
         l.addWidget(b)
-        b = QPushButton("Aus Schriftfeld")
-        b.setToolTip("Ma\u00dfstab aus dem Schriftfeld lesen (PDF-Text oder Texterkennung)")
+        b = QPushButton(tr("Aus Schriftfeld"))
+        b.setToolTip(tr("Ma\u00dfstab aus dem Schriftfeld lesen (PDF-Text oder Texterkennung)"))
         b.clicked.connect(self.read_title_block)
         l.addWidget(b)
         lay.addWidget(self.opt_measure)
         self.opt_ann = QWidget()
         l = QHBoxLayout(self.opt_ann)
         l.setContentsMargins(0, 0, 0, 0)
-        self.btn_color = QPushButton("Farbe")
+        self.btn_color = QPushButton(tr("Farbe"))
         self.btn_color.clicked.connect(self._pick_color)
         l.addWidget(self.btn_color)
-        l.addWidget(QLabel("Größe"))
+        l.addWidget(QLabel(tr("Größe")))
         self.s_asize = QDoubleSpinBox()
         self.s_asize.setRange(0.5, 12)
         self.s_asize.setSingleStep(0.5)
         self.s_asize.setDecimals(1)
         self.s_asize.setValue(2.0)
-        self.s_asize.setToolTip("Größe von Text, Nummer, Stempel und Linienstärke")
+        self.s_asize.setToolTip(tr("Größe von Text, Nummer, Stempel und Linienstärke"))
         self.s_asize.valueChanged.connect(self._ann_size)
         self.s_asize.set_silent = lambda v: (self.s_asize.blockSignals(True), self.s_asize.setValue(v),
                                              self.s_asize.blockSignals(False))
         l.addWidget(self.s_asize)
-        self.lbl_stamp = QLabel("Nächste Nummer")
+        self.lbl_stamp = QLabel(tr("Nächste Nummer"))
         self.sp_stamp = QSpinBox()
         self.sp_stamp.setRange(1, 9999)
         self.sp_stamp.valueChanged.connect(lambda v: setattr(self, "next_nr", v))
@@ -494,22 +504,22 @@ class LayoutMixin:
         self.opt_view = QWidget()                     # Optionen der Ansicht (Blinken, Hervorheben, Schieber)
         l = QHBoxLayout(self.opt_view)
         l.setContentsMargins(0, 0, 0, 0)
-        self.lbl_blink = QLabel("Blinken")
+        self.lbl_blink = QLabel(tr("Blinken"))
         self.cb_blink = QComboBox()
-        for txt, ms in (("langsam", 1200), ("normal", 550), ("schnell", 250)):
+        for txt, ms in ((tr("langsam"), 1200), (tr("normal"), 550), (tr("schnell"), 250)):
             self.cb_blink.addItem(txt, ms)
         self.cb_blink.setCurrentIndex(1)
-        self.cb_blink.setToolTip("Blinkgeschwindigkeit")
+        self.cb_blink.setToolTip(tr("Blinkgeschwindigkeit"))
         self.cb_blink.currentIndexChanged.connect(lambda _: self.blink.setInterval(self.cb_blink.currentData()))
         self.btn_pause = QToolButton()
         self.btn_pause.setDefaultAction(self.act_pause)
-        self.lbl_blink_hint = QLabel("Leertaste = von Hand wechseln, Klick ins Bild = Pause")
+        self.lbl_blink_hint = QLabel(tr("Leertaste = von Hand wechseln, Klick ins Bild = Pause"))
         self.lbl_blink_hint.setObjectName("hint")
-        self.chk_highlight = QCheckBox("Änderungen hervorheben")
-        self.chk_highlight.setToolTip("In der alten Zeichnung entfernte Stellen rot, in der neuen neue Stellen blau "
-                                      "(Tasten 8 / 7)")
+        self.chk_highlight = QCheckBox(tr("Änderungen hervorheben"))
+        self.chk_highlight.setToolTip(tr("In der alten Zeichnung entfernte Stellen rot, in der neuen neue Stellen blau "
+                                      "(Tasten 8 / 7)"))
         self.chk_highlight.toggled.connect(self._highlight_toggled)
-        self.lbl_slider_hint = QLabel("Schieber: die blaue Trennlinie mit der Maus ziehen (links alt, rechts neu)")
+        self.lbl_slider_hint = QLabel(tr("Schieber: die blaue Trennlinie mit der Maus ziehen (links alt, rechts neu)"))
         self.lbl_slider_hint.setObjectName("hint")
         for w in (self.lbl_blink, self.cb_blink, self.btn_pause, self.lbl_blink_hint, self.chk_highlight,
                   self.lbl_slider_hint):
@@ -518,7 +528,7 @@ class LayoutMixin:
         self.opt_loupe = QWidget()
         l = QHBoxLayout(self.opt_loupe)
         l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(QLabel("Lupe"))
+        l.addWidget(QLabel(tr("Lupe")))
         self.cb_loupe = QComboBox()
         for z in (2, 3, 5, 8):
             self.cb_loupe.addItem(f"{z}×", float(z))
@@ -614,35 +624,35 @@ class LayoutMixin:
         lay.setContentsMargins(12, 8, 12, 12)
         lay.setSpacing(8)
 
-        sec = Section("Zeichnungen")
-        self.lbl_a, self.lbl_b = QLabel("(nicht gewählt)"), QLabel("(nicht gewählt)")
-        for tag, lbl, which in (("A  –  alt", self.lbl_a, "A"), ("B  –  neu", self.lbl_b, "B")):
+        sec = Section(tr("Zeichnungen"))
+        self.lbl_a, self.lbl_b = QLabel(tr("(nicht gewählt)")), QLabel(tr("(nicht gewählt)"))
+        for tag, lbl, which in ((tr("A  –  alt"), self.lbl_a, "A"), (tr("B  –  neu"), self.lbl_b, "B")):
             row = QHBoxLayout()
             t = QLabel(tag)
             t.setObjectName("sec")
             row.addWidget(t)
             row.addStretch()
-            btn = QPushButton("Öffnen …")
+            btn = QPushButton(tr("Öffnen …"))
             btn.clicked.connect(lambda _=False, w=which: self.open_file(w))
             row.addWidget(btn)
             sec.body.addLayout(row)
             lbl.setObjectName("file")
             lbl.setWordWrap(True)
             sec.body.addWidget(lbl)
-        b = QPushButton("A und B tauschen")
+        b = QPushButton(tr("A und B tauschen"))
         b.clicked.connect(self.swap_ab)
         sec.body.addWidget(b)
         lay.addWidget(sec)
 
-        sec = Section("Empfindlichkeit")
-        self.s_tol = SliderRow("Toleranz (px)", 0, 10, 2, 1, 0,
-                               "Linien mit weniger Abstand gelten als gleich. Höher = weniger Rauschen.")
+        sec = Section(tr("Empfindlichkeit"))
+        self.s_tol = SliderRow(tr("Toleranz (px)"), 0, 10, 2, 1, 0,
+                               tr("Linien mit weniger Abstand gelten als gleich. Höher = weniger Rauschen."))
         sec.body.addWidget(self.s_tol)
-        self.s_area = SliderRow("Mindestgröße einer Änderung (px)", 0, 500, 20, 5, 0,
-                                "Unterschiede, die zusammen weniger Pixel haben, werden ignoriert "
-                                "(Staub, einzelne Punkte). 0 = nichts ignorieren.")
+        self.s_area = SliderRow(tr("Mindestgröße einer Änderung (px)"), 0, 500, 20, 5, 0,
+                                tr("Unterschiede, die zusammen weniger Pixel haben, werden ignoriert "
+                                "(Staub, einzelne Punkte). 0 = nichts ignorieren."))
         sec.body.addWidget(self.s_area)
-        b = QPushButton("Automatisch einstellen")
+        b = QPushButton(tr("Automatisch einstellen"))
         b.setIcon(icon("magic"))
         self._icon_buttons.append((b, "magic"))
         b.setToolTip(self.act_auto.toolTip())
@@ -650,19 +660,19 @@ class LayoutMixin:
         self.btn_auto = b
         row = QHBoxLayout()
         row.addWidget(b)
-        b2 = QPushButton("Manuell ausrichten")
+        b2 = QPushButton(tr("Manuell ausrichten"))
         b2.setToolTip(self.act_align.toolTip())
         b2.clicked.connect(self.start_manual_align)
         row.addWidget(b2)
         sec.body.addLayout(row)
-        h = QLabel("Viele dünne rote/blaue Doppellinien? Toleranz erhöhen. "
-                   "Kleine Änderungen fehlen? Toleranz verringern.")
+        h = QLabel(tr("Viele dünne rote/blaue Doppellinien? Toleranz erhöhen. "
+                   "Kleine Änderungen fehlen? Toleranz verringern."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         sec.body.addWidget(h)
         lay.addWidget(sec)
 
-        self.sec_pages = Collapsible("Seiten", "Seite auswählen")
+        self.sec_pages = Collapsible(tr("Seiten"), tr("Seite auswählen"))
         self.list_pages = QListWidget()
         self.list_pages.setIconSize(QSize(40, 56))
         self.list_pages.setFixedHeight(170)
@@ -672,14 +682,14 @@ class LayoutMixin:
         for s_ in (self.sp_pa, self.sp_pb):
             s_.setRange(1, 1)
         row = QHBoxLayout()
-        for w in (QLabel("Seite A"), self.sp_pa, QLabel("Seite B"), self.sp_pb):
+        for w in (QLabel(tr("Seite A")), self.sp_pa, QLabel(tr("Seite B")), self.sp_pb):
             row.addWidget(w)
         self.sec_pages.body.addLayout(row)
-        self.chk_couple = QCheckBox("A und B gemeinsam blättern")
+        self.chk_couple = QCheckBox(tr("A und B gemeinsam blättern"))
         self.chk_couple.setChecked(True)
         self.sec_pages.body.addWidget(self.chk_couple)
-        b = QPushButton("Alle Seiten vergleichen")
-        b.setToolTip("Vergleicht jede Seite und zeigt in der Liste, wie viele Änderungen sie hat")
+        b = QPushButton(tr("Alle Seiten vergleichen"))
+        b.setToolTip(tr("Vergleicht jede Seite und zeigt in der Liste, wie viele Änderungen sie hat"))
         b.clicked.connect(self.compare_all_pages)
         self.sec_pages.body.addWidget(b)
         self.sp_pa.valueChanged.connect(lambda v: self._page_changed("A", v))
@@ -687,13 +697,13 @@ class LayoutMixin:
         self.sec_pages.hide()
         lay.addWidget(self.sec_pages)
 
-        fo = Collapsible("Maßstab und Auflösung", "Auflösung (dpi) und Zeichnungsmaßstab für Messungen")
+        fo = Collapsible(tr("Maßstab und Auflösung"), tr("Auflösung (dpi) und Zeichnungsmaßstab für Messungen"))
         self.sp_dpi = QSpinBox()
         self.sp_dpi.setRange(50, 1200)
         self.sp_dpi.setValue(200)
-        self.sp_dpi.setSuffix(" dpi")
-        self.sp_dpi.setToolTip("Auflösung der Zeichnung A. Bei Bilddateien meist automatisch aus der Datei gelesen, "
-                               "bei PDF die Rendering-Auflösung.")
+        self.sp_dpi.setSuffix(tr(" dpi"))
+        self.sp_dpi.setToolTip(tr("Auflösung der Zeichnung A. Bei Bilddateien meist automatisch aus der Datei gelesen, "
+                               "bei PDF die Rendering-Auflösung."))
         self.lbl_dpi = QLabel("")
         self.lbl_dpi.setObjectName("hint")
         self.lbl_dpi.setWordWrap(True)
@@ -702,17 +712,17 @@ class LayoutMixin:
         self.sp_scale.setRange(0.01, 1000)
         self.sp_scale.setValue(1.0)
         self.sp_scale.setPrefix("1 : ")
-        self.sp_scale.setToolTip("Zeichnungsmaßstab 1 : n. Messwerte werden mit n multipliziert. "
-                                 "Bei Maßstab 2:1 (vergrößert) 0,5 eintragen.")
+        self.sp_scale.setToolTip(tr("Zeichnungsmaßstab 1 : n. Messwerte werden mit n multipliziert. "
+                                 "Bei Maßstab 2:1 (vergrößert) 0,5 eintragen."))
         row = QHBoxLayout()
-        row.addWidget(QLabel("Zeichnungsmaßstab"))
+        row.addWidget(QLabel(tr("Zeichnungsmaßstab")))
         row.addStretch()
         row.addWidget(self.sp_scale)
         fo.body.addLayout(row)
         row = QHBoxLayout()
-        b1, b2, b3 = QPushButton("Kalibrieren …"), QPushButton("Aus Schriftfeld"), QPushButton("1 : 1")
-        b1.setToolTip("Zuerst eine bekannte Strecke messen (Werkzeug Messen), dann ihre wahre Länge eingeben")
-        b2.setToolTip("Maßstab aus dem Schriftfeld lesen (PDF-Text oder OCR)")
+        b1, b2, b3 = QPushButton(tr("Kalibrieren …")), QPushButton(tr("Aus Schriftfeld")), QPushButton("1 : 1")
+        b1.setToolTip(tr("Zuerst eine bekannte Strecke messen (Werkzeug Messen), dann ihre wahre Länge eingeben"))
+        b2.setToolTip(tr("Maßstab aus dem Schriftfeld lesen (PDF-Text oder OCR)"))
         b1.clicked.connect(self._calibrate)
         b2.clicked.connect(self.read_title_block)
         b3.clicked.connect(lambda: self.sp_scale.setValue(1.0))
@@ -720,7 +730,7 @@ class LayoutMixin:
             row.addWidget(b)
         fo.body.addLayout(row)
         row = QHBoxLayout()
-        row.addWidget(QLabel("Auflösung"))
+        row.addWidget(QLabel(tr("Auflösung")))
         row.addStretch()
         row.addWidget(self.sp_dpi)
         fo.body.addLayout(row)
@@ -729,63 +739,63 @@ class LayoutMixin:
         self.sec_file = fo
 
         # --- ab hier nur mit "Alle Einstellungen zeigen"
-        zon = Collapsible("Ausschnitt und Zonen", "Nur einen Teil vergleichen oder Bereiche ausnehmen")
-        h = QLabel("Ausschnitt: nur diesen Teil der Zeichnung vergleichen (schneller). Der passende Bereich in B "
-                   "wird automatisch gesucht; mit „Bereiche zuordnen“ wählt man ihn selbst.")
+        zon = Collapsible(tr("Ausschnitt und Zonen"), tr("Nur einen Teil vergleichen oder Bereiche ausnehmen"))
+        h = QLabel(tr("Ausschnitt: nur diesen Teil der Zeichnung vergleichen (schneller). Der passende Bereich in B "
+                   "wird automatisch gesucht; mit „Bereiche zuordnen“ wählt man ihn selbst."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         zon.body.addWidget(h)
         row = QHBoxLayout()
-        self.btn_crop = QPushButton("Ausschnitt wählen")
-        self.btn_crop.setToolTip("Dann im Bild einen Rahmen aufziehen")
+        self.btn_crop = QPushButton(tr("Ausschnitt wählen"))
+        self.btn_crop.setToolTip(tr("Dann im Bild einen Rahmen aufziehen"))
         self.btn_crop.clicked.connect(lambda: self._set_tool("crop"))
-        self.btn_crop_off = QPushButton("Ganzes Blatt")
+        self.btn_crop_off = QPushButton(tr("Ganzes Blatt"))
         self.btn_crop_off.clicked.connect(lambda: self._crop_reset())
         self.btn_crop_off.setEnabled(False)
         row.addWidget(self.btn_crop)
         row.addWidget(self.btn_crop_off)
         zon.body.addLayout(row)
-        b = QPushButton("Bereiche zuordnen (A ↔ B) …")
-        b.setToolTip("Bereich in A und passenden Bereich in B selbst wählen, z. B. wenn eine Ansicht "
-                     "auf dem Blatt verschoben oder anders skaliert wurde")
+        b = QPushButton(tr("Bereiche zuordnen (A ↔ B) …"))
+        b.setToolTip(tr("Bereich in A und passenden Bereich in B selbst wählen, z. B. wenn eine Ansicht "
+                     "auf dem Blatt verschoben oder anders skaliert wurde"))
         b.clicked.connect(self.match_regions)
         zon.body.addWidget(b)
-        self.lbl_crop = QLabel("Aktuell: ganzes Blatt")
+        self.lbl_crop = QLabel(tr("Aktuell: ganzes Blatt"))
         self.lbl_crop.setObjectName("hint")
         zon.body.addWidget(self.lbl_crop)
-        h = QLabel("Zonen: Bereiche, die nicht verglichen werden (z. B. Schriftfeld, Stempel).")
+        h = QLabel(tr("Zonen: Bereiche, die nicht verglichen werden (z. B. Schriftfeld, Stempel)."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         zon.body.addWidget(h)
-        self.btn_zone = QPushButton("Zone zeichnen")
-        self.btn_zone.setToolTip("Dann im Bild einen Rahmen aufziehen")
+        self.btn_zone = QPushButton(tr("Zone zeichnen"))
+        self.btn_zone.setToolTip(tr("Dann im Bild einen Rahmen aufziehen"))
         self.btn_zone.clicked.connect(lambda: self._set_tool("zone"))
         zon.body.addWidget(self.btn_zone)
         self.list_zones = QListWidget()
         self.list_zones.setFixedHeight(64)
         zon.body.addWidget(self.list_zones)
         row = QHBoxLayout()
-        b1, b2 = QPushButton("Entfernen"), QPushButton("Alle löschen")
+        b1, b2 = QPushButton(tr("Entfernen")), QPushButton(tr("Alle löschen"))
         b1.clicked.connect(self._remove_zone)
         b2.clicked.connect(self._clear_zones)
         row.addWidget(b1)
         row.addWidget(b2)
         zon.body.addLayout(row)
-        self.s_border = SliderRow("Randstreifen (px)", 0, 300, 0, 5, 0,
-                                  "Zeichnungsrahmen am Blattrand nicht vergleichen.")
+        self.s_border = SliderRow(tr("Randstreifen (px)"), 0, 300, 0, 5, 0,
+                                  tr("Zeichnungsrahmen am Blattrand nicht vergleichen."))
         zon.body.addWidget(self.s_border)
         lay.addWidget(zon)
 
         self.vfilter = (None, None)
         self.vinfo = {"A": None, "B": None}
-        vec = Collapsible("Vektordaten (PDF)", "Exakter Vergleich, Ebenen und Farben")
-        self.lbl_vec = QLabel("Bei PDF mit Vektordaten stehen hier weitere Funktionen bereit.")
+        vec = Collapsible(tr("Vektordaten (PDF)"), tr("Exakter Vergleich, Ebenen und Farben"))
+        self.lbl_vec = QLabel(tr("Bei PDF mit Vektordaten stehen hier weitere Funktionen bereit."))
         self.lbl_vec.setObjectName("hint")
         self.lbl_vec.setWordWrap(True)
         vec.body.addWidget(self.lbl_vec)
-        self.chk_vec = QCheckBox("Vektorvergleich (exakt statt Pixel)")
-        self.chk_vec.setToolTip("Vergleicht die Linien, Kurven und Texte des PDF direkt. Kein Rastern, keine "
-                                "Ausrichtung nötig; beide Zeichnungen müssen dasselbe Koordinatensystem haben.")
+        self.chk_vec = QCheckBox(tr("Vektorvergleich (exakt statt Pixel)"))
+        self.chk_vec.setToolTip(tr("Vergleicht die Linien, Kurven und Texte des PDF direkt. Kein Rastern, keine "
+                                "Ausrichtung nötig; beide Zeichnungen müssen dasselbe Koordinatensystem haben."))
         self.chk_vec.setEnabled(False)
         self.chk_vec.toggled.connect(lambda _: self._param_changed())
         vec.body.addWidget(self.chk_vec)
@@ -794,69 +804,69 @@ class LayoutMixin:
         self.sp_vtol.setRange(0.0, 5.0)
         self.sp_vtol.setSingleStep(0.05)
         self.sp_vtol.setValue(0.05)
-        self.sp_vtol.setSuffix(" mm")
-        self.sp_vtol.setToolTip("Lagetoleranz: Elemente, die weniger abweichen, gelten als gleich.")
+        self.sp_vtol.setSuffix(tr(" mm"))
+        self.sp_vtol.setToolTip(tr("Lagetoleranz: Elemente, die weniger abweichen, gelten als gleich."))
         self.sp_vtol.valueChanged.connect(lambda _: self._param_changed())
         row = QHBoxLayout()
-        row.addWidget(QLabel("Toleranz"))
+        row.addWidget(QLabel(tr("Toleranz")))
         row.addWidget(self.sp_vtol)
         vec.body.addLayout(row)
-        self.btn_vfilter = QPushButton("Ebenen und Farben …")
-        self.btn_vfilter.setToolTip("Nur bestimmte Ebenen oder Farben vergleichen (z. B. ohne Bemaßung)")
+        self.btn_vfilter = QPushButton(tr("Ebenen und Farben …"))
+        self.btn_vfilter.setToolTip(tr("Nur bestimmte Ebenen oder Farben vergleichen (z. B. ohne Bemaßung)"))
         self.btn_vfilter.clicked.connect(self.open_vfilter)
         self.btn_vfilter.setEnabled(False)
         vec.body.addWidget(self.btn_vfilter)
-        self.lbl_vfilter = QLabel("Filter: alles")
+        self.lbl_vfilter = QLabel(tr("Filter: alles"))
         self.lbl_vfilter.setObjectName("hint")
         vec.body.addWidget(self.lbl_vfilter)
         lay.addWidget(vec)
         self.sec_vec = vec
 
-        self.s_thr = SliderRow("Linienschwelle", 0, 255, 128, 1, 0,
-                               "Dunkler als dieser Wert = Linie. Höher erfasst auch blasse/gelbe Linien.")
+        self.s_thr = SliderRow(tr("Linienschwelle"), 0, 255, 128, 1, 0,
+                               tr("Dunkler als dieser Wert = Linie. Höher erfasst auch blasse/gelbe Linien."))
         self.cb_align = QComboBox()
         self.cb_align.addItems(["affine", "euclidean", "translation", "none"])
-        self.cb_align.setToolTip("affine = Verschiebung+Drehung+Skalierung; euclidean = +Drehung; "
-                                 "translation = nur Verschiebung; none = keine")
-        self.s_hatch = SliderRow("Schraffur-Unterdrückung (px)", 0, 40, 16, 1, 0,
-                                 "Max. Linienabstand einer Schraffur; gleich dichte Schraffur ist keine Änderung. 0 = aus.")
-        self.s_move = SliderRow("Blöcke verschoben (px)", 0, 300, 100, 5, 0,
-                                "Suchbereich für komplett verschobene Blöcke (grün). 0 = aus.")
-        self.s_obj = SliderRow("Objekt-Verschiebung (px)", 0, 150, 40, 1, 0,
-                               "Einzelne Maße/Texte, die nur so weit verschoben sind, gelten nicht als Änderung. 0 = aus.")
-        self.s_rot = SliderRow("Objekt-Drehung (Grad)", 0, 10, 3, 0.5, 1,
-                               "Zusätzliche Drehung für die Objekt-Suche. 0 = keine Drehung.")
-        self.s_cell = SliderRow("Kachelgröße (px)", 100, 1200, 400, 50, 0,
-                                "Kleinere Kacheln = feinere lokale Ausrichtung.")
-        self.s_maxs = SliderRow("Max. Kachelverschiebung (px)", 0, 100, 30, 1, 0,
-                                "Größte lokale Verschiebung je Kachel.")
-        adv = Collapsible("Erweiterte Optionen", "Für den normalen Vergleich nicht nötig")
+        self.cb_align.setToolTip(tr("affine = Verschiebung+Drehung+Skalierung; euclidean = +Drehung; "
+                                 "translation = nur Verschiebung; none = keine"))
+        self.s_hatch = SliderRow(tr("Schraffur-Unterdrückung (px)"), 0, 40, 16, 1, 0,
+                                 tr("Max. Linienabstand einer Schraffur; gleich dichte Schraffur ist keine Änderung. 0 = aus."))
+        self.s_move = SliderRow(tr("Blöcke verschoben (px)"), 0, 300, 100, 5, 0,
+                                tr("Suchbereich für komplett verschobene Blöcke (grün). 0 = aus."))
+        self.s_obj = SliderRow(tr("Objekt-Verschiebung (px)"), 0, 150, 40, 1, 0,
+                               tr("Einzelne Maße/Texte, die nur so weit verschoben sind, gelten nicht als Änderung. 0 = aus."))
+        self.s_rot = SliderRow(tr("Objekt-Drehung (Grad)"), 0, 10, 3, 0.5, 1,
+                               tr("Zusätzliche Drehung für die Objekt-Suche. 0 = keine Drehung."))
+        self.s_cell = SliderRow(tr("Kachelgröße (px)"), 100, 1200, 400, 50, 0,
+                                tr("Kleinere Kacheln = feinere lokale Ausrichtung."))
+        self.s_maxs = SliderRow(tr("Max. Kachelverschiebung (px)"), 0, 100, 30, 1, 0,
+                                tr("Größte lokale Verschiebung je Kachel."))
+        adv = Collapsible(tr("Erweiterte Optionen"), tr("Für den normalen Vergleich nicht nötig"))
         adv.body.addWidget(self.s_thr)
         row = QHBoxLayout()
-        row.addWidget(QLabel("Ausrichtung"))
+        row.addWidget(QLabel(tr("Ausrichtung")))
         row.addWidget(self.cb_align, 1)
         adv.body.addLayout(row)
         for w in (self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_cell, self.s_maxs):
             adv.body.addWidget(w)
-        self.chk_edges = QCheckBox("Kantens\u00e4ume an Linien ignorieren")
+        self.chk_edges = QCheckBox(tr("Kantens\u00e4ume an Linien ignorieren"))
         self.chk_edges.setChecked(True)
-        self.chk_edges.setToolTip("1 Pixel d\u00fcnne S\u00e4ume direkt an Linien, die in beiden Zeichnungen vorkommen, "
-                                  "gelten nicht als \u00c4nderung (Versatz oder Strichst\u00e4rke beim Scannen/Rendern).")
+        self.chk_edges.setToolTip(tr("1 Pixel d\u00fcnne S\u00e4ume direkt an Linien, die in beiden Zeichnungen vorkommen, "
+                                  "gelten nicht als \u00c4nderung (Versatz oder Strichst\u00e4rke beim Scannen/Rendern)."))
         self.chk_edges.toggled.connect(lambda _: self._param_changed())
         adv.body.addWidget(self.chk_edges)
-        self.chk_glyphs = QCheckBox("Zeichen genau pr\u00fcfen (\u00e4hnliche Ziffern)")
+        self.chk_glyphs = QCheckBox(tr("Zeichen genau pr\u00fcfen (\u00e4hnliche Ziffern)"))
         self.chk_glyphs.setChecked(True)
-        self.chk_glyphs.setToolTip("Ziffern und Buchstaben Form gegen Form vergleichen, damit z. B. 41.8 \u2192 43.2 "
-                                   "sicher als \u00c4nderung erkannt wird, obwohl sich die Ziffern stark \u00fcberdecken.")
+        self.chk_glyphs.setToolTip(tr("Ziffern und Buchstaben Form gegen Form vergleichen, damit z. B. 41.8 \u2192 43.2 "
+                                   "sicher als \u00c4nderung erkannt wird, obwohl sich die Ziffern stark \u00fcberdecken."))
         self.chk_glyphs.toggled.connect(lambda _: self._param_changed())
         adv.body.addWidget(self.chk_glyphs)
-        self.chk_flatten = QCheckBox("Ungleichm\u00e4\u00dfiges Papier ausgleichen")
-        self.chk_flatten.setToolTip("F\u00fcr Scans mit Schatten, Flecken oder vergilbtem Papier: die Helligkeit des "
+        self.chk_flatten = QCheckBox(tr("Ungleichm\u00e4\u00dfiges Papier ausgleichen"))
+        self.chk_flatten.setToolTip(tr("F\u00fcr Scans mit Schatten, Flecken oder vergilbtem Papier: die Helligkeit des "
                                     "Papiers wird vor dem Vergleich ausgeglichen. \u201eAutomatisch einstellen\u201c "
-                                    "schaltet das bei Bedarf selbst ein.")
+                                    "schaltet das bei Bedarf selbst ein."))
         self.chk_flatten.toggled.connect(lambda _: self._param_changed())
         adv.body.addWidget(self.chk_flatten)
-        b = QPushButton("Standardwerte")
+        b = QPushButton(tr("Standardwerte"))
         b.clicked.connect(self._reset_params)
         adv.body.addWidget(b)
         lay.addWidget(adv)
@@ -877,11 +887,11 @@ class LayoutMixin:
         bottom = QWidget()
         bl = QVBoxLayout(bottom)
         bl.setContentsMargins(12, 6, 12, 12)
-        self.chk_live = QCheckBox("Automatisch neu berechnen")
+        self.chk_live = QCheckBox(tr("Automatisch neu berechnen"))
         self.chk_live.setChecked(False)
-        self.chk_live.setToolTip("Nach jeder Änderung eines Reglers sofort neu vergleichen")
+        self.chk_live.setToolTip(tr("Nach jeder Änderung eines Reglers sofort neu vergleichen"))
         self.expert_widgets.append(self.chk_live)
-        self.btn_run = QPushButton("Vergleichen")
+        self.btn_run = QPushButton(tr("Vergleichen"))
         self.btn_run.setObjectName("primary")
         self.btn_run.clicked.connect(self.start_compute)
         bl.addWidget(self.chk_live)
@@ -907,7 +917,7 @@ class LayoutMixin:
         t1.setObjectName("panel")
         l1 = QVBoxLayout(t1)
         l1.setContentsMargins(0, 6, 0, 0)
-        self.btn_regs = QPushButton("Änderungen suchen und nummerieren")
+        self.btn_regs = QPushButton(tr("Änderungen suchen und nummerieren"))
         self.btn_regs.setObjectName("primary")
         self.btn_regs.clicked.connect(self.find_regs)
         l1.addWidget(self.btn_regs)
@@ -915,9 +925,9 @@ class LayoutMixin:
         nav.setContentsMargins(0, 0, 0, 0)
         nav.setSpacing(4)
         self._review_buttons = []
-        for (act, txt, row, col, span) in ((self.act_prev, "Vorige", 0, 0, 1), (self.act_next, "Nächste", 0, 1, 2),
-                                           (self.act_ok, "Geprüft", 1, 0, 1), (self.act_reject, "Abgelehnt", 1, 1, 1),
-                                           (self.act_comment, "Kommentar …", 1, 2, 1)):
+        for (act, txt, row, col, span) in ((self.act_prev, tr("Vorige"), 0, 0, 1), (self.act_next, tr("Nächste"), 0, 1, 2),
+                                           (self.act_ok, tr("Geprüft"), 1, 0, 1), (self.act_reject, tr("Abgelehnt"), 1, 1, 1),
+                                           (self.act_comment, tr("Kommentar …"), 1, 2, 1)):
             b = QPushButton(txt)
             b.setIcon(act.icon())
             b.setToolTip(act.toolTip())
@@ -934,21 +944,23 @@ class LayoutMixin:
         self.lbl_summary.setWordWrap(True)
         l1.addWidget(self.lbl_summary)
         row = QHBoxLayout()
-        row.addWidget(QLabel("Zeigen:"))
+        row.addWidget(QLabel(tr("Zeigen:")))
         self.cb_filter = QComboBox()
-        self.cb_filter.addItems(["Änderungen", "Alle (auch verschoben)", "entfernt", "neu", "geändert",
-                                 "verschoben", "Maße", "offen"])
-        self.cb_filter.setToolTip("„Änderungen“ = alles außer nur verschobenen Teilen. „Maße“ = geänderte "
-                                  "Maßzahlen, „offen“ = noch nicht geprüft.")
+        for txt, key in ((tr("Änderungen"), "changes"), (tr("Alle (auch verschoben)"), "all"), (tr("entfernt"), "entfernt"),
+                         (tr("neu"), "neu"), (tr("geändert"), "geaendert"), (tr("verschoben"), "verschoben"),
+                         (tr("Maße"), "dims"), (tr("offen"), "open")):
+            self.cb_filter.addItem(txt, key)
+        self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „Maße“ = geänderte "
+                                  "Maßzahlen, „offen“ = noch nicht geprüft."))
         self.cb_filter.currentIndexChanged.connect(self._fill_table)
         row.addWidget(self.cb_filter, 1)
-        self.chk_regs = QCheckBox("Im Bild zeigen")
+        self.chk_regs = QCheckBox(tr("Im Bild zeigen"))
         self.chk_regs.setChecked(True)
         self.chk_regs.toggled.connect(self._toggle_regs)
         row.addWidget(self.chk_regs)
         l1.addLayout(row)
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Status", "Nr", "Typ", "Pos. mm", "Text / Kommentar"])
+        self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Text / Kommentar")])
         self.table.verticalHeader().hide()
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -963,50 +975,50 @@ class LayoutMixin:
         self.table.itemChanged.connect(self._table_checked)
         l1.addWidget(self.table, 1)
         row = QHBoxLayout()
-        self.btn_region = QPushButton("Selbst markieren")
-        self.btn_region.setToolTip("Eigenen Bereich als Änderung eintragen: Rahmen im Bild aufziehen.")
+        self.btn_region = QPushButton(tr("Selbst markieren"))
+        self.btn_region.setToolTip(tr("Eigenen Bereich als Änderung eintragen: Rahmen im Bild aufziehen."))
         self.btn_region.clicked.connect(lambda: self._set_tool("region"))
-        self.btn_regdel = QPushButton("Löschen")
-        self.btn_regdel.setToolTip("Gewählte Zeile(n) aus der Liste entfernen")
+        self.btn_regdel = QPushButton(tr("Löschen"))
+        self.btn_regdel.setToolTip(tr("Gewählte Zeile(n) aus der Liste entfernen"))
         self.btn_regdel.clicked.connect(self._reg_delete)
-        self.btn_regclr = QPushButton("Liste leeren")
+        self.btn_regclr = QPushButton(tr("Liste leeren"))
         self.btn_regclr.clicked.connect(self._reg_clear)
         for b in (self.btn_region, self.btn_regdel, self.btn_regclr):
             row.addWidget(b)
         l1.addLayout(row)
         QShortcut(QKeySequence("Delete"), self.table, activated=self._reg_delete).setContext(
             Qt.ShortcutContext.WidgetShortcut)
-        more = Collapsible("Texte und Maße lesen", "PDF-Text, Texterkennung (OCR), Maßzahlen, Index")
-        self.s_group = SliderRow("Gruppierung (px)", 0, 150, 25, 5, 0,
-                                 "Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden.")
+        more = Collapsible(tr("Texte und Maße lesen"), tr("PDF-Text, Texterkennung (OCR), Maßzahlen, Index"))
+        self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
+                                 tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
         self.s_group.changed.connect(self._group_changed)
         more.body.addWidget(self.s_group)
         self.group_timer = QTimer(self)
         self.group_timer.setSingleShot(True)
         self.group_timer.timeout.connect(self._regroup)
-        self.btn_pdftext = QPushButton("Text aus PDF lesen (exakt)")
+        self.btn_pdftext = QPushButton(tr("Text aus PDF lesen (exakt)"))
         self.btn_pdftext.clicked.connect(self.run_pdftext)
-        self.btn_dims = QPushButton("Maßzahlen vergleichen")
-        self.btn_dims.setToolTip("Meldet Maße wie „12,5 → 12,8“ getrennt von rein grafischen Änderungen")
+        self.btn_dims = QPushButton(tr("Maßzahlen vergleichen"))
+        self.btn_dims.setToolTip(tr("Meldet Maße wie „12,5 → 12,8“ getrennt von rein grafischen Änderungen"))
         self.btn_dims.clicked.connect(self.run_dims)
-        self.btn_ocr = QPushButton("Text lesen (OCR)")
-        self.btn_ocr.setToolTip("Liest den Text in jedem geänderten Bereich. Braucht das Zusatzpaket "
-                                "rapidocr-onnxruntime.")
+        self.btn_ocr = QPushButton(tr("Text lesen (OCR)"))
+        self.btn_ocr.setToolTip(tr("Liest den Text in jedem geänderten Bereich. Braucht das Zusatzpaket "
+                                "rapidocr-onnxruntime."))
         self.btn_ocr.clicked.connect(self.run_ocr)
-        self.btn_idx = QPushButton("Index prüfen")
+        self.btn_idx = QPushButton(tr("Index prüfen"))
         self.btn_idx.clicked.connect(self.run_index)
         for b in (self.btn_pdftext, self.btn_dims, self.btn_ocr, self.btn_idx):
             more.body.addWidget(b)
         l1.addWidget(more)
-        tabs.addTab(t1, "Änderungen")
+        tabs.addTab(t1, tr("Änderungen"))
 
         t2 = QWidget()
         t2.setObjectName("panel")
         l2 = QVBoxLayout(t2)
         l2.setContentsMargins(0, 6, 0, 0)
-        h = QLabel("Werkzeug links wählen (Text, Wolke, Pfeil …) und ins Bild klicken. Mit „Auswahl“ "
+        h = QLabel(tr("Werkzeug links wählen (Text, Wolke, Pfeil …) und ins Bild klicken. Mit „Auswahl“ "
                    "anklicken, verschieben und an den Ecken die Größe ändern. Doppelklick = bearbeiten, "
-                   "Rechtsklick = Menü, Entf = löschen.")
+                   "Rechtsklick = Menü, Entf = löschen."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         l2.addWidget(h)
@@ -1015,18 +1027,18 @@ class LayoutMixin:
         self.list_anns.itemDoubleClicked.connect(lambda it: self._ann_edit(self.list_anns.row(it)))
         l2.addWidget(self.list_anns, 1)
         row = QHBoxLayout()
-        for text, fn in (("Bearbeiten …", lambda: self._ann_edit(self.canvas.ann_selected)),
-                         ("Duplizieren", self._ann_duplicate), ("Löschen", self._ann_delete)):
+        for text, fn in ((tr("Bearbeiten …"), lambda: self._ann_edit(self.canvas.ann_selected)),
+                         (tr("Duplizieren"), self._ann_duplicate), (tr("Löschen"), self._ann_delete)):
             b = QPushButton(text)
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b)
         l2.addLayout(row)
-        tabs.addTab(t2, "Markierungen")
+        tabs.addTab(t2, tr("Markierungen"))
 
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setFixedHeight(110)
-        self.log.setPlaceholderText("Protokoll")
+        self.log.setPlaceholderText(tr("Protokoll"))
         lay.addWidget(self.log)
         self.expert_widgets.append(self.log)
         self._fill_table()
@@ -1034,14 +1046,14 @@ class LayoutMixin:
     # ----------------------------------------------------------------- Statusleiste
     def _build_statusbar(self):
         sb = self.statusBar()
-        self.lbl_status = QLabel("Bereit")
+        self.lbl_status = QLabel(tr("Bereit"))
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
         self.progress.setFixedWidth(180)
         self.progress.setTextVisible(False)
         self.progress.hide()
-        self.btn_cancel = QPushButton("Abbrechen")
-        self.btn_cancel.setToolTip("Laufende Berechnung abbrechen")
+        self.btn_cancel = QPushButton(tr("Abbrechen"))
+        self.btn_cancel.setToolTip(tr("Laufende Berechnung abbrechen"))
         self.btn_cancel.clicked.connect(self.cancel_job)
         self.btn_cancel.hide()
         self.lbl_pos = QLabel("")
@@ -1053,8 +1065,8 @@ class LayoutMixin:
 
     # ----------------------------------------------------------------- Zustaende
     def _scale_dialog(self):
-        n, ok = QInputDialog.getDouble(self, "Ma\u00dfstab", "Zeichnungsma\u00dfstab 1 : n  (f\u00fcr 2:1 bitte 0,5 "
-                                       "eingeben):", self.scale_n(), 0.01, 1000, 3)
+        n, ok = QInputDialog.getDouble(self, tr("Ma\u00dfstab"), tr("Zeichnungsma\u00dfstab 1 : n  (f\u00fcr 2:1 bitte 0,5 "
+                                       "eingeben):"), self.scale_n(), 0.01, 1000, 3)
         if ok:
             self.sp_scale.setValue(n)
 
@@ -1062,8 +1074,18 @@ class LayoutMixin:
         if abs(v - ui_scale_setting(self.settings)) < 0.01:
             return
         self.settings.setValue("ui_scale", v)
-        self.banner.show_msg(f"Die Oberfläche wird nach einem Neustart auf {v * 100:.0f} % gestellt.", "info",
-                             action=("Jetzt neu starten", self.restart_app))
+        self.banner.show_msg(tr("Die Oberfläche wird nach einem Neustart auf {:.0f} % gestellt.").format(v * 100), "info",
+                             action=(tr("Jetzt neu starten"), self.restart_app))
+
+    def set_language(self, lang):
+        if lang == i18n.setting():
+            return
+        self.settings.setValue("language", lang)
+        target = lang if lang != "auto" else i18n.system_language()
+        msg = ("Die Sprache wird nach einem Neustart umgestellt." if target == "de" else
+               "The language will change after a restart.")
+        self.banner.show_msg(msg, "info", action=("Jetzt neu starten" if target == "de" else "Restart now",
+                                                  self.restart_app))
 
     def restart_app(self):
         """Programm neu starten (z. B. fuer die Groesse der Oberflaeche); Ungespeichertes wird vorher abgefragt."""

@@ -1,4 +1,5 @@
 """Hauptfenster: Rueckgaengig, Projekt speichern/oeffnen."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
@@ -62,14 +63,14 @@ class ProjectMixin:
             return
         self.redo_stack.append(self._cur_state)
         self._apply_state(self.undo_stack.pop())
-        self._log("R\u00fcckg\u00e4ngig")
+        self._log(tr("R\u00fcckg\u00e4ngig"))
 
     def redo(self):
         if not self.redo_stack:
             return
         self.undo_stack.append(self._cur_state)
         self._apply_state(self.redo_stack.pop())
-        self._log("Wiederholt")
+        self._log(tr("Wiederholt"))
 
     # --- Projekt (Sitzung) speichern und laden
     def _update_title(self):
@@ -113,7 +114,7 @@ class ProjectMixin:
         path = self.project_path
         if as_new is not False or not path:
             base = os.path.splitext(os.path.basename(self.path_a or "projekt"))[0]
-            path = self._save_dialog("Projekt speichern", f"ZGmax-Projekt (*{PROJECT_EXT})",
+            path = self._save_dialog(tr("Projekt speichern"), tr("ZGmax-Projekt (*{})").format(PROJECT_EXT),
                                      base + PROJECT_EXT)
             if not path:
                 return False
@@ -134,34 +135,34 @@ class ProjectMixin:
                 json.dump(data, f, ensure_ascii=False, indent=1)
             os.replace(tmp, path)                 # erst fertig schreiben, dann ersetzen
         except OSError as ex:
-            QMessageBox.warning(self, APP, f"Projekt konnte nicht gespeichert werden:\n{ex}")
+            QMessageBox.warning(self, APP, tr("Projekt konnte nicht gespeichert werden:\n{}").format(ex))
             return False
         self.project_path = path
         self._dirty = False
         self._update_title()
-        self._log(f"Projekt gespeichert: {path}")
+        self._log(tr("Projekt gespeichert: {}").format(path))
         return True
 
     def project_open(self, path=None):
         if not isinstance(path, str) or not path:
             d = self.settings.value("outdir", "")
-            path, _ = QFileDialog.getOpenFileName(self, "Projekt \u00f6ffnen", d,
-                                                  f"ZGmax-Projekt (*{PROJECT_EXT})")
+            path, _ = QFileDialog.getOpenFileName(self, tr("Projekt \u00f6ffnen"), d,
+                                                  tr("ZGmax-Projekt (*{})").format(PROJECT_EXT))
             if not path:
                 return
         if self.running:
-            QMessageBox.information(self, APP, "Bitte warten, es l\u00e4uft noch eine Berechnung.")
+            QMessageBox.information(self, APP, tr("Bitte warten, es l\u00e4uft noch eine Berechnung."))
             return
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             if data.get("format") != "zgmax":
-                raise ValueError("keine Projektdatei dieses Programms")
+                raise ValueError(tr("keine Projektdatei dieses Programms"))
             if int(data.get("version", 1)) > 2:
-                self.banner.show_msg("Das Projekt stammt aus einer neueren Programmversion. Es wird ge\u00f6ffnet, "
-                                     "neuere Angaben k\u00f6nnen aber fehlen.", "warn", timeout=15)
+                self.banner.show_msg(tr("Das Projekt stammt aus einer neueren Programmversion. Es wird ge\u00f6ffnet, "
+                                     "neuere Angaben k\u00f6nnen aber fehlen."), "warn", timeout=15)
         except (OSError, ValueError) as ex:
-            QMessageBox.warning(self, APP, f"Projekt konnte nicht gelesen werden:\n{ex}")
+            QMessageBox.warning(self, APP, tr("Projekt konnte nicht gelesen werden:\n{}").format(ex))
             return
         base_dir = os.path.dirname(os.path.abspath(path))
         fl = data.get("files", {})
@@ -172,8 +173,8 @@ class ProjectMixin:
             found[k] = next((c for c in cands if c and os.path.isfile(c)), None)
         missing = [k.upper() for k in ("a", "b") if fl.get(k) and not found[k]]
         if missing:
-            QMessageBox.warning(self, APP, "Zeichnung " + " und ".join(missing) + " wurde nicht gefunden. Das Projekt "
-                                "wird trotzdem ge\u00f6ffnet; Datei bitte \u00fcber \u201e\u00d6ffnen\u2026\u201c neu w\u00e4hlen.")
+            QMessageBox.warning(self, APP, tr("Zeichnung ") + tr(" und ").join(missing) + tr(" wurde nicht gefunden. Das Projekt "
+                                "wird trotzdem ge\u00f6ffnet; Datei bitte \u00fcber \u201e\u00d6ffnen\u2026\u201c neu w\u00e4hlen."))
         self.settings.setValue("outdir", base_dir)
         self.payload = None
         self.restore_regs = data.get("regions") if isinstance(data.get("regions"), list) else None
@@ -218,7 +219,7 @@ class ProjectMixin:
             self.crop = tuple(int(v) for v in cr)
             self.crop_b = tuple(int(v) for v in cb) if cb and len(cb) == 4 else None
             self.btn_crop_off.setEnabled(True)
-            self.lbl_crop.setText(f"Aktuell: Ausschnitt {self.crop[2]} \u00d7 {self.crop[3]} px")
+            self.lbl_crop.setText(tr("Aktuell: Ausschnitt {} × {} px").format(self.crop[2], self.crop[3]))
         self.zones[:] = [tuple(int(v) for v in z) for z in data.get("zones", [])]
         ma = data.get("manual_align")
         self.manual_tf = ma if (isinstance(ma, list) and len(ma) == 2) else None
@@ -237,7 +238,7 @@ class ProjectMixin:
             self._set_mode(vw["mode"])
             self.mode_actions[vw["mode"]].setChecked(True)
         self.act_overlays.setChecked(bool(vw.get("overlays", True)))
-        self._log(f"Projekt ge\u00f6ffnet: {path}")
+        self._log(tr("Projekt geöffnet: {}").format(path))
         if not path.endswith("wiederherstellen" + PROJECT_EXT):
             recent_add(self.settings, project=path)
         if self.path_a and self.path_b:
@@ -247,8 +248,8 @@ class ProjectMixin:
         """Ungespeicherte Markierungen/Pruefung: fragen. False = Abbrechen gewaehlt."""
         reviewed = bool(self.payload and any(r.get("status") or r.get("comment") for r in self.payload["regs"]))
         if getattr(self, "_dirty", False) and (self.anns or self.zones or reviewed):
-            r = QMessageBox.question(self, APP, "Es gibt ungespeicherte \u00c4nderungen (Markierungen, Zonen oder "
-                                     "Pr\u00fcfergebnisse). Als Projekt speichern?",
+            r = QMessageBox.question(self, APP, tr("Es gibt ungespeicherte \u00c4nderungen (Markierungen, Zonen oder "
+                                     "Pr\u00fcfergebnisse). Als Projekt speichern?"),
                                      QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
                                      | QMessageBox.StandardButton.Cancel)
             if r == QMessageBox.StandardButton.Cancel or (

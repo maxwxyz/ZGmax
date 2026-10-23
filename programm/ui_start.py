@@ -1,4 +1,5 @@
 """Startseite: zwei Ablagefelder (alt / neu), zuletzt verwendete Dateien, Projekt oeffnen."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
@@ -22,7 +23,7 @@ class DropCard(QFrame):
         self.file = QLabel(hint)
         self.file.setObjectName("hint")
         self.file.setWordWrap(True)
-        self.btn = QPushButton("Datei wählen …")
+        self.btn = QPushButton(tr("Datei wählen …"))
         self.btn.setIcon(icon("open"))
         self.btn.clicked.connect(self.browse.emit)
         lay.addWidget(self.title)
@@ -30,7 +31,7 @@ class DropCard(QFrame):
         lay.addWidget(self.btn, 0, Qt.AlignmentFlag.AlignLeft)
 
     def set_file(self, path):
-        self.file.setText(os.path.basename(path) if path else "Noch keine Datei")
+        self.file.setText(os.path.basename(path) if path else tr("Noch keine Datei"))
         self.file.setToolTip(path or "")
         self.setProperty("filled", bool(path))
         self.style().unpolish(self)
@@ -66,38 +67,38 @@ class StartPage(QWidget):
         col.setMaximumWidth(820)
         lay = QVBoxLayout(col)
         lay.setSpacing(14)
-        brand = QLabel(f"{APP}  <span style='font-weight:400'>\u00b7 {APP_SUBTITLE}</span>")
+        brand = QLabel(tr("{}  <span style='font-weight:400'>· {}</span>").format(APP, APP_SUBTITLE))
         brand.setObjectName("brand")
         lay.addWidget(brand)
-        h = QLabel("Zeichnungen vergleichen oder ansehen")
+        h = QLabel(tr("Zeichnungen vergleichen oder ansehen"))
         h.setObjectName("bigtitle")
-        sub = QLabel("Zwei Dateien hierher ziehen (alt und neu) – oder links die alte und rechts die neue "
-                     "Zeichnung wählen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt.")
+        sub = QLabel(tr("Zwei Dateien hierher ziehen (alt und neu) – oder links die alte und rechts die neue "
+                     "Zeichnung wählen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt."))
         sub.setObjectName("hint")
         sub.setWordWrap(True)
         lay.addWidget(h)
         lay.addWidget(sub)
         row = QHBoxLayout()
         row.setSpacing(16)
-        self.card_a = DropCard("Alte Zeichnung (A)", "Noch keine Datei")
-        self.card_b = DropCard("Neue Zeichnung (B)", "Noch keine Datei")
+        self.card_a = DropCard(tr("Alte Zeichnung (A)"), tr("Noch keine Datei"))
+        self.card_b = DropCard(tr("Neue Zeichnung (B)"), tr("Noch keine Datei"))
         for w, c in (("A", self.card_a), ("B", self.card_b)):
             c.chosen.connect(lambda p, w=w: self.fileChosen.emit(w, p))
             c.browse.connect(lambda w=w: self.browse.emit(w))
             row.addWidget(c, 1)
         lay.addLayout(row)
         row = QHBoxLayout()
-        self.btn_view = QPushButton("Nur ansehen")
-        self.btn_view.setToolTip("Die gewählte Zeichnung ohne Vergleich anzeigen (zoomen, messen, markieren)")
+        self.btn_view = QPushButton(tr("Nur ansehen"))
+        self.btn_view.setToolTip(tr("Die gewählte Zeichnung ohne Vergleich anzeigen (zoomen, messen, markieren)"))
         self.btn_view.clicked.connect(self.viewOnly.emit)
         self.btn_view.setEnabled(False)
-        b = QPushButton("Projekt öffnen …")
+        b = QPushButton(tr("Projekt öffnen …"))
         b.clicked.connect(self.projectRequested.emit)
         row.addWidget(self.btn_view)
         row.addStretch()
         row.addWidget(b)
         lay.addLayout(row)
-        self.lbl_recent = QLabel("Zuletzt verwendet")
+        self.lbl_recent = QLabel(tr("Zuletzt verwendet"))
         self.lbl_recent.setObjectName("sec")
         lay.addWidget(self.lbl_recent)
         self.recent = QListWidget()

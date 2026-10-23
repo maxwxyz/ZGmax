@@ -1,5 +1,6 @@
 """Hauptfenster: Startseite, Zuletzt verwendet, automatische Sicherung, automatische Einstellung,
 alle Seiten vergleichen, Schriftfeld lesen, Bereiche zuordnen, Pruefrundgang, Hilfe."""
+from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_dialogs import RevisionDialog
@@ -98,12 +99,12 @@ class FeaturesMixin:
 
     def open_view_only(self):
         d = self.settings.value("dir", "")
-        path, _ = QFileDialog.getOpenFileName(self, "Zeichnung ansehen", d, FILE_FILTER)
+        path, _ = QFileDialog.getOpenFileName(self, tr("Zeichnung ansehen"), d, FILE_FILTER)
         if not path:
             return
         win = self.new_window() if self.payload is not None else self   # offener Vergleich bleibt erhalten
         win.path_b = None
-        win.lbl_b.setText("(nicht gewählt)")
+        win.lbl_b.setText(tr("(nicht gewählt)"))
         win._set_file("A", path)
 
     def open_recent(self, r):
@@ -111,18 +112,18 @@ class FeaturesMixin:
             if os.path.isfile(r["project"]):
                 self.project_open(r["project"])
             else:
-                self.banner.show_msg("Projekt nicht gefunden: " + r["project"], "warn", timeout=8)
+                self.banner.show_msg(tr("Projekt nicht gefunden: ") + r["project"], "warn", timeout=8)
             return
         missing = [p for p in (r.get("a"), r.get("b")) if p and not os.path.isfile(p)]
         if missing:
-            QMessageBox.information(self, APP, "Datei nicht gefunden:\n" + "\n".join(missing))
+            QMessageBox.information(self, APP, tr("Datei nicht gefunden:\n") + "\n".join(missing))
             return
         self.path_b = None
         if r.get("a") and r.get("b"):
             self._set_file("A", r["a"], compute=False)
             self._set_file("B", r["b"])
         else:
-            self.lbl_b.setText("(nicht gewählt)")
+            self.lbl_b.setText(tr("(nicht gewählt)"))
             self._set_file("A", r.get("a") or r.get("b"))
 
     def _fill_recent_menu(self, menu=None):
@@ -132,10 +133,10 @@ class FeaturesMixin:
         for r in entries:
             menu.addAction(recent_label(r), lambda r=r: self.open_recent(r))
         if not entries:
-            menu.addAction("(leer)").setEnabled(False)
+            menu.addAction(tr("(leer)")).setEnabled(False)
         else:
             menu.addSeparator()
-            menu.addAction("Liste leeren", lambda: self.settings.setValue("recent", "[]"))
+            menu.addAction(tr("Liste leeren"), lambda: self.settings.setValue("recent", "[]"))
 
     def _toggle_overview(self, on):
         self.canvas.show_overview = on
@@ -157,17 +158,17 @@ class FeaturesMixin:
     # ----------------------------------------------------------------- Automatisch einstellen
     def auto_params(self):
         if not (self.path_a and self.path_b):
-            QMessageBox.information(self, APP, "Bitte zuerst beide Zeichnungen öffnen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst beide Zeichnungen öffnen."))
             return
         pa, pb, ga_, gb_, dpi, vf = (self.path_a, self.path_b, self.sp_pa.value(), self.sp_pb.value(),
                                      self.dpi_value(), self.vfilter)
         base = self.params()
 
         def work(ctx):
-            ctx.progress(0.05, "Lade")
+            ctx.progress(0.05, tr("Lade"))
             ga = self._gray(pa, ga_, dpi, ctx, vf)
             gb = self._gray(pb, gb_, dpi, ctx, vf)
-            ctx.progress(0.4, "Messe Linien und Ausrichtung")
+            ctx.progress(0.4, tr("Messe Linien und Ausrichtung"))
             return dp.suggest_params(ga, gb, dpi, base=base, log=ctx, cancel=ctx.cancelled)
 
         def done(r):
@@ -177,18 +178,18 @@ class FeaturesMixin:
                          (self.s_maxs, p.max_shift), (self.s_move, p.move), (self.s_obj, p.obj_shift),
                          (self.s_hatch, p.hatch)):
                 w.set_silent(v)
-            self.banner.show_msg("<b>Automatisch eingestellt.</b> " + " ".join(why), "info", timeout=30)
+            self.banner.show_msg(tr("<b>Automatisch eingestellt.</b> ") + " ".join(why), "info", timeout=30)
             self.start_compute()
-        self._run_job(work, "Stelle automatisch ein …", done)
+        self._run_job(work, tr("Stelle automatisch ein …"), done)
 
     # ----------------------------------------------------------------- Alle Seiten vergleichen
     def compare_all_pages(self):
         if not (self.path_a and self.path_b):
-            QMessageBox.information(self, APP, "Bitte zuerst beide Zeichnungen öffnen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst beide Zeichnungen öffnen."))
             return
         n = min(self.n_pages_a, self.n_pages_b)
         if n < 2:
-            QMessageBox.information(self, APP, "Die Dateien haben nur eine Seite.")
+            QMessageBox.information(self, APP, tr("Die Dateien haben nur eine Seite."))
             return
         pa, pb, dpi, params = self.path_a, self.path_b, self.dpi_value(), self.params().copy(ignore=[])
 
@@ -198,15 +199,15 @@ class FeaturesMixin:
             for i in range(1, n + 1):
                 ctx.check()
                 lo, hi = (i - 1) / n, i / n
-                ctx.progress(lo, f"Seite {i} von {n}")
+                ctx.progress(lo, tr("Seite {} von {}").format(i, n))
                 a = dp.ink_from_gray(dp.load_gray(pa, i, dpi), params.thr, params.flatten)
                 b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb, i, dpi), params.thr, params.flatten), params.align, quiet)
                 res = dp.run_compare(a, b, params, quiet, cancel=ctx.cancelled,
                                      progress=lambda f, t, lo=lo, hi=hi, i=i: ctx.progress(lo + (hi - lo) * f,
-                                                                                          f"Seite {i} von {n}"))
+                                                                                          tr("Seite {} von {}").format(i, n)))
                 regs = rep.find_regions(res)
                 out[i] = len([r for r in regs if r["typ"] != "verschoben"])
-                ctx(f"Seite {i}: {out[i]} Änderungen")
+                ctx(tr("Seite {}: {} Änderungen").format(i, out[i]))
             return out
 
         def done(out):
@@ -214,28 +215,28 @@ class FeaturesMixin:
             for i, cnt in out.items():
                 it = self.list_pages.item(i - 1)
                 if it is not None:
-                    it.setText(f"Seite {i}  –  " + (f"{cnt} Änderungen" if cnt else "keine Änderung"))
+                    it.setText(tr("Seite {}  –  ").format(i) + (tr("{} Änderungen").format(cnt) if cnt else tr("keine Änderung")))
                     it.setForeground(QColor("#c2410c" if cnt else "#16a34a"))
             changed = [str(i) for i, c in out.items() if c]
             self.sec_pages.set_open(True)
             self.act_left.setChecked(True)
-            self.banner.show_msg(("Geänderte Seiten: " + ", ".join(changed)) if changed else
-                                 "Alle Seiten sind gleich.", "info", timeout=30)
-        self._run_job(work, "Vergleiche alle Seiten …", done)
+            self.banner.show_msg((tr("Geänderte Seiten: ") + ", ".join(changed)) if changed else
+                                 tr("Alle Seiten sind gleich."), "info", timeout=30)
+        self._run_job(work, tr("Vergleiche alle Seiten …"), done)
 
     # ----------------------------------------------------------------- Schriftfeld
     def read_title_block(self):
         path = self.path_a or self.path_b
         if not path:
-            QMessageBox.information(self, APP, "Bitte zuerst eine Zeichnung öffnen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst eine Zeichnung öffnen."))
             return
         page, dpi = self.sp_pa.value(), self.dpi_value()
         pdf = path.lower().endswith(".pdf") and dv.available()
-        if not pdf and not self.ensure_ocr("das Schriftfeld eines Bildes zu lesen"):
+        if not pdf and not self.ensure_ocr(tr("das Schriftfeld eines Bildes zu lesen")):
             return
 
         def work(ctx):
-            ctx.progress(0.1, "Lese Schriftfeld")
+            ctx.progress(0.1, tr("Lese Schriftfeld"))
             texts = []
             if pdf:
                 texts = dv.title_block_words(path, page)
@@ -248,27 +249,27 @@ class FeaturesMixin:
 
         def done(info):
             if not info or not any(info.get(k) for k in ("scale", "number", "revision")):
-                self.banner.show_msg("Im Schriftfeld (rechts unten) wurden keine Angaben erkannt.", "warn", timeout=10)
+                self.banner.show_msg(tr("Im Schriftfeld (rechts unten) wurden keine Angaben erkannt."), "warn", timeout=10)
                 return
             self.title_info = info
             parts = []
             if info.get("number"):
-                parts.append(f"Zeichnungsnummer {info['number']}")
+                parts.append(tr("Zeichnungsnummer {}").format(info['number']))
             if info.get("revision"):
-                parts.append(f"Index {info['revision']}")
+                parts.append(tr("Index {}").format(info['revision']))
             if info.get("scale"):
-                parts.append(f"Maßstab {info['scale']}")
-            self.banner.show_msg("Schriftfeld: " + ",  ".join(parts), "info", timeout=20)
+                parts.append(tr("Maßstab {}").format(info['scale']))
+            self.banner.show_msg(tr("Schriftfeld: ") + ",  ".join(parts), "info", timeout=20)
             if info.get("scale_n") and abs(info["scale_n"] - self.scale_n()) > 1e-6:
                 if QMessageBox.question(self, APP, f"Maßstab {info['scale']} für Messungen übernehmen?") == \
                         QMessageBox.StandardButton.Yes:
                     self.sp_scale.setValue(info["scale_n"])
-        self._run_job(work, "Lese Schriftfeld …", done)
+        self._run_job(work, tr("Lese Schriftfeld …"), done)
 
     # ----------------------------------------------------------------- Bereiche zuordnen
     def match_regions(self):
         if not (self.path_a and self.path_b):
-            QMessageBox.information(self, APP, "Bitte zuerst beide Zeichnungen öffnen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst beide Zeichnungen öffnen."))
             return
         if self.running:
             return
@@ -279,18 +280,17 @@ class FeaturesMixin:
         except dc.DiffError as e:
             self.banner.show_msg(str(e), "error")
             return
-        da = RegionPickDialog(self, ga, "Bereich in A (alt)", "Schritt 1 von 2: In der alten Zeichnung den Bereich "
-                              "aufziehen, der verglichen werden soll.")
+        da = RegionPickDialog(self, ga, tr("Bereich in A (alt)"), tr("Schritt 1 von 2: In der alten Zeichnung den Bereich "
+                              "aufziehen, der verglichen werden soll."))
         if da.exec() != QDialog.DialogCode.Accepted:
             return
-        db = RegionPickDialog(self, gb, "Bereich in B (neu)", "Schritt 2 von 2: In der neuen Zeichnung den "
-                              "passenden Bereich aufziehen. Größenunterschiede gleicht das Programm aus.")
+        db = RegionPickDialog(self, gb, tr("Bereich in B (neu)"), tr("Schritt 2 von 2: In der neuen Zeichnung den "
+                              "passenden Bereich aufziehen. Größenunterschiede gleicht das Programm aus."))
         if db.exec() != QDialog.DialogCode.Accepted:
             return
         self.crop, self.crop_b = da.box(), db.box()
         self.btn_crop_off.setEnabled(True)
-        self.lbl_crop.setText(f"Aktuell: zugeordnete Bereiche A {self.crop[2]} × {self.crop[3]} px, "
-                              f"B {self.crop_b[2]} × {self.crop_b[3]} px")
+        self.lbl_crop.setText(tr("Aktuell: zugeordnete Bereiche A {} × {} px, B {} × {} px").format(self.crop[2], self.crop[3], self.crop_b[2], self.crop_b[3]))
         self.start_compute()
 
     # ----------------------------------------------------------------- Pruefrundgang
@@ -319,7 +319,7 @@ class FeaturesMixin:
             open_ = [j for j in order if rep.reg_status(regs[j]) == "offen"]
             j = open_[0] if open_ else order[0]
             if not open_ and cur is not None:
-                self.banner.show_msg("Alle Änderungen sind bearbeitet.", "info", timeout=6)
+                self.banner.show_msg(tr("Alle Änderungen sind bearbeitet."), "info", timeout=6)
         else:
             j = order[0]
         if not self.right.isVisible():
@@ -349,9 +349,9 @@ class FeaturesMixin:
     def review_comment(self):
         r = self._current_reg()
         if r is None:
-            QMessageBox.information(self, APP, "Bitte zuerst eine Änderung wählen (N = nächste).")
+            QMessageBox.information(self, APP, tr("Bitte zuerst eine Änderung wählen (N = nächste)."))
             return
-        txt, ok = QInputDialog.getMultiLineText(self, f"Kommentar zu Änderung {r['nr']}", "Kommentar:",
+        txt, ok = QInputDialog.getMultiLineText(self, tr("Kommentar zu Änderung {}").format(r['nr']), tr("Kommentar:"),
                                                 r.get("comment", ""))
         if ok:
             r["comment"] = txt.strip()
@@ -367,20 +367,19 @@ class FeaturesMixin:
         naechsten Vergleich nicht mehr verglichen werden - auch in Projekten fuer spaetere Staende."""
         regs = [r for r in (self.payload["regs"] if self.payload else []) if rep.reg_status(r) == "abgelehnt"]
         if not regs:
-            QMessageBox.information(self, APP, "Es gibt keine als \u201eabgelehnt\u201c markierten \u00c4nderungen.")
+            QMessageBox.information(self, APP, tr("Es gibt keine als \u201eabgelehnt\u201c markierten \u00c4nderungen."))
             return
         ox, oy = self.origin
         for r in regs:
             self.zones.append((int(r["x"] - 10 + ox), int(r["y"] - 10 + oy), int(r["w"] + 20), int(r["h"] + 20)))
         self._refresh_zones()
         self._commit()
-        self.banner.show_msg(f"{len(regs)} abgelehnte \u00c4nderungen als Zonen \u00fcbernommen; sie werden nicht mehr "
-                             f"verglichen.", "info", timeout=12, action=("Jetzt neu vergleichen", self.start_compute))
+        self.banner.show_msg(tr("{} abgelehnte Änderungen als Zonen übernommen; sie werden nicht mehr verglichen.").format(len(regs)), "info", timeout=12, action=(tr("Jetzt neu vergleichen"), self.start_compute))
 
     # ----------------------------------------------------------------- Manuell ausrichten (3 Punkte)
     def start_manual_align(self):
         if not (self.payload and self.path_a and self.path_b) or self.view_only:
-            QMessageBox.information(self, APP, "Bitte zuerst zwei Zeichnungen vergleichen.")
+            QMessageBox.information(self, APP, tr("Bitte zuerst zwei Zeichnungen vergleichen."))
             return
         self._align_prev_mode = self.canvas.mode
         self.canvas.align_pts = {"A": [], "B": []}
@@ -392,14 +391,13 @@ class FeaturesMixin:
         a, b = self.canvas.align_pts["A"], self.canvas.align_pts["B"]
         n = len(b) + 1
         if len(a) == len(b):
-            txt = f"Punkt {n} von 3: In der <b>alten</b> Zeichnung (links) einen markanten Punkt anklicken " \
-                  "(Ecke, Kreuzung, Kreismitte)."
+            txt = tr("Punkt {} von 3: In der <b>alten</b> Zeichnung (links) einen markanten Punkt anklicken (Ecke, Kreuzung, Kreismitte).").format(n)
             if len(b) == 2:
-                txt += " Oder <b>Enter</b>: mit zwei Punkten ausrichten (Verschieben, Drehen, Ma\u00dfstab)."
+                txt += tr(" Oder <b>Enter</b>: mit zwei Punkten ausrichten (Verschieben, Drehen, Ma\u00dfstab).")
         else:
-            txt = f"Punkt {len(a)} von 3: Denselben Punkt in der <b>neuen</b> Zeichnung (rechts) anklicken."
-        self.banner.show_msg("Manuell ausrichten \u2013 " + txt + "  Esc = abbrechen.", "info",
-                             action=("Abbrechen", lambda: self._set_tool("hand")))
+            txt = tr("Punkt {} von 3: Denselben Punkt in der <b>neuen</b> Zeichnung (rechts) anklicken.").format(len(a))
+        self.banner.show_msg(tr("Manuell ausrichten \u2013 ") + txt + tr("  Esc = abbrechen."), "info",
+                             action=(tr("Abbrechen"), lambda: self._set_tool("hand")))
 
     def _align_point(self, side, x, y):
         pts = self.canvas.align_pts
@@ -409,8 +407,7 @@ class FeaturesMixin:
             return
         want = "A" if len(pts["A"]) == len(pts["B"]) else "B"
         if side != want:
-            self.banner.show_msg(f"Bitte jetzt in der {'alten (linken)' if want == 'A' else 'neuen (rechten)'} "
-                                 f"Zeichnung klicken.", "warn", timeout=6)
+            self.banner.show_msg(tr("Bitte jetzt in der {} Zeichnung klicken.").format('alten (linken)' if want == 'A' else 'neuen (rechten)'), "warn", timeout=6)
             QTimer.singleShot(1500, self._align_hint)
             return
         pts[side].append((x, y))
@@ -429,7 +426,7 @@ class FeaturesMixin:
         else:
             M, _ = cv2.estimateAffinePartial2D(b, a)
         if M is None or not np.isfinite(M).all() or abs(np.linalg.det(M[:, :2])) < 0.5:
-            self.banner.show_msg("Die Punkte passen nicht zusammen (z. B. vertauscht). Bitte neu setzen.", "warn",
+            self.banner.show_msg(tr("Die Punkte passen nicht zusammen (z. B. vertauscht). Bitte neu setzen."), "warn",
                                  timeout=10)
             self.canvas.align_pts = {"A": [], "B": []}
             self._align_hint()
@@ -442,8 +439,8 @@ class FeaturesMixin:
         self.act_align_reset.setEnabled(True)
         self._dirty = True
         res = float(np.abs(cv2.transform(b[None], M)[0] - a).max())
-        self.banner.show_msg(f"Ausgerichtet (Restabweichung der Punkte {res:.1f} px). Es wird neu verglichen.",
-                             "info", timeout=10, action=("R\u00fcckg\u00e4ngig", self.reset_manual_align))
+        self.banner.show_msg(tr("Ausgerichtet (Restabweichung der Punkte {:.1f} px). Es wird neu verglichen.").format(res),
+                             "info", timeout=10, action=(tr("R\u00fcckg\u00e4ngig"), self.reset_manual_align))
         self.start_compute()
 
     def reset_manual_align(self):
@@ -452,7 +449,7 @@ class FeaturesMixin:
         self.manual_tf = None
         self.act_align_reset.setEnabled(False)
         self._dirty = True
-        self.banner.show_msg("Manuelle Ausrichtung entfernt.", "info", timeout=6)
+        self.banner.show_msg(tr("Manuelle Ausrichtung entfernt."), "info", timeout=6)
         self.start_compute()
 
     # ----------------------------------------------------------------- Automatische Sicherung
@@ -510,8 +507,8 @@ class FeaturesMixin:
                 leftovers.append(path)
         if not leftovers:
             return
-        r = QMessageBox.question(self, APP, "Das Programm wurde beim letzten Mal nicht normal beendet. "
-                                 "Ungespeicherte Markierungen und Pr\u00fcfergebnisse wiederherstellen?")
+        r = QMessageBox.question(self, APP, tr("Das Programm wurde beim letzten Mal nicht normal beendet. "
+                                 "Ungespeicherte Markierungen und Pr\u00fcfergebnisse wiederherstellen?"))
         for k, path in enumerate(sorted(leftovers, key=os.path.getmtime, reverse=True)):
             if r == QMessageBox.StandardButton.Yes:
                 win = self if k == 0 else self.new_window()
@@ -557,10 +554,10 @@ class FeaturesMixin:
         self.index_info = None
         self.view_only = False
         for lbl in (self.lbl_a, self.lbl_b):
-            lbl.setText("(nicht gew\u00e4hlt)")
+            lbl.setText(tr("(nicht gew\u00e4hlt)"))
             lbl.setToolTip("")
         self.btn_crop_off.setEnabled(False)
-        self.lbl_crop.setText("Aktuell: ganzes Blatt")
+        self.lbl_crop.setText(tr("Aktuell: ganzes Blatt"))
         self.sec_pages.hide()
         self.n_pages_a = self.n_pages_b = 1
         self.canvas.clear()
@@ -574,54 +571,51 @@ class FeaturesMixin:
         self.act_right.setChecked(False)
         self._set_view_only(False)
         self._update_title()
-        self._busy(False, "Bereit")
+        self._busy(False, tr("Bereit"))
         self.show_start()
 
     # ----------------------------------------------------------------- Hilfe
     def show_keys(self):
-        rows = [("Mausrad", "Zoomen (an der Mausposition)"),
-                ("Trackpad: zwei Finger", "Verschieben;  Aufziehen = Zoomen"),
-                ("Leeres Papier ziehen", "Verschieben (Werkzeug Auswahl)"),
-                ("Mittlere Maustaste ziehen", "Verschieben (jedes Werkzeug)"),
-                ("Rechte Maustaste ziehen", "Zoom-Rahmen (jedes Werkzeug)"),
-                ("Rechtsklick", "Menü"), ("Doppelklick ins Leere / F", "Ganze Zeichnung"),
-                ("+ / −, Pfeiltasten", "Zoomen / Verschieben"),
-                ("1 2 3 9 4 6", "Alt, Neu, Vergleich, Nebeneinander, Überlagern, Blinken"),
-                ("Leertaste", "Zwischen alt und neu wechseln"),
-                ("V  M  T  W  Z", "Auswahl, Messen, Text, Wolke, Zoom-Rahmen"),
-                ("N / P", "Nächste / vorige Änderung"),
-                ("G / X / C", "Geprüft / abgelehnt / Kommentar"),
-                ("H / L / R", "Markierungen ein/aus, Lupe, Ansicht drehen"),
-                ("Entf", "Gewählte Markierung löschen"), ("Esc", "Werkzeug beenden"),
-                ("Strg+Z / Strg+Umschalt+Z", "Rückgängig / Wiederholen"),
-                ("Strg+O / Strg+S / Strg+P", "Projekt öffnen / speichern / drucken")]
-        mod = "⌘ (Befehlstaste)" if sys.platform == "darwin" else "Strg"
-        html = ("<table cellspacing=6>" + "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in rows) +
-                f"</table><p>Auf dem Mac steht Strg für {mod}. Einzeltasten wirken, wenn das Bild den Fokus hat "
-                f"(einmal hineinklicken).</p>")
-        QMessageBox.information(self, "Tastenkürzel", html)
+        rows = [(tr("Mausrad"), tr("Zoomen (an der Mausposition)")),
+                (tr("Trackpad: zwei Finger"), tr("Verschieben;  Aufziehen = Zoomen")),
+                (tr("Leeres Papier ziehen"), tr("Verschieben (Werkzeug Auswahl)")),
+                (tr("Mittlere Maustaste ziehen"), tr("Verschieben (jedes Werkzeug)")),
+                (tr("Rechte Maustaste ziehen"), tr("Zoom-Rahmen (jedes Werkzeug)")),
+                (tr("Rechtsklick"), tr("Menü")), (tr("Doppelklick ins Leere / F"), tr("Ganze Zeichnung")),
+                (tr("+ / −, Pfeiltasten"), tr("Zoomen / Verschieben")),
+                ("1 2 3 9 4 6", tr("Alt, Neu, Vergleich, Nebeneinander, Überlagern, Blinken")),
+                (tr("Leertaste"), tr("Zwischen alt und neu wechseln")),
+                (tr("V  M  T  W  Z"), tr("Auswahl, Messen, Text, Wolke, Zoom-Rahmen")),
+                (tr("N / P"), tr("Nächste / vorige Änderung")),
+                (tr("G / X / C"), tr("Geprüft / abgelehnt / Kommentar")),
+                (tr("H / L / R"), tr("Markierungen ein/aus, Lupe, Ansicht drehen")),
+                (tr("Entf"), tr("Gewählte Markierung löschen")), (tr("Esc"), tr("Werkzeug beenden")),
+                (tr("Strg+Z / Strg+Umschalt+Z"), tr("Rückgängig / Wiederholen")),
+                (tr("Strg+O / Strg+S / Strg+P"), tr("Projekt öffnen / speichern / drucken"))]
+        mod = tr("⌘ (Befehlstaste)") if sys.platform == "darwin" else tr("Strg")
+        html = (tr("<table cellspacing=6>") + "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in rows) +
+                tr("</table><p>Auf dem Mac steht Strg für {}. Einzeltasten wirken, wenn das Bild den Fokus hat (einmal hineinklicken).</p>").format(mod))
+        QMessageBox.information(self, tr("Tastenkürzel"), html)
 
     def open_logfile(self):
         p = os.path.join(app_data_dir(), "zeichnungsvergleich.log")
         if os.path.isfile(p):
             QDesktopServices.openUrl(QUrl.fromLocalFile(p))
         else:
-            QMessageBox.information(self, APP, "Es gibt noch keine Logdatei.")
+            QMessageBox.information(self, APP, tr("Es gibt noch keine Logdatei."))
 
     def show_about(self):
         import drawing_viewer
-        QMessageBox.about(self, APP, f"<h3>{APP} {drawing_viewer.VERSION}</h3>"
-                          f"<p>{APP_SUBTITLE}: ansehen, messen, markieren, vergleichen und pr\u00fcfen.</p>"
-                          f"<p>Logdatei und automatische Sicherung:<br>{app_data_dir()}</p>")
+        QMessageBox.about(self, APP, tr("<h3>{} {}</h3><p>{}: ansehen, messen, markieren, vergleichen und prüfen.</p><p>Logdatei und automatische Sicherung:<br>{}</p>").format(APP, drawing_viewer.VERSION, APP_SUBTITLE, app_data_dir()))
 
     # ----------------------------------------------------------------- PDF mit Anmerkungen
     def export_annotated_pdf(self):
         if not self._need_result():
             return
         if not dv.available():
-            QMessageBox.information(self, APP, "Dafür wird PyMuPDF benötigt.")
+            QMessageBox.information(self, APP, tr("Dafür wird PyMuPDF benötigt."))
             return
-        path = self._save_dialog("PDF mit Anmerkungen speichern", "PDF (*.pdf)", "vergleich_anmerkungen.pdf")
+        path = self._save_dialog(tr("PDF mit Anmerkungen speichern"), tr("PDF (*.pdf)"), "vergleich_anmerkungen.pdf")
         if not path:
             return
         pl, dpi, mm = self.payload, self.dpi_value(), self.canvas.mm_px
@@ -630,12 +624,12 @@ class FeaturesMixin:
         names = (os.path.basename(self.path_a or ""), os.path.basename(self.path_b or ""))
 
         def work(ctx):
-            ctx.progress(0.1, "Erzeuge Bild")
+            ctx.progress(0.1, tr("Erzeuge Bild"))
             img = self.export_render(mode, False, legend=False)
             if pl["regs_done"] is False and not self.view_only:
                 self._ensure_regs(ctx)
-            ctx.progress(0.6, "Schreibe PDF")
+            ctx.progress(0.6, tr("Schreibe PDF"))
             rep.build_annotated_pdf(path, img, pl["regs"] if self.canvas.show_regs else [], anns, dpi, mm, names)
             return path
-        self._run_job(work, "Erzeuge PDF mit Anmerkungen …",
-                      lambda p: (self._fill_table(), self.banner.show_msg(f"Gespeichert: {p}", "info", timeout=10)))
+        self._run_job(work, tr("Erzeuge PDF mit Anmerkungen …"),
+                      lambda p: (self._fill_table(), self.banner.show_msg(tr("Gespeichert: {}").format(p), "info", timeout=10)))
