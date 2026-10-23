@@ -339,6 +339,31 @@ def test_view_switch_and_highlight(app, win, pair):
     assert win.cb_blink.isVisible() and not win.chk_highlight.isVisible()
 
 
+def test_bars_overlay_canvas(app, win, pair):
+    """Options-, Such- und Hinweisleiste liegen ueber dem Bild: die Zeichnung bleibt stehen."""
+    compare(app, win, *pair)
+    app.processEvents()
+    c = win.canvas
+    size, view = c.size(), (c.scale, c.ox, c.oy)
+    win._set_tool("measure")
+    win.open_search()
+    win.banner.show_msg("Test", "info")
+    for _ in range(5):
+        app.processEvents()
+    assert win.options_bar.isVisible() and win.search_bar.isVisible() and win.banner.isVisible()
+    assert win.canvas_host.bar_height() > 60
+    assert c.size() == size and (c.scale, c.ox, c.oy) == view
+    win._set_tool("hand")
+    win.close_search()
+    win.banner.hide()
+    for _ in range(5):
+        app.processEvents()
+    assert win.canvas_host.bar_height() == 0 and c.size() == size
+    win.close_document()
+    app.processEvents()
+    assert win.banner.parent() is not win.canvas_host.column    # Startseite: Leiste wieder im Layout
+
+
 def test_manual_three_point_alignment(app, win, tmp_path):
     import cv2
     import numpy as np

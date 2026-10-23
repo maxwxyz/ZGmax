@@ -9,7 +9,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
-from ui_widgets import Banner, Collapsible, Section, SliderRow
+from ui_widgets import Banner, Collapsible, OverlayHost, Section, SliderRow
 
 VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
          ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
@@ -440,7 +440,7 @@ class LayoutMixin:
     # ----------------------------------------------------------------- Optionsleiste (je Werkzeug)
     def _build_options(self):
         bar = QFrame()
-        bar.setObjectName("panel")
+        bar.setObjectName("optbar")
         lay = QHBoxLayout(bar)
         lay.setContentsMargins(12, 4, 12, 4)
         lay.setSpacing(10)
@@ -593,24 +593,36 @@ class LayoutMixin:
         v = QVBoxLayout(work)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
-        v.addWidget(self._build_search_bar())
-        v.addWidget(self._build_options())
         h = QHBoxLayout()
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(0)
         h.addWidget(self._build_palette())
-        h.addWidget(self.canvas, 1)
+        # Such-, Options- und Hinweisleiste liegen ueber dem Bild: Einblenden verschiebt die Zeichnung nicht
+        self.canvas_host = OverlayHost(self.canvas, (self._build_search_bar(), self._build_options()))
+        h.addWidget(self.canvas_host, 1)
         v.addLayout(h, 1)
         self.stack.addWidget(work)
         self.work = work
-        center = QWidget()                        # Hinweisleiste ueber Startseite UND Bild
+        center = QWidget()
         cv = QVBoxLayout(center)
         cv.setContentsMargins(0, 0, 0, 0)
         cv.setSpacing(0)
+        self.center_layout = cv
         self.banner = Banner()
         cv.addWidget(self.banner)
         cv.addWidget(self.stack, 1)
+        self.stack.currentChanged.connect(lambda _: self._place_banner())
         return center
+
+    def _place_banner(self):
+        """Hinweisleiste: auf der Startseite oben im Layout, beim Bild als Ueberlagerung (Bild bleibt stehen)."""
+        if self.stack.currentWidget() is self.work:
+            if self.banner.parent() is not self.canvas_host.column:
+                self.canvas_host.add_bar(self.banner, 0)
+        elif self.banner.parent() is self.canvas_host.column:
+            was = not self.banner.isHidden()
+            self.center_layout.insertWidget(0, self.banner)
+            self.banner.setVisible(was)
 
     # ----------------------------------------------------------------- Seitenleiste links: Einstellungen
     def _build_left(self):

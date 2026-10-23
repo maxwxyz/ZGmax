@@ -98,6 +98,61 @@ class Job(QThread):
             self.failed.emit(f"{type(e).__name__}: {e}")
 
 
+class OverlayHost(QWidget):
+    """Legt Leisten oben ueber ein Widget, statt es nach unten zu schieben: Ein- und Ausblenden
+    der Leisten aendert die Groesse des Bilds nicht, die Zeichnung bleibt stehen."""
+
+    def __init__(self, base, bars=(), parent=None):
+        super().__init__(parent)
+        self.base = base
+        base.setParent(self)
+        self.column = QWidget(self)
+        lay = QVBoxLayout(self.column)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        lay.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self.column.installEventFilter(self)
+        for b in bars:
+            self.add_bar(b)
+
+    def add_bar(self, bar, index=-1):
+        was = not bar.isHidden()
+        self.column.layout().insertWidget(index, bar)
+        bar.setVisible(was)
+        bar.setAutoFillBackground(True)                  # deckt das Bild ab, auch ohne Stylesheet
+        bar.installEventFilter(self)
+        self.relayout()
+
+    def bar_height(self):
+        """Hoehe der sichtbaren Leisten (Bildschirmpixel), die das Bild oben verdecken."""
+        return self.column.height()
+
+    def eventFilter(self, obj, ev):
+        if ev.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Show, QEvent.Type.Hide):
+            QTimer.singleShot(0, self.relayout)
+        return False
+
+    def relayout(self):
+        w = self.width()
+        self.base.setGeometry(0, 0, w, self.height())
+        lay = self.column.layout()
+        lay.activate()
+        h = lay.heightForWidth(w) if lay.hasHeightForWidth() else lay.sizeHint().height()
+        if not any(not lay.itemAt(i).widget().isHidden() for i in range(lay.count())):
+            h = 0
+        self.column.setGeometry(0, 0, w, max(0, min(h, self.height())))
+        self.column.raise_()
+
+    def resizeEvent(self, e):
+        self.relayout()
+
+    def sizeHint(self):
+        return self.base.sizeHint()
+
+    def minimumSizeHint(self):
+        return self.base.minimumSizeHint()
+
+
 class Banner(QFrame):
     """Hinweisleiste ueber dem Bild (statt Meldungsfenster): info (blau), warn (gelb), error (rot)."""
 
