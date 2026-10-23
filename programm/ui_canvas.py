@@ -805,14 +805,21 @@ class Canvas(QWidget):
                 p.drawText(QRectF(a0 + 0.5 * th, b0 + 0.5 * th, 20000, 20000),
                            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, a["text"])
         elif t == "measure":
-            p.setPen(QPen(col, lw))
+            mlw, mth, alen = rep.measure_style(shape, a["size"])
+            mlw, mth, alen = max(1.0, mlw * s), mth * s, alen * s
+            # beim Herauszoomen nicht unlesbar, beim Hineinzoomen nicht riesig
+            mth = float(np.clip(mth, 11, 46))
+            alen = float(np.clip(alen, 7, 40))
+            pen = QPen(col, mlw)
+            pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+            p.setPen(pen)
             for gk, gd in rep.measure_geometry(a):
                 if gk == "circle":
                     cx, cy = self.to_wid(gd[0], gd[1])
                     p.setBrush(Qt.BrushStyle.NoBrush)
                     p.drawEllipse(QPointF(cx, cy), gd[2] * s, gd[2] * s)
-                    p.drawLine(QPointF(cx - 5, cy), QPointF(cx + 5, cy))
-                    p.drawLine(QPointF(cx, cy - 5), QPointF(cx, cy + 5))
+                    p.drawLine(QPointF(cx - 6, cy), QPointF(cx + 6, cy))
+                    p.drawLine(QPointF(cx, cy - 6), QPointF(cx, cy + 6))
                 else:
                     pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in gd])
                     if gk == "poly":
@@ -823,17 +830,30 @@ class Canvas(QWidget):
                     else:
                         p.setBrush(Qt.BrushStyle.NoBrush)
                         p.drawPolyline(pg)
-            p.setBrush(QColor("white"))
-            for q in a["pts"]:
-                p.drawEllipse(QPointF(*self.to_wid(q[0], q[1])), 3, 3)
+            wp = [self.to_wid(q[0], q[1]) for q in a["pts"]]
+            if a.get("kind", "dist") == "dist" and len(wp) >= 2:   # Pfeilspitzen wie bei einer Bemassung
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(col)
+                for tip, frm in ((wp[0], wp[1]), (wp[-1], wp[-2])):
+                    p.drawPolygon(QPolygonF([QPointF(*q) for q in rep.arrow_head(tip, frm, alen)]))
+            else:
+                p.setPen(QPen(col, mlw))
+                p.setBrush(QColor("white"))
+                for q in wp:
+                    p.drawEllipse(QPointF(*q), 3, 3)
             txt = rep.measure_text(a, self.mm_px)
             if txt:
-                mx = sum(q[0] for q in a["pts"]) / len(a["pts"])
-                my = sum(q[1] for q in a["pts"]) / len(a["pts"])
-                X, Y = self.to_wid(mx, my)
-                p.setFont(QFont(UI_FONT, 9))
-                r = QRectF(X + 8, Y - 22, p.fontMetrics().horizontalAdvance(txt) + 14, 20)
-                p.fillRect(r, QColor(255, 255, 255, 235))
+                X = sum(q[0] for q in wp) / len(wp)
+                Y = sum(q[1] for q in wp) / len(wp)
+                f = QFont(UI_FONT)
+                f.setPixelSize(int(mth))
+                f.setBold(True)
+                p.setFont(f)
+                tw = p.fontMetrics().horizontalAdvance(txt)
+                r = QRectF(X - tw / 2 - mth * 0.35, Y - mth * 1.6, tw + mth * 0.7, mth * 1.3)
+                p.setPen(QPen(col, 1))
+                p.setBrush(QColor(255, 255, 255, 240))
+                p.drawRoundedRect(r, mth * 0.25, mth * 0.25)
                 p.setPen(col)
                 p.drawText(r, Qt.AlignmentFlag.AlignCenter, txt)
         elif t == "rect":

@@ -455,6 +455,22 @@ def measure_text(a, mm):
     return ""
 
 
+def measure_style(shape, size):
+    """Bemassung: (Linienbreite, Texthoehe, Pfeillaenge) in Bildpixeln. Duenne Linie, gut lesbare Zahl."""
+    lw = max(1.0, 0.55 * ann_line_w(shape, size))
+    th = 0.75 * ann_text_h(shape, size)
+    return lw, th, max(6 * lw, 0.9 * th)
+
+
+def arrow_head(tip, frm, length):
+    """Dreieck einer Pfeilspitze an 'tip', die von 'frm' her kommt."""
+    import math
+    ang = math.atan2(tip[1] - frm[1], tip[0] - frm[0])
+    w = 0.38
+    return [tip, (tip[0] - length * math.cos(ang - w), tip[1] - length * math.sin(ang - w)),
+            (tip[0] - length * math.cos(ang + w), tip[1] - length * math.sin(ang + w))]
+
+
 def measure_geometry(a):
     """Zeichenhilfe: Liste (Typ, daten) -> ('line', [pts]), ('poly', [pts]), ('circle', (cx, cy, r))."""
     pts = [tuple(p) for p in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
@@ -521,27 +537,35 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
             d.multiline_text((x + 0.5 * th, y + 0.5 * th), a.get("text", ""), font=dc._font(max(6, int(th))),
                              fill=col, spacing=int(th * 0.25))
         elif t == "measure":
+            mlw, mth, alen = measure_style(shape, a["size"])
+            pp = [(p[0] - ox, p[1] - oy) for p in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
             for gk, gd in measure_geometry(a):
                 if gk == "circle":
                     cx, cy, cr = gd[0] - ox, gd[1] - oy, gd[2]
-                    d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], outline=col, width=int(lw))
-                    d.line([(cx - lw * 3, cy), (cx + lw * 3, cy)], fill=col, width=int(lw))
-                    d.line([(cx, cy - lw * 3), (cx, cy + lw * 3)], fill=col, width=int(lw))
+                    d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], outline=col, width=max(1, int(mlw)))
+                    d.line([(cx - mlw * 4, cy), (cx + mlw * 4, cy)], fill=col, width=max(1, int(mlw)))
+                    d.line([(cx, cy - mlw * 4), (cx, cy + mlw * 4)], fill=col, width=max(1, int(mlw)))
                 else:
                     pl = [(p[0] - ox, p[1] - oy) for p in gd]
                     if gk == "poly":
                         pl = pl + [pl[0]]
-                    d.line(pl, fill=col, width=int(lw), joint="curve")
-            for p in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]):
-                d.ellipse([p[0] - ox - lw * 1.6, p[1] - oy - lw * 1.6, p[0] - ox + lw * 1.6, p[1] - oy + lw * 1.6],
-                          outline=col, width=max(1, int(lw * 0.7)))
+                    d.line(pl, fill=col, width=max(1, int(round(mlw))), joint="curve")
+            if a.get("kind", "dist") == "dist" and len(pp) >= 2:     # Pfeilspitzen wie bei einer Bemassung
+                d.polygon(arrow_head(pp[0], pp[1], alen), fill=col)
+                d.polygon(arrow_head(pp[-1], pp[-2], alen), fill=col)
+            else:
+                for p in pp:
+                    r_ = max(2.0, 1.4 * mlw)
+                    d.ellipse([p[0] - r_, p[1] - r_, p[0] + r_, p[1] + r_], outline=col, width=max(1, int(mlw)))
             if mm:
                 txt = measure_text(a, mm)
-                pp = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
-                tx = sum(p[0] for p in pp) / len(pp) - ox
-                ty = sum(p[1] for p in pp) / len(pp) - oy
-                d.text((tx + 6, ty - th * 1.3), txt, font=dc._font(max(6, int(th))), fill=col,
-                       stroke_width=max(1, int(th / 8)), stroke_fill="white")
+                tx = sum(p[0] for p in pp) / len(pp)
+                ty = sum(p[1] for p in pp) / len(pp)
+                f = dc._font(max(6, int(mth)))
+                w_ = d.textlength(txt, font=f)
+                d.rounded_rectangle([tx - w_ / 2 - mth * 0.3, ty - mth * 1.55, tx + w_ / 2 + mth * 0.3, ty - mth * 0.2],
+                                    radius=mth * 0.2, fill="white", outline=col, width=max(1, int(mlw)))
+                d.text((tx - w_ / 2, ty - mth * 1.5), txt, font=f, fill=col)
         elif t == "rect":
             d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw))
         elif t == "cloud":
@@ -1050,7 +1074,9 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
             an = page.add_polyline_annot(pts) if a.get("kind") != "area" else page.add_polygon_annot(pts)
             an.set_colors(stroke=col)
-            an.set_border(width=lw)
+            an.set_border(width=max(0.5, measure_style(shape, a["size"])[0] * k))
+            if a.get("kind", "dist") == "dist":
+                an.set_line_ends(pymupdf.PDF_ANNOT_LE_CLOSED_ARROW, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
             info(an, "Maß", measure_text(a, mm) if mm else "")
         else:
             continue
