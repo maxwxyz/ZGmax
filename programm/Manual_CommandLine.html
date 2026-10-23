@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZGmax Command Line</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;line-height:1.55;color:#222}
+  h1{border-bottom:3px solid #0066b1;padding-bottom:.3rem}
+  h2{margin-top:2rem;color:#0066b1}
+  pre{background:#1e1e1e;color:#e8e8e8;padding:.8rem 1rem;border-radius:6px;overflow-x:auto}
+  code{background:#eef;padding:1px 5px;border-radius:3px}
+  pre code{background:none;padding:0}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:#f0f4f8}
+  .sw{display:inline-block;width:1em;height:1em;border:1px solid #888;vertical-align:middle;margin-right:.4em}
+  .tip{background:#fff8e1;border-left:4px solid #f5a623;padding:.6rem 1rem;margin:1rem 0}
+  .quick{background:#eef6ff;border:1px solid #b9d7f5;border-radius:8px;padding:.2rem 1.2rem 1rem;margin:1rem 0}
+  .quick h2{margin-top:.8rem}
+  h3{color:#234;margin-top:1.4rem}
+  kbd{background:#f3f3f3;border:1px solid #bbb;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:.9em}
+</style>
+</head>
+<body>
+<h1>Manual: command line (drawing_diff.py)</h1>
+<p>For <b>advanced users</b>: <code>drawing_diff.py</code> runs comparisons without a window – in scripts, overnight or for
+many files. For normal work with the mouse see the <a href="Manual_Viewer.html"><b>manual</b></a>.
+<span style="color:#666">Deutsch: <a href="Anleitung_Kommandozeile.html">Anleitung Kommandozeile</a> (more detail).
+The script's own messages and <code>-h</code> help are in German.</span></p>
+
+<div class="tip">Run all commands in the <code>programm</code> folder (where <code>drawing_diff.py</code> is). Put paths with spaces in quotes.</div>
+
+<h2>1. Requirements</h2>
+<pre><code>python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt            # optional OCR: -r requirements-ocr.txt</code></pre>
+
+<h2>2. Basic call</h2>
+<pre><code>python drawing_diff.py OLD.tif NEW.tif --out diff.png
+python drawing_diff.py -h                         # all options with defaults and examples</code></pre>
+<ul>
+  <li><b>Image A</b> (first) is the reference, usually the old revision. The result has the size of A.</li>
+  <li><b>Image B</b> (second) is the new revision; it is aligned to A.</li>
+  <li>Sensible defaults are active: tile fine alignment, hatching suppression, detection of moved areas and objects,
+  edge-fringe filter and minimum size.</li>
+</ul>
+
+<h2>3. File formats</h2>
+<p><b>Input</b> (by extension; A and B may differ): TIFF (also multi-page and 1-bit), PNG, JPG, BMP, WebP, JPEG 2000, GIF,
+PDF, SVG, XPS (rendered at <code>--dpi</code>, default 200) and DXF (model space, black on white). DWG/STEP/JT: export as
+DXF, PDF or TIF first. Pages: <code>--page-a N</code> / <code>--page-b N</code>.</p>
+<p><b>Output</b> by the extension of <code>--out</code> or <code>--format</code>: <code>png</code> (default), <code>tif</code>,
+<code>pdf</code>, <code>jpg</code> (<code>--quality</code>), <code>webp</code> (max. 16383 px), <code>bmp</code>.</p>
+
+<h2>4. Result image</h2>
+<table>
+  <tr><th>Color</th><th>Meaning</th></tr>
+  <tr><td><span class="sw" style="background:#f00"></span>Red</td><td>Only in A (removed or changed)</td></tr>
+  <tr><td><span class="sw" style="background:#00f"></span>Blue</td><td>Only in B (added or changed)</td></tr>
+  <tr><td><span class="sw" style="background:#969696"></span>Gray</td><td>In both (unchanged)</td></tr>
+  <tr><td><span class="sw" style="background:#00aa00"></span>Green</td><td>Same content at another place (block or single object moved or slightly rotated)</td></tr>
+</table>
+<p>A legend with colors, file names and settings is added to the right (<code>--no-legend</code> to omit it).</p>
+
+<h2>5. Comparing only a region</h2>
+<pre><code>python drawing_diff.py OLD.tif NEW.tif --select                     # drag in A, B is found automatically
+python drawing_diff.py OLD.tif NEW.tif --select --fit manual        # choose B yourself
+python drawing_diff.py OLD.tif NEW.tif --crop-a 4000,1500,4000,2500 # x,y,width,height in pixels of A</code></pre>
+
+<h2>6. Options</h2>
+<p>At 200 dpi, 1 pixel ≈ 0.13 mm.</p>
+<table>
+  <tr><th>Option</th><th>Meaning</th><th>Default</th></tr>
+  <tr><td><code>--tol PX</code></td><td>Lines closer than this count as identical. Many red/blue double lines → increase; small changes missing → decrease.</td><td>2</td></tr>
+  <tr><td><code>--tiles auto|CxR</code>, <code>--cell PX</code></td><td>Fine alignment per tile (<code>1x1</code> = off)</td><td>auto, 400</td></tr>
+  <tr><td><code>--max-shift PX</code></td><td>Maximum shift of one tile</td><td>30</td></tr>
+  <tr><td><code>--hatch PX</code></td><td>Hatching of equal density is not a change (largest line spacing; 0 = off)</td><td>16</td></tr>
+  <tr><td><code>--move PX</code></td><td>Whole blocks moved by up to PX appear green (0 = off)</td><td>100</td></tr>
+  <tr><td><code>--obj-shift PX</code>, <code>--obj-rotate DEG</code></td><td>Single objects (dimension, text) shifted/rotated slightly appear green; changed numbers stay changes</td><td>40, 3</td></tr>
+  <tr><td><code>--thr 0-255</code></td><td>Darkness from which a pixel counts as a line (faint/yellow lines missing → increase)</td><td>128</td></tr>
+  <tr><td><code>--align</code></td><td><code>affine</code>, <code>euclidean</code>, <code>translation</code>, <code>none</code></td><td>affine</td></tr>
+  <tr><td><code>--min-area PX</code></td><td>Smaller differences (dust) are ignored (0 = off)</td><td>20</td></tr>
+  <tr><td><code>--keep-edges</code></td><td>Do not filter 1-px fringes along lines present in both drawings</td><td>off</td></tr>
+  <tr><td><code>--ignore x,y,w,h</code>, <code>--ignore-border PX</code></td><td>Zones / sheet border that are not compared</td><td>–</td></tr>
+  <tr><td><code>--list [FILE.csv]</code>, <code>--mark</code></td><td>List of changes (CSV, semicolon) / numbered frames in the image</td><td>off</td></tr>
+  <tr><td><code>--report [FILE.pdf]</code>, <code>--report-max N</code></td><td>PDF report with overview and detail views</td><td>off, 40</td></tr>
+  <tr><td><code>--text-diff</code>, <code>--index-check</code></td><td>OCR: text per change (A → B); revision in the title block (needs OCR package)</td><td>off</td></tr>
+  <tr><td><code>--verbose</code></td><td>Details on moved/rotated objects</td><td>off</td></tr>
+</table>
+
+<h2>7. Batch</h2>
+<p>Give two <b>folders</b> instead of two files: all files with the same name (ignoring extension and case) are compared.</p>
+<pre><code>python drawing_diff.py "D:\Drawings\old" "D:\Drawings\new" --out "D:\Results" --list --report</code></pre>
+<p>Errors in one pair are reported and the batch continues. Exit code 1 on errors. In the program window:
+<i>File → Batch comparison</i>.</p>
+<p>Back to the <a href="Manual_Viewer.html">manual</a>.</p>
+</body>
+</html>

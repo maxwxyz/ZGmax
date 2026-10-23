@@ -1,21 +1,46 @@
 # ZGmax
 
-Zeichnungen ansehen, vergleichen und prüfen. Technische Zeichnungen ansehen, vergleichen, vermessen, markieren und prüfen. Anleitung für Anwender:
-`programm/Anleitung_Viewer.html` (im Programm: Hilfe → Anleitung, F1), Kommandozeile: `programm/Anleitung_Kommandozeile.html`.
+View, compare, measure, mark up and review technical drawings. ZGmax compares two revisions of a drawing
+(old and new), highlights and numbers the differences and lets you review them one by one.
 
-## Aufbau
+* User manual: `programm/Manual_Viewer.html` (German: `programm/Anleitung_Viewer.html`). In the program: Help → Manual, F1.
+* Command line: `programm/Manual_CommandLine.html` (German: `programm/Anleitung_Kommandozeile.html`).
+* `Anleitung.html` in the root folder opens the manual in the system language.
 
-| Datei | Inhalt |
+The user interface is available in German and English. By default it follows the system language (German on a German
+system, otherwise English); it can be changed under View → Sprache / Language.
+
+## Features
+
+* Formats: PDF, TIFF (multi-page), PNG, JPG, BMP, WebP, JP2, GIF, SVG, XPS, DXF
+* Views: old, new, compare (red/blue/gray, green = moved), side by side, overlay, slider, blink
+* Robust raster comparison: global and tile alignment, hatching, moved blocks/objects, edge fringes, glyph check,
+  paper flattening, auto-adjust of the parameters; exact vector comparison for CAD PDFs
+* Review workflow: numbered changes, checked/rejected/comment, CSV, PDF report, PDF with Acrobat annotations
+* Measuring with snapping and calibration, markups (text, cloud, box, arrow, line, highlight, number, stamp)
+* Text search (PDF text or OCR, German and English), comment import from XFDF and PDF, XFDF export
+* Manual 3-point alignment, regions, matched areas, zones, multi-page, batch and revision comparison
+* Projects (`.zgmax`), autosave, several windows, dark mode, adjustable interface size
+
+## Code layout
+
+| File | Contents |
 |---|---|
-| `programm/diffcore.py` | Rechenkern: Laden (Bild, PDF, DXF), Ausrichten, Kachelvergleich, Objektsuche, Kantensäume, Ausgabe |
-| `programm/diffpipe.py` | Ablauf (laden → ausrichten → vergleichen), Parameter, automatische Einstellung |
-| `programm/diffreport.py` | Änderungsliste, Prüfstatus, Anmerkungen, PDF-Bericht, PDF mit Acrobat-Anmerkungen, Schriftfeld, OCR |
-| `programm/diffvector.py` | PDF-Vektordaten: Ebenen/Farben, exakter Vergleich, PDF-Text |
-| `programm/drawing_diff.py` | Kommandozeile |
-| `programm/drawing_viewer.py` | Programmfenster (Einstieg), Hauptfenster-Abläufe |
-| `programm/ui_*.py` | Oberfläche: Aufbau (`ui_layout`), Zeichenfläche (`ui_canvas`), Funktionen (`ui_features`), Liste (`ui_regions`), Markierungen (`ui_annotations`), Projekt (`ui_project`), Export (`ui_export`), Farbschema (`ui_theme`), Symbole (`ui_icons`), Startseite (`ui_start`) |
+| `programm/diffcore.py` | Core: loading (image, PDF, DXF), alignment, tile comparison, object search, edge fringes, glyph check, output |
+| `programm/diffpipe.py` | Pipeline (load → align → compare), parameters, auto-adjust |
+| `programm/diffreport.py` | Change list, review status, annotations, PDF report, Acrobat annotations, title block, OCR, text search |
+| `programm/diffvector.py` | PDF vector data: layers/colors, exact comparison, PDF text |
+| `programm/diffxfdf.py` | Comments: read XFDF and PDF annotations, write XFDF |
+| `programm/drawing_diff.py` | Command line |
+| `programm/drawing_viewer.py` | Program window (entry point), main window workflow, self-test |
+| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
+| `programm/i18n.py`, `programm/i18n_en.json` | Translation: German source strings → English |
+| `programm/ocr/` | Latin text recognition model (PP-OCRv5, Apache-2.0) for German and English |
 
-## Entwickeln
+The source code (comments, identifiers, UI source strings) is German. UI strings are wrapped in `tr()`;
+`packaging/i18n_mark.py --list` lists all keys, and `tests/english_check.py` checks that every key has a translation.
+
+## Development
 
 ```bash
 python3 -m venv .venv
@@ -24,18 +49,19 @@ python3 -m venv .venv
 .venv/bin/python programm/drawing_viewer.py
 ```
 
-Die Tests prüfen bekannte Änderungen an künstlichen Zeichnungen, die Oberfläche (ohne Bildschirm) und – wenn der Ordner
-`../Beispiele` vorhanden ist – Fingerabdrücke der Ergebnisse. Ändert sich das Vergleichsverfahren gewollt:
-`UPDATE_GOLDEN=1 .venv/bin/python -m pytest`.
+The tests check known changes in synthetic drawings, the UI (headless) and, if the folder `../Beispiele` exists,
+fingerprints of the results. If the comparison is changed on purpose: `UPDATE_GOLDEN=1 .venv/bin/python -m pytest`.
+`tests/bench.py` measures hits and false alarms on synthetic drawings. Force a language with `ZV_LANG=de` or `ZV_LANG=en`.
 
-## Portable Apps bauen
+## Building portable apps
 
-* macOS (auf einem Mac): `packaging/build_mac.sh` → `dist/ZGmax.app` und ZIP. Läuft auf Macs mit derselben
-  Prozessorart wie der Bau-Mac (Apple-Chip oder Intel).
-* Windows (auf einem Windows-PC): `packaging\build_windows.bat` → `dist\ZGmax\ZGmax.exe` und ZIP.
-* Automatisch für alle drei: Projekt auf GitHub legen; `.github/workflows/build.yml` baut bei jedem Tag `v*` oder von Hand.
+* macOS (on a Mac): `packaging/build_mac.sh` → `dist/ZGmax.app` and a ZIP. Runs on Macs with the same processor type
+  as the build Mac (Apple silicon or Intel).
+* Windows (on a Windows PC with Python 3.12+ on the PATH): `packaging\build_windows.bat` → `dist\ZGmax\ZGmax.exe` and a ZIP.
+* Automatically for all platforms: push to GitHub; `.github/workflows/build.yml` builds on every tag `v*` or manually.
 
-Die Paketversionen sind in `requirements*.txt` festgelegt; nur gemeinsam und nach einem Testlauf ändern.
+The app is self-contained (Python, manuals, OCR model, translations). Check a build with `ZGmax --selbsttest`.
+Package versions are pinned in `requirements*.txt`; change them only together and after a test run.
 
-Projektdateien: `.zgmax`. Die Einstellungen liegen weiterhin unter dem alten internen Schlüssel `drawing_diff/viewer`,
-damit vorhandene Einstellungen und Projekte nach der Umbenennung weiter gelten.
+Project files: `.zgmax`. Settings are still stored under the old internal key `drawing_diff/viewer`, so existing
+settings and projects keep working after the rename.

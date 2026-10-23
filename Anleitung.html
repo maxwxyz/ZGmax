@@ -2,11 +2,18 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=programm/Anleitung_Viewer.html">
-<title>Anleitung ZGmax</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZGmax – Anleitung / Manual</title>
+<script>
+  // Systemsprache: Deutsch -> Anleitung, sonst englisches Manual
+  location.replace((navigator.language || "en").toLowerCase().startsWith("de")
+    ? "programm/Anleitung_Viewer.html" : "programm/Manual_Viewer.html");
+</script>
 </head>
-<body style="font-family:Segoe UI,Arial,sans-serif;margin:2rem">
-<p>Weiter zur <a href="programm/Anleitung_Viewer.html">Anleitung (Programmfenster)</a>
- oder zur <a href="programm/Anleitung_Kommandozeile.html">Anleitung Kommandozeile</a>.</p>
+<body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;margin:2rem">
+<p><b>Deutsch:</b> <a href="programm/Anleitung_Viewer.html">Anleitung (Programmfenster)</a> ·
+ <a href="programm/Anleitung_Kommandozeile.html">Anleitung Kommandozeile</a></p>
+<p><b>English:</b> <a href="programm/Manual_Viewer.html">Manual (program window)</a> ·
+ <a href="programm/Manual_CommandLine.html">Command line manual</a></p>
 </body>
 </html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZGmax Manual</title>
+<style>
+  :root{--fg:#1f2937;--muted:#6b7280;--bg:#ffffff;--accent:#2563eb;--line:#d6dbe3;--th:#f0f4f8;--code:#eef2ff;
+        --tip-bg:#fff8e1;--tip-line:#f5a623;--quick-bg:#eef6ff;--quick-line:#b9d7f5;--kbd:#f3f4f6}
+  @media (prefers-color-scheme: dark){
+    :root{--fg:#e5e7eb;--muted:#9ca3af;--bg:#1c1f24;--accent:#60a5fa;--line:#3a4049;--th:#262a31;--code:#262a31;
+          --tip-bg:#3a3114;--tip-line:#d4a017;--quick-bg:#1e2b42;--quick-line:#34507f;--kbd:#2d323a}}
+  body{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;max-width:920px;margin:2rem auto;padding:0 1rem;
+       line-height:1.6;color:var(--fg);background:var(--bg)}
+  h1{border-bottom:3px solid var(--accent);padding-bottom:.3rem}
+  h2{margin-top:2.4rem;color:var(--accent)}
+  h3{margin-top:1.4rem}
+  code{background:var(--code);padding:1px 5px;border-radius:3px}
+  table{border-collapse:collapse;width:100%;margin:.6rem 0}
+  th,td{border:1px solid var(--line);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--th)}
+  .sw{display:inline-block;width:1em;height:1em;border:1px solid #888;vertical-align:middle;margin-right:.4em}
+  .tip{background:var(--tip-bg);border-left:4px solid var(--tip-line);padding:.6rem 1rem;margin:1rem 0}
+  .quick{background:var(--quick-bg);border:1px solid var(--quick-line);border-radius:10px;padding:.2rem 1.2rem 1rem;margin:1rem 0}
+  .quick h2{margin-top:.8rem}
+  kbd{background:var(--kbd);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:.9em}
+  nav{columns:3;font-size:.95em} nav a{display:block}
+  a{color:var(--accent)}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>ZGmax – Manual</h1>
+<p><b>ZGmax</b> displays technical drawings and compares two revisions (old and new). Differences are highlighted in
+color and numbered, and you can review, comment on and measure them one by one, then save them as an image, a PDF or a list.
+For automation, see the <a href="Manual_CommandLine.html">command line manual</a>.
+<span class="muted">Deutsch: <a href="Anleitung_Viewer.html">Anleitung</a>.</span></p>
+<p class="muted">Shortcuts: <kbd>Ctrl</kbd> means <kbd>⌘</kbd> on the Mac. Single keys such as <kbd>F</kbd> or
+<kbd>N</kbd> work when the drawing has the focus (click into it once).</p>
+
+<nav>
+<a href="#quick">Quick start</a><a href="#start">Starting the program</a><a href="#window">The window</a>
+<a href="#navigation">Zooming and panning</a><a href="#views">Views</a><a href="#viewing">Viewing only, windows, closing</a>
+<a href="#sensitivity">Sensitivity, Auto-adjust</a><a href="#measure">Measuring and calibrating</a>
+<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#texts">Reading texts and dimensions</a>
+<a href="#comments">Importing comments (XFDF, PDF)</a><a href="#align">Aligning manually</a>
+<a href="#pages">Multi-page files</a><a href="#regions">Region, matching areas, zones</a>
+<a href="#formats">PDF vector data, DXF</a><a href="#save">Saving and printing</a>
+<a href="#batch">Batch and revisions</a><a href="#ui">Language and size</a><a href="#advanced">All settings</a><a href="#keys">Shortcuts</a><a href="#faq">Questions</a>
+</nav>
+
+<div class="quick">
+<h2 id="quick">Quick start</h2>
+<ol>
+  <li><b>Start:</b> open <i>ZGmax</i>. The start page appears.</li>
+  <li><b>Choose drawings:</b> choose the <b>old</b> drawing on the left and the <b>new</b> one on the right, or drag both
+      files into the window together. The comparison starts by itself. A single file is just displayed.</li>
+  <li><b>Look:</b> <span class="sw" style="background:#e5173f"></span><b>Red</b> = only in the old drawing
+      (removed), <span class="sw" style="background:#1f3fff"></span><b>Blue</b> = only in the new one (added),
+      <span class="sw" style="background:#969696"></span>Gray = unchanged, <span class="sw" style="background:#00aa00"></span>Green =
+      only moved. Mouse wheel = zoom, drag the paper = pan, <kbd>F</kbd> = whole drawing.</li>
+  <li><b>Review (optional):</b> on the right, <i>Find changes</i>, then <kbd>N</kbd> goes from change to change,
+      <kbd>G</kbd> = checked, <kbd>X</kbd> = rejected.</li>
+  <li><b>Save:</b> <i>Save</i> at the top right → result image, PDF or project.</li>
+</ol>
+<p><b>Lots of small hits?</b> Click <i>Auto-adjust</i> on the left. The program measures how precisely the two drawings
+line up and sets the tolerance and search ranges to match.</p>
+</div>
+
+<h2 id="start">Starting the program</h2>
+<table>
+<tr><th>Variant</th><th>How</th></tr>
+<tr><td><b>App (recommended)</b></td><td><b>Mac:</b> drag <code>ZGmax.app</code> into <i>Applications</i> and open it. On
+the first start macOS may say “unidentified developer”: right-click the app → <i>Open</i> → confirm <i>Open</i> (only once).
+You can drop drawings and projects onto the app icon.<br><b>Windows:</b> unzip (e.g. to <code>C:\Program Files\ZGmax</code>
+or a USB stick) and start <code>ZGmax.exe</code>. No installation and no Python needed. Desktop icon:
+<i>File → Create desktop shortcut</i>.</td></tr>
+<tr><td>With Python</td><td>Double-click <code>Start ZGmax.command</code> (Mac) or <code>Start ZGmax.bat</code> (Windows).
+The first time, the required packages are installed in tested versions (internet needed). Directly:
+<code>python programm/drawing_viewer.py [old [new]]</code>.</td></tr>
+</table>
+
+<h2 id="window">The window</h2>
+<table>
+<tr><th>Area</th><th>Contents</th></tr>
+<tr><td>Menu bar</td><td>All functions: <i>File</i>, <i>Edit</i>, <i>View</i>, <i>Tools</i>, <i>Review</i>, <i>Help</i>.</td></tr>
+<tr><td>Top bar</td><td><i>Open</i>, <i>Compare</i>, the view switch (Old, New, Compare, Side by side, Overlay, Slider, Blink),
+zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Settings</i> and
+<i>Changes and markups</i>.</td></tr>
+<tr><td>Tool palette (left of the drawing)</td><td>Select, Zoom, Measure, Text, Cloud, Box, Arrow, Line, Marker, Number, Stamp;
+at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
+<tr><td>Options bar (above the drawing)</td><td>Appears only when needed and shows the settings of the current tool or view,
+e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for markups; speed and pause for Blink;
+<i>Highlight changes</i> for Old/New.</td></tr>
+<tr><td>Search bar</td><td>Opens with <kbd>Ctrl</kbd>+<kbd>F</kbd> above the drawing, see <a href="#search">Finding text</a>.</td></tr>
+<tr><td>Message bar</td><td>Blue = information, yellow = warning, red = error (with <i>Details</i>). Used instead of many pop-ups.</td></tr>
+<tr><td>Status bar (bottom)</td><td>What is happening, progress in percent with <i>Cancel</i>, mouse position in px and mm.</td></tr>
+</table>
+<p>Rarely used things are hidden at first. <i>View → Show all settings</i> also shows region/zones, vector data,
+advanced options and the log.</p>
+
+<h2 id="navigation">Zooming and panning</h2>
+<p>This works <b>always</b>, whichever tool is active:</p>
+<table>
+<tr><th>Action</th><th>Effect</th></tr>
+<tr><td>Mouse wheel</td><td>Zoom at the mouse position</td></tr>
+<tr><td>Trackpad: two-finger scroll / pinch</td><td>Pan / zoom (<kbd>Ctrl</kbd>+two fingers = zoom)</td></tr>
+<tr><td>Drag empty paper with the left button</td><td>Pan (tool <i>Select</i>)</td></tr>
+<tr><td>Drag with the middle button (wheel)</td><td>Pan</td></tr>
+<tr><td>In <i>Side by side</i>, drag across the middle</td><td>Panning simply continues; both halves stay in sync</td></tr>
+<tr><td><b>Drag with the right button</b></td><td><b>Zoom box</b>: zoom exactly into the dragged area</td></tr>
+<tr><td>Short right-click</td><td>Context menu (e.g. <i>Whole drawing</i>, tools, copy)</td></tr>
+<tr><td><kbd>F</kbd>, double-click on empty paper, double-click with the wheel, button <i>Whole drawing</i></td><td>Show the whole drawing</td></tr>
+<tr><td>Click the zoom level (e.g. “35 %”)</td><td>Actual size 100 %</td></tr>
+<tr><td><kbd>+</kbd> / <kbd>−</kbd>, arrow keys</td><td>Zoom / pan</td></tr>
+<tr><td>Tool <i>Zoom</i> (<kbd>Z</kbd>)</td><td>Zoom box with crosshair using the left button, as often as you like; a single click =
+whole drawing; <kbd>Esc</kbd> = back to Select.</td></tr>
+<tr><td><i>Overview</i> (bottom of the palette)</td><td>When zoomed in, a small map at the bottom right shows the whole
+drawing with the visible area. Click or drag to jump there.</td></tr>
+<tr><td><i>Magnifier</i> (<kbd>L</kbd>)</td><td>Magnifies the area under the mouse pointer (2× to 8×, options bar).</td></tr>
+<tr><td><kbd>R</kbd></td><td>Rotate the view by 90° (display only; measuring and markups keep working)</td></tr>
+</table>
+
+<h2 id="views">Views</h2>
+<table>
+<tr><th>View</th><th>Key</th><th>Shows</th></tr>
+<tr><td>Old / New</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Only the old or new drawing, as in the file (gray or in color).
+With <i>Highlight changes</i> in the options bar (<kbd>8</kbd> / <kbd>7</kbd>), removed parts appear red in Old and new parts blue in New.</td></tr>
+<tr><td>Compare</td><td><kbd>3</kbd></td><td>The result in color (legend at the bottom left)</td></tr>
+<tr><td>Side by side</td><td><kbd>9</kbd></td><td>Old on the left, new on the right; both halves zoom and pan together</td></tr>
+<tr><td>Overlay</td><td><kbd>4</kbd></td><td>Both on top of each other without tolerance – shows what the automatic filtering removes</td></tr>
+<tr><td>Slider</td><td><kbd>5</kbd></td><td>Old on the left, new on the right; drag the divider with the mouse</td></tr>
+<tr><td>Blink</td><td><kbd>6</kbd></td><td>Alternates between old and new; speed and pause are in the options bar.
+<kbd>Space</kbd> switches by hand.</td></tr>
+</table>
+<p><b>Color:</b> colored drawings (e.g. PDFs with colored layers) appear in their original colors in Old, New, Side by side,
+Blink and Slider, and gray scans in their gray tones. Compare, Overlay and <i>Highlight changes</i> always work in black and
+white (red/blue/gray). The comparison itself always uses the black-and-white version. Can be switched off:
+<i>View → Show original (color, grayscale)</i>.</p>
+<p><b>Invert colors</b> (<kbd>I</kbd>, <i>View → Invert colors</i>): light lines on a dark background – pleasant in the
+dark or during long screen work. In Compare only the paper turns dark; red/blue/green stay. Display only; saved images and
+prints stay normal. Separately, <i>View → Appearance</i> (Automatic, Light, Dark) sets the look of the user interface.</p>
+
+<h2 id="viewing">Viewing only, several windows, closing</h2>
+<ul>
+<li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → View drawing …</i>
+(<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
+saving work. If a comparison is already open, the drawing opens in a <b>new window</b>; the comparison is kept.</li>
+<li><b>Several comparisons at once:</b> <i>File → New window</i> (<kbd>Ctrl</kbd>+<kbd>N</kbd>). Each window is
+independent (own files, markups and view settings).</li>
+<li><b>Close without quitting:</b> <i>File → Close</i> (<kbd>Ctrl</kbd>+<kbd>W</kbd>). If markups or review results are
+unsaved, the program asks first; then the start page appears again.</li>
+<li><b>Recently used:</b> on the start page and under <i>File → Recently used</i> (pairs, single files, projects).</li>
+</ul>
+
+<h2 id="sensitivity">Sensitivity and “Auto-adjust”</h2>
+<p><b>Tolerance</b> is the most important setting: lines less than n pixels apart count as identical (at 200 dpi,
+1 pixel is about 0.13 mm). Many thin red/blue double lines → increase; small changes missing → decrease.
+<b>Minimum size</b>: smaller differences (dust, dots) are ignored. Then click <i>Compare</i>; a dot (●) on the button shows
+that something changed since the last calculation.</p>
+<p><b>Auto-adjust</b> measures the current pair of drawings:</p>
+<ul>
+<li><i>Line threshold</i> – separates paper and lines (important for gray or yellowed scans).</li>
+<li><i>Tolerance</i> – how much deviation is just “lines not lying exactly on top of each other”: the program counts the
+differences at tolerance 0, 1, 2 … and picks the point after which more tolerance hardly removes anything (otherwise it
+would swallow real changes).</li>
+<li><i>Minimum size</i> – from the measured line width.</li>
+<li><i>Search ranges</i> (tiles, shifts, hatching) – converted to the resolution (dpi).</li>
+<li><i>Even out uneven paper</i> – switched on for shadows or yellowed paper.</li>
+</ul>
+<p>The program cannot know which change is <i>important</i>; the suggestions appear in the message bar and can be
+changed by hand at any time.</p>
+<div class="tip"><b>Edge fringes:</b> if lines in the new drawing are offset by one pixel or scanned/rendered slightly
+thicker, thin red/blue fringes appear right next to gray lines. These are ignored by default (they stay gray). Separate
+lines at a distance from the old line remain changes. Can be switched off under <i>Show all settings → Advanced options →
+Ignore edge fringes on lines</i>.</div>
+<div class="tip"><b>More checks against false alarms</b> (also in the advanced options): <i>Check characters exactly</i>
+(on by default) – letters and digits that are only rasterized slightly differently do not count as changes; a changed
+digit stays a change. <i>Even out uneven paper</i> – compensates unevenly lit paper (shadows, yellowed scans);
+Auto-adjust switches it on when needed. If both files are PDFs with real lines, the message bar also offers the more
+precise <a href="#formats">vector comparison</a>.</div>
+
+<h2 id="measure">Measuring, scale and calibrating</h2>
+<p>Choose the <b>Measure</b> tool (<kbd>M</kbd>). The options bar shows the measuring mode, snapping, the current scale
+and <i>Calibrate</i>.</p>
+<table>
+<tr><th>Mode</th><th>How</th><th>Result</th></tr>
+<tr><td>Length</td><td>2 points</td><td>mm, drawn as a dimension with arrowheads</td></tr>
+<tr><td>Polyline</td><td>any number of points, finish with double-click, <kbd>Enter</kbd> or right-click</td><td>total length in mm</td></tr>
+<tr><td>Angle</td><td>3 points: leg – vertex – leg</td><td>degrees</td></tr>
+<tr><td>Radius</td><td>3 points on the circle/arc</td><td>radius and diameter</td></tr>
+<tr><td>Area</td><td>corner points, finish as with polyline</td><td>mm²</td></tr>
+</table>
+<p><b>Snap to lines:</b> the pointer snaps to lines (green square); between two parallel lines the perpendicular distance
+is measured automatically. Hold <kbd>Shift</kbd> = measure freely. Measurements stay in the drawing as dimensions, can be
+moved with <i>Select</i> and changed at the white handles. They look like a drawing dimension: thin line, arrowheads,
+readable number; <i>Size</i> in the options bar changes number and arrows together (also in exports and PDFs).</p>
+<p><b>Are the mm correct?</b> The conversion is <i>mm = pixels × 25.4 ÷ dpi × scale</i>. The program reads the
+resolution from the file (otherwise 200 dpi).</p>
+<ul>
+<li><b>Calibrate</b> (safest method): button <i>Calibrate …</i> in the measure bar. If nothing has been measured yet, measure
+a known distance (e.g. a dimension of the drawing) – the program then asks for its true length. After that all
+measurements are correct, even with a wrong resolution.</li>
+<li><b>Enter the scale:</b> click “Scale 1 : n” in the measure bar. For 2:1 enter 0.5.</li>
+<li><b>From title block:</b> reads scale, drawing number and revision from the title block at the bottom right (directly
+from PDF text, by text recognition for images) and offers to use the scale.</li>
+</ul>
+
+<h2 id="markup">Markups</h2>
+<table>
+<tr><th>Tool</th><th>How</th></tr>
+<tr><td>Text (<kbd>T</kbd>)</td><td>Click into the drawing and type (several lines possible)</td></tr>
+<tr><td>Cloud (<kbd>W</kbd>)</td><td>Drag a revision cloud</td></tr>
+<tr><td>Box / Arrow / Line</td><td>Drag, or drag from the start to the tip; Line has no arrowhead</td></tr>
+<tr><td>Marker</td><td>Highlight an area in color (highlighter, yellow by default)</td></tr>
+<tr><td>Number</td><td>Each click places the next numbered circle; start number in the options bar</td></tr>
+<tr><td>Stamp</td><td>Click, then status (APPROVED, CHECKED …), name and date</td></tr>
+</table>
+<p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
+selected one. With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize; double-click =
+edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo. All markups are listed in the
+<i>Markups</i> tab on the right. <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
+
+<h2 id="review">Reviewing changes</h2>
+<ol>
+<li>Open the right panel (<i>Changes and markups</i>) and click <b>Find and number changes</b>
+(<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>). Each change gets a number and a frame (as a revision cloud if you like:
+<i>View → Changes as revision clouds</i>).</li>
+<li><b>Next</b> (<kbd>N</kbd>) jumps to the next open change and zooms to it; <b>Previous</b> (<kbd>P</kbd>) goes back.</li>
+<li><b>Checked</b> (<kbd>G</kbd>, moves on), <b>Rejected</b> (<kbd>X</kbd>), <b>Comment</b> (<kbd>C</kbd>).
+The status is shown in color: <span style="color:#f97316">● open</span>, <span style="color:#16a34a">● checked</span>,
+<span style="color:#7c3aed">● rejected</span> – in the list and on the frames in the drawing.</li>
+</ol>
+<p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “Dimensions”
+(changed dimension values) or “open”. Clicking a row jumps into the drawing, clicking a frame selects the row;
+double-click edits text A/B and the description. <i>Mark manually</i> adds a dragged area as your own change;
+<i>Delete</i> removes unwanted hits. <i>Review → Turn rejected into zones</i> turns all rejected hits into zones that are no
+longer reported in later comparisons (batch too). Status and comments are saved in the <b>project</b> and appear in the CSV,
+the PDF report and the PDF with annotations – that is your review record.</p>
+
+<h2 id="search">Finding text</h2>
+<p><kbd>Ctrl</kbd>+<kbd>F</kbd> (<i>Edit → Find text …</i>) opens the search bar above the drawing. Enter a term, e.g.
+<code>H7</code>, <code>bore</code> or an item number; all hits get a yellow frame, the current one a stronger one.
+<kbd>Enter</kbd> or <kbd>F3</kbd> = next hit, <kbd>Shift</kbd>+<kbd>F3</kbd> = previous, <kbd>Esc</kbd> closes.
+In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.</p>
+<p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
+text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
+
+<h2 id="texts">Reading texts and dimensions</h2>
+<p>In the section <i>Read texts and dimensions</i> (right panel, expand it):</p>
+<ul>
+<li><b>Read text from PDF</b>: embedded text of each change (A → B), exact, only for PDFs with real text.</li>
+<li><b>Compare dimensions</b>: reads the numbers of each change and reports “12.5 → 12.8” separately from purely graphical
+changes (also R and M values). The filter “Dimensions” shows only these.</li>
+<li><b>Read text (OCR)</b> and <b>Check revision</b>: text recognition for scans, for German and English text
+(including umlauts, ß, Ø, ±, °). Included in the app; when running with Python the program offers to install it on first
+use (about 60 MB, internet needed).</li>
+<li><b>Grouping</b>: how close differences must be to be combined into one entry.</li>
+</ul>
+
+<h2 id="comments">Importing and passing on comments (XFDF, PDF)</h2>
+<p><i>File → Import comments (XFDF, PDF) …</i> takes over annotations from other programs as your own markups:</p>
+<ul>
+<li><b>XFDF</b> (comment export from Acrobat, Bluebeam, PDF-XChange …) and</li>
+<li><b>PDF with comments</b> (the annotations of the selected page).</li>
+</ul>
+<p>Text, box, cloud, highlight, arrow, line and stamp are imported with color, author, date and comment text (visible in
+the markup list). In a comparison the program asks whether the comments belong to the old or the new drawing; for the new
+one they are transformed onto the result. Unknown types (e.g. sound, attachment) are skipped and reported.</p>
+<p><i>File → Save markups as XFDF …</i> writes your own markups and measurements as XFDF, which you can import into the
+original PDF in Acrobat &amp; co. (<i>Comments → Import</i>).</p>
+
+<h2 id="align">Aligning manually (3 points)</h2>
+<p>If the drawings do not line up well after automatic alignment (e.g. a heavily distorted scan or a different sheet format),
+use <i>Tools → Align manually (3 points)</i> (also a button next to <i>Auto-adjust</i>): click a point in <b>Old</b> and the
+same point in <b>New</b>, three times (the message bar says which one is next; corners or crossings far apart work best).
+The program then moves, rotates and scales the new drawing and compares again. <i>Reset manual alignment</i> undoes it.
+The alignment is saved in the project.</p>
+
+<h2 id="pages">Multi-page files</h2>
+<p>For multi-page PDF/TIFF files the section <i>Pages</i> appears on the left (with thumbnails for PDFs). Click a page or
+set <i>Page A / Page B</i>; <i>Turn pages of A and B together</i> is the default. <b>Compare all pages</b> compares every page
+and writes the number of changes per page into the list (red = changed, green = identical).</p>
+
+<h2 id="regions">Region, matching areas, zones</h2>
+<p class="muted">Visible with <i>View → Show all settings</i>.</p>
+<ul>
+<li><b>Region</b>: compare only part of the sheet (faster). Drag a frame in A; the matching area in B is found automatically.</li>
+<li><b>Match areas (A ↔ B)</b>: choose an area in A and the matching area in B yourself – e.g. when a view was moved or
+scaled on the sheet. The program compensates for size differences.</li>
+<li><b>Zones</b>: areas that are not compared (title block, stamps). <b>Border strip</b>: exclude the sheet border.</li>
+</ul>
+<p>Markups, measurements and zones belong to the sheet: when the region changes, they stay at the same place on the drawing.</p>
+
+<h2 id="formats">PDF vector data and DXF</h2>
+<p><b>File formats:</b> PNG, JPG, TIF (also multi-page), BMP, WEBP, JP2, GIF, PDF, SVG, XPS and <b>DXF</b>. DXF is drawn
+black on white from model space (unit mm; very large drawings are reduced to A0). DWG cannot be read directly – save it as
+DXF or PDF in your CAD program.</p>
+<p><b>Vector data (PDF):</b> if both PDFs contain real lines and text (from the CAD system), the section <i>Vector data
+(PDF)</i> appears on the left: <b>Vector comparison</b> compares line against line and text against text without
+rasterizing (tolerance 0.05 mm by default; both drawings need the same sheet origin). <b>Layers and colors …</b> chooses
+what is compared (e.g. everything except dimensions).</p>
+
+<h2 id="save">Saving and printing</h2>
+<table>
+<tr><th>Save ▾</th><th>Result</th></tr>
+<tr><td>Result image</td><td>As displayed (view, markups, legend) as PNG, JPG, TIFF or PDF</td></tr>
+<tr><td>PDF with annotations (Acrobat)</td><td>The result as PDF; changes as revision clouds and your markups as <b>real PDF
+comments</b> (click, reply and tick them off in Acrobat &amp; co.)</td></tr>
+<tr><td>PDF report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
+<tr><td>List of changes (CSV)</td><td>For Excel: number, type, position, texts, dimension, description, status, comment</td></tr>
+<tr><td>Print to scale</td><td>100 % = actual sheet size, spread over several pages, or fitted</td></tr>
+<tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones and review state. If you move the project together with the
+drawings, it finds them again.</td></tr>
+</table>
+<p>Markups alone: <i>File → Save markups as XFDF …</i> (see <a href="#comments">Comments</a>).</p>
+<p><b>Autosave:</b> unsaved markups and review results are backed up every minute. If the program crashes, it offers to
+restore them on the next start.</p>
+
+<h2 id="batch">Batch and revisions</h2>
+<p><i>File → Batch comparison</i>: compares all files with the same name in two folders pair by pair and saves a result image
+per pair (optionally CSV and PDF report). <i>File → Compare revisions</i>: several revisions of a drawing in order
+(A → B → C …) with a change history. Both use the current settings.</p>
+
+<h2 id="ui">Language and interface size</h2>
+<ul>
+<li><b>Language:</b> <i>View → Sprache / Language</i>: Automatic (system language; German on a German system, otherwise
+English), Deutsch or English. This manual also opens in the chosen language.</li>
+<li><b>Size:</b> <i>View → Interface size</i>: 90 % to 150 % – larger text and buttons, e.g. on large screens.</li>
+</ul>
+<p>Both take effect after a restart, which the program offers right away (open work is saved first).</p>
+
+<h2 id="advanced">All settings (expert mode)</h2>
+<table>
+<tr><th>Setting</th><th>In plain words</th></tr>
+<tr><td>Line threshold</td><td>From which darkness something counts as a line. Faint/yellow lines missing → increase.</td></tr>
+<tr><td>Alignment</td><td>affine (shift, rotation, scale), euclidean (no scale), translation (shift only), none</td></tr>
+<tr><td>Hatching suppression</td><td>Hatching of the same density does not count as a change (value = largest line spacing)</td></tr>
+<tr><td>Moved blocks</td><td>How far a whole area may be moved to appear green instead of red/blue</td></tr>
+<tr><td>Object shift / rotation</td><td>Single slightly shifted dimensions/texts do not count as changes (green); changed numbers stay changes</td></tr>
+<tr><td>Tile size / max. tile shift</td><td>Fine alignment in small fields (scans are often unevenly distorted)</td></tr>
+<tr><td>Ignore edge fringes on lines</td><td>See <a href="#sensitivity">Edge fringes</a></td></tr>
+<tr><td>Check characters exactly / Even out uneven paper</td><td>See <a href="#sensitivity">More checks</a></td></tr>
+<tr><td>Recompute automatically</td><td>Compare again immediately after every change of a control</td></tr>
+</table>
+
+<h2 id="keys">Keyboard shortcuts</h2>
+<table>
+<tr><th>Key</th><th>Effect</th></tr>
+<tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>9</kbd> <kbd>4</kbd> <kbd>6</kbd> <kbd>5</kbd> <kbd>7</kbd> <kbd>8</kbd></td><td>Old, New, Compare, Side by side, Overlay, Blink, Slider, New / Old with changes</td></tr>
+<tr><td><kbd>Space</kbd></td><td>Switch between old and new</td></tr>
+<tr><td><kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Whole drawing / 100 %</td></tr>
+<tr><td><kbd>V</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Select, Zoom, Measure, Text, Cloud</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>F3</kbd> / <kbd>Shift</kbd>+<kbd>F3</kbd></td><td>Find text / next / previous hit</td></tr>
+<tr><td><kbd>N</kbd> / <kbd>P</kbd> / <kbd>G</kbd> / <kbd>X</kbd> / <kbd>C</kbd></td><td>Next / previous change, checked, rejected, comment</td></tr>
+<tr><td><kbd>H</kbd> / <kbd>L</kbd> / <kbd>R</kbd> / <kbd>I</kbd></td><td>Markups off/on, magnifier, rotate view, invert colors</td></tr>
+<tr><td><kbd>Del</kbd> / <kbd>Esc</kbd></td><td>Delete markup / leave tool</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Undo / redo</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd> / <kbd>S</kbd> / <kbd>P</kbd> / <kbd>W</kbd> / <kbd>N</kbd></td><td>Open / save project, print, close, new window</td></tr>
+<tr><td><kbd>F1</kbd></td><td>This manual</td></tr>
+</table>
+
+<h2 id="faq">Questions</h2>
+<table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Many small red/blue spots that are not changes.</td><td><i>Auto-adjust</i>; otherwise increase the tolerance by 1 or increase the minimum size.</td></tr>
+<tr><td>Nothing changes after moving a control.</td><td>Click <i>Compare</i> (or switch on <i>Recompute automatically</i>).</td></tr>
+<tr><td>The mm values are wrong.</td><td><i>Calibrate …</i> in the measure bar, or enter the scale.</td></tr>
+<tr><td>A markup cannot be changed.</td><td><kbd>Esc</kbd> (back to Select), click it, double-click = edit.</td></tr>
+<tr><td>The comparison takes long / needs a lot of memory.</td><td>Very large scans (over 100 megapixels) need a few seconds
+and several GB of memory. Stop with <i>Cancel</i>; compare only the relevant part with a region; for PDFs reduce the dpi (e.g. 150).</td></tr>
+<tr><td>Something does not work.</td><td>The message bar shows the error (<i>Details</i>). <i>Help → Open log file</i> opens the log.</td></tr>
+</table>
+</body>
+</html>

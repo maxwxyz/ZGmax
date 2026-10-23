@@ -25,7 +25,7 @@
 <body>
 
 <h1>Anleitung: Kommandozeile (drawing_diff.py)</h1>
-<p>Diese Anleitung ist für <b>Fortgeschrittene</b>: Sie beschreibt das Skript <code>drawing_diff.py</code>, mit dem sich Vergleiche ohne Fenster ausführen lassen (z. B. in Skripten, über Nacht oder für viele Dateien). Für die normale Arbeit mit der Maus gibt es den Viewer, siehe <a href="Anleitung_Viewer.html"><b>Anleitung Viewer</b></a>. Dort sind auch Messen, Anmerkungen, Freigabe-Stempel und Stapelvergleich im Fenster erklärt.</p>
+<p>Diese Anleitung ist für <b>Fortgeschrittene</b>: Sie beschreibt das Skript <code>drawing_diff.py</code>, mit dem sich Vergleiche ohne Fenster ausführen lassen (z. B. in Skripten, über Nacht oder für viele Dateien). <span style="color:#666">English: <a href="Manual_CommandLine.html">command line manual</a>.</span> Für die normale Arbeit mit der Maus gibt es den Viewer, siehe <a href="Anleitung_Viewer.html"><b>Anleitung Viewer</b></a>. Dort sind auch Messen, Anmerkungen, Freigabe-Stempel und Stapelvergleich im Fenster erklärt.</p>
 <p><b>Inhalt:</b> 1 Voraussetzungen · 2 Grundaufruf · 2a Dateiformate · 3 Ergebnisbild · 4 Empfohlener Aufruf · 5 Ausschnitt · 6 Optionen · 7 Ablauf · 8 Fehlersuche · 9 Beispiele · 10 Zonen, Filter, Auswertung · 11 Stapelbetrieb · 12 Ordnerstruktur</p>
 <div class="tip">Alle Befehle werden im Ordner <code>programm</code> ausgeführt (dort liegt <code>drawing_diff.py</code>). In PowerShell: <code>cd "C:\...\Tmp\programm"</code>. Pfade mit Leerzeichen in Anführungszeichen setzen.</div>
 
@@ -277,10 +277,10 @@ python drawing_diff.py alt.tif neu.tif --verbose                       # was wur
 <pre><code>python drawing_diff.py alt.pdf neu.png --dpi 200 --out diff.pdf</code></pre>
 
 <h2>10. Zonen, Filter und Auswertung</h2>
-<p>Alle Funktionen dieses Abschnitts sind <b>optional und standardmäßig aus</b>.</p>
+<p>Die Funktionen dieses Abschnitts sind <b>optional</b>; außer Mindestgröße und Kantensäumen sind sie standardmäßig aus.</p>
 <table>
   <tr><th>Option</th><th>Wirkung</th></tr>
-  <tr><td><code>--min-area PX</code></td><td>Unterschiede, die zusammen weniger als PX Pixel haben (Staub, Rauschen), werden ignoriert und bleiben grau.</td></tr>
+  <tr><td><code>--min-area PX</code></td><td>Unterschiede, die zusammen weniger als PX Pixel haben (Staub, Rauschen), werden ignoriert und bleiben grau (Standard 20, <code>0</code> = aus).</td></tr>
   <tr><td><code>--keep-edges</code></td><td>Kantensäume NICHT ausblenden. Standardmäßig gelten 1 px dünne Säume direkt an Linien, die in beiden Zeichnungen vorkommen, nicht als Änderung (Versatz/Strichstärke beim Scannen oder Rendern).</td></tr>
   <tr><td><code>--ignore x,y,b,h</code></td><td>Zone, die nicht verglichen wird (Pixel von A), z. B. Schriftfeld oder Stempel. Mehrfach angebbar. Im Ergebnis hellgelb hinterlegt.</td></tr>
   <tr><td><code>--ignore-border PX</code></td><td>Randstreifen (Zeichnungsrahmen) wird nicht verglichen.</td></tr>
@@ -300,7 +300,7 @@ python drawing_diff.py alt.tif neu.tif --verbose                       # was wur
   <li><code>--out ORDNER</code>: Ausgabeordner (wird angelegt). Ohne Angabe: <code>Ergebnisse</code>. Je Paar entsteht <code>NAME_diff.png</code>, mit <code>--list</code> zusätzlich <code>NAME_diff_aenderungen.csv</code>, mit <code>--report</code> ein PDF-Bericht.</li>
   <li>Alle anderen Optionen (<code>--tol</code>, <code>--hatch</code>, <code>--min-area</code> …) gelten für jedes Paar. <code>--select</code> und <code>--crop-a</code> werden im Stapelbetrieb ignoriert, weil sie nur für eine bestimmte Zeichnung gelten.</li>
   <li>Tritt bei einem Paar ein Fehler auf, wird er gemeldet und der Stapel läuft weiter. Am Ende steht eine Zusammenfassung.</li>
-  <li>Im Viewer gibt es denselben Ablauf als Dialog: <i>Mehr → Stapelvergleich</i>.</li>
+  <li>Im Viewer gibt es denselben Ablauf als Dialog: <i>Datei → Stapelvergleich</i>.</li>
 </ul>
 
 <h2>12. Ordnerstruktur und Start</h2>
