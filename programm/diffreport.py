@@ -3,6 +3,7 @@ import csv
 import datetime as _dt
 import os
 import re
+import sys
 
 import cv2
 import numpy as np
@@ -143,19 +144,34 @@ def ocr_available():
         return False
 
 
+OCR_DIR = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "ocr")
+
+
 def _ocr_engine():
+    """Texterkennung: Fundstellen wie im Paket rapidocr-onnxruntime, Zeichen mit dem lateinischen Modell
+    (Deutsch, Englisch, Umlaute, ß, °, ±), falls vorhanden; sonst das mitgelieferte Modell des Pakets."""
     global _engine
     if _engine is None:
         try:
             from rapidocr_onnxruntime import RapidOCR
         except Exception:
             raise RuntimeError("OCR nicht verfuegbar: pip install rapidocr-onnxruntime")
-        _engine = RapidOCR()
+        eng = RapidOCR()
+        model, keys = os.path.join(OCR_DIR, "latin_rec.onnx"), os.path.join(OCR_DIR, "latin_dict.txt")
+        if os.path.isfile(model) and os.path.isfile(keys):
+            from rapidocr_onnxruntime.ch_ppocr_v3_rec import TextRecognizer
+            eng.text_recognizer = TextRecognizer({"use_cuda": False, "model_path": model, "keys_path": keys,
+                                                  "rec_img_shape": [3, 48, 320], "rec_batch_num": 6})
+        _engine = eng
     return _engine
 
 
+def ocr_language():
+    return "Deutsch/Englisch" if os.path.isfile(os.path.join(OCR_DIR, "latin_rec.onnx")) else "Englisch"
+
+
 def ocr_image(gray):
-    """Liefert [(x, y, text), ...] sortiert nach Zeilen."""
+    """Liefert [(x, y, hoehe, text), ...] sortiert nach Zeilen (dunkle Schrift auf hellem Grund)."""
     result, _ = _ocr_engine()(gray)
     items = []
     for box, text, score in result or []:

@@ -1,0 +1,9 @@
+Texterkennung fuer lateinische Schrift (Deutsch, Englisch und weitere): PP-OCRv5 latin, mobile.
+
+latin_rec.onnx   = onnx/PP-OCRv5/rec/latin_PP-OCRv5_rec_mobile.onnx
+latin_dict.txt   = paddle/PP-OCRv5/rec/latin_PP-OCRv5_rec_mobile/ppocrv5_latin_dict.txt
+Quelle: https://www.modelscope.cn/models/RapidAI/RapidOCR (RapidAI, umgewandelt aus PaddleOCR)
+Lizenz: Apache License 2.0 (PaddleOCR / RapidOCR)
+
+Erkennt u. a. ä ö ü ß Ä Ö Ü ° ± sowie Ziffern und Satzzeichen. Die Texterkennung selbst (Fundstellen im Bild)
+kommt weiterhin aus dem Paket rapidocr-onnxruntime; nur die Zeichenerkennung wird durch dieses Modell ersetzt.

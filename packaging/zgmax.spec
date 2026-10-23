@@ -10,6 +10,7 @@ from drawing_viewer import VERSION  # noqa: E402
 
 datas = [(os.path.join(SRC, f), ".") for f in ("Anleitung_Viewer.html", "Anleitung_Kommandozeile.html",
                                                "icon.png", "icon.ico", "icon.icns")]
+datas += [(os.path.join(SRC, "ocr", f), "ocr") for f in ("latin_rec.onnx", "latin_dict.txt", "HERKUNFT.txt")]
 hidden = ["ezdxf.addons.drawing.pymupdf", "ezdxf.addons.drawing.layout", "ezdxf.addons.drawing.config",
           "PySide6.QtPrintSupport", "PySide6.QtSvg"]
 try:                                                 # Texterkennung (optional) samt Modellen mitnehmen

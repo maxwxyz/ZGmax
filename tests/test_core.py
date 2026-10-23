@@ -132,3 +132,12 @@ def test_ocr_title_block():
     cv2.putText(img, "Zeichnungsnummer 4711-0815", (20, 170), cv2.FONT_HERSHEY_SIMPLEX, 1.2, 0, 2)
     info = rep.parse_title_block([(o[0], o[1], o[-1]) for o in rep.ocr_image(img)])
     assert info["scale_n"] == 5.0 and info["number"] == "4711-0815"
+
+
+@pytest.mark.skipif(not rep.ocr_available(), reason="Texterkennung nicht installiert")
+def test_ocr_german_umlauts():
+    from PIL import Image, ImageDraw
+    img = Image.new("L", (900, 90), 255)
+    ImageDraw.Draw(img).text((15, 20), "Oberfläche Größe Übermaß ±0,1", font=dc._font(40), fill=0)
+    txt = " ".join(o[-1] for o in rep.ocr_image(np.array(img)))
+    assert "Oberfläche" in txt and "Größe" in txt and "Übermaß" in txt and "±0,1" in txt
