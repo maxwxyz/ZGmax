@@ -96,7 +96,7 @@ def ann_handles(shape, a):
     t = a["type"]
     if t == "measure":
         return [(f"m{i}", q[0], q[1]) for i, q in enumerate(a["pts"])]
-    if t == "arrow":
+    if t in ("arrow", "line"):
         return [("p1", a["x"], a["y"]), ("p2", a["x2"], a["y2"])]
     if t in rep.RECT_TYPES:
         x0, y0, x1, y1 = min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
@@ -120,7 +120,7 @@ def ann_hit(shape, a, ix, iy, m):
                 if any(_dist_seg(ix, iy, *pl[i], *pl[i + 1]) <= m for i in range(len(pl) - 1)):
                     return True
         return False
-    if t == "arrow":
+    if t in ("arrow", "line"):
         return _dist_seg(ix, iy, a["x"], a["y"], a["x2"], a["y2"]) <= m + rep.ann_line_w(shape, a["size"])
     if t in rep.RECT_TYPES:
         x0, y0, x1, y1 = min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
@@ -854,6 +854,12 @@ class Canvas(QWidget):
             c2 = QColor(col)
             c2.setAlpha(95)
             p.fillRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), c2)
+        elif t == "line":
+            x2, y2 = self.to_wid(a["x2"], a["y2"])
+            pen = QPen(col, lw)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawLine(QPointF(x, y), QPointF(x2, y2))
         elif t == "arrow":
             x2, y2 = self.to_wid(a["x2"], a["y2"])
             ang = math.atan2(y2 - y, x2 - x)
@@ -872,7 +878,7 @@ class Canvas(QWidget):
             a1, b1 = self.to_wid(b[2], b[3])
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
-            if t not in ("arrow", "measure"):
+            if t not in ("arrow", "line", "measure"):
                 p.drawRect(QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6))
             p.setPen(QPen(QColor(ACCENT), 1.6))
             p.setBrush(QColor("white"))

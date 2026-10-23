@@ -554,6 +554,8 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
                                             fill=_rgba(col, 95))
             im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
             d = ImageDraw.Draw(im)
+        elif t == "line":
+            d.line([(x, y), (x2, y2)], fill=col, width=int(lw))
         elif t == "arrow":
             ang = math.atan2(y2 - y, x2 - x)
             head = max(5 * lw, 0.8 * th)
@@ -1021,12 +1023,13 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
                 an.set_colors(stroke=col)
                 an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
             info(an, {"rect": "Rahmen", "cloud": "Wolke", "highlight": "Markierung"}[t], a.get("text", ""))
-        elif t == "arrow":
+        elif t in ("arrow", "line"):
             an = page.add_line_annot(pymupdf.Point(x, y), pymupdf.Point(x2, y2))
             an.set_colors(stroke=col)
             an.set_border(width=lw)
-            an.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
-            info(an, "Pfeil", "")
+            if t == "arrow":
+                an.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
+            info(an, "Pfeil" if t == "arrow" else "Linie", a.get("comment", ""))
         elif t in ("text", "approval"):
             b = ann_bounds(shape, a)
             rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + th, b[3] * k + th * 0.5)

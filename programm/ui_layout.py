@@ -72,6 +72,10 @@ class LayoutMixin:
         self.act_print = A("Drucken im Maßstab …", self.print_scaled, "Ctrl+P", ico="print")
         self.act_ann_save = A("Markierungen speichern …", self.ann_save)
         self.act_ann_load = A("Markierungen laden …", self.ann_load)
+        self.act_import_comments = A("Kommentare einlesen (XFDF, PDF) …", self.import_comments,
+                                     tip="Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF")
+        self.act_export_xfdf = A("Markierungen als XFDF speichern …", self.export_xfdf,
+                                 tip="Für Acrobat & Co.: Kommentare → Importieren")
         self.act_batch = A("Stapelvergleich (viele Dateien) …", self.open_batch)
         self.act_revisions = A("Revisionen vergleichen (A → B → C) …", self.open_revisions)
         self.act_quit = A("Beenden", QApplication.instance().closeAllWindows, "Ctrl+Q")
@@ -210,7 +214,7 @@ class LayoutMixin:
         for a in (self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv, self.act_print):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_ann_save, self.act_ann_load):
+        for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf):
             m.addAction(a)
         m.addSeparator()
         m.addAction(self.act_batch)

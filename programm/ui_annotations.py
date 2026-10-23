@@ -2,6 +2,7 @@
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
+import diffxfdf as dx
 
 
 class AnnotationsMixin:
@@ -52,7 +53,12 @@ class AnnotationsMixin:
             return "Stempel: " + " / ".join(a["text"].split("\n")[:2])
         if t == "measure":
             return f"{rep.MEASURE_KINDS.get(a.get('kind'), 'Ma\u00df')}: {rep.measure_text(a, self.canvas.mm_px)}"
-        return {"rect": "Rahmen", "cloud": "Wolke", "highlight": "Marker", "arrow": "Pfeil"}.get(t, t)
+        lbl = {"rect": "Rahmen", "cloud": "Wolke", "highlight": "Marker", "arrow": "Pfeil", "line": "Linie"}.get(t, t)
+        if a.get("comment"):
+            lbl += ": " + a["comment"].replace("\n", " ")[:40]
+        if a.get("author"):
+            lbl += f"  ({a['author']})"
+        return lbl
 
     def _ann_refresh(self, select=None):
         self.list_anns.blockSignals(True)
@@ -222,3 +228,89 @@ class AnnotationsMixin:
             self._ann_refresh(None)
             self._commit()
             self._log(f"{len(self.anns)} Anmerkungen geladen")
+
+    # --- Kommentare austauschen (XFDF / PDF-Anmerkungen)
+    def _sheet_geometry(self, side):
+        """(k Pixel je Punkt, Seitenhoehe in Punkt) fuer Datei A oder B der aktuellen Seite."""
+        path = self.path_a if side == "A" else self.path_b
+        page = (self.sp_pa if side == "A" else self.sp_pb).value()
+        k = self.dpi_value() / 72.0
+        if path and path.lower().endswith(".pdf") and dv.available():
+            import pymupdf
+            with pymupdf.open(path) as d:
+                return k, d[max(0, min(page, d.page_count) - 1)].rect.height
+        g = self.cache.get("g_" + path) if path else None
+        h_px = g.shape[0] if g is not None else self.canvas.shape[0]
+        return k, h_px / k
+
+    def import_comments(self):
+        if self.payload is None:
+            QMessageBox.information(self, APP, "Bitte zuerst eine Zeichnung \u00f6ffnen.")
+            return
+        d = self.settings.value("outdir", os.path.dirname(self.path_a or ""))
+        path, _ = QFileDialog.getOpenFileName(self, "Kommentare einlesen", d,
+                                              "Kommentare (*.xfdf *.pdf);;XFDF (*.xfdf);;PDF mit Kommentaren (*.pdf)")
+        if not path:
+            return
+        side = "A"
+        if self.path_a and self.path_b and not self.view_only:
+            stem = os.path.splitext(os.path.basename(path))[0].lower()
+            guess_b = os.path.splitext(os.path.basename(self.path_b))[0].lower() in stem
+            box = QMessageBox(self)
+            box.setWindowTitle(APP)
+            box.setText("Zu welcher Zeichnung geh\u00f6ren die Kommentare?")
+            ba = box.addButton("Alte Zeichnung (A)", QMessageBox.ButtonRole.AcceptRole)
+            bb = box.addButton("Neue Zeichnung (B)", QMessageBox.ButtonRole.AcceptRole)
+            box.addButton(QMessageBox.StandardButton.Cancel)
+            box.setDefaultButton(bb if guess_b else ba)
+            box.exec()
+            if box.clickedButton() not in (ba, bb):
+                return
+            side = "B" if box.clickedButton() is bb else "A"
+        page = (self.sp_pa if side == "A" else self.sp_pb).value()
+        try:
+            k, page_h = self._sheet_geometry(side)
+            if path.lower().endswith(".pdf"):
+                items, skipped = dx.pdf_comments(path, page)
+            else:
+                items, skipped = dx.parse_xfdf(path, page_h, page - 1)
+        except Exception as e:                       # noqa: BLE001
+            self.banner.show_msg(f"Kommentare konnten nicht gelesen werden: {e}", "error")
+            return
+        ox, oy = self.origin
+        vec = self.chk_vec.isChecked() and self.chk_vec.isEnabled()
+        if side == "A" or self.view_only or vec:
+            mp = lambda x, y: (x - ox, y - oy)                                           # noqa: E731
+        else:
+            def mp(x, y):
+                q = dp.map_points_tf([(x, y)], self.cache.get("tf"), self.cache.get("box_b"), self.manual_tf)[0]
+                return float(q[0]), float(q[1])
+        new = dx.to_annotations(items, k, self.canvas.ann_size, mp)
+        if not new:
+            self.banner.show_msg("In der Datei wurden keine \u00fcbernehmbaren Kommentare f\u00fcr diese Seite gefunden.",
+                                 "warn", timeout=10)
+            return
+        self.anns.extend(new)
+        self._ann_refresh(None)
+        self._commit()
+        self.act_right.setChecked(True)
+        self.tabs.setCurrentIndex(1)
+        extra = f" ({skipped} Kommentare anderer Art \u00fcbersprungen)" if skipped else ""
+        self.banner.show_msg(f"{len(items)} Kommentare als {len(new)} Markierungen \u00fcbernommen{extra}.", "info",
+                             timeout=12)
+
+    def export_xfdf(self):
+        if not self.anns:
+            QMessageBox.information(self, APP, "Es gibt keine Markierungen zum Speichern.")
+            return
+        base = os.path.splitext(os.path.basename(self.path_a or "markierungen"))[0]
+        path = self._save_dialog("Markierungen als XFDF speichern", "XFDF (*.xfdf)", base + ".xfdf")
+        if not path:
+            return
+        k, page_h = self._sheet_geometry("A")
+        anns = self._state()["anns"]                 # Blattkoordinaten von A
+        mm = self.canvas.mm_px
+        name = os.path.basename(self.path_a) if (self.path_a or "").lower().endswith(".pdf") else ""
+        n = dx.write_xfdf(path, anns, k, page_h, name, self.sp_pa.value() - 1, lambda a: rep.measure_text(a, mm))
+        self.banner.show_msg(f"{n} Markierungen gespeichert: {path}. In Acrobat: Kommentare \u2192 Importieren "
+                             f"(zur PDF der alten Zeichnung).", "info", timeout=15)

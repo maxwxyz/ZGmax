@@ -422,3 +422,46 @@ def test_text_search_ocr(app, win, tmp_path):
     wait(app, lambda: not win.running and win.canvas.search_hits)
     x0, y0, x1, y1 = win.canvas.search_hits[0]
     assert 180 < x0 < 260 and 280 < y0 < 340
+
+
+def test_comments_pdf_and_xfdf_roundtrip(app, win, tmp_path, monkeypatch):
+    import pymupdf
+    from PySide6.QtWidgets import QFileDialog
+    pdf = str(tmp_path / "zeichnung.pdf")
+    d = pymupdf.open()
+    pg = d.new_page(width=600, height=400)
+    pg.draw_rect((50, 50, 550, 350))
+    a = pg.add_rect_annot(pymupdf.Rect(100, 100, 200, 160))
+    a.set_border(width=1.5, clouds=1)
+    a.set_info(title="Prüfer", content="Wolke: Maß prüfen")
+    a.update()
+    a = pg.add_line_annot((300, 300), (400, 250))
+    a.set_line_ends(0, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
+    a.update()
+    a = pg.add_freetext_annot(pymupdf.Rect(350, 80, 520, 110), "Bohrung entgraten", fontsize=10)
+    a.update()
+    a = pg.add_text_annot((80, 320), "Bitte Toleranz klären")
+    a.set_info(title="Max")
+    a.update()
+    d.save(pdf)
+    win._set_file("A", pdf)
+    wait(app, lambda: win.payload is not None and not win.running)
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (pdf, ""))
+    win.import_comments()
+    types = sorted(x["type"] for x in win.anns)
+    assert types == ["arrow", "cloud", "text", "text"], types
+    k = 200 / 72
+    cloud = next(x for x in win.anns if x["type"] == "cloud")
+    assert abs(cloud["x"] - 100 * k) < 3 and abs(cloud["y"] - 100 * k) < 3 and cloud["author"] == "Prüfer"
+    # Rundreise ueber XFDF
+    xf = str(tmp_path / "k.xfdf")
+    win._save_dialog = lambda *a: xf
+    win.export_xfdf()
+    before = [(x["type"], round(x["x"]), round(x["y"])) for x in win.anns]
+    win.anns.clear()
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (xf, ""))
+    win.import_comments()
+    after = [(x["type"], round(x["x"]), round(x["y"])) for x in win.anns]
+    assert sorted(t for t, _, _ in after) == sorted(t for t, _, _ in before)
+    for (t, x, y) in before:
+        assert any(t2 == t and abs(x2 - x) <= 2 and abs(y2 - y) <= 2 for t2, x2, y2 in after), (t, x, y, after)
