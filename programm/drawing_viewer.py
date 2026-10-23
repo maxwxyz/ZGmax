@@ -16,12 +16,13 @@ from ui_project import ProjectMixin
 from ui_export import ExportMixin
 from ui_layout import LayoutMixin
 from ui_features import FeaturesMixin
+from ui_search import SearchMixin
 
 VERSION = "2.0"
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
-class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)
@@ -730,6 +731,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             log.check()
             self.cache["b"], tf = dp.prepare_pair_tf(a, b0, p.align, log)
             self.cache["a"] = a
+            self.cache["tf"], self.cache["box_b"] = tf, box_b     # fuer Suchtreffer in B (Punkte ausrichten)
             # Farbfassungen (nur Anzeige von Alt/Neu) genauso zuschneiden und ausrichten wie die Tinte
             # Originalfassungen fuer Alt/Neu (Farbe, sonst Graustufen) genauso zuschneiden und ausrichten
             ca, cb = self._color(snap["pa"]), self._color(snap["pb"])
@@ -788,6 +790,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, RegionsMixin, AnnotationsMixin, Pro
             self.restore_regs = None
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
         self._update_enabled()
+        if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
+            QTimer.singleShot(0, self.run_search)
         self._fill_table()
         self._update_title()
         self.canvas.setFocus()

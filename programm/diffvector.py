@@ -241,6 +241,26 @@ def vector_diff(pa, pb, page_a, page_b, dpi, filt_a=None, filt_b=None, tol_mm=0.
     return a, b, oa, ob, both
 
 
+def text_lines(path, page=1, dpi=200):
+    """Text einer PDF-Seite als Zeilen (x0, y0, x1, y1, text) in Pixeln bei 'dpi' (wie das gerenderte Bild)."""
+    if pymupdf is None:
+        return []
+    k = dpi / 72.0
+    lines = {}
+    with pymupdf.open(path) as doc:
+        pg = doc[max(0, min(page, doc.page_count) - 1)]
+        for x0, y0, x1, y1, w, blk, ln, _wn in pg.get_text("words"):
+            lines.setdefault((blk, ln), []).append((x0, y0, x1, y1, w))
+    out = []
+    for words in lines.values():                    # je Wort eine eigene Zeile: Treffer exakt am Wort ...
+        for x0, y0, x1, y1, w in words:
+            out.append((x0 * k, y0 * k, x1 * k, y1 * k, w))
+        if len(words) > 1:                          # ... und die ganze Zeile fuer Suchbegriffe mit Leerzeichen
+            out.append((min(w[0] for w in words) * k, min(w[1] for w in words) * k,
+                        max(w[2] for w in words) * k, max(w[3] for w in words) * k, " ".join(w[4] for w in words)))
+    return out
+
+
 def title_block_words(path, page=1, box=(0.5, 0.62)):
     """Woerter im Schriftfeld (rechts unten): Liste (x, y, text) in pt, in Lesereihenfolge."""
     if pymupdf is None:

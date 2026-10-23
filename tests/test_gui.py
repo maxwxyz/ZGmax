@@ -366,3 +366,59 @@ def test_manual_three_point_alignment(app, win, tmp_path):
     wait(app, lambda: not win.running)
     assert int(win.payload["res"].oa.sum()) < before * 0.2
     assert win.canvas.tool == "hand"
+
+
+def test_text_search_pdf(app, win, tmp_path):
+    import pymupdf
+    paths = []
+    for name, txt in (("a.pdf", "Bohrung 25 H7"), ("b.pdf", "Bohrung 30 H7")):
+        d = pymupdf.open()
+        pg = d.new_page(width=600, height=400)
+        for i in range(25):
+            pg.draw_line((20 + i * 20, 30), (20 + i * 20, 350))
+        pg.insert_text((300, 200), txt, fontsize=14)
+        pg.insert_text((60, 380), "Bohrung entgratet", fontsize=10)
+        p = str(tmp_path / name)
+        d.save(p)
+        paths.append(p)
+    compare(app, win, *paths)
+    win.open_search()
+    win.ed_search.setText("bohrung")
+    win.run_search()
+    wait(app, lambda: not win.running and win.canvas.search_hits)
+    assert len(win.canvas.search_hits) == 2
+    xs = sorted(h[0] for h in win.canvas.search_hits)
+    assert abs(xs[1] - 300 * 200 / 72) < 15                # Treffer liegt am Text (pt -> px bei 200 dpi)
+    win.ed_search.setText("30 h7")                        # Begriff mit Leerzeichen, nur in Neu
+    win.run_search()
+    assert len(win.canvas.search_hits) == 1
+    win.cb_search_in.setCurrentIndex(1)                   # in Alt: dort steht 25 H7
+    wait(app, lambda: not win.running and win.lbl_search.text() == "Nicht gefunden")
+    assert len(win.canvas.search_hits) == 0
+    win.search_step(1)
+    win.close_search()
+    assert not win.canvas.search_hits
+
+
+def test_text_search_ocr(app, win, tmp_path):
+    import diffreport as rep
+    import numpy as np
+    from PIL import Image, ImageDraw
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    import diffcore as dc
+    img = Image.new("L", (1800, 1200), 255)
+    d = ImageDraw.Draw(img)
+    d.rectangle((40, 40, 1760, 1160), outline=0, width=4)
+    d.text((1300, 1050), "Maßstab 1:2  Index C", font=dc._font(30), fill=0)
+    d.text((200, 300), "Bohrung Ø12 H7", font=dc._font(30), fill=0)
+    p = tmp_path / "scan.png"
+    img.save(p)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    win.open_search()
+    win.ed_search.setText("Bohrung")
+    win.run_search()
+    wait(app, lambda: not win.running and win.canvas.search_hits)
+    x0, y0, x1, y1 = win.canvas.search_hits[0]
+    assert 180 < x0 < 260 and 280 < y0 < 340

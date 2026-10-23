@@ -157,7 +157,13 @@ class LayoutMixin:
                           "diesem Zeichnungspaar bestimmen", ico="magic")
         self.act_compare = A("Vergleichen", self.start_compute, "Ctrl+Return", "Vergleich (neu) berechnen", "compare")
 
-        self.act_find = A("Änderungen suchen", self.find_regs, "Ctrl+F")
+        self.act_find = A("Änderungen suchen", self.find_regs, "Ctrl+Shift+F")
+        self.act_search = A("Text suchen …", self.open_search, "Ctrl+F", "Text in der Zeichnung suchen (PDF-Text, "
+                            "bei Bildern Texterkennung)", "loupe")
+        self.act_search_next = A("Weitersuchen", lambda: self.search_step(1), "F3", "Nächster Treffer (F3, Enter)",
+                                 "next")
+        self.act_search_prev = A("Rückwärts suchen", lambda: self.search_step(-1), "Shift+F3", "Voriger Treffer "
+                                 "(Umschalt+F3)", "prev")
         self.act_next = A("Nächste Änderung", lambda: self.review_step(1), "N", "Zur nächsten offenen "
                           "Änderung (N)", "next", canvas_key=True)
         self.act_prev = A("Vorige Änderung", lambda: self.review_step(-1), "P", "Zur vorigen Änderung (P)",
@@ -216,6 +222,9 @@ class LayoutMixin:
 
         m = mb.addMenu("&Bearbeiten")
         for a in (self.act_undo, self.act_redo):
+            m.addAction(a)
+        m.addSeparator()
+        for a in (self.act_search, self.act_search_next, self.act_search_prev):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_delete, self.act_ann_clear, self.act_copy):
@@ -563,6 +572,7 @@ class LayoutMixin:
         v.setSpacing(0)
         self.banner = Banner()
         v.addWidget(self.banner)
+        v.addWidget(self._build_search_bar())
         v.addWidget(self._build_options())
         h = QHBoxLayout()
         h.setContentsMargins(0, 0, 0, 0)
@@ -1070,7 +1080,8 @@ class LayoutMixin:
     def _update_enabled(self):
         """Ohne Ergebnis sind Ansicht, Zoom und Speichern ausgegraut (keine toten Knoepfe)."""
         has = self.payload is not None
-        for a in (self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate,
+        for a in (self.act_search, self.act_search_next, self.act_search_prev,
+                  self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate,
                   self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv,
                   self.act_print, self.act_copy, self.act_find, self.act_proj_save, self.act_proj_save_as):
             a.setEnabled(has)

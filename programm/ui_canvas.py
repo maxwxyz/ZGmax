@@ -234,6 +234,7 @@ class Canvas(QWidget):
         self.invert = False                  # helle Linien auf dunklem Grund (nur Anzeige)
         self.show_legend = True
         self.align_pts = {"A": [], "B": []}       # manuelles Ausrichten: gesetzte Punkte je Seite
+        self.search_hits, self.search_cur, self.search_side = [], -1, "A"   # Textsuche
         self.preview = None                  # (QImage, (h, w)) waehrend der ersten Berechnung
         self.labels = ("A (alt)", "B (neu)")
         self._side = "A"                     # Nebeneinander: Haelfte unter der Maus
@@ -537,11 +538,13 @@ class Canvas(QWidget):
             p.setClipRect(QRectF(i * half, 0, half, H))
             p.translate(i * half, 0)
             self.mode = m
+            self._painting_side = m
             try:
                 self._paint_image(p, half, H)
                 self._paint_overlays(p, w, h)
             finally:
                 self.mode = "Y"
+                self._painting_side = None
             p.restore()
             f = QFont(UI_FONT, 10)
             f.setBold(True)
@@ -911,6 +914,18 @@ class Canvas(QWidget):
                 p.fillRect(r, QColor("#f59e0b"))
                 p.setPen(QColor("white"))
                 p.drawText(r, Qt.AlignmentFlag.AlignCenter, str(i + 1))
+        if self.search_hits and (self.mode not in ("A", "B") or self.res is None or
+                                 not (getattr(self, "_painting_side", None))
+                                 or self._painting_side == self.search_side):
+            for i, (x0, y0, x1, y1) in enumerate(self.search_hits):
+                a0, b0 = self.to_wid(x0, y0)
+                a1, b1 = self.to_wid(x1, y1)
+                r = QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6)
+                cur = i == self.search_cur
+                p.fillRect(r, QColor(250, 204, 21, 110 if cur else 60))
+                p.setPen(QPen(QColor("#ea580c" if cur else "#ca8a04"), 2.5 if cur else 1.2))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRect(r)
         if not self.show_overlays:
             return
         for x, y, zw, zh in self.zones:

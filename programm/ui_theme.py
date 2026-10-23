@@ -76,6 +76,7 @@ QToolButton#seg:checked {{ background: {t['surface']}; border: 1px solid {t['bor
 QFrame#palette {{ background: {t['surface']}; border-right: 1px solid {t['border']}; }}
 QFrame#palette QToolButton {{ padding: 4px 2px; border-radius: 8px; font-size: 8.5pt; }}
 QFrame#banner {{ border-radius: 0; border-bottom: 1px solid {t['border']}; }}
+QFrame#searchbar {{ background: {t['surface']}; border-bottom: 1px solid {t['border']}; }}
 QFrame#banner[kind="info"] {{ background: {t['info_bg']}; }}
 QFrame#banner[kind="info"] QLabel {{ color: {t['info_fg']}; }}
 QFrame#banner[kind="warn"] {{ background: {t['warn_bg']}; }}

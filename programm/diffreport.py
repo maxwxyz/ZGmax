@@ -182,6 +182,58 @@ def ocr_image(gray):
     return items
 
 
+def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None):
+    """Texterkennung der ganzen Zeichnung in Kacheln: Liste (x0, y0, x1, y1, text) je Textzeile in Bildpixeln.
+    gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst."""
+    H, W = gray.shape
+    eng = _ocr_engine()
+    tiles = [(x, y) for y in range(0, max(1, H - overlap), tile - overlap) for x in range(0, max(1, W - overlap), tile - overlap)]
+    out = []
+    for k, (x, y) in enumerate(tiles):
+        if cancel is not None and cancel():
+            raise dc.Cancelled()
+        if progress:
+            progress(k / len(tiles))
+        part = gray[y:y + tile, x:x + tile]
+        if part.min() > 200:                     # leere Kachel
+            continue
+        res, _ = eng(np.ascontiguousarray(part))
+        for box, text, score in res or []:
+            xs, ys = [p[0] for p in box], [p[1] for p in box]
+            out.append((x + min(xs), y + min(ys), x + max(xs), y + max(ys), str(text).strip()))
+    uniq = []
+    for b in sorted(out, key=lambda t: (t[1], t[0])):    # gleiche Zeile aus zwei Kacheln nur einmal
+        cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+        if any(u[4] == b[4] and abs((u[0] + u[2]) / 2 - cx) < 15 and abs((u[1] + u[3]) / 2 - cy) < 15 for u in uniq[-50:]):
+            continue
+        uniq.append(b)
+    return uniq
+
+
+def find_text(lines, query):
+    """Treffer fuer 'query' (Gross-/Kleinschreibung egal) in Textzeilen [(x0, y0, x1, y1, text), ...].
+    Gibt Rechtecke (x0, y0, x1, y1) zurueck; innerhalb einer Zeile anteilig nach Zeichenposition."""
+    q = query.strip().lower()
+    hits = []
+    if not q:
+        return hits
+    for x0, y0, x1, y1, text in lines:
+        t = text.lower()
+        start = t.find(q)
+        while start >= 0:
+            n = max(1, len(t))
+            hits.append((x0 + (x1 - x0) * start / n, y0, x0 + (x1 - x0) * (start + len(q)) / n, y1))
+            start = t.find(q, start + 1)
+    # Wort- und Zeilentreffer an derselben Stelle nur einmal (der kleinere = genauere bleibt)
+    hits.sort(key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
+    out = []
+    for r in hits:
+        cx, cy = (r[0] + r[2]) / 2, (r[1] + r[3]) / 2
+        if not any(o[0] - 2 <= cx <= o[2] + 2 and o[1] - 2 <= cy <= o[3] + 2 for o in out):
+            out.append(r)
+    return sorted(out, key=lambda r: (round(r[1] / 20), r[0]))
+
+
 def ocr_box(ink, box, pad=15, max_area=6_000_000):
     x, y, w, h = box
     H, W = ink.shape

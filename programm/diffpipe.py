@@ -176,7 +176,7 @@ def prepare_pair_tf(a, b, align="affine", log=print):
     """Wie prepare_pair, gibt zusaetzlich die Umrechnung zurueck, mit der apply_tf() ein anderes Bild von B
     (z. B. die Farbfassung) genau gleich ausrichtet: (b_ausgerichtet, tf)."""
     sx, sy = a.shape[1] / b.shape[1], a.shape[0] / b.shape[0]
-    tf = {"shape": a.shape[:2], "resize": not (abs(sx - 1) < 0.01 and abs(sy - 1) < 0.01),
+    tf = {"shape": a.shape[:2], "src_shape": b.shape[:2], "resize": not (abs(sx - 1) < 0.01 and abs(sy - 1) < 0.01),
           "shrink": b.shape[0] > a.shape[0], "M": None, "exact": False}
     b = match_size(a, b)
     if align == "none":
@@ -209,6 +209,24 @@ def apply_tf(img, tf):
         img = cv2.warpAffine(img, tf["M"], (w, h), borderValue=(255, 255, 255) if img.ndim == 3 else 255,
                              flags=(cv2.INTER_NEAREST if tf["exact"] else cv2.INTER_LINEAR) | cv2.WARP_INVERSE_MAP)
     return img
+
+
+def map_points_tf(pts, tf, box=None, manual=None):
+    """Punkte (x, y) aus dem Originalbild von B in die Lage, in der B nach Zuschnitt (box), prepare_pair_tf (tf)
+    und manuellem Ausrichten (manual) angezeigt wird. Gegenstueck zu apply_tf fuer Koordinaten."""
+    p = np.asarray(pts, np.float64).reshape(-1, 2).copy()
+    if box is not None:
+        p -= (box[0], box[1])
+    if tf is not None:
+        if tf["resize"]:
+            h, w = tf["shape"]
+            p *= (w / tf["src_shape"][1], h / tf["src_shape"][0])
+        if tf["M"] is not None:
+            M = np.vstack([np.asarray(tf["M"], np.float64), [0, 0, 1]])
+            p = cv2.transform(p[None], np.linalg.inv(M)[:2])[0]    # warpAffine mit WARP_INVERSE_MAP
+    if manual is not None:
+        p = cv2.transform(p[None], np.asarray(manual, np.float64))[0]
+    return p
 
 
 def is_colored(img_bgr, min_frac=0.0005):

@@ -141,3 +141,17 @@ def test_ocr_german_umlauts():
     ImageDraw.Draw(img).text((15, 20), "Oberfläche Größe Übermaß ±0,1", font=dc._font(40), fill=0)
     txt = " ".join(o[-1] for o in rep.ocr_image(np.array(img)))
     assert "Oberfläche" in txt and "Größe" in txt and "Übermaß" in txt and "±0,1" in txt
+
+
+def test_map_points_matches_image_transform(pair):
+    """Punkte muessen genau so ausgerichtet werden wie das Bild (fuer Suchtreffer in B)."""
+    import cv2
+    a = dp.ink_from_gray(dp.load_gray(pair[0]), 128)
+    g = dp.load_gray(pair[1])
+    M0 = cv2.getRotationMatrix2D((800, 550), 0.6, 0.97)
+    g2 = cv2.warpAffine(g, M0, (g.shape[1], g.shape[0]), borderValue=255)
+    b, tf = dp.prepare_pair_tf(a, dp.ink_from_gray(g2, 128), "affine", lambda *_: None)
+    pts = np.array([[1250, 700], [500, 520], [1000, 200]], float)       # Kreis neu, Kreis, Linie in B (ungedreht)
+    raw = cv2.transform(pts[None], M0)[0]                                # dieselben Punkte im gedrehten B
+    back = dp.map_points_tf(raw, tf)
+    assert np.abs(back - pts).max() < 3.0
