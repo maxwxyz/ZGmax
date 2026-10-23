@@ -1114,6 +1114,9 @@ def main():
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ZGmax.Viewer.2")
         except Exception:                        # noqa: BLE001
             pass
+    scale = ui_scale_setting(app_settings())       # Groesse der Oberflaeche (vor dem Start festlegen)
+    if abs(scale - 1.0) > 0.01:
+        os.environ["QT_SCALE_FACTOR"] = f"{scale:.2f}"
     app = QApplication(sys.argv)
     app.setApplicationName(APP)
     app.setOrganizationName("ZGmax")

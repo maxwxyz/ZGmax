@@ -465,3 +465,11 @@ def test_comments_pdf_and_xfdf_roundtrip(app, win, tmp_path, monkeypatch):
     assert sorted(t for t, _, _ in after) == sorted(t for t, _, _ in before)
     for (t, x, y) in before:
         assert any(t2 == t and abs(x2 - x) <= 2 and abs(y2 - y) <= 2 for t2, x2, y2 in after), (t, x, y, after)
+
+
+def test_ui_scale_setting(app, win):
+    from ui_common import ui_scale_setting
+    win.set_ui_scale(1.3)
+    assert ui_scale_setting(win.settings) == 1.3 and win.banner.btn_action.isVisible()   # auch auf der Startseite
+    win.settings.setValue("ui_scale", "kaputt")
+    assert ui_scale_setting(win.settings) == 1.0

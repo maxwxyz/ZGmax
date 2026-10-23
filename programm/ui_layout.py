@@ -259,6 +259,15 @@ class LayoutMixin:
             tg.addAction(act)
             self.theme_actions[key] = act
         self.theme_actions[self.theme_mode].setChecked(True)
+        size = m.addMenu("Größe der Oberfläche")
+        sg = QActionGroup(self)
+        cur = ui_scale_setting(self.settings)
+        for v in UI_SCALES:
+            act = size.addAction(f"{v * 100:.0f} %" + ("  (Standard)" if v == 1.0 else ""),
+                                 lambda v=v: self.set_ui_scale(v))
+            act.setCheckable(True)
+            act.setChecked(abs(v - cur) < 0.01)
+            sg.addAction(act)
         m.addAction(self.act_expert)
 
         m = mb.addMenu("&Werkzeuge")
@@ -574,8 +583,6 @@ class LayoutMixin:
         v = QVBoxLayout(work)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
-        self.banner = Banner()
-        v.addWidget(self.banner)
         v.addWidget(self._build_search_bar())
         v.addWidget(self._build_options())
         h = QHBoxLayout()
@@ -586,7 +593,14 @@ class LayoutMixin:
         v.addLayout(h, 1)
         self.stack.addWidget(work)
         self.work = work
-        return self.stack
+        center = QWidget()                        # Hinweisleiste ueber Startseite UND Bild
+        cv = QVBoxLayout(center)
+        cv.setContentsMargins(0, 0, 0, 0)
+        cv.setSpacing(0)
+        self.banner = Banner()
+        cv.addWidget(self.banner)
+        cv.addWidget(self.stack, 1)
+        return center
 
     # ----------------------------------------------------------------- Seitenleiste links: Einstellungen
     def _build_left(self):
@@ -1043,6 +1057,30 @@ class LayoutMixin:
                                        "eingeben):", self.scale_n(), 0.01, 1000, 3)
         if ok:
             self.sp_scale.setValue(n)
+
+    def set_ui_scale(self, v):
+        if abs(v - ui_scale_setting(self.settings)) < 0.01:
+            return
+        self.settings.setValue("ui_scale", v)
+        self.banner.show_msg(f"Die Oberfläche wird nach einem Neustart auf {v * 100:.0f} % gestellt.", "info",
+                             action=("Jetzt neu starten", self.restart_app))
+
+    def restart_app(self):
+        """Programm neu starten (z. B. fuer die Groesse der Oberflaeche); Ungespeichertes wird vorher abgefragt."""
+        if not self._maybe_save():
+            return
+        args = [a for a in sys.argv[1:] if a.startswith("-")]
+        if self.project_path:
+            args.append(self.project_path)
+        elif self.path_a:
+            args += [p for p in (self.path_a, self.path_b) if p]
+        prog = sys.executable
+        if not FROZEN:
+            args = [os.path.abspath(sys.argv[0])] + args
+        from PySide6.QtCore import QProcess
+        QProcess.startDetached(prog, args)
+        self._dirty = False
+        QApplication.instance().closeAllWindows()
 
     def _toggle_invert(self, on):
         self.settings.setValue("invert", "true" if on else "false")

@@ -80,6 +80,17 @@ def app_settings():
     return QSettings(QSettings.defaultFormat(), QSettings.Scope.UserScope, "drawing_diff", "viewer")
 
 
+UI_SCALES = (0.9, 1.0, 1.15, 1.3, 1.5)
+
+
+def ui_scale_setting(settings):
+    try:
+        v = float(settings.value("ui_scale", 1.0))
+    except (TypeError, ValueError):
+        v = 1.0
+    return min(UI_SCALES, key=lambda s: abs(s - v))
+
+
 TYPE_SHOW = {"entfernt": "entfernt", "neu": "neu", "geaendert": "ge\u00e4ndert", "verschoben": "verschoben"}
 
 
