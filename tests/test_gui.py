@@ -146,6 +146,7 @@ def test_copy_selection_geometry(app, win, pair, monkeypatch):
     assert seen["lines"][..., 3].min() == 0                   # Hintergrund durchsichtig
     assert QApplication.clipboard().mimeData().hasImage()
     assert win.canvas.tool == "hand"
+    QApplication.clipboard().clear()                         # offscreen: Zwischenablage nicht ueber das Ende halten
 
 
 def test_side_by_side_and_navigation(app, win, pair):
