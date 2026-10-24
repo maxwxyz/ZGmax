@@ -50,10 +50,12 @@ class ExportMixin:
             out = dc.render(res.oa, np.zeros_like(res.oa), a & ~res.oa, None)
         else:
             out = dp.render_result(res)
+        if not self.canvas.layer_on.get("zeichnung", True):        # Ebene Zeichnung ausgeblendet: leeres Papier
+            out = np.full_like(out, 255)
         if overlays:
-            if pl["regs"] and self.canvas.show_regs:
+            if pl["regs"] and self.canvas.show_regs and self.canvas.layer_on.get("aenderungen", True):
                 rep.draw_marks(out, pl["regs"], cloud=self.act_clouds.isChecked())
-            rep.draw_annotations(out, self.anns, mm=self.canvas.mm_px)
+            rep.draw_annotations(out, self._export_anns(), mm=self.canvas.mm_px)
         if legend and mode in ("D", "S", "O", "N", "R"):
             out = dc.add_legend(out, os.path.basename(self.path_a), os.path.basename(self.path_b),
                                 bool(res.moved.any()) and mode in ("D", "S"), self._info())
@@ -138,7 +140,7 @@ class ExportMixin:
         if not path:
             return
         pl, info, dpi, idx = self.payload, self._info(), self.dpi_value(), self.index_info
-        sn, anns = self.scale_n(), (copy.deepcopy(self.anns) if self.act_overlays.isChecked() else [])
+        sn, anns = self.scale_n(), self._export_anns()
         names = (os.path.basename(self.path_a), os.path.basename(self.path_b))
 
         def work(log):

@@ -1222,3 +1222,159 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
     doc.save(path, deflate=True)
     doc.close()
     return path
+
+
+def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), ref_shape=None):
+    """SVG mit Ebenen (Inkscape/Illustrator: Ebenen, sonst Gruppen): Zeichnung als eingebettetes Bild, Aenderungen
+    und Markierungen als echte Vektorelemente (in Grafikprogrammen einzeln bearbeitbar). size = (Breite, Hoehe)
+    in Bildpixeln, offset = Ursprung des Ausschnitts, img_bgr=None: ohne Zeichnung."""
+    import base64
+    import math
+    from xml.sax.saxutils import escape
+    W, H = size
+    ox, oy = offset
+    shape = _ref((H, W), ref_shape)
+    mmw, mmh = W * 25.4 / dpi, H * 25.4 / dpi
+    out = [f'<?xml version="1.0" encoding="UTF-8"?>\n'
+           f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+           f'xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="{mmw:.2f}mm" height="{mmh:.2f}mm" '
+           f'viewBox="0 0 {W} {H}">']
+
+    def layer(key, body):
+        if body:
+            out.append(f'<g inkscape:groupmode="layer" id="{key}" inkscape:label="{escape(LAYER_NAMES[key])}">')
+            out.extend(body)
+            out.append("</g>")
+
+    def P(x, y):
+        return f"{x - ox:.1f},{y - oy:.1f}"
+
+    def img_tag(bgra, x, y, w, h):
+        ok, png = cv2.imencode(".png", bgra)
+        data = base64.b64encode(png.tobytes()).decode("ascii") if ok else ""
+        return (f'<image x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" preserveAspectRatio="none" '
+                f'xlink:href="data:image/png;base64,{data}"/>')
+
+    if img_bgr is not None:
+        layer("zeichnung", [img_tag(img_bgr, 0, 0, W, H)])
+    body = []
+    for r in regs or []:
+        col = STATUS_COLORS[reg_status(r)]
+        body.append(f'<rect x="{r["x"] - ox - 12:.1f}" y="{r["y"] - oy - 12:.1f}" width="{r["w"] + 24}" '
+                    f'height="{r["h"] + 24}" fill="none" stroke="{col}" stroke-width="{ann_line_w(shape, 1.5):.1f}"/>')
+        body.append(f'<text x="{r["x"] - ox - 12:.1f}" y="{r["y"] - oy - 16:.1f}" fill="{col}" '
+                    f'font-family="Arial" font-size="{ann_text_h(shape, 1.2):.1f}" font-weight="bold">{r["nr"]}</text>')
+    layer("aenderungen", body)
+    groups = {"markierungen": [], "masse": [], "bilder": []}
+    for a in anns or []:
+        t, col = a["type"], a.get("color", "#e11d48")
+        th, lw = ann_text_h(shape, a["size"]), ann_line_w(shape, a["size"])
+        x, y, x2, y2 = a["x"], a["y"], a["x2"], a["y2"]
+        stroke = f'fill="none" stroke="{col}" stroke-width="{lw:.1f}" stroke-linecap="round" stroke-linejoin="round"'
+        g = groups[ann_layer(a)]
+        x0, y0, x1, y1 = min(x, x2), min(y, y2), max(x, x2), max(y, y2)
+        if t == "rect":
+            g.append(f'<rect x="{x0 - ox:.1f}" y="{y0 - oy:.1f}" width="{x1 - x0:.1f}" height="{y1 - y0:.1f}" {stroke}/>')
+        elif t == "highlight":
+            g.append(f'<rect x="{x0 - ox:.1f}" y="{y0 - oy:.1f}" width="{x1 - x0:.1f}" height="{y1 - y0:.1f}" '
+                     f'fill="{col}" fill-opacity="0.37"/>')
+        elif t == "ellipse":
+            g.append(f'<ellipse cx="{(x0 + x1) / 2 - ox:.1f}" cy="{(y0 + y1) / 2 - oy:.1f}" rx="{(x1 - x0) / 2:.1f}" '
+                     f'ry="{(y1 - y0) / 2:.1f}" {stroke}/>')
+        elif t == "cloud":
+            pl = cloud_points(x, y, x2, y2, cloud_radius(shape, a["size"]))
+            g.append(f'<polygon points="{" ".join(P(*q) for q in pl)}" {stroke}/>')
+        elif t in ("line", "arrow"):
+            if t == "arrow":
+                ang = math.atan2(y2 - y, x2 - x)
+                head = max(5 * lw, 0.8 * th)
+                bx, by = x2 - head * 0.8 * math.cos(ang), y2 - head * 0.8 * math.sin(ang)
+                g.append(f'<line x1="{x - ox:.1f}" y1="{y - oy:.1f}" x2="{bx - ox:.1f}" y2="{by - oy:.1f}" {stroke}/>')
+                tri = [(x2, y2), (x2 - head * math.cos(ang - 0.4), y2 - head * math.sin(ang - 0.4)),
+                       (x2 - head * math.cos(ang + 0.4), y2 - head * math.sin(ang + 0.4))]
+                g.append(f'<polygon points="{" ".join(P(*q) for q in tri)}" fill="{col}"/>')
+            else:
+                g.append(f'<line x1="{x - ox:.1f}" y1="{y - oy:.1f}" x2="{x2 - ox:.1f}" y2="{y2 - oy:.1f}" {stroke}/>')
+        elif t in PTS_TYPES and a.get("pts"):
+            tag = "polygon" if t == "polygon" else "polyline"
+            g.append(f'<{tag} points="{" ".join(P(q[0], q[1]) for q in a["pts"])}" {stroke}/>')
+        elif t in ("text", "approval"):
+            lines = ann_lines(a, th)
+            pad = 0.5 * th if t == "approval" else 0
+            if t == "approval":
+                b = ann_bounds(shape, a)
+                g.append(f'<rect x="{b[0] - ox:.1f}" y="{b[1] - oy:.1f}" width="{b[2] - b[0]:.1f}" '
+                         f'height="{b[3] - b[1]:.1f}" fill="white" stroke="{col}" stroke-width="{lw * 1.3:.1f}"/>')
+            spans = "".join(f'<tspan x="{x - ox + pad:.1f}" dy="{th * (1.0 if i == 0 else 1.25):.1f}">{escape(s)}</tspan>'
+                            for i, s in enumerate(lines))
+            g.append(f'<text y="{y - oy + pad:.1f}" fill="{col}" font-family="Arial" font-size="{th:.1f}">{spans}</text>')
+        elif t == "number":
+            r = 0.95 * th
+            g.append(f'<circle cx="{x - ox:.1f}" cy="{y - oy:.1f}" r="{r:.1f}" fill="{col}" stroke="white"/>')
+            g.append(f'<text x="{x - ox:.1f}" y="{y - oy + th * 0.35:.1f}" fill="white" font-family="Arial" '
+                     f'font-weight="bold" font-size="{stamp_font_h(th, a["nr"]):.1f}" text-anchor="middle">{a["nr"]}</text>')
+        elif t == "measure":
+            mlw, mth, alen = measure_style(shape, a["size"])
+            for gk, gd in measure_geometry(a):
+                if gk == "circle":
+                    g.append(f'<circle cx="{gd[0] - ox:.1f}" cy="{gd[1] - oy:.1f}" r="{gd[2]:.1f}" fill="none" '
+                             f'stroke="{col}" stroke-width="{mlw:.1f}"/>')
+                else:
+                    tag = "polygon" if gk == "poly" else "polyline"
+                    g.append(f'<{tag} points="{" ".join(P(*q) for q in gd)}" fill="none" stroke="{col}" '
+                             f'stroke-width="{mlw:.1f}"/>')
+            pp = a.get("pts") or [[x, y], [x2, y2]]
+            if a.get("kind", "dist") == "dist" and len(pp) >= 2:
+                for tip, frm in ((pp[0], pp[1]), (pp[-1], pp[-2])):
+                    g.append(f'<polygon points="{" ".join(P(*q) for q in arrow_head(tip, frm, alen))}" fill="{col}"/>')
+            if mm:
+                tx = sum(q[0] for q in pp) / len(pp)
+                ty = sum(q[1] for q in pp) / len(pp)
+                g.append(f'<text x="{tx - ox:.1f}" y="{ty - oy - mth * 0.4:.1f}" fill="{col}" font-family="Arial" '
+                         f'font-size="{mth:.1f}" text-anchor="middle" stroke="white" stroke-width="{mth / 6:.1f}" '
+                         f'paint-order="stroke">{escape(measure_text(a, mm))}</text>')
+        elif t == "image":
+            g.append(img_tag(ann_image(a), x0 - ox, y0 - oy, x1 - x0, y1 - y0))
+    for key in ("markierungen", "masse", "bilder"):
+        layer(key, groups[key])
+    out.append("</svg>\n")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out))
+    return path
+
+
+def build_searchable_pdf(path, img_bgr, lines, dpi=200, title=""):
+    """Durchsuchbares PDF: das Bild als Seite, darueber unsichtbarer Text aus der Texterkennung (oder dem PDF), so
+    dass man in jedem PDF-Programm suchen, markieren und kopieren kann. lines = [(x0, y0, x1, y1, text), ...] in
+    Bildpixeln. Hochkant stehender Text (Bemassung senkrecht) wird gedreht eingesetzt."""
+    import pymupdf
+    h, w = img_bgr.shape[:2]
+    k = 72.0 / dpi
+    doc = pymupdf.open()
+    page = doc.new_page(width=w * k, height=h * k)
+    ok, png = cv2.imencode(".png", img_bgr)
+    page.insert_image(page.rect, stream=png.tobytes())
+    n = 0
+    for x0, y0, x1, y1, text in lines:
+        text = "".join(ch if ord(ch) < 256 else "?" for ch in str(text)).strip()   # Helvetica: Latin-1 (ä, ß, Ø, ±, °)
+        if not text:
+            continue
+        bw, bh = (x1 - x0) * k, (y1 - y0) * k
+        vertical = bh > 1.8 * bw and len(text) > 1
+        size = max(1.0, (bw if vertical else bh) * 0.8)
+        length = pymupdf.get_text_length(text, fontname="helv", fontsize=size)
+        span = bh if vertical else bw
+        sx = span / length if length > 0 else 1.0
+        if vertical:                                # von unten nach oben lesen (wie senkrechte Masszahlen)
+            pt = pymupdf.Point(x1 * k - size * 0.25, y1 * k)
+            page.insert_text(pt, text, fontname="helv", fontsize=size, render_mode=3, rotate=90,
+                             morph=(pt, pymupdf.Matrix(1, sx)))
+        else:
+            pt = pymupdf.Point(x0 * k, y1 * k - size * 0.22)
+            page.insert_text(pt, text, fontname="helv", fontsize=size, render_mode=3,
+                             morph=(pt, pymupdf.Matrix(sx, 1)))
+        n += 1
+    doc.set_metadata({"title": title, "creator": "ZGmax"})
+    doc.save(path, deflate=True)
+    doc.close()
+    return n

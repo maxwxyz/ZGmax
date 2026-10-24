@@ -17,9 +17,14 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 * Robust raster comparison: global and tile alignment, hatching, moved blocks/objects, edge fringes, glyph check,
   paper flattening, auto-adjust of the parameters; exact vector comparison for CAD PDFs
 * Review workflow: numbered changes, checked/rejected/comment, CSV, PDF report, PDF with Acrobat annotations
-* Measuring with snapping and calibration, markups (text, cloud, box, arrow, line, highlight, number, stamp),
-  multi-selection
-* Copy a selection (everything, lines only, or geometry only without dimensions/text), move a region of a drawing
+* Measuring with snapping and calibration; vector markups (text typed in place or as wrapping text box, cloud, box,
+  ellipse, line, arrow, polyline, polygon, freehand pen, highlight, number, stamp, pasted images), multi-selection
+* Region tool: one or more rectangles selecting drawing content, markups and changes – copy, cut, paste, move, delete,
+  export; copy lines only or geometry only (without dimensions/text, by line width)
+* Fixed layers (drawing, changes, markups, dimensions, pasted images, zones): show/hide, lock; PDF with real layers,
+  SVG with layers
+* Editing a single drawing: move/clear regions, crop, rotate, brightness/contrast, image size/resolution (with undo)
+* Searchable PDF (invisible OCR text), vectorizing to SVG/PDF/DXF (centre lines or outlines)
 * Text search (PDF text or OCR, German and English), comment import from XFDF and PDF, XFDF export
 * Manual 3-point alignment, regions, matched areas, zones, multi-page, batch and revision comparison
 * Projects (`.zgmax`), autosave, several windows, dark mode, adjustable interface size
@@ -32,11 +37,11 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 | `programm/diffpipe.py` | Pipeline (load → align → compare), parameters, auto-adjust |
 | `programm/diffreport.py` | Change list, review status, annotations, PDF report, Acrobat annotations, title block, OCR, text search |
 | `programm/diffvector.py` | PDF vector data: layers/colors, exact comparison, PDF text |
-| `programm/diffedit.py` | Editing: move a region, copy a selection, geometry-only filter by line width |
+| `programm/diffedit.py` | Editing: move/clear regions, copy (geometry-only filter by line width), crop, rotate, adjust, resize, vectorize |
 | `programm/diffxfdf.py` | Comments: read XFDF and PDF annotations, write XFDF |
 | `programm/drawing_diff.py` | Command line |
 | `programm/drawing_viewer.py` | Program window (entry point), main window workflow, self-test |
-| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), editing (`ui_edit`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
+| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), editing, region tool, clipboard, layers export, vectorizing (`ui_edit`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
 | `programm/i18n.py`, `programm/i18n_en.json` | Translation: German source strings → English |
 | `programm/ocr/` | Latin text recognition model (PP-OCRv5, Apache-2.0) for German and English |
 

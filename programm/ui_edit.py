@@ -185,8 +185,9 @@ class EditMixin:
         """Bearbeitbare Bilder der angezeigten Einzelzeichnung: [Grau, Farbe] (gleiche Groesse) oder None."""
         path = self.path_a or self.path_b
         g = self.cache.get("g_" + path) if path else None
-        if not self.view_only or g is None or self.payload is None or g.shape != self.payload["res"].a.shape:
-            return None, path
+        if not self.view_only or g is None or self.payload is None or g.shape != self.payload["res"].a.shape \
+                or self.canvas.layer_lock.get("zeichnung") or not self.canvas.layer_on.get("zeichnung", True):
+            return None, path                              # Zeichnung gesperrt oder ausgeblendet: nicht bearbeiten
         c = self.cache.get("c_" + path)
         return [g] + ([c] if c is not None else []), path
 
@@ -290,6 +291,11 @@ class EditMixin:
         while self._edit_ver != ver:
             back = self._edit_ver > ver
             e = self._edits[self._edit_ver - 1] if back else self._edits[self._edit_ver]
+            if e.get("full"):                              # ganze Zeichnung (zuschneiden, drehen ...): tauschen
+                if e["path"] == (self.path_a or self.path_b):
+                    self._set_sheet(e["path"], e["before"] if back else e["after"], e["dpi"][0 if back else 1])
+                self._edit_ver += -1 if back else 1
+                continue
             imgs, path = self._edit_images()
             if imgs is not None and path == e["path"]:
                 x0, y0, x1, y1 = e["rect"]
@@ -469,8 +475,10 @@ class AreaMixin:
         anns = []
         for k, a in enumerate(self.anns):
             b = rep.ann_bounds(c.shape, a)
-            if any(b[0] < r[2] and b[2] > r[0] and b[1] < r[3] and b[3] > r[1] for r in rects):
+            if c.ann_editable(a) and any(b[0] < r[2] and b[2] > r[0] and b[1] < r[3] and b[3] > r[1] for r in rects):
                 anns.append(k)
+        if c.layer_lock.get("aenderungen") or not c.layer_on.get("aenderungen", True):
+            return anns, []
         regs = [g for g in ((self.payload or {}).get("regs") or [])
                 if any(g["x"] < r[2] and g["x"] + g["w"] > r[0] and g["y"] < r[3] and g["y"] + g["h"] > r[1]
                        for r in rects)]
@@ -525,12 +533,47 @@ class AreaMixin:
                 mode = c._side or "B"
         x0, y0, x1, y1 = bbox
         out = np.ascontiguousarray(c._layer(mode, 0, y0, y1, x0, x1)).copy()
+        if not c.layer_on.get("zeichnung", True):
+            out[:] = 255
         if overlays and c.show_overlays:
-            if self.payload.get("regs") and c.show_regs:
+            if self.payload.get("regs") and c.show_regs and c.layer_on.get("aenderungen", True):
                 regs = [dict(g, x=g["x"] - x0, y=g["y"] - y0) for g in self._shown_regs()]
                 rep.draw_marks(out, regs, cloud=self.act_clouds.isChecked())
-            rep.draw_annotations(out, self.anns, offset=(x0, y0), ref_shape=c.shape, mm=c.mm_px)
+            rep.draw_annotations(out, self._export_anns(), offset=(x0, y0), ref_shape=c.shape, mm=c.mm_px)
         return out
+
+    def _export_anns(self):
+        """Markierungen fuer Bild, PDF und Bericht: nur bei eingeblendeten Markierungen und nur sichtbare Ebenen."""
+        if not self.act_overlays.isChecked():
+            return []
+        return [copy.deepcopy(a) for a in self.anns if self.canvas.ann_visible(a)]
+
+    def _export_regs(self):
+        c = self.canvas
+        if not (self.act_overlays.isChecked() and c.show_regs and c.layer_on.get("aenderungen", True)
+                and self.payload and self.payload.get("regs_done") is not False):
+            return []
+        return copy.deepcopy(self._shown_regs())
+
+    def export_svg(self, bbox=None, path=None):
+        """Als SVG mit Ebenen speichern: Zeichnung als Bild, Aenderungen und Markierungen als Vektoren."""
+        if not self._need_result():
+            return
+        c = self.canvas
+        if path is None:
+            path = self._save_dialog(tr("Als SVG mit Ebenen speichern"), tr("SVG (*.svg)"), "zeichnung.svg")
+        if not path:
+            return
+        h, w = c.shape
+        bbox = bbox or (0, 0, w, h)
+        img = self.render_region(bbox, overlays=False) if c.layer_on.get("zeichnung", True) else None
+        x0, y0, x1, y1 = bbox
+        regs = [g for g in self._export_regs() if g["x"] < x1 and g["x"] + g["w"] > x0 and g["y"] < y1
+                and g["y"] + g["h"] > y0]
+        rep.build_svg(path, img, (x1 - x0, y1 - y0), regs, self._export_anns(), self.dpi_value(), c.mm_px,
+                      offset=(x0, y0), ref_shape=c.shape)
+        self.banner.show_msg(tr("Gespeichert: {}").format(path), "info", timeout=8)
+        return path
 
     def _area_bgra(self, overlays=True):
         bbox = self._area_bbox()
@@ -609,9 +652,13 @@ class AreaMixin:
         """Auswahl als Bild oder PDF speichern (wie angezeigt, mit Markierungen)."""
         if not self.canvas.sel_rects:
             return
-        out = self._save_dialog(tr("Auswahl exportieren"), tr("PNG (*.png);;TIFF (*.tif);;JPEG (*.jpg);;PDF (*.pdf)"),
+        out = self._save_dialog(tr("Auswahl exportieren"),
+                                tr("PNG (*.png);;TIFF (*.tif);;JPEG (*.jpg);;PDF (*.pdf);;SVG mit Ebenen (*.svg)"),
                                 "auswahl.png")
         if not out:
+            return
+        if out.lower().endswith(".svg"):
+            self.export_svg(self._area_bbox(), out)
             return
         bgra, _ = self._area_bgra(True)
         ext = os.path.splitext(out)[1].lower()
@@ -633,3 +680,300 @@ class AreaMixin:
         if self.canvas.sel_rects:
             self.canvas.sel_rects = []
             self._area_changed()
+
+
+class AdjustDialog(QDialog):
+    """Helligkeit und Kontrast mit Vorschau."""
+
+    def __init__(self, parent, img):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Helligkeit und Kontrast"))
+        k = min(1.0, 560 / max(img.shape[:2]))
+        self.small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+        gray = img if img.ndim == 2 else img.min(axis=2)
+        self.auto = de.auto_levels(gray)
+        lay = QVBoxLayout(self)
+        self.preview = QLabel()
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview.setMinimumSize(420, 300)
+        lay.addWidget(self.preview, 1)
+        form = QFormLayout()
+        self.s_b = QSlider(Qt.Orientation.Horizontal)
+        self.s_b.setRange(-100, 100)
+        self.s_c = QSlider(Qt.Orientation.Horizontal)
+        self.s_c.setRange(20, 400)
+        self.s_c.setValue(100)
+        form.addRow(tr("Helligkeit"), self.s_b)
+        form.addRow(tr("Kontrast"), self.s_c)
+        lay.addLayout(form)
+        row = QHBoxLayout()
+        b = QPushButton(tr("Automatisch (Papier weiß, Linien kräftig)"))
+        b.clicked.connect(lambda: (self.s_b.setValue(int(round(self.auto[0]))), self.s_c.setValue(int(round(self.auto[1] * 100)))))
+        row.addWidget(b)
+        b = QPushButton(tr("Zurücksetzen"))
+        b.clicked.connect(lambda: (self.s_b.setValue(0), self.s_c.setValue(100)))
+        row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        bb = QDialogButtonBox()
+        bb.addButton(tr("Übernehmen"), QDialogButtonBox.ButtonRole.AcceptRole).setObjectName("primary")
+        bb.addButton(tr("Abbrechen"), QDialogButtonBox.ButtonRole.RejectRole)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+        self.s_b.valueChanged.connect(self._update)
+        self.s_c.valueChanged.connect(self._update)
+        self._update()
+
+    def values(self):
+        return self.s_b.value(), self.s_c.value() / 100
+
+    def _update(self):
+        out = de.adjust_images([self.small], *self.values())[0]
+        self.preview.setPixmap(QPixmap.fromImage(to_qimage(out)))
+
+
+class ImageSizeDialog(QDialog):
+    """Bildgroesse (Pixel) und Aufloesung (dpi)."""
+
+    def __init__(self, parent, shape, dpi):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Bildgröße und Auflösung"))
+        self.h, self.w = shape[:2]
+        self.dpi0 = dpi
+        lay = QVBoxLayout(self)
+        form = QFormLayout()
+        self.cb = QComboBox()
+        self.cb.addItem(tr("Pixel neu berechnen (Größe auf dem Papier bleibt)"), "resample")
+        self.cb.addItem(tr("Nur Auflösung ändern (Pixel bleiben, mm-Werte ändern sich)"), "dpi")
+        form.addRow(tr("Art"), self.cb)
+        self.sp_dpi = QSpinBox()
+        self.sp_dpi.setRange(20, 2400)
+        self.sp_dpi.setValue(int(dpi))
+        self.sp_dpi.setSuffix(" dpi")
+        form.addRow(tr("Neue Auflösung"), self.sp_dpi)
+        self.lbl = QLabel()
+        self.lbl.setObjectName("hint")
+        form.addRow("", self.lbl)
+        lay.addLayout(form)
+        bb = QDialogButtonBox()
+        bb.addButton(tr("Übernehmen"), QDialogButtonBox.ButtonRole.AcceptRole).setObjectName("primary")
+        bb.addButton(tr("Abbrechen"), QDialogButtonBox.ButtonRole.RejectRole)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+        self.cb.currentIndexChanged.connect(self._update)
+        self.sp_dpi.valueChanged.connect(self._update)
+        self._update()
+
+    def factor(self):
+        return self.sp_dpi.value() / self.dpi0 if self.cb.currentData() == "resample" else 1.0
+
+    def _update(self):
+        f, d = self.factor(), self.sp_dpi.value()
+        w, h = int(round(self.w * f)), int(round(self.h * f))
+        self.lbl.setText(tr("{} × {} px  →  {} × {} px,  {:.0f} × {:.0f} mm").format(
+            self.w, self.h, w, h, w * 25.4 / d, h * 25.4 / d))
+
+
+class SheetEditMixin:
+    """Ganze Zeichnung bearbeiten (nur beim Ansehen einer Datei): zuschneiden, drehen, Helligkeit, Bildgroesse."""
+
+    def _sheet_images(self):
+        path = self.path_a or self.path_b
+        g = self.cache.get("g_" + path) if path else None
+        if not self.view_only or g is None or self.canvas.layer_lock.get("zeichnung"):
+            self.banner.show_msg(tr("Das geht beim Ansehen einer einzelnen Zeichnung (Datei → Zeichnung ansehen) "
+                                    "und wenn die Ebene Zeichnung nicht gesperrt ist."), "info", timeout=8)
+            return None, path
+        c = self.cache.get("c_" + path)
+        return [g] + ([c] if c is not None else []), path
+
+    def _sheet_edit(self, new, ann_fn=None, scale=1.0, dpi=None, label=""):
+        imgs, path = self._sheet_images()
+        if imgs is None:
+            return
+        if ann_fn is not None:
+            de.transform_anns(self.anns, ann_fn, scale)
+        dpi0 = self.dpi_value()
+        del self._edits[self._edit_ver:]
+        self._edits.append(dict(path=path, full=True, before=imgs, after=new, dpi=(dpi0, dpi or dpi0)))
+        self._edit_ver = len(self._edits)
+        self._edit_saved = False
+        self._set_sheet(path, new, dpi or dpi0)
+        self.canvas.sel_rects = []
+        self._ann_refresh(None)
+        self._commit()
+        self.act_save_drawing.setEnabled(True)
+        if label:
+            self.statusBar().showMessage(label + tr(" – Rückgängig: Strg+Z"), 6000)
+
+    def _set_sheet(self, path, imgs, dpi):
+        """Neue Bilddaten der Zeichnung einsetzen und die Ansicht neu aufbauen."""
+        self.cache["g_" + path] = imgs[0]
+        if len(imgs) > 1:
+            self.cache["c_" + path] = imgs[1]
+        if dpi != self.dpi_value():
+            self.sp_dpi.blockSignals(True)
+            self.sp_dpi.setValue(int(round(dpi)))
+            self.sp_dpi.blockSignals(False)
+            self._update_units()
+        self.start_compute()
+
+    def sheet_crop(self):
+        bbox = self._area_bbox()
+        if bbox is None:
+            self.banner.show_msg(tr("Erst mit dem Werkzeug „Bereich“ (B) den Teil aufziehen, der bleiben soll."),
+                                 "info", timeout=8)
+            return
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        x0, y0 = bbox[0], bbox[1]
+        self._sheet_edit(de.crop_images(imgs, bbox), lambda x, y: (x - x0, y - y0),
+                         label=tr("Zugeschnitten auf {} × {} px").format(bbox[2] - bbox[0], bbox[3] - bbox[1]))
+
+    def sheet_rotate(self, quarter):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        self._sheet_edit(de.rotate_images(imgs, quarter), de.rotate_point_fn(imgs[0].shape, quarter),
+                         label=tr("Gedreht"))
+
+    def sheet_adjust(self):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        dlg = AdjustDialog(self, imgs[-1])
+        if dlg.exec() != QDialog.DialogCode.Accepted or dlg.values() == (0, 1.0):
+            return
+        self._sheet_edit(de.adjust_images(imgs, *dlg.values()), label=tr("Helligkeit/Kontrast geändert"))
+
+    def sheet_size(self):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        dlg = ImageSizeDialog(self, imgs[0].shape, self.dpi_value())
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        f, dpi = dlg.factor(), dlg.sp_dpi.value()
+        if abs(f - 1) < 1e-6 and dpi == self.dpi_value():
+            return
+        new = de.resize_images(imgs, f) if abs(f - 1) > 1e-6 else [im.copy() for im in imgs]
+        self._sheet_edit(new, (lambda x, y: (x * f, y * f)) if abs(f - 1) > 1e-6 else None, f, dpi,
+                         label=tr("Bildgröße {} × {} px, {} dpi").format(new[0].shape[1], new[0].shape[0], dpi))
+
+
+class OcrPdfMixin:
+    """Durchsuchbares PDF aus einem Scan (Texterkennung) und Vektorisieren."""
+
+    def export_searchable_pdf(self):
+        if not self._need_result():
+            return
+        if not self.view_only:
+            self.banner.show_msg(tr("Durchsuchbares PDF: bitte die Zeichnung einzeln ansehen (Datei → Zeichnung "
+                                    "ansehen)."), "info", timeout=8)
+            return
+        path = self.path_a or self.path_b
+        pdf = path.lower().endswith(".pdf") and dv.available() and not getattr(self, "_edit_ver", 0)
+        if not pdf and not rep.ocr_available() and not self.ensure_ocr(tr("Text für ein durchsuchbares PDF zu lesen")):
+            return
+        base = os.path.splitext(os.path.basename(path))[0] + "_durchsuchbar.pdf"
+        out = self._save_dialog(tr("Durchsuchbares PDF speichern"), tr("PDF (*.pdf)"), base)
+        if not out:
+            return
+        page, dpi = self.sp_pa.value(), self.dpi_value()
+        gray = self.cache.get("g_" + path)
+        img = self.export_render("A", self.act_overlays.isChecked(), legend=False)
+
+        def work(ctx):
+            lines = dv.text_lines(path, page, dpi) if pdf else []
+            if not lines:
+                ctx.progress(0.02, tr("Texterkennung"))
+                lines = rep.ocr_lines(gray, progress=lambda f: ctx.progress(0.05 + 0.85 * f, tr("Texterkennung")),
+                                      cancel=ctx.cancelled)
+            ctx.progress(0.92, tr("Schreibe PDF"))
+            return rep.build_searchable_pdf(out, img, lines, dpi, os.path.basename(path))
+        self._run_job(work, tr("Erzeuge durchsuchbares PDF …"),
+                      lambda n: self.banner.show_msg(tr("Gespeichert: {} ({} Textzeilen durchsuchbar)").format(out, n),
+                                                     "info", timeout=12))
+
+
+class VectorizeDialog(QDialog):
+    def __init__(self, parent, has_area):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Vektorisieren"))
+        lay = QVBoxLayout(self)
+        h = QLabel(tr("Wandelt die Pixel der Zeichnung in Linien um und speichert sie als SVG, PDF oder DXF "
+                      "(für CAD). Text wird nicht als Text erkannt, sondern als Linien gezeichnet."))
+        h.setWordWrap(True)
+        h.setObjectName("hint")
+        lay.addWidget(h)
+        form = QFormLayout()
+        self.cb_mode = QComboBox()
+        self.cb_mode.addItem(tr("Mittellinien – einzelne Linien, gut für CAD (DXF)"), "center")
+        self.cb_mode.addItem(tr("Umrisse – sieht genau aus wie das Original"), "outline")
+        form.addRow(tr("Art"), self.cb_mode)
+        self.cb_area = QComboBox()
+        self.cb_area.addItem(tr("Ganze Zeichnung"), "all")
+        if has_area:
+            self.cb_area.addItem(tr("Nur der gewählte Bereich"), "area")
+            self.cb_area.setCurrentIndex(1)
+        form.addRow(tr("Bereich"), self.cb_area)
+        self.sp_eps = QDoubleSpinBox()
+        self.sp_eps.setRange(0.3, 5.0)
+        self.sp_eps.setSingleStep(0.1)
+        self.sp_eps.setValue(1.0)
+        self.sp_eps.setSuffix(" px")
+        self.sp_eps.setToolTip(tr("Wie weit eine Linie vom Pixelverlauf abweichen darf. Größer = weniger Punkte, "
+                                  "glattere Linien; kleiner = genauer"))
+        form.addRow(tr("Vereinfachen"), self.sp_eps)
+        self.cb_fmt = QComboBox()
+        for txt, ext in ((tr("SVG (Grafikprogramme, Browser)"), ".svg"), (tr("PDF (Vektor)"), ".pdf"),
+                         (tr("DXF (CAD, Maße in mm)"), ".dxf")):
+            self.cb_fmt.addItem(txt, ext)
+        form.addRow(tr("Format"), self.cb_fmt)
+        lay.addLayout(form)
+        bb = QDialogButtonBox()
+        bb.addButton(tr("Speichern …"), QDialogButtonBox.ButtonRole.AcceptRole).setObjectName("primary")
+        bb.addButton(tr("Abbrechen"), QDialogButtonBox.ButtonRole.RejectRole)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+
+
+class VectorizeMixin:
+    def vectorize_drawing(self):
+        if not self._need_result():
+            return
+        c = self.canvas
+        dlg = VectorizeDialog(self, bool(c.sel_rects))
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        ext = dlg.cb_fmt.currentData()
+        name = os.path.splitext(os.path.basename(self.path_a or self.path_b or "zeichnung"))[0] + "_vektor" + ext
+        out = self._save_dialog(tr("Vektoren speichern"), dlg.cb_fmt.currentText().split(" (")[0] + f" (*{ext})", name)
+        if not out:
+            return
+        if not out.lower().endswith(ext):
+            out += ext
+        mode = c.mode if c.mode in ("A", "B") else ("B" if c.mode in ("N", "K", "S") or (c.mode == "Y" and c._side == "B")
+                                                    else "A")
+        ink = c.res.a if mode == "A" else c.res.b
+        h, w = ink.shape
+        bbox = self._area_bbox() if dlg.cb_area.currentData() == "area" else (0, 0, w, h)
+        x0, y0, x1, y1 = bbox
+        part = np.ascontiguousarray(ink[y0:y1, x0:x1])
+        if dlg.cb_area.currentData() == "area":            # mehrere Rechtecke: nur deren Inhalt
+            part = part * de.region_mask(c.sel_rects, bbox)
+        vmode, eps, dpi, mm = dlg.cb_mode.currentData(), dlg.sp_eps.value(), self.dpi_value(), c.mm_px
+
+        def work(ctx):
+            ctx.progress(0.02, tr("Vektorisiere"))
+            vec = de.vectorize(part, vmode, eps, progress=lambda f: ctx.progress(0.02 + 0.9 * f, tr("Vektorisiere")),
+                               cancel=ctx.cancelled)
+            ctx.progress(0.95, tr("Schreibe Datei"))
+            return de.write_vectors(out, vec, (x1 - x0, y1 - y0), dpi, mm)
+        self._run_job(work, tr("Vektorisiere …"),
+                      lambda n: self.banner.show_msg(tr("Gespeichert: {} ({} Linien und Flächen)").format(out, n),
+                                                     "info", timeout=12))

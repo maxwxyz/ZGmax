@@ -19,13 +19,14 @@ from ui_export import ExportMixin
 from ui_layout import LayoutMixin
 from ui_features import FeaturesMixin
 from ui_search import SearchMixin
-from ui_edit import AreaMixin, ClipboardMixin, EditMixin
+from ui_edit import AreaMixin, ClipboardMixin, EditMixin, OcrPdfMixin, SheetEditMixin, VectorizeMixin
 
 VERSION = "2.0"
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
-class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
+                 VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)
@@ -937,7 +938,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if self.canvas.sel_rects:                        # Bereichsauswahl: ihre Befehle zuerst
             for k, b in self.area_buttons.items():
                 if b.isVisible():
-                    m.addAction(b.text(), b.click)
+                    m.addAction(b.text(), b.click if isinstance(b, QPushButton) else b.trigger)
             m.addSeparator()
         m.addAction(self.act_copy)
         m.addAction(self.act_copy_sel)

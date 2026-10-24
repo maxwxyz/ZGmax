@@ -43,7 +43,7 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <a href="#quick">Quick start</a><a href="#start">Starting the program</a><a href="#window">The window</a>
 <a href="#navigation">Zooming and panning</a><a href="#views">Views</a><a href="#viewing">Viewing only, windows, closing</a>
 <a href="#sensitivity">Sensitivity, Auto-adjust</a><a href="#measure">Measuring and calibrating</a>
-<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#copy">Copy selection, move region</a><a href="#texts">Reading texts and dimensions</a>
+<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#copy">Region selection, copy, paste</a><a href="#edit">Editing the drawing</a><a href="#layers">Layers</a><a href="#texts">Text and dimensions</a>
 <a href="#comments">Importing comments (XFDF, PDF)</a><a href="#align">Aligning manually</a>
 <a href="#pages">Multi-page files</a><a href="#regions">Region, matching areas, zones</a>
 <a href="#formats">PDF vector data, DXF</a><a href="#save">Saving and printing</a>
@@ -62,7 +62,7 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
       only moved. Mouse wheel = zoom, drag the paper = pan, <kbd>F</kbd> = whole drawing.</li>
   <li><b>Review (optional):</b> on the right, <i>Find changes</i>, then <kbd>N</kbd> goes from change to change,
       <kbd>G</kbd> = checked, <kbd>X</kbd> = rejected.</li>
-  <li><b>Save:</b> <i>Save</i> at the top right → result image, PDF or project.</li>
+  <li><b>Save:</b> <i>Save</i> at the top right → image, PDF or project.</li>
 </ol>
 <p><b>Lots of small hits?</b> Click <i>Auto-adjust</i> on the left. The program measures how precisely the two drawings
 line up and sets the tolerance and search ranges to match.</p>
@@ -88,7 +88,8 @@ The first time, the required packages are installed in tested versions (internet
 <tr><td>Top bar</td><td><i>Open</i>, <i>Compare</i>, the view switch (Old, New, Compare, Side by side, Overlay, Slider, Blink),
 zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Options</i> (settings, left) and
 <i>List</i> (changes and markups, right).</td></tr>
-<tr><td>Tool palette (left of the drawing)</td><td>Select, Zoom, Measure, Text, Cloud, Box, Arrow, Line, Marker, Number, Stamp;
+<tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
+arrow, polyline, polygon), Pen, Marker, Number, Stamp;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
 <tr><td>Options bar (above the drawing)</td><td>Appears only when needed and shows the settings of the current tool or view,
 e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for markups; speed and pause for Blink;
@@ -208,22 +209,33 @@ measurements are correct, even with a wrong resolution.</li>
 from PDF text, by text recognition for images) and offers to use the scale.</li>
 </ul>
 
-<h2 id="markup">Markups</h2>
+<h2 id="markup">Markups and drawing</h2>
+<p>All markups are <b>vectors</b>: they stay individually clickable, movable and editable (color, line width via
+<i>Size</i>, shape at the white handles) and are saved as real PDF comments or SVG elements.</p>
 <table>
 <tr><th>Tool</th><th>How</th></tr>
-<tr><td>Text (<kbd>T</kbd>)</td><td>Click into the drawing and type (several lines possible)</td></tr>
+<tr><td>Text (<kbd>T</kbd>)</td><td><b>Click</b> into the drawing and start typing; <b>drag</b> to create a text box of that width
+with automatic line wrapping (change the width later at the right handle). <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or a click
+elsewhere = done, <kbd>Esc</kbd> = discard. Double-click a text to edit it in place.</td></tr>
 <tr><td>Cloud (<kbd>W</kbd>)</td><td>Drag a revision cloud</td></tr>
-<tr><td>Box / Arrow / Line</td><td>Drag, or drag from the start to the tip; Line has no arrowhead</td></tr>
+<tr><td>Shapes ▾</td><td>One button for <i>box, ellipse, line, arrow, polyline, polygon</i>; the small triangle picks the shape,
+the button shows the last one used. Drag a box/ellipse, drag a line/arrow from start to end. Polyline and polygon: click
+points, double-click, <kbd>Enter</kbd> or right-click finishes; the corner points can be moved individually later.</td></tr>
+<tr><td>Pen</td><td>Draw freehand. Each stroke stays its own markup; scale it at the corners.</td></tr>
 <tr><td>Marker</td><td>Highlight an area in color (highlighter, yellow by default)</td></tr>
 <tr><td>Number</td><td>Each click places the next numbered circle; start number in the options bar</td></tr>
 <tr><td>Stamp</td><td>Click, then status (APPROVED, CHECKED …), name and date</td></tr>
 </table>
+<p><b>Keep tool</b> (checkbox in the options bar): the tool stays active after drawing, e.g. for several arrows in a row.
+Without it you are back in <i>Select</i>, so you can move what you just drew. Pen, Number and Measure always stay active;
+<kbd>Esc</kbd> ends the tool.</p>
 <p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
-selected one. With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize; double-click =
-edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo. <b>Selecting several:</b> hold
-<kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with <kbd>Shift</kbd>; then move, recolor,
-resize or delete them together. All markups are listed in the <i>Markups</i> tab on the right (select several there with
-<kbd>Ctrl</kbd>/<kbd>Shift</kbd> as well, <kbd>Del</kbd> deletes them; <i>Delete all …</i> empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
+selected one(s). With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize;
+double-click = edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo.
+<b>Selecting several:</b> hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with
+<kbd>Shift</kbd>; then move, recolor, resize, copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>) or delete them together. All markups are
+listed in the <i>Markups</i> tab on the right (select several there as well, <kbd>Del</kbd> deletes them; <i>Delete all …</i>
+empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
 
 <h2 id="review">Reviewing changes</h2>
 <ol>
@@ -250,37 +262,75 @@ In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hi
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
 
-<h2 id="copy">Copying a selection and moving a region</h2>
-<p><b>Copy selection</b> (<i>Edit → Copy selection …</i>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>, also in the
-right-click menu): drag an area. A window shows a preview and offers:</p>
-<ul>
-<li><i>Everything (with paper)</i> – the area as displayed;</li>
-<li><i>Lines only</i> – transparent paper, e.g. to paste into a presentation or over another image;</li>
-<li><i>Geometry only</i> – only the thick body edges; dimension lines, arrows, leader lines, centre lines, hatching and text
-are left out. The program distinguishes by <b>line width</b> and suggests a limit (<i>Lines from width</i>); the preview shows
-at once whether it fits, and you can change the width. Works well when the drawing uses thick and thin lines as the
-standards say; with scans where all lines are equally thin, little remains. Arrowheads touching edges or thin slanted
-edges may remain or be missing – please check.</li>
-</ul>
-<p><i>Copy</i> puts the image (with transparency) on the clipboard, <i>Save …</i> saves it as PNG.</p>
-<p><b>Move region</b> (<i>Edit → Move region</i>; when viewing a single drawing): drag an area, then drag it to the new place
-or nudge it with the arrow keys (<kbd>Shift</kbd> = 10 px). <i>Lines only (background stays)</i> moves only the lines;
-without the tick the whole area including paper moves. The vacated area gets the paper color of the drawing.
-<kbd>Enter</kbd> or <i>Apply</i> drops it, <kbd>Esc</kbd> cancels, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. Save the edited
-drawing with <i>File → Save edited drawing …</i> (PNG, TIFF, PDF, JPG; without markups). The original file stays unchanged;
-when closing, the program asks if the edit has not been saved.</p>
+<h2 id="copy">Region selection, copy, paste</h2>
+<p>Tool <b>Region</b> (<kbd>B</kbd>): drag a rectangle; add more with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>. The selection
+stays marked after releasing and covers <b>everything inside</b>: drawing content, markups, measurements and change frames.
+The options bar shows its size and counts and offers:</p>
+<table>
+<tr><th>Command</th><th>Effect</th></tr>
+<tr><td>Copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>)</td><td>As displayed, with markups, as an image on the clipboard (transparent outside the
+rectangles). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
+<tr><td>Move</td><td>Click into the selection and drag. Markups always move along; when viewing a single drawing the drawing
+content too – with <i>Lines only (background stays)</i> only the lines. The vacated area gets the paper color.</td></tr>
+<tr><td>Delete (<kbd>Del</kbd>)</td><td>Delete markups and changes in the selection; the drawing stays.</td></tr>
+<tr><td>Export …</td><td>Save the selection as PNG, TIFF, JPG, PDF or SVG with layers.</td></tr>
+<tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>), <i>Clear drawing in
+region</i> and <i>Crop to region</i> (the last two when viewing a drawing).</td></tr>
+</table>
+<p><kbd>Esc</kbd> clears the selection. All edits of the drawing can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+<p><b>Copy lines or geometry only</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>): a window shows a preview.
+<i>Everything</i> = as displayed; <i>Lines only</i> = transparent paper; <i>Geometry only</i> = only the thick body edges,
+without dimension lines, arrows, leader lines, centre lines, hatching and text. The program distinguishes by
+<b>line width</b> and suggests a limit (<i>Lines from width</i>) that you can adjust in the preview. Works well with
+standard thick and thin lines; with scans where all lines are equally thin, little remains; arrowheads touching edges or
+thin slanted edges may remain or be missing.</p>
+<p><b>Paste</b> (<kbd>Ctrl</kbd>+<kbd>V</kbd>, <i>Edit → Paste</i>): images from the clipboard (e.g. a screenshot or a
+piece of another drawing) appear as a movable image on the layer <i>Pasted images</i> – scale at the corners, delete at any
+time. Text is pasted as a text markup, copied markups as markups. If nothing is open, <kbd>Ctrl</kbd>+<kbd>V</kbd> opens an
+image as a new drawing (as does <i>File → Open image from clipboard</i>).</p>
 
-<h2 id="texts">Reading texts and dimensions</h2>
-<p>In the section <i>Read texts and dimensions</i> (right panel, expand it):</p>
+<h2 id="edit">Editing the drawing</h2>
+<p><i>Edit → Edit drawing</i> (when viewing a single drawing). The original file stays unchanged; <i>Save edited drawing …</i>
+saves the result (PNG, TIFF, PDF, JPG, without markups). When closing, the program asks if the edit has not been saved.
+Markups move along with every change.</p>
+<table>
+<tr><th>Command</th><th>Effect</th></tr>
+<tr><td>Move region</td><td>Drag an area, drag it to the new place or nudge it with the arrow keys (<kbd>Shift</kbd> = 10 px),
+<kbd>Enter</kbd> = apply. The <i>Region</i> tool does the same.</td></tr>
+<tr><td>Crop to region</td><td>Keep only the part selected with <i>Region</i>.</td></tr>
+<tr><td>Rotate 90° right / left, 180°</td><td>Rotate the drawing itself (<kbd>R</kbd> only rotates the view).</td></tr>
+<tr><td>Brightness and contrast …</td><td>With preview; <i>Automatic</i> makes gray paper white and faint lines strong.</td></tr>
+<tr><td>Image size and resolution …</td><td><i>Resample pixels</i> (size on paper stays, e.g. 600 dpi → 200 dpi for smaller
+files) or <i>Change resolution only</i> (correct a wrong dpi value; the mm values change).</td></tr>
+</table>
+
+<h2 id="layers">Layers</h2>
+<p><i>View → Layers</i> shows the <i>Layers</i> tab on the right (hidden otherwise). Fixed layers: <i>Drawing, Changes,
+Markups, Dimensions, Pasted images, Zones</i>. For each layer:</p>
 <ul>
-<li><b>Read text from PDF</b>: embedded text of each change (A → B), exact, only for PDFs with real text.</li>
-<li><b>Compare dimensions</b>: reads the numbers of each change and reports “12.5 → 12.8” separately from purely graphical
-changes (also R and M values). The filter “Dimensions” shows only these.</li>
-<li><b>Read text (OCR)</b> and <b>Check revision</b>: text recognition for scans, for German and English text
-(including umlauts, ß, Ø, ±, °). Included in the app; when running with Python the program offers to install it on first
-use (about 60 MB, internet needed).</li>
+<li><b>Visible</b> – hidden layers appear neither on screen nor when saving, printing or copying (e.g. hide the drawing to
+export only the markups).</li>
+<li><b>Locked</b> – contents cannot be clicked, moved or deleted (e.g. lock dimensions while drawing clouds; a locked drawing
+cannot be edited).</li>
+</ul>
+<p><b>Saving as layers:</b> <i>PDF with annotations</i> creates a real PDF layer for each visible layer (toggle them in
+Acrobat under <i>Layers</i>). <i>As SVG with layers</i> creates layers for Inkscape, Illustrator &amp; co.; markups and
+change frames are individual, editable vectors there. TIFF and PNG have no generally readable layers and are saved flat.</p>
+
+<h2 id="texts">Text and dimensions</h2>
+<p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Review</i> menu):</p>
+<ul>
+<li><b>Recognize text</b>: writes “old text → new text” for each change into the list. For PDFs with real text that text
+is used (exact, instant), otherwise text recognition (German and English, also Ø, ±, °).</li>
+<li><b>Find changed dimensions</b>: reads the numbers of each change and compares them (also R and M values). Afterwards
+list, drawing and PDF show <b>only changes in which a dimension value changed</b> (“12.5 → 12.8”); small line changes in
+the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.</li>
+<li><b>Check title block revision</b>: reads the revision index in the title block of Old and New and warns if the drawing
+changed but the index stayed the same – or the other way round.</li>
 <li><b>Grouping</b>: how close differences must be to be combined into one entry.</li>
 </ul>
+<p>Text recognition is included in the app; when running with Python the program offers to install it on first use
+(about 60 MB, internet needed).</p>
 
 <h2 id="comments">Importing and passing on comments (XFDF, PDF)</h2>
 <p><i>File → Import comments (XFDF, PDF) …</i> takes over annotations from other programs as your own markups:</p>
@@ -328,7 +378,14 @@ what is compared (e.g. everything except dimensions).</p>
 <h2 id="save">Saving and printing</h2>
 <table>
 <tr><th>Save ▾</th><th>Result</th></tr>
-<tr><td>Result image</td><td>As displayed (view, markups, legend) as PNG, JPG, TIFF or PDF</td></tr>
+<tr><td>Save as image (as displayed)</td><td>View with burnt-in markups (and legend) as PNG, JPG, TIFF or PDF – also for
+annotated photos and screenshots</td></tr>
+<tr><td>As SVG with layers</td><td>Drawing, changes and markups as layers; markups as vectors</td></tr>
+<tr><td>Searchable PDF (text recognition)</td><td>When viewing a drawing: PDF with invisible text over the image – searchable
+and copyable in any PDF program (scans via text recognition, PDFs with their own text directly).</td></tr>
+<tr><td>Vectorize (SVG, PDF, DXF)</td><td>Convert a pixel drawing into lines: <i>centre lines</i> (single lines, good for CAD;
+filled arrows and dots as areas) or <i>outlines</i> (looks exactly like the original). Whole drawing or only the selected
+region; DXF in mm (with scale). Text is drawn as lines, not recognized as text.</td></tr>
 <tr><td>PDF with annotations (Acrobat)</td><td>The result as PDF; your markups as <b>real PDF comments</b> (click, reply and
 tick them off in Acrobat &amp; co.). If changes were searched, those shown in the list (after the <i>Show</i> filter) are
 added as revision clouds; it does not search by itself.</td></tr>
@@ -375,13 +432,14 @@ English), Deutsch or English. This manual also opens in the chosen language.</li
 <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>9</kbd> <kbd>4</kbd> <kbd>6</kbd> <kbd>5</kbd> <kbd>7</kbd> <kbd>8</kbd></td><td>Old, New, Compare, Side by side, Overlay, Blink, Slider, New / Old with changes</td></tr>
 <tr><td><kbd>Space</kbd></td><td>Switch between old and new</td></tr>
 <tr><td><kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Whole drawing / 100 %</td></tr>
-<tr><td><kbd>V</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Select, Zoom, Measure, Text, Cloud</td></tr>
+<tr><td><kbd>V</kbd> <kbd>B</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Select, Region, Zoom, Measure, Text, Cloud</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>F3</kbd> / <kbd>Shift</kbd>+<kbd>F3</kbd></td><td>Find text / next / previous hit</td></tr>
 <tr><td><kbd>N</kbd> / <kbd>P</kbd> / <kbd>G</kbd> / <kbd>X</kbd> / <kbd>C</kbd></td><td>Next / previous change, checked, rejected, comment</td></tr>
 <tr><td><kbd>H</kbd> / <kbd>L</kbd> / <kbd>R</kbd> / <kbd>I</kbd></td><td>Markups off/on, magnifier, rotate view, invert colors</td></tr>
 <tr><td><kbd>Del</kbd> / <kbd>Esc</kbd></td><td>Delete markup / leave tool</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Undo / redo</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Copy result / copy selection</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd></td><td>Copy (region, selected markups or the whole image) / cut / paste</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Copy lines or geometry only</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd> / <kbd>S</kbd> / <kbd>P</kbd> / <kbd>W</kbd> / <kbd>N</kbd></td><td>Open / save project, print, close, new window</td></tr>
 <tr><td><kbd>F1</kbd></td><td>This manual</td></tr>
 </table>

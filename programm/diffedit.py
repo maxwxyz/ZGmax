@@ -1,8 +1,11 @@
-"""Zeichnung bearbeiten: Ausschnitt verschieben und Auswahl kopieren (auch nur Linien oder nur Geometrie).
+"""Zeichnung bearbeiten: Ausschnitt verschieben, Auswahl kopieren (auch nur Linien oder nur Geometrie), zuschneiden,
+drehen, Helligkeit, Bildgroesse und Vektorisieren (Pixel -> Linien fuer SVG, PDF, DXF).
 
 Alle Funktionen arbeiten auf Bild-Arrays (Graustufen HxW oder BGR HxWx3) und der Linienmaske (uint8, >0 = Linie)
 derselben Groesse. Rechtecke sind (x0, y0, x1, y1) in Pixeln, x1/y1 exklusiv.
 """
+import os
+
 import cv2
 import numpy as np
 
@@ -171,3 +174,276 @@ def cut_out(img, ink, rect, mode="all", width=None, drop_small=40):
         alpha[near] = soft[near]
         alpha[m] = 255
     return np.dstack([bgr, alpha]), used
+
+
+# ----------------------------------------------------------------- ganze Zeichnung (Groesse/Lage aendert sich)
+def crop_images(images, rect):
+    x0, y0, x1, y1 = clip_rect(rect, images[0].shape)
+    return [np.ascontiguousarray(im[y0:y1, x0:x1]) for im in images]
+
+
+def rotate_images(images, quarter):
+    """Um quarter * 90 Grad im Uhrzeigersinn drehen."""
+    return [np.ascontiguousarray(np.rot90(im, -quarter % 4)) for im in images]
+
+
+def resize_images(images, factor):
+    out = []
+    for im in images:
+        h, w = im.shape[:2]
+        size = (max(1, int(round(w * factor))), max(1, int(round(h * factor))))
+        out.append(cv2.resize(im, size, interpolation=cv2.INTER_AREA if factor < 1 else cv2.INTER_CUBIC))
+    return out
+
+
+def adjust_images(images, brightness=0, contrast=1.0):
+    """Helligkeit (-100 ... 100) und Kontrast (Faktor) um die Mitte 128."""
+    lut = np.clip((np.arange(256, dtype=np.float32) - 128) * contrast + 128 + brightness * 1.28, 0, 255).astype(np.uint8)
+    return [cv2.LUT(im, lut) for im in images]
+
+
+def auto_levels(gray):
+    """(Helligkeit, Kontrast), die Papier weiss und Linien kraeftig machen (1 % / 99,5 % der Grauwerte)."""
+    sample = gray[::max(1, gray.shape[0] // 1000), ::max(1, gray.shape[1] // 1000)]
+    lo, hi = np.percentile(sample, (1, 99.5))
+    if hi - lo < 10:
+        return 0, 1.0
+    c = 255.0 / (hi - lo)
+    b = (127.5 - ((lo + hi) / 2 - 128) * c - 128) / 1.28
+    return float(np.clip(b, -100, 100)), float(np.clip(c, 0.2, 4.0))
+
+
+def transform_anns(anns, fn, scale=1.0):
+    """Markierungen mit der Punktabbildung fn(x, y) -> (x, y) mitfuehren (Zuschneiden, Drehen, Groesse)."""
+    for a in anns:
+        (a["x"], a["y"]), (a["x2"], a["y2"]) = fn(a["x"], a["y"]), fn(a["x2"], a["y2"])
+        if a.get("pts"):
+            a["pts"] = [list(fn(q[0], q[1])) + list(q[2:]) for q in a["pts"]]
+        if a.get("w"):
+            a["w"] *= scale
+        if a.get("type") in ("rect", "cloud", "highlight", "ellipse", "image"):
+            a["x"], a["x2"] = sorted((a["x"], a["x2"]))
+            a["y"], a["y2"] = sorted((a["y"], a["y2"]))
+        elif a.get("pts") and a.get("type") in ("pen", "polyline", "polygon"):
+            a["x"], a["y"], a["x2"], a["y2"] = (min(q[0] for q in a["pts"]), min(q[1] for q in a["pts"]),
+                                                 max(q[0] for q in a["pts"]), max(q[1] for q in a["pts"]))
+    return anns
+
+
+def rotate_point_fn(shape, quarter):
+    """Abbildung eines Punkts bei Drehung um quarter * 90 Grad im Uhrzeigersinn (Bild h x w)."""
+    h, w = shape[:2]
+    q = quarter % 4
+    if q == 1:
+        return lambda x, y: (h - y, x)
+    if q == 2:
+        return lambda x, y: (w - x, h - y)
+    if q == 3:
+        return lambda x, y: (y, w - x)
+    return lambda x, y: (x, y)
+
+
+# ----------------------------------------------------------------- Vektorisieren (Pixel -> Linien)
+def thin(ink, progress=None, cancel=None):
+    """Skelett der Linien (Zhang-Suen, 1 Pixel breit): Mittellinien jeder Strichstaerke."""
+    img = np.pad((ink > 0).astype(np.uint8), 1)
+    it = 0
+    while True:
+        changed = False
+        for step in (0, 1):
+            if cancel is not None and cancel():
+                raise KeyboardInterrupt
+            P = img
+            p2, p3, p4 = P[:-2, 1:-1], P[:-2, 2:], P[1:-1, 2:]
+            p5, p6, p7 = P[2:, 2:], P[2:, 1:-1], P[2:, :-2]
+            p8, p9 = P[1:-1, :-2], P[:-2, :-2]
+            c = P[1:-1, 1:-1]
+            nb = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9
+            seq = (p2, p3, p4, p5, p6, p7, p8, p9, p2)
+            trans = sum(((seq[i] == 0) & (seq[i + 1] == 1)).astype(np.uint8) for i in range(8))
+            if step == 0:
+                cond = (p2 * p4 * p6 == 0) & (p4 * p6 * p8 == 0)
+            else:
+                cond = (p2 * p4 * p8 == 0) & (p2 * p6 * p8 == 0)
+            rm = (c == 1) & (nb >= 2) & (nb <= 6) & (trans == 1) & cond
+            if rm.any():
+                c[rm] = 0
+                changed = True
+        it += 1
+        if progress:
+            progress(min(0.5, it / 30))
+        if not changed:
+            break
+    return img[1:-1, 1:-1]
+
+
+_N8 = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+
+
+def trace_skeleton(skel, eps=1.0, min_len=1, progress=None):
+    """Skelett -> Linienzuege [(x, y), ...]. Knoten (3+ Nachbarn) verbinden die Zuege; Zuege werden mit
+    eps Pixeln Toleranz vereinfacht."""
+    sk = (skel > 0).astype(np.uint8)
+    nb = cv2.filter2D(sk, cv2.CV_16S, np.ones((3, 3), np.float32)) - sk
+    junction = (sk == 1) & (nb >= 3)
+    nj, jlab = cv2.connectedComponents(junction.astype(np.uint8), connectivity=8)
+    jcent = [None] * nj
+    if nj > 1:
+        ys, xs = np.nonzero(jlab)
+        lab = jlab[ys, xs]
+        cnt = np.bincount(lab, minlength=nj)
+        cx = np.bincount(lab, xs, minlength=nj) / np.maximum(1, cnt)
+        cy = np.bincount(lab, ys, minlength=nj) / np.maximum(1, cnt)
+        jcent = [(float(cx[i]), float(cy[i])) for i in range(nj)]
+    rest = (sk == 1) & ~junction
+    n, lab = cv2.connectedComponents(rest.astype(np.uint8), connectivity=8)
+    ys, xs = np.nonzero(lab)
+    order = np.argsort(lab[ys, xs], kind="stable")
+    ys, xs, ls = ys[order], xs[order], lab[ys, xs][order]
+    bounds = np.searchsorted(ls, np.arange(1, n + 1))
+    H, W = sk.shape
+    paths = []
+    for i in range(1, n):
+        if progress and i % 2000 == 0:
+            progress(0.5 + 0.45 * i / n)
+        py, px = ys[bounds[i - 1]:bounds[i]], xs[bounds[i - 1]:bounds[i]]
+        pix = set(zip(px.tolist(), py.tolist()))
+        if not pix:
+            continue
+
+        def nbrs(p):
+            return [(p[0] + dx, p[1] + dy) for dy, dx in _N8 if (p[0] + dx, p[1] + dy) in pix]
+        start = next((p for p in pix if len(nbrs(p)) <= 1), next(iter(pix)))
+        line, seen, cur = [start], {start}, start
+        while True:                                   # entlang gehen (4er-Nachbarn zuerst: kein Zickzack)
+            cand = [q for q in nbrs(cur) if q not in seen]
+            if not cand:
+                break
+            cand.sort(key=lambda q: abs(q[0] - cur[0]) + abs(q[1] - cur[1]))
+            cur = cand[0]
+            seen.add(cur)
+            line.append(cur)
+        closed = len(line) > 3 and max(abs(line[0][0] - line[-1][0]), abs(line[0][1] - line[-1][1])) <= 1 \
+            and len(nbrs(start)) >= 2
+        pts = [(float(x), float(y)) for x, y in line]
+        for end, at in ((line[0], 0), (line[-1], -1)):   # an Knoten anschliessen
+            if closed:
+                break
+            for dy, dx in _N8:
+                x, y = end[0] + dx, end[1] + dy
+                if 0 <= x < W and 0 <= y < H and jlab[y, x]:
+                    c = jcent[jlab[y, x]]
+                    if at == 0:
+                        pts.insert(0, c)
+                    else:
+                        pts.append(c)
+                    break
+        if len(pts) < min_len and not any(p in jcent for p in (pts[0], pts[-1])):
+            continue
+        if len(pts) == 1:                              # Punkt (z. B. Dezimalpunkt): kurzer Strich, runde Enden
+            pts = [pts[0], (pts[0][0] + 0.01, pts[0][1])]
+        arr = np.float32(pts).reshape(-1, 1, 2)
+        simp = cv2.approxPolyDP(arr, eps, closed).reshape(-1, 2)
+        paths.append(([(float(a), float(b)) for a, b in simp] + ([(float(simp[0][0]), float(simp[0][1]))] if closed else [])))
+    return paths
+
+
+def vectorize(ink, mode="center", eps=1.0, progress=None, cancel=None):
+    """Pixelzeichnung -> Vektoren. mode 'center': Mittellinien (fuer CAD) plus gefuellte Flaechen fuer alles, was
+    deutlich dicker als ein Strich ist (Masspfeile, Punkte, Balken); 'outline': nur gefuellte Umrisse (sieht genau
+    aus wie das Original). Rueckgabe dict(lines, fills, width)."""
+    m = (ink > 0).astype(np.uint8)
+    if mode == "outline":
+        return dict(lines=[], fills=outline_paths(m, min(eps, 0.7)), width=1.0)
+    sk = thin(m, progress, cancel)
+    sw = stroke_width(m, sk)
+    k = int(round(2.2 * sw)) | 1                      # Flaechen: dicker als ~2 Striche
+    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (max(3, k), max(3, k)))
+    blobs = cv2.morphologyEx(m, cv2.MORPH_OPEN, se)
+    fills = []
+    if blobs.any():
+        blobs = cv2.dilate(blobs, np.ones((3, 3), np.uint8)) & m
+        fills = outline_paths(blobs, 0.7)
+        sk = thin(m & ~blobs, None, cancel) if fills else sk
+    return dict(lines=trace_skeleton(sk, eps, progress=progress), fills=fills, width=sw)
+
+
+def outline_paths(ink, eps=0.7):
+    """Umrisse der Linien (mit Loechern) als geschlossene Linienzuege: sieht aus wie das Original."""
+    cnts, _ = cv2.findContours((ink > 0).astype(np.uint8), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    out = []
+    for c in cnts:
+        if len(c) < 3:
+            continue
+        s = cv2.approxPolyDP(c, eps, True).reshape(-1, 2)
+        if len(s) >= 3:
+            out.append([(float(x), float(y)) for x, y in s])
+    return out
+
+
+def stroke_width(ink, skel=None):
+    """Typische Strichstaerke (px): doppelter Abstand der Mittellinie zum Rand (Median)."""
+    dt = cv2.distanceTransform((ink > 0).astype(np.uint8), cv2.DIST_L2, 3)
+    sk = thin(ink) if skel is None else skel
+    v = dt[sk > 0]
+    return float(max(1.0, 2 * np.median(v))) if v.size else 1.0
+
+
+def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
+    """Ergebnis von vectorize() als SVG, PDF oder DXF: Linien mit Strichstaerke, Flaechen gefuellt.
+    DXF: Koordinaten in mm (mm_px = mm je Pixel inkl. Massstab), y nach oben; Linien und Flaechen auf eigenen Layern."""
+    W, H = size
+    lines, fills, width = vec["lines"], vec["fills"], vec["width"]
+    ext = os.path.splitext(path)[1].lower()
+    hexcol = "#%02x%02x%02x" % color
+    if ext == ".svg":
+        mmw, mmh = W * 25.4 / dpi, H * 25.4 / dpi
+        out = [f'<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="{mmw:.2f}mm" '
+               f'height="{mmh:.2f}mm" viewBox="0 0 {W} {H}">']
+        if fills:
+            d = " ".join("M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in p) + " Z" for p in fills)
+            out.append(f'<path d="{d}" fill="{hexcol}" fill-rule="evenodd" stroke="none"/>')
+        if lines:
+            out.append(f'<g fill="none" stroke="{hexcol}" stroke-width="{width:.2f}" stroke-linecap="round" '
+                       f'stroke-linejoin="round">')
+            out.extend('<polyline points="' + " ".join(f"{x:.1f},{y:.1f}" for x, y in p) + '"/>' for p in lines)
+            out.append("</g>")
+        out.append("</svg>\n")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(out))
+    elif ext == ".pdf":
+        import pymupdf
+        k = 72.0 / dpi
+        doc = pymupdf.open()
+        page = doc.new_page(width=W * k, height=H * k)
+        sh = page.new_shape()
+        col = tuple(v / 255 for v in color)
+        if fills:
+            for p in fills:
+                sh.draw_polyline([pymupdf.Point(x * k, y * k) for x, y in p] + [pymupdf.Point(p[0][0] * k, p[0][1] * k)])
+            sh.finish(color=None, fill=col, even_odd=True, closePath=True)
+        if lines:
+            for p in lines:
+                sh.draw_polyline([pymupdf.Point(x * k, y * k) for x, y in p])
+            sh.finish(color=col, width=max(0.1, width * k), lineCap=1, lineJoin=1, closePath=False)
+        sh.commit()
+        doc.save(path, deflate=True)
+        doc.close()
+    elif ext == ".dxf":
+        import ezdxf
+        f = mm_px or 25.4 / dpi
+        doc = ezdxf.new("R2010", setup=True)
+        doc.units = ezdxf.units.MM
+        doc.layers.add("LINIEN", color=7)
+        doc.layers.add("FLAECHEN", color=7)
+        msp = doc.modelspace()
+        for p in lines:
+            msp.add_lwpolyline([(x * f, (H - y) * f) for x, y in p], dxfattribs={"layer": "LINIEN"})
+        for p in fills:                              # Flaechen als Schraffur SOLID mit Umriss
+            pts = [(x * f, (H - y) * f) for x, y in p]
+            hatch = msp.add_hatch(color=7, dxfattribs={"layer": "FLAECHEN"})
+            hatch.paths.add_polyline_path(pts, is_closed=True)
+        doc.saveas(path)
+    else:
+        raise ValueError(ext)
+    return len(lines) + len(fills)

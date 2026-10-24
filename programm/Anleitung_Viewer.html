@@ -43,7 +43,7 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
 <a href="#schnell">Schnellstart</a><a href="#start">Programm starten</a><a href="#fenster">Das Fenster</a>
 <a href="#navigation">Zoomen und Verschieben</a><a href="#ansichten">Ansichten</a><a href="#ansehen">Nur ansehen, Fenster, Schließen</a>
 <a href="#empfindlich">Empfindlichkeit, Automatisch einstellen</a><a href="#messen">Messen und Kalibrieren</a>
-<a href="#markieren">Markieren</a><a href="#pruefen">Änderungen prüfen</a><a href="#suchen">Text suchen</a><a href="#kopieren">Auswahl kopieren, Ausschnitt verschieben</a><a href="#texte">Texte und Maße lesen</a>
+<a href="#markieren">Markieren</a><a href="#pruefen">Änderungen prüfen</a><a href="#suchen">Text suchen</a><a href="#kopieren">Bereich auswählen, kopieren, einfügen</a><a href="#bearbeiten">Zeichnung bearbeiten</a><a href="#ebenen">Ebenen</a><a href="#texte">Text und Maße</a>
 <a href="#kommentare">Kommentare einlesen (XFDF, PDF)</a><a href="#ausrichten">Von Hand ausrichten</a>
 <a href="#seiten">Mehrseitige Dateien</a><a href="#bereiche">Ausschnitt, Zuordnen, Zonen</a>
 <a href="#formate">PDF-Vektordaten, DXF</a><a href="#speichern">Speichern und Drucken</a>
@@ -62,7 +62,7 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
       nur verschoben. Mausrad = zoomen, Papier ziehen = verschieben, <kbd>F</kbd> = ganze Zeichnung.</li>
   <li><b>Prüfen (optional):</b> Rechts „Änderungen suchen“, dann mit <kbd>N</kbd> von Änderung zu Änderung,
       <kbd>G</kbd> = geprüft, <kbd>X</kbd> = abgelehnt.</li>
-  <li><b>Speichern:</b> Oben rechts <i>Speichern</i> → Ergebnisbild, PDF oder Projekt.</li>
+  <li><b>Speichern:</b> Oben rechts <i>Speichern</i> → Bild, PDF oder Projekt.</li>
 </ol>
 <p><b>Viele kleine Fundstellen?</b> Links „Automatisch einstellen“ klicken: Das Programm misst, wie genau die beiden
 Zeichnungen übereinanderliegen, und stellt Toleranz und Suchbereiche passend ein.</p>
@@ -89,7 +89,8 @@ installiert (Internet nötig). Direkt: <code>python programm/drawing_viewer.py [
 <tr><td>Leiste oben</td><td><i>Öffnen</i>, <i>Vergleichen</i>, die Ansichten als Umschalter (Alt, Neu, Vergleich, Nebeneinander, Überlagern,
 Schieber, Blinken), Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten
 <i>Optionen</i> (Einstellungen, links) und <i>Liste</i> (Änderungen und Markierungen, rechts).</td></tr>
-<tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Zoom, Messen, Text, Wolke, Rahmen, Pfeil, Linie, Marker, Nummer, Stempel;
+<tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
+Linie, Pfeil, Linienzug, Polygon), Stift, Marker, Nummer, Stempel;
 unten Lupe und Übersicht. Das gewählte Werkzeug ist blau.</td></tr>
 <tr><td>Optionszeile (über dem Bild)</td><td>Erscheint nur bei Bedarf und zeigt die Einstellungen des gewählten Werkzeugs,
 z. B. beim Messen Messart, Einrasten, Maßstab und <i>Kalibrieren</i>; beim Markieren Farbe und Größe; beim Blinken
@@ -209,24 +210,35 @@ Länge. Damit stimmen alle Maße, auch bei falscher Auflösung.</li>
 Text direkt, bei Bildern per Texterkennung) und bietet den Maßstab zur Übernahme an.</li>
 </ul>
 
-<h2 id="markieren">Markieren</h2>
+<h2 id="markieren">Markieren und Zeichnen</h2>
+<p>Alle Markierungen sind <b>Vektoren</b>: Sie bleiben einzeln anklickbar, verschiebbar und änderbar (Farbe, Strichstärke
+über <i>Größe</i>, Form an den weißen Punkten) und werden als echte PDF-Kommentare bzw. SVG-Elemente gespeichert.</p>
 <table>
 <tr><th>Werkzeug</th><th>Bedienung</th></tr>
-<tr><td>Text (<kbd>T</kbd>)</td><td>Ins Bild klicken, Text eingeben (mehrzeilig möglich)</td></tr>
+<tr><td>Text (<kbd>T</kbd>)</td><td><b>Klick</b> ins Bild und direkt lostippen; <b>Ziehen</b> erzeugt ein Textfeld dieser Breite
+mit automatischem Zeilenumbruch (Breite später am Punkt rechts ändern). <kbd>Strg</kbd>+<kbd>Enter</kbd> oder Klick
+daneben = fertig, <kbd>Esc</kbd> = verwerfen. Doppelklick auf einen Text ändert ihn an Ort und Stelle.</td></tr>
 <tr><td>Wolke (<kbd>W</kbd>)</td><td>Revisionswolke aufziehen</td></tr>
-<tr><td>Rahmen / Pfeil / Linie</td><td>Aufziehen bzw. vom Anfang zur Spitze ziehen; Linie ohne Spitze</td></tr>
+<tr><td>Formen ▾</td><td>Ein Knopf für <i>Rahmen, Ellipse, Linie, Pfeil, Linienzug, Polygon</i>; das kleine Dreieck wählt die
+Form, der Knopf zeigt die zuletzt benutzte. Rahmen/Ellipse aufziehen, Linie/Pfeil vom Anfang zum Ende ziehen.
+Linienzug und Polygon: Punkte anklicken, Doppelklick, <kbd>Enter</kbd> oder Rechtsklick beendet; die Eckpunkte lassen
+sich danach einzeln verschieben.</td></tr>
+<tr><td>Stift</td><td>Freihand zeichnen. Jede Linie bleibt eine eigene Markierung; an den Ecken skalieren.</td></tr>
 <tr><td>Marker</td><td>Fläche farbig hinterlegen (Textmarker, Standard gelb)</td></tr>
 <tr><td>Nummer</td><td>Jeder Klick setzt den nächsten nummerierten Kreis; Startnummer in der Optionszeile</td></tr>
 <tr><td>Stempel</td><td>Klick, dann Status (FREIGEGEBEN, GEPRÜFT …), Name und Datum</td></tr>
 </table>
+<p><b>Werkzeug behalten</b> (Haken in der Optionszeile): Nach dem Zeichnen bleibt das Werkzeug aktiv, z. B. für mehrere
+Pfeile nacheinander. Ohne Haken geht es zurück zur <i>Auswahl</i>, damit man das Gezeichnete gleich verschieben kann.
+Stift, Nummer und Messen bleiben immer aktiv; <kbd>Esc</kbd> beendet das Werkzeug.</p>
 <p>Farbe und Größe stehen in der Optionszeile; ohne Auswahl gelten sie für die nächste Markierung, mit Auswahl für die
-gewählte. Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die
-Größe ändern; Doppelklick = bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> =
-rückgängig. <b>Mehrere auswählen:</b> <kbd>Strg</kbd> oder <kbd>Umschalt</kbd> gedrückt halten und anklicken, oder mit
-<kbd>Umschalt</kbd> einen Rahmen über leeres Papier ziehen; dann gemeinsam verschieben, Farbe/Größe ändern oder löschen.
-Alle Markierungen stehen im Reiter <i>Markierungen</i> rechts (dort ebenfalls mit <kbd>Strg</kbd>/<kbd>Umschalt</kbd>
-mehrere wählen, <kbd>Entf</kbd> löscht sie; <i>Alle löschen …</i> leert die Liste). <kbd>H</kbd> blendet alle Markierungen,
-Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht gespeichert.</p>
+gewählte(n). Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die Größe ändern; Doppelklick =
+bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> = rückgängig.
+<b>Mehrere auswählen:</b> <kbd>Strg</kbd> oder <kbd>Umschalt</kbd> gedrückt halten und anklicken, oder mit
+<kbd>Umschalt</kbd> einen Rahmen über leeres Papier ziehen; dann gemeinsam verschieben, Farbe/Größe ändern, kopieren
+(<kbd>Strg</kbd>+<kbd>C</kbd>) oder löschen. Alle Markierungen stehen im Reiter <i>Markierungen</i> rechts (dort ebenfalls
+mehrere wählen, <kbd>Entf</kbd> löscht sie; <i>Alle löschen …</i> leert die Liste). <kbd>H</kbd> blendet alle
+Markierungen, Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht gespeichert.</p>
 
 <h2 id="pruefen">Änderungen prüfen</h2>
 <ol>
@@ -254,38 +266,81 @@ Im Vergleich wählt man, ob in <i>Neu</i> oder <i>Alt</i> gesucht wird; die Tref
 Text einmal ein (je nach Größe einige Sekunden bis eine Minute, mit Fortschritt). Groß-/Kleinschreibung spielt keine
 Rolle.</p>
 
-<h2 id="kopieren">Auswahl kopieren und Ausschnitt verschieben</h2>
-<p><b>Auswahl kopieren</b> (<i>Bearbeiten → Auswahl kopieren …</i>, <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>C</kbd>,
-auch im Rechtsklick-Menü): Bereich aufziehen. Ein Fenster zeigt die Vorschau und bietet:</p>
-<ul>
-<li><i>Alles (mit Papier)</i> – der Ausschnitt so, wie er angezeigt wird;</li>
-<li><i>Nur Linien</i> – Papier durchsichtig, z. B. zum Einfügen in eine Präsentation oder über ein anderes Bild;</li>
-<li><i>Nur Geometrie</i> – nur die dicken Körperkanten; Maßlinien, Maßpfeile, Hinweislinien, Mittellinien, Schraffur und
-Text fallen weg. Das Programm unterscheidet nach <b>Strichstärke</b> und schlägt eine Grenze vor (<i>Linien ab Breite</i>);
-in der Vorschau sieht man sofort, ob es passt, und kann die Breite ändern. Funktioniert gut, wenn die Zeichnung
-normgerecht dicke und dünne Linien hat; bei Scans mit gleich dünnen Linien bleibt wenig übrig. An Kanten hängende
-Maßpfeile oder schräge dünne Kanten können verbleiben bzw. fehlen – bitte prüfen.</li>
-</ul>
-<p><i>Kopieren</i> legt das Bild (mit Transparenz) in die Zwischenablage, <i>Speichern …</i> als PNG.</p>
-<p><b>Ausschnitt verschieben</b> (<i>Bearbeiten → Ausschnitt verschieben</i>; beim Ansehen einer einzelnen Zeichnung):
-Bereich aufziehen, dann an die neue Stelle ziehen oder mit den Pfeiltasten schieben (<kbd>Umschalt</kbd> = 10 px).
-<i>Nur Linien (Hintergrund bleibt)</i> verschiebt nur die Linien; ohne Haken wandert der ganze Ausschnitt samt Papier. Die
-frei gewordene Fläche bekommt die Papierfarbe der Zeichnung. <kbd>Enter</kbd> oder <i>Übernehmen</i> setzt ab,
-<kbd>Esc</kbd> bricht ab, <kbd>Strg</kbd>+<kbd>Z</kbd> macht es rückgängig. Gespeichert wird die bearbeitete Zeichnung mit
-<i>Datei → Bearbeitete Zeichnung speichern …</i> (PNG, TIFF, PDF, JPG; ohne Markierungen). Die Originaldatei bleibt
-unverändert; beim Schließen fragt das Programm nach, wenn die Bearbeitung noch nicht gespeichert ist.</p>
+<h2 id="kopieren">Bereich auswählen, kopieren, einfügen</h2>
+<p>Werkzeug <b>Bereich</b> (<kbd>B</kbd>): Rechteck aufziehen; mit <kbd>Umschalt</kbd> oder <kbd>Strg</kbd> weitere
+Rechtecke dazu. Die Auswahl bleibt nach dem Loslassen markiert und erfasst <b>alles darin</b>: den Zeichnungsinhalt,
+Markierungen, Maße und Änderungsrahmen. Die Optionszeile zeigt Größe und Anzahl und bietet:</p>
+<table>
+<tr><th>Befehl</th><th>Wirkung</th></tr>
+<tr><td>Kopieren (<kbd>Strg</kbd>+<kbd>C</kbd>)</td><td>Wie angezeigt, mit Markierungen, als Bild in die Zwischenablage
+(außerhalb der Rechtecke durchsichtig). In ZGmax eingefügt, kommen Zeichnungsteil (als Bild) und Markierungen getrennt
+und einzeln bearbeitbar zurück.</td></tr>
+<tr><td>Verschieben</td><td>In die Auswahl klicken und ziehen. Markierungen wandern immer mit; beim Ansehen einer einzelnen
+Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (Hintergrund bleibt)</i> nur die Linien. Die frei gewordene
+Fläche bekommt die Papierfarbe.</td></tr>
+<tr><td>Löschen (<kbd>Entf</kbd>)</td><td>Markierungen und Änderungen in der Auswahl löschen; die Zeichnung bleibt.</td></tr>
+<tr><td>Exportieren …</td><td>Auswahl als PNG, TIFF, JPG, PDF oder SVG mit Ebenen speichern.</td></tr>
+<tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>),
+<i>Zeichnung im Bereich leeren</i> und <i>Auf Bereich zuschneiden</i> (die beiden letzten beim Ansehen einer Zeichnung).</td></tr>
+</table>
+<p><kbd>Esc</kbd> hebt die Auswahl auf. Alle Änderungen an der Zeichnung lassen sich mit <kbd>Strg</kbd>+<kbd>Z</kbd>
+rückgängig machen.</p>
+<p><b>Nur Linien oder nur Geometrie kopieren</b> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>C</kbd>): Ein Fenster zeigt die
+Vorschau. <i>Alles</i> = wie angezeigt; <i>Nur Linien</i> = Papier durchsichtig; <i>Nur Geometrie</i> = nur die dicken
+Körperkanten, ohne Maßlinien, Maßpfeile, Hinweislinien, Mittellinien, Schraffur und Text. Das Programm unterscheidet nach
+<b>Strichstärke</b> und schlägt eine Grenze vor (<i>Linien ab Breite</i>), die man in der Vorschau anpassen kann. Gut bei
+normgerecht dicken und dünnen Linien; bei Scans mit gleich dünnen Linien bleibt wenig übrig; an Kanten hängende
+Maßpfeile oder schräge dünne Kanten können verbleiben bzw. fehlen.</p>
+<p><b>Einfügen</b> (<kbd>Strg</kbd>+<kbd>V</kbd>, <i>Bearbeiten → Einfügen</i>): Bilder aus der Zwischenablage (z. B. ein
+Bildschirmfoto oder ein Ausschnitt aus einer anderen Zeichnung) erscheinen als verschiebbares Bild auf der Ebene
+<i>Eingefügte Bilder</i> – an den Ecken skalieren, jederzeit löschen. Text wird als Text-Markierung eingefügt, kopierte
+Markierungen als Markierungen. Ist nichts geöffnet, öffnet <kbd>Strg</kbd>+<kbd>V</kbd> ein Bild als neue Zeichnung
+(ebenso <i>Datei → Bild aus Zwischenablage öffnen</i>).</p>
 
-<h2 id="texte">Texte und Maße lesen</h2>
-<p>Im Bereich <i>Texte und Maße lesen</i> (rechte Leiste, aufklappen):</p>
+<h2 id="bearbeiten">Zeichnung bearbeiten</h2>
+<p><i>Bearbeiten → Zeichnung bearbeiten</i> (beim Ansehen einer einzelnen Zeichnung). Die Originaldatei bleibt unverändert;
+<i>Bearbeitete Zeichnung speichern …</i> speichert das Ergebnis (PNG, TIFF, PDF, JPG, ohne Markierungen). Beim Schließen
+fragt das Programm nach, wenn die Bearbeitung noch nicht gespeichert ist. Markierungen wandern bei allen Änderungen mit.</p>
+<table>
+<tr><th>Befehl</th><th>Wirkung</th></tr>
+<tr><td>Ausschnitt verschieben</td><td>Bereich aufziehen, an die neue Stelle ziehen oder mit den Pfeiltasten schieben
+(<kbd>Umschalt</kbd> = 10 px), <kbd>Enter</kbd> = übernehmen. Gleiches geht mit dem Werkzeug <i>Bereich</i>.</td></tr>
+<tr><td>Auf Bereich zuschneiden</td><td>Nur den mit <i>Bereich</i> gewählten Teil behalten.</td></tr>
+<tr><td>90° nach rechts / links, 180° drehen</td><td>Die Zeichnung selbst drehen (<kbd>R</kbd> dreht dagegen nur die Ansicht).</td></tr>
+<tr><td>Helligkeit und Kontrast …</td><td>Mit Vorschau; <i>Automatisch</i> macht graues Papier weiß und blasse Linien kräftig.</td></tr>
+<tr><td>Bildgröße und Auflösung …</td><td><i>Pixel neu berechnen</i> (Größe auf dem Papier bleibt, z. B. 600 dpi → 200 dpi
+für kleinere Dateien) oder <i>Nur Auflösung ändern</i> (falsche dpi-Angabe korrigieren; die mm-Werte ändern sich).</td></tr>
+</table>
+
+<h2 id="ebenen">Ebenen</h2>
+<p><i>Ansicht → Ebenen</i> blendet rechts den Reiter <i>Ebenen</i> ein (sonst verborgen). Feste Ebenen: <i>Zeichnung,
+Änderungen, Markierungen, Maße, Eingefügte Bilder, Zonen</i>. Je Ebene:</p>
 <ul>
-<li><b>Text aus PDF lesen</b>: eingebetteter Text jeder Änderung (A → B), exakt, nur bei PDF mit echtem Text.</li>
-<li><b>Maßzahlen vergleichen</b>: liest die Zahlen jeder Änderung und meldet „12,5 → 12,8“ getrennt von rein grafischen
-Änderungen (auch R- und M-Angaben). Filter „Maße“ zeigt nur diese.</li>
-<li><b>Text lesen (OCR)</b> und <b>Index prüfen</b>: Texterkennung für Scans, für deutsche und englische Texte
-(einschließlich Umlaute, ß, Ø, ±, °). In der App enthalten; im Python-Betrieb
-bietet das Programm beim ersten Gebrauch die Installation an (ca. 60 MB, Internet nötig).</li>
+<li><b>Sichtbar</b> – ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren (z. B. die
+Zeichnung ausblenden, um nur die Markierungen zu exportieren).</li>
+<li><b>Gesperrt</b> – Inhalte lassen sich nicht anklicken, verschieben oder löschen (z. B. Maße sperren, während man
+Wolken zeichnet; gesperrte Zeichnung = keine Bildbearbeitung).</li>
+</ul>
+<p><b>Als Ebenen speichern:</b> <i>PDF mit Anmerkungen</i> legt jede sichtbare Ebene als echte PDF-Ebene an (in Acrobat
+links unter <i>Ebenen</i> ein- und ausblendbar). <i>Als SVG mit Ebenen</i> erzeugt Ebenen für Inkscape, Illustrator &amp; Co.;
+Markierungen und Änderungsrahmen sind dort einzelne, bearbeitbare Vektoren. TIFF und PNG kennen keine allgemein lesbaren
+Ebenen und werden flach gespeichert.</p>
+
+<h2 id="texte">Text und Maße</h2>
+<p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Prüfen</i>):</p>
+<ul>
+<li><b>Text erkennen</b>: schreibt zu jeder Änderung „alter Text → neuer Text“ in die Liste. Bei PDF mit echtem Text wird
+dieser genommen (exakt, sofort), sonst die Texterkennung (deutsch und englisch, auch Ø, ±, °).</li>
+<li><b>Geänderte Maße finden</b>: liest die Zahlen jeder Änderung und vergleicht sie (auch R- und M-Angaben). Danach
+stehen in Liste, Bild und PDF <b>nur noch Änderungen, bei denen sich eine Maßzahl geändert hat</b> („12,5 → 12,8“);
+feine Strichänderungen an der Geometrie werden ausgeblendet (Filter <i>Zeigen: nur geänderte Maße</i>).
+<i>Zeigen: Änderungen</i> holt alles zurück.</li>
+<li><b>Schriftfeld-Index prüfen</b>: liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die
+Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</li>
 <li><b>Gruppierung</b>: wie nah beieinander liegende Unterschiede zu einem Eintrag zusammengefasst werden.</li>
 </ul>
+<p>Die Texterkennung ist in der App enthalten; im Python-Betrieb bietet das Programm beim ersten Gebrauch die
+Installation an (ca. 60 MB, Internet nötig).</p>
 
 <h2 id="kommentare">Kommentare einlesen und weitergeben (XFDF, PDF)</h2>
 <p><i>Datei → Kommentare einlesen (XFDF, PDF) …</i> übernimmt Anmerkungen aus anderen Programmen als eigene Markierungen:</p>
@@ -334,7 +389,14 @@ was verglichen wird (z. B. alles außer Bemaßung).</p>
 <h2 id="speichern">Speichern und Drucken</h2>
 <table>
 <tr><th>Speichern ▾</th><th>Ergebnis</th></tr>
-<tr><td>Ergebnisbild</td><td>Wie angezeigt (Ansicht, Markierungen, Legende) als PNG, JPG, TIFF oder PDF</td></tr>
+<tr><td>Als Bild speichern (wie angezeigt)</td><td>Ansicht mit eingebrannten Markierungen (und Legende) als PNG, JPG,
+TIFF oder PDF – auch für kommentierte Fotos und Bildschirmfotos</td></tr>
+<tr><td>Als SVG mit Ebenen</td><td>Zeichnung, Änderungen und Markierungen als Ebenen; Markierungen als Vektoren</td></tr>
+<tr><td>Durchsuchbares PDF (Texterkennung)</td><td>Beim Ansehen einer Zeichnung: PDF mit unsichtbarem Text über dem Bild –
+in jedem PDF-Programm durchsuchbar und kopierbar (Scans per Texterkennung, PDF mit eigenem Text direkt).</td></tr>
+<tr><td>Vektorisieren (SVG, PDF, DXF)</td><td>Pixelzeichnung in Linien umwandeln: <i>Mittellinien</i> (einzelne Linien, gut
+für CAD; gefüllte Pfeile und Punkte als Flächen) oder <i>Umrisse</i> (sieht genau aus wie das Original). Ganze Zeichnung
+oder nur der gewählte Bereich; DXF in mm (mit Maßstab). Text wird als Linien gezeichnet, nicht als Text erkannt.</td></tr>
 <tr><td>PDF mit Anmerkungen (Acrobat)</td><td>Ergebnis als PDF; eigene Markierungen als <b>echte PDF-Kommentare</b>
 (in Acrobat &amp; Co. anklicken, beantworten, abhaken). Wurden Änderungen gesucht, kommen die in der Liste angezeigten
 (nach dem Filter <i>Zeigen</i>) als Revisionswolken dazu; gesucht wird dafür nicht automatisch.</td></tr>
@@ -381,13 +443,14 @@ Bildschirmen oder für ältere Augen.</li>
 <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>9</kbd> <kbd>4</kbd> <kbd>6</kbd> <kbd>5</kbd> <kbd>7</kbd> <kbd>8</kbd></td><td>Alt, Neu, Vergleich, Nebeneinander, Überlagern, Blinken, Schieber, Neu / Alt mit Änderungen</td></tr>
 <tr><td><kbd>Leertaste</kbd></td><td>Zwischen alt und neu wechseln</td></tr>
 <tr><td><kbd>F</kbd> / <kbd>Strg</kbd>+<kbd>0</kbd></td><td>Ganze Zeichnung / 100 %</td></tr>
-<tr><td><kbd>V</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Auswahl, Zoom, Messen, Text, Wolke</td></tr>
+<tr><td><kbd>V</kbd> <kbd>B</kbd> <kbd>Z</kbd> <kbd>M</kbd> <kbd>T</kbd> <kbd>W</kbd></td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke</td></tr>
 <tr><td><kbd>Strg</kbd>+<kbd>F</kbd> / <kbd>F3</kbd> / <kbd>Umschalt</kbd>+<kbd>F3</kbd></td><td>Text suchen / nächster / voriger Treffer</td></tr>
 <tr><td><kbd>N</kbd> / <kbd>P</kbd> / <kbd>G</kbd> / <kbd>X</kbd> / <kbd>C</kbd></td><td>Nächste / vorige Änderung, geprüft, abgelehnt, Kommentar</td></tr>
 <tr><td><kbd>H</kbd> / <kbd>L</kbd> / <kbd>R</kbd> / <kbd>I</kbd></td><td>Markierungen aus/ein, Lupe, Ansicht drehen, Farben umkehren</td></tr>
 <tr><td><kbd>Entf</kbd> / <kbd>Esc</kbd></td><td>Markierung löschen / Werkzeug beenden</td></tr>
 <tr><td><kbd>Strg</kbd>+<kbd>Z</kbd> / <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>Z</kbd></td><td>Rückgängig / Wiederholen</td></tr>
-<tr><td><kbd>Strg</kbd>+<kbd>C</kbd> / <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>C</kbd></td><td>Ergebnis kopieren / Auswahl kopieren</td></tr>
+<tr><td><kbd>Strg</kbd>+<kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd></td><td>Kopieren (Bereich, gewählte Markierungen oder ganzes Bild) / Ausschneiden / Einfügen</td></tr>
+<tr><td><kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>C</kbd></td><td>Nur Linien oder nur Geometrie kopieren</td></tr>
 <tr><td><kbd>Strg</kbd>+<kbd>O</kbd> / <kbd>S</kbd> / <kbd>P</kbd> / <kbd>W</kbd> / <kbd>N</kbd></td><td>Projekt öffnen / speichern, drucken, schließen, neues Fenster</td></tr>
 <tr><td><kbd>F1</kbd></td><td>Diese Anleitung</td></tr>
 </table>

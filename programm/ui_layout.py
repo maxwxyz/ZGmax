@@ -78,7 +78,17 @@ class LayoutMixin:
         self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O")
         self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S")
         self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
-        self.act_export_img = A(tr("Ergebnisbild speichern …"), self.export_image, "Ctrl+E", ico="save")
+        self.act_export_img = A(tr("Als Bild speichern (wie angezeigt) …"), self.export_image, "Ctrl+E",
+                                tr("Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF"), ico="save")
+        self.act_export_ocrpdf = A(tr("Durchsuchbares PDF (Texterkennung) …"), lambda: self.export_searchable_pdf(),
+                                   tip=tr("Zeichnung als PDF mit unsichtbarem Text: in jedem PDF-Programm durchsuchbar "
+                                          "und kopierbar (Scans per Texterkennung)"))
+        self.act_vectorize = A(tr("Vektorisieren (SVG, PDF, DXF) …"), lambda: self.vectorize_drawing(),
+                               tip=tr("Pixelzeichnung in Linien umwandeln, z. B. für CAD (DXF) oder verlustfreies "
+                                      "Vergrößern"))
+        self.act_export_svg = A(tr("Als SVG mit Ebenen …"), lambda: self.export_svg(),
+                                tip=tr("Zeichnung, Änderungen und Markierungen als getrennte Ebenen; Markierungen als "
+                                       "Vektoren (in Inkscape, Illustrator & Co. bearbeitbar)"))
         self.act_export_annpdf = A(tr("PDF mit Anmerkungen (Acrobat) …"), self.export_annotated_pdf)
         self.act_export_pdf = A(tr("PDF-Bericht …"), self.export_pdf)
         self.act_export_csv = A(tr("Änderungsliste (CSV) …"), self.export_csv)
@@ -121,6 +131,15 @@ class LayoutMixin:
                                   tip=tr("Die Zeichnung mit verschobenen Ausschnitten als Bild oder PDF speichern "
                                          "(ohne Markierungen)"))
         self.act_save_drawing.setEnabled(False)
+        self.act_sheet_crop = A(tr("Auf Bereich zuschneiden"), lambda: self.sheet_crop(),
+                                tip=tr("Nur den mit „Bereich“ gewählten Teil behalten"))
+        self.act_rot_cw = A(tr("90° nach rechts drehen"), lambda: self.sheet_rotate(1))
+        self.act_rot_ccw = A(tr("90° nach links drehen"), lambda: self.sheet_rotate(3))
+        self.act_rot_180 = A(tr("180° drehen"), lambda: self.sheet_rotate(2))
+        self.act_adjust = A(tr("Helligkeit und Kontrast …"), lambda: self.sheet_adjust())
+        self.act_size = A(tr("Bildgröße und Auflösung …"), lambda: self.sheet_size())
+        self.sheet_actions = (self.act_move_sel, self.act_sheet_crop, self.act_rot_cw, self.act_rot_ccw,
+                              self.act_rot_180, self.act_adjust, self.act_size)
 
         self.mode_actions = {}
         grp = QActionGroup(self)
@@ -160,6 +179,8 @@ class LayoutMixin:
                             tip=tr("Nummerierte \u00c4nderungen als Wolke statt als Rahmen zeigen und speichern"),
                             ico="cloud", checkable=True)
         self.act_clouds.setChecked(self.settings.value("clouds", "false") == "true")
+        self.act_layers = A(tr("Ebenen"), self._toggle_layers_tab, tip=tr("Ebenen ein-/ausblenden und sperren"),
+                            ico="layers", checkable=True)
         self.act_left = A(tr("Einstellungen"), lambda on: self.left.setVisible(on), tip=tr("Einstellungen ein-/ausblenden"),
                           ico="settings", checkable=True)
         self.act_right = A(tr("Änderungen und Markierungen"), lambda on: self.right.setVisible(on),
@@ -249,7 +270,8 @@ class LayoutMixin:
         for a in (self.act_proj_save, self.act_proj_save_as, self.act_close):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv, self.act_print):
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
+                  self.act_export_pdf, self.act_export_csv, self.act_print):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf):
@@ -273,7 +295,15 @@ class LayoutMixin:
         for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_copy, self.act_copy_sel, self.act_paste):
             m.addAction(a)
         m.addSeparator()
-        m.addAction(self.act_move_sel)
+        sm = m.addMenu(tr("Zeichnung bearbeiten"))
+        sm.setToolTip(tr("Beim Ansehen einer einzelnen Zeichnung; Original bleibt unverändert"))
+        sm.setToolTipsVisible(True)
+        for a in self.sheet_actions:
+            sm.addAction(a)
+            if a in (self.act_sheet_crop, self.act_rot_180):
+                sm.addSeparator()
+        sm.addSeparator()
+        sm.addAction(self.act_save_drawing)
 
         m = mb.addMenu(tr("&Ansicht"))
         for key, *_ in VIEWS + MORE_VIEWS:
@@ -282,7 +312,7 @@ class LayoutMixin:
         for a in (self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_clouds):
+        for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_layers, self.act_clouds):
             m.addAction(a)
         m.addSeparator()
         m.addAction(self.act_color)
@@ -420,7 +450,8 @@ class LayoutMixin:
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
         save = QMenu(self)
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv, self.act_print):
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
+                  self.act_export_pdf, self.act_export_csv, self.act_print):
             save.addAction(a)
         save.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as):
@@ -603,19 +634,36 @@ class LayoutMixin:
         self.lbl_area.setObjectName("hint")
         l.addWidget(self.lbl_area)
         self.area_buttons = {}
-        for key, text, fn, tip in (
-                ("copy", tr("Kopieren"), lambda: self.area_copy(), tr("Wie angezeigt kopieren (Strg+C)")),
-                ("copyopt", tr("Kopieren …"), lambda: self.area_copy_options(),
-                 tr("Alles, nur Linien oder nur Geometrie kopieren (Strg+Umschalt+C)")),
-                ("cut", tr("Ausschneiden"), lambda: self.area_cut(), tr("Strg+X")),
-                ("delete", tr("Löschen"), lambda: self.area_delete(), tr("Markierungen und Änderungen in der Auswahl löschen (Entf)")),
-                ("clear", tr("Leeren"), lambda: self.area_clear(), tr("Zeichnungsinhalt der Auswahl entfernen (Papierfarbe)")),
-                ("export", tr("Exportieren …"), lambda: self.area_export(), tr("Auswahl als Bild oder PDF speichern"))):
-            b = QPushButton(text)
-            b.setToolTip(tip)
-            b.clicked.connect(fn)
-            l.addWidget(b)
+        more = QMenu(self)
+        for key, text, fn, tip, main in (
+                ("copy", tr("Kopieren"), lambda: self.area_copy(), tr("Wie angezeigt kopieren (Strg+C)"), True),
+                ("copyopt", tr("Nur Linien/Geometrie kopieren …"), lambda: self.area_copy_options(),
+                 tr("Alles, nur Linien oder nur Geometrie kopieren (Strg+Umschalt+C)"), False),
+                ("cut", tr("Ausschneiden"), lambda: self.area_cut(), tr("Strg+X"), False),
+                ("delete", tr("Löschen"), lambda: self.area_delete(),
+                 tr("Markierungen und Änderungen in der Auswahl löschen (Entf)"), True),
+                ("clear", tr("Zeichnung im Bereich leeren"), lambda: self.area_clear(),
+                 tr("Zeichnungsinhalt der Auswahl entfernen (Papierfarbe)"), False),
+                ("crop", tr("Auf Bereich zuschneiden"), lambda: self.sheet_crop(),
+                 tr("Nur diesen Bereich der Zeichnung behalten"), False),
+                ("export", tr("Exportieren …"), lambda: self.area_export(),
+                 tr("Auswahl als Bild, PDF oder SVG speichern"), True)):
+            if main:
+                b = QPushButton(text)
+                b.setToolTip(tip)
+                b.clicked.connect(fn)
+                b.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+                l.addWidget(b)
+            else:                                     # seltener gebraucht: im Menue "Mehr"
+                b = more.addAction(text, fn)
+                b.setToolTip(tip)
             self.area_buttons[key] = b
+        more.setToolTipsVisible(True)
+        self.btn_area_more = QToolButton()
+        self.btn_area_more.setText(tr("Mehr"))
+        self.btn_area_more.setMenu(more)
+        self.btn_area_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        l.addWidget(self.btn_area_more)
         lay.addWidget(self.opt_area)
         self.opt_float = QWidget()                    # Ausschnitt verschieben
         l = QHBoxLayout(self.opt_float)
@@ -675,8 +723,9 @@ class LayoutMixin:
         has_sel = bool(self.canvas.sel_rects)
         self.opt_area.setVisible(t == "area")
         self.lbl_area.setVisible(has_sel)
+        self.btn_area_more.setVisible(has_sel)
         for k, b in self.area_buttons.items():
-            b.setVisible(has_sel and (k != "clear" or self.view_only))
+            b.setVisible(has_sel and (k not in ("clear", "crop") or self.view_only))
         self.opt_float.setVisible(t == "cutmove" or self.canvas.float is not None or (t == "area" and self.view_only))
         for b in (self.btn_float_ok, self.btn_float_cancel):
             b.setEnabled(self.canvas.float is not None)
@@ -1152,15 +1201,21 @@ class LayoutMixin:
             QShortcut(QKeySequence(key), self.list_anns, activated=self._ann_delete).setContext(
                 Qt.ShortcutContext.WidgetShortcut)
         l2.addWidget(self.list_anns, 1)
-        row = QHBoxLayout()
-        for text, fn in ((tr("Bearbeiten …"), lambda: self._ann_edit(self.canvas.ann_selected)),
-                         (tr("Duplizieren"), self._ann_duplicate), (tr("Löschen"), self._ann_delete),
-                         (tr("Alle löschen …"), self._ann_clear)):
+        row = QGridLayout()
+        for i, (text, fn) in enumerate(((tr("Bearbeiten …"), lambda: self._ann_edit(self.canvas.ann_selected)),
+                                        (tr("Duplizieren"), self._ann_duplicate), (tr("Löschen"), self._ann_delete),
+                                        (tr("Alle löschen …"), self._ann_clear))):
             b = QPushButton(text)
             b.clicked.connect(lambda _=False, f=fn: f())
-            row.addWidget(b)
+            row.addWidget(b, i // 2, i % 2)
         l2.addLayout(row)
         tabs.addTab(t2, tr("Markierungen"))
+        tabs.addTab(self._build_layers_tab(), tr("Ebenen"))
+        on = self.settings.value("layers_tab", "false") == "true"
+        tabs.setTabVisible(2, on)
+        self.act_layers.blockSignals(True)
+        self.act_layers.setChecked(on)
+        self.act_layers.blockSignals(False)
 
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
@@ -1169,6 +1224,58 @@ class LayoutMixin:
         lay.addWidget(self.log)
         self.expert_widgets.append(self.log)
         self._fill_table()
+
+    def _build_layers_tab(self):
+        t = QWidget()
+        t.setObjectName("panel")
+        l = QVBoxLayout(t)
+        l.setContentsMargins(0, 6, 0, 0)
+        tbl = QTableWidget(len(rep.LAYERS), 3)
+        tbl.setHorizontalHeaderLabels([tr("Sichtbar"), tr("Gesperrt"), tr("Ebene")])
+        tbl.verticalHeader().setVisible(False)
+        tbl.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        for row, (key, name) in enumerate(rep.LAYERS):
+            for col in (0, 1):
+                it = QTableWidgetItem()
+                it.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+                it.setCheckState(Qt.CheckState.Checked if col == 0 else Qt.CheckState.Unchecked)
+                it.setData(Qt.ItemDataRole.UserRole, key)
+                tbl.setItem(row, col, it)
+            tbl.setItem(row, 2, QTableWidgetItem(name))
+        tbl.resizeColumnsToContents()
+        tbl.itemChanged.connect(self._layer_item_changed)
+        self.tbl_layers = tbl
+        l.addWidget(tbl, 1)
+        h = QLabel(tr("Ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren. "
+                   "Gesperrte Ebenen lassen sich nicht auswählen oder ändern. „PDF mit Anmerkungen“ und „Als SVG mit "
+                   "Ebenen“ speichern die sichtbaren Ebenen als echte Ebenen."))
+        h.setObjectName("hint")
+        h.setWordWrap(True)
+        l.addWidget(h)
+        return t
+
+    def _layer_item_changed(self, it):
+        key = it.data(Qt.ItemDataRole.UserRole)
+        on = it.checkState() == Qt.CheckState.Checked
+        c = self.canvas
+        if it.column() == 0:
+            c.layer_on[key] = on
+        else:
+            c.layer_lock[key] = on
+        keep = {k for k in c.selected_anns() if c.ann_editable(c.anns[k])}   # Auswahl nur auf waehlbaren Ebenen
+        if keep != c.selected_anns():
+            c._set_multi(keep)
+        c.update()
+
+    def _toggle_layers_tab(self, on):
+        self.settings.setValue("layers_tab", "true" if on else "false")
+        self.tabs.setTabVisible(2, on)
+        if on:
+            self.act_right.setChecked(True)
+            self.right.setVisible(True)
+            self.tabs.setCurrentIndex(2)
 
     # ----------------------------------------------------------------- Statusleiste
     def _build_statusbar(self):
@@ -1275,9 +1382,11 @@ class LayoutMixin:
                   self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate,
                   self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv,
                   self.act_print, self.act_copy, self.act_copy_sel, self.act_find, self.act_proj_save,
+                  self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
                   self.act_proj_save_as):
             a.setEnabled(has)
-        self.act_move_sel.setEnabled(has and self.view_only)
+        for a in self.sheet_actions:
+            a.setEnabled(has and self.view_only)
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
         for b in self.seg_buttons.values():

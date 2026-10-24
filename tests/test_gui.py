@@ -438,6 +438,108 @@ def test_area_selection(app, win, tmp_path):
     QApplication.clipboard().clear()
 
 
+def test_layers_and_svg_pdf_export(app, win, pair, tmp_path):
+    import pymupdf
+    compare(app, win, *pair)
+    win._ann_created(dict(type="rect", x=100, y=100, x2=300, y2=200, text="", nr=0, color="#e11d48", size=2.0))
+    win._ann_created(dict(type="measure", kind="dist", pts=[[100, 400], [500, 400]], x=100, y=400, x2=500, y2=400,
+                          text="", nr=0, color="#2563eb", size=2.0))
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    win.act_layers.setChecked(True)
+    assert win.tabs.isTabVisible(2)
+    out = str(tmp_path / "a.pdf")
+    win._save_dialog = lambda *a: out
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    with pymupdf.open(out) as d:
+        names = {v["name"] for v in d.get_ocgs().values()}
+    assert {"Zeichnung", "Änderungen", "Markierungen", "Maße"} <= names
+    tbl = win.tbl_layers                                     # Masse ausblenden: nicht mehr im Bild/Export
+    row = [k for k, _ in __import__("diffreport").LAYERS].index("masse")
+    tbl.item(row, 0).setCheckState(Qt.CheckState.Unchecked)
+    assert not win.canvas.layer_on["masse"]
+    assert [a["type"] for a in win._export_anns()] == ["rect"]
+    assert win.canvas.hit_ann(300, 400) is None              # ausgeblendet: nicht anklickbar
+    tbl.item([k for k, _ in __import__("diffreport").LAYERS].index("markierungen"), 1).setCheckState(Qt.CheckState.Checked)
+    assert win.canvas.hit_ann(100, 150) is None              # gesperrt: nicht anklickbar
+    svg = str(tmp_path / "a.svg")
+    win.export_svg(path=svg)
+    txt = open(svg, encoding="utf-8").read()
+    assert 'inkscape:label="Zeichnung"' in txt and 'inkscape:label="Markierungen"' in txt and "Maße" not in txt
+    import xml.dom.minidom
+    xml.dom.minidom.parse(svg)                               # gueltiges XML
+    win.act_layers.setChecked(False)
+
+
+def test_sheet_crop_rotate_adjust_size(app, win, tmp_path, monkeypatch):
+    import cv2
+    import numpy as np
+    import ui_edit
+    img = np.full((400, 600), 230, np.uint8)
+    cv2.rectangle(img, (100, 100), (200, 180), 40, 4)
+    p = tmp_path / "blatt.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    win._ann_created(dict(type="rect", x=110, y=110, x2=190, y2=170, text="", nr=0, color="#e11d48", size=2.0))
+    win.start_area()
+    win.canvas.sel_rects = [(50, 50, 350, 250)]
+    win._area_changed()
+    win.sheet_crop()
+    wait(app, lambda: not win.running)
+    assert win.payload["res"].a.shape == (200, 300) and win.anns[0]["x"] == 60
+    win.sheet_rotate(1)                                      # 90 Grad im Uhrzeigersinn
+    wait(app, lambda: not win.running)
+    assert win.payload["res"].a.shape == (300, 200)
+    a = win.anns[0]
+    assert (a["x"], a["y"]) == (200 - 120, 60)               # (x, y) -> (h - y, x)
+    monkeypatch.setattr(ui_edit.AdjustDialog, "exec", lambda d: (d.s_b.setValue(20), d.s_c.setValue(150), 1)[-1])
+    win.sheet_adjust()
+    wait(app, lambda: not win.running)
+    assert win.cache["g_" + str(p)].max() == 255            # Papier heller
+    monkeypatch.setattr(ui_edit.ImageSizeDialog, "exec", lambda d: (d.sp_dpi.setValue(d.dpi0 * 2), 1)[-1])
+    dpi0 = win.dpi_value()
+    win.sheet_size()
+    wait(app, lambda: not win.running)
+    assert win.payload["res"].a.shape == (600, 400) and win.dpi_value() == dpi0 * 2
+    for _ in range(4):
+        win.undo()
+        wait(app, lambda: not win.running)
+    assert win.payload["res"].a.shape == (400, 600) and win.anns[0]["x"] == 110 and win.dpi_value() == dpi0
+
+
+def test_searchable_pdf_and_vectorize(app, win, tmp_path, monkeypatch):
+    import cv2
+    import numpy as np
+    import pymupdf
+    import ezdxf
+    import ui_edit
+    img = np.full((600, 900), 255, np.uint8)
+    cv2.putText(img, "BOHRUNG 25", (80, 200), cv2.FONT_HERSHEY_SIMPLEX, 2.2, 0, 5)
+    cv2.rectangle(img, (60, 300), (600, 500), 0, 4)
+    p = tmp_path / "scan.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    out = str(tmp_path / "s.pdf")
+    win._save_dialog = lambda *a: out
+    win.export_searchable_pdf()
+    wait(app, lambda: not win.running, timeout=120)
+    with pymupdf.open(out) as d:
+        assert d[0].search_for("BOHRUNG")                    # unsichtbarer Text ist durchsuchbar
+    for ext in (".svg", ".pdf", ".dxf"):
+        monkeypatch.setattr(ui_edit.VectorizeDialog, "exec",
+                            lambda d, e=ext: (d.cb_fmt.setCurrentIndex(d.cb_fmt.findData(e)), 1)[-1])
+        vo = str(tmp_path / ("v" + ext))
+        win._save_dialog = lambda *a, v=vo: v
+        win.vectorize_drawing()
+        wait(app, lambda: not win.running)
+    assert ezdxf.readfile(str(tmp_path / "v.dxf")).modelspace().query("LWPOLYLINE")
+    with pymupdf.open(str(tmp_path / "v.pdf")) as d:
+        assert len(d[0].get_drawings()) > 0
+
+
 def test_multipage_tiff(app, win, tmp_path):
     from PIL import Image
     from conftest import draw_sheet

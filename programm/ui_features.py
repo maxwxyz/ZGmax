@@ -620,10 +620,11 @@ class FeaturesMixin:
             return
         pl, dpi, mm = self.payload, self.dpi_value(), self.canvas.mm_px
         mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
-        anns = copy.deepcopy(self.anns) if self.act_overlays.isChecked() else []
+        anns = self._export_anns()
         names = (os.path.basename(self.path_a or ""), os.path.basename(self.path_b or ""))
         # Nur was angezeigt wird: Aenderungen nur, wenn gesucht wurde, und nur die nach dem Filter sichtbaren
-        shown = self.act_overlays.isChecked() and self.canvas.show_regs and pl.get("regs_done") is not False
+        shown = (self.act_overlays.isChecked() and self.canvas.show_regs and pl.get("regs_done") is not False
+                 and self.canvas.layer_on.get("aenderungen", True))
         regs = copy.deepcopy(self._shown_regs()) if shown else []
 
         def work(ctx):
