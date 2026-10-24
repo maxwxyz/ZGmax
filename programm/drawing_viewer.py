@@ -19,12 +19,13 @@ from ui_export import ExportMixin
 from ui_layout import LayoutMixin
 from ui_features import FeaturesMixin
 from ui_search import SearchMixin
+from ui_edit import EditMixin
 
 VERSION = "2.0"
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
-class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)
@@ -72,6 +73,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         cv.annCreated.connect(self._ann_created)
         cv.placeRequested.connect(self._place)
         cv.annSelected.connect(self._ann_selected)
+        cv.annMultiSelected.connect(self._ann_multi_selected)
         cv.annChanged.connect(self._ann_changed)
         cv.annEdit.connect(self._ann_edit)
         cv.annContext.connect(self._ann_context)
@@ -83,6 +85,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         cv.zoomBoxDone.connect(self._zoom_box_done)
         cv.filesDropped.connect(self._files_dropped)
         cv.alignPoint.connect(self._align_point)
+        cv.selCopy.connect(self._sel_copy)
+        cv.selMove.connect(self._sel_move)
+        cv.floatDone.connect(self._float_done)
         self.debounce = QTimer(self)
         self.debounce.setSingleShot(True)
         self.debounce.timeout.connect(self.start_compute)
@@ -916,6 +921,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         if self.path_a and self.path_b:
             m.addAction(tr("A und B tauschen"), self.swap_ab)
         m.addAction(self.act_copy)
+        m.addAction(self.act_copy_sel)
+        if self.view_only:
+            m.addAction(self.act_move_sel)
         m.addAction(self.act_export_img)
         m.exec(gpos)
 
@@ -928,9 +936,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, RegionsMixin, Annotati
         c = self.canvas
         if t == "zoom" and c.tool != "zoom":
             self._prev_tool = c.tool                   # Zoom-Rahmen ist einmalig, danach zurueck
+        if c.float is not None and t != "cutmove":       # schwebenden Ausschnitt beim Werkzeugwechsel absetzen
+            self._float_done(True)
         c.tool = t
-        if c.ann_selected is not None:            # Werkzeugwechsel hebt die Auswahl auf (Leiste zeigt Vorgabe)
+        if c.ann_selected is not None or c.ann_multi:  # Werkzeugwechsel hebt die Auswahl auf (Leiste zeigt Vorgabe)
             c.ann_selected = None
+            c.ann_multi = set()
             self.list_anns.blockSignals(True)
             self.list_anns.clearSelection()
             self.list_anns.setCurrentRow(-1)

@@ -14,9 +14,12 @@ class ProjectMixin:
         anns = copy.deepcopy(self.anns)
         for a in anns:
             shift_ann(a, ox, oy)                   # global speichern
-        return {"anns": anns, "zones": [list(z) for z in self.zones]}
+        return {"anns": anns, "zones": [list(z) for z in self.zones], "edit": getattr(self, "_edit_ver", 0)}
 
     def _reset_history(self):
+        self._edits, self._edit_ver, self._edit_saved = [], 0, True      # Bildaenderungen (Ausschnitt verschieben)
+        if hasattr(self, "act_save_drawing"):
+            self.act_save_drawing.setEnabled(False)
         self.undo_stack, self.redo_stack = [], []
         self._cur_state = self._state()
         self._dirty = False
@@ -49,6 +52,8 @@ class ProjectMixin:
         zones_changed = zones != self.zones
         self.anns[:] = anns
         self.zones[:] = zones
+        if st.get("edit", 0) != getattr(self, "_edit_ver", 0):
+            self._edit_goto(st.get("edit", 0))
         self._ann_refresh(None)
         self._refresh_zones()
         if zones_changed:
@@ -246,6 +251,14 @@ class ProjectMixin:
 
     def _maybe_save(self):
         """Ungespeicherte Markierungen/Pruefung: fragen. False = Abbrechen gewaehlt."""
+        if self.drawing_edited():
+            r = QMessageBox.question(self, APP, tr("Die Zeichnung wurde bearbeitet (Ausschnitt verschoben). "
+                                     "Bearbeitete Zeichnung speichern?"),
+                                     QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
+                                     | QMessageBox.StandardButton.Cancel)
+            if r == QMessageBox.StandardButton.Cancel or (
+                    r == QMessageBox.StandardButton.Save and not self.save_drawing()):
+                return False
         reviewed = bool(self.payload and any(r.get("status") or r.get("comment") for r in self.payload["regs"]))
         if getattr(self, "_dirty", False) and (self.anns or self.zones or reviewed):
             r = QMessageBox.question(self, APP, tr("Es gibt ungespeicherte \u00c4nderungen (Markierungen, Zonen oder "

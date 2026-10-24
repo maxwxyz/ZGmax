@@ -98,6 +98,29 @@ class Job(QThread):
             self.failed.emit(f"{type(e).__name__}: {e}")
 
 
+class PanelScroll(QScrollArea):
+    """Scrollbereich einer Seitenleiste, der nie schmaler wird als sein Inhalt: sonst schneidet er rechts
+    Knoepfe ab (Windows mit groesserer Schrift oder Skalierung, laengere Texte im Englischen)."""
+
+    def __init__(self, inner, min_width=300, parent=None):
+        super().__init__(parent)
+        self.min_width = min_width
+        self.setWidgetResizable(True)
+        self.setWidget(inner)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        inner.installEventFilter(self)
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Type.LayoutRequest:
+            self.updateGeometry()                    # neue Mindestbreite an Leiste und Teiler melden
+        return False
+
+    def minimumSizeHint(self):
+        w = self.widget().minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width() + 2 * self.frameWidth()
+        return QSize(max(self.min_width, w), 120)
+
+
 class OverlayHost(QWidget):
     """Legt Leisten oben ueber ein Widget, statt es nach unten zu schieben: Ein- und Ausblenden
     der Leisten aendert die Groesse des Bilds nicht, die Zeichnung bleibt stehen."""

@@ -155,3 +155,35 @@ def test_map_points_matches_image_transform(pair):
     raw = cv2.transform(pts[None], M0)[0]                                # dieselben Punkte im gedrehten B
     back = dp.map_points_tf(raw, tf)
     assert np.abs(back - pts).max() < 3.0
+
+
+def test_geometry_only_keeps_thick_lines():
+    """Nur Geometrie: dicke Koerperkanten bleiben, Masslinie, Pfeile, Text und Mittellinie fallen weg."""
+    import cv2
+    import numpy as np
+    import diffedit as de
+    img = np.full((800, 1200), 255, np.uint8)
+    cv2.rectangle(img, (200, 200), (800, 600), 0, 4)
+    cv2.circle(img, (500, 400), 120, 0, 4)
+    cv2.line(img, (200, 680), (800, 680), 0, 1)
+    for x, d in ((200, 1), (800, -1)):
+        cv2.fillPoly(img, [np.array([(x, 680), (x + 25 * d, 672), (x + 25 * d, 688)])], 0)
+    cv2.putText(img, "600", (470, 670), cv2.FONT_HERSHEY_SIMPLEX, 1.0, 0, 2, cv2.LINE_AA)
+    cv2.line(img, (500, 250), (500, 550), 0, 1)
+    ink = ((img < 128) * 255).astype(np.uint8)
+    m, w = de.geometry_mask(ink)
+    assert w == 4
+    assert m[200, 300] and m[400, 380]                     # Rahmen und Kreis
+    assert not m[640:700, 180:820].any()                   # Mass, Pfeile, Zahl
+    assert not m[300, 500] and not m[480, 500]             # Mittellinie im Kreis
+
+
+def test_move_region_fills_paper():
+    import numpy as np
+    import diffedit as de
+    g = np.full((200, 300), 230, np.uint8)                 # graues Papier
+    g[50:60, 50:100] = 0
+    ink = ((g < 128) * 255).astype(np.uint8)
+    r = de.move_region([g], ink, (40, 40, 110, 70), 150, 100, only_lines=True)
+    assert r == (40, 40, 260, 170)
+    assert (g[50:60, 50:100] == 230).all() and (g[150:160, 200:250] == 0).all()

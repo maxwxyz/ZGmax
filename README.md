@@ -17,7 +17,9 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 * Robust raster comparison: global and tile alignment, hatching, moved blocks/objects, edge fringes, glyph check,
   paper flattening, auto-adjust of the parameters; exact vector comparison for CAD PDFs
 * Review workflow: numbered changes, checked/rejected/comment, CSV, PDF report, PDF with Acrobat annotations
-* Measuring with snapping and calibration, markups (text, cloud, box, arrow, line, highlight, number, stamp)
+* Measuring with snapping and calibration, markups (text, cloud, box, arrow, line, highlight, number, stamp),
+  multi-selection
+* Copy a selection (everything, lines only, or geometry only without dimensions/text), move a region of a drawing
 * Text search (PDF text or OCR, German and English), comment import from XFDF and PDF, XFDF export
 * Manual 3-point alignment, regions, matched areas, zones, multi-page, batch and revision comparison
 * Projects (`.zgmax`), autosave, several windows, dark mode, adjustable interface size
@@ -30,10 +32,11 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 | `programm/diffpipe.py` | Pipeline (load → align → compare), parameters, auto-adjust |
 | `programm/diffreport.py` | Change list, review status, annotations, PDF report, Acrobat annotations, title block, OCR, text search |
 | `programm/diffvector.py` | PDF vector data: layers/colors, exact comparison, PDF text |
+| `programm/diffedit.py` | Editing: move a region, copy a selection, geometry-only filter by line width |
 | `programm/diffxfdf.py` | Comments: read XFDF and PDF annotations, write XFDF |
 | `programm/drawing_diff.py` | Command line |
 | `programm/drawing_viewer.py` | Program window (entry point), main window workflow, self-test |
-| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
+| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), editing (`ui_edit`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
 | `programm/i18n.py`, `programm/i18n_en.json` | Translation: German source strings → English |
 | `programm/ocr/` | Latin text recognition model (PP-OCRv5, Apache-2.0) for German and English |
 

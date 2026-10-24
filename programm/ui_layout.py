@@ -9,7 +9,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
-from ui_widgets import Banner, Collapsible, OverlayHost, Section, SliderRow
+from ui_widgets import Banner, Collapsible, OverlayHost, PanelScroll, Section, SliderRow
 
 VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
          ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
@@ -93,6 +93,16 @@ class LayoutMixin:
         self.act_delete = A(tr("Markierung löschen"), self._ann_delete, "Delete", canvas_key=True)
         self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
         self.act_copy = A(tr("Ergebnis kopieren"), self.copy_result, "Ctrl+C", canvas_key=True)
+        self.act_copy_sel = A(tr("Auswahl kopieren …"), self.start_copy_selection, "Ctrl+Shift+C",
+                              tr("Bereich aufziehen und kopieren: alles, nur Linien oder nur die Geometrie "
+                                 "(ohne Maße, Text und dünne Linien)"))
+        self.act_move_sel = A(tr("Ausschnitt verschieben"), self.start_move_region,
+                              tip=tr("Teil der Zeichnung ausschneiden und an anderer Stelle einsetzen "
+                                     "(beim Ansehen einer einzelnen Zeichnung)"))
+        self.act_save_drawing = A(tr("Bearbeitete Zeichnung speichern …"), self.save_drawing,
+                                  tip=tr("Die Zeichnung mit verschobenen Ausschnitten als Bild oder PDF speichern "
+                                         "(ohne Markierungen)"))
+        self.act_save_drawing.setEnabled(False)
 
         self.mode_actions = {}
         grp = QActionGroup(self)
@@ -136,6 +146,8 @@ class LayoutMixin:
                           ico="settings", checkable=True)
         self.act_right = A(tr("Änderungen und Markierungen"), lambda on: self.right.setVisible(on),
                            tip=tr("Liste der Änderungen und Markierungen ein-/ausblenden"), ico="list", checkable=True)
+        self.act_left.setIconText(tr("Optionen"))         # kurz fuer die Leiste oben; Menue behaelt den langen Text
+        self.act_right.setIconText(tr("Liste"))
         self.act_expert = A(tr("Alle Einstellungen zeigen"), self._set_expert, tip=tr("Auch selten gebrauchte Einstellungen, "
                             "Vektordaten, Zonen und das Protokoll zeigen"), checkable=True)
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
@@ -218,6 +230,7 @@ class LayoutMixin:
         m.addSeparator()
         for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf):
             m.addAction(a)
+        m.addAction(self.act_save_drawing)
         m.addSeparator()
         m.addAction(self.act_batch)
         m.addAction(self.act_revisions)
@@ -233,8 +246,10 @@ class LayoutMixin:
         for a in (self.act_search, self.act_search_next, self.act_search_prev):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_delete, self.act_ann_clear, self.act_copy):
+        for a in (self.act_delete, self.act_ann_clear, self.act_copy, self.act_copy_sel):
             m.addAction(a)
+        m.addSeparator()
+        m.addAction(self.act_move_sel)
 
         m = mb.addMenu(tr("&Ansicht"))
         for key, *_ in VIEWS + MORE_VIEWS:
@@ -537,7 +552,24 @@ class LayoutMixin:
             lambda _: setattr(self.canvas, "loupe_zoom", self.cb_loupe.currentData()))
         l.addWidget(self.cb_loupe)
         lay.addWidget(self.opt_loupe)
-        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view):  # nie zusammendruecken
+        self.opt_float = QWidget()                    # Ausschnitt verschieben
+        l = QHBoxLayout(self.opt_float)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.chk_float_lines = QCheckBox(tr("Nur Linien (Hintergrund bleibt)"))
+        self.chk_float_lines.setToolTip(tr("Nur die Linien wandern; Papier, Flecken und Hintergrund am Ziel bleiben. "
+                                        "Die frei gewordene Stelle bekommt die Papierfarbe."))
+        self.chk_float_lines.setChecked(True)
+        self.chk_float_lines.toggled.connect(lambda _: (self._float_images(), self.canvas.update()))
+        l.addWidget(self.chk_float_lines)
+        self.btn_float_ok = QPushButton(tr("Übernehmen"))
+        self.btn_float_ok.setObjectName("primary")
+        self.btn_float_ok.clicked.connect(lambda: self._float_done(True))
+        self.btn_float_cancel = QPushButton(tr("Abbrechen"))
+        self.btn_float_cancel.clicked.connect(lambda: self._float_done(False))
+        l.addWidget(self.btn_float_ok)
+        l.addWidget(self.btn_float_cancel)
+        lay.addWidget(self.opt_float)
+        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view, self.opt_float):  # nie zusammendruecken
             w.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.lbl_tool_hint = QLabel("")
         self.lbl_tool_hint.setObjectName("hint")
@@ -575,6 +607,9 @@ class LayoutMixin:
         self.lbl_stamp.setVisible(t == "number")
         self.sp_stamp.setVisible(t == "number")
         self.opt_loupe.setVisible(self.act_loupe.isChecked())
+        self.opt_float.setVisible(t == "cutmove" or self.canvas.float is not None)
+        for b in (self.btn_float_ok, self.btn_float_cancel):
+            b.setEnabled(self.canvas.float is not None)
         self.lbl_tool_hint.setText(TOOL_HINTS.get(t, "") if t != "hand" else "")
         self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or self.canvas.ann_selected is not None
                                     or (view_opts and self.payload is not None))
@@ -628,8 +663,7 @@ class LayoutMixin:
     def _build_left(self):
         self.left = QWidget()
         self.left.setObjectName("panel")
-        self.left.setMinimumWidth(300)
-        self.left.setMaximumWidth(440)
+        self.left.setMaximumWidth(560)                  # Mindestbreite: aus dem Inhalt (PanelScroll)
         inner = QWidget()
         inner.setObjectName("panel")
         lay = QVBoxLayout(inner)
@@ -892,10 +926,7 @@ class LayoutMixin:
         self.sp_dpi.valueChanged.connect(self._dpi_changed)
         self.sp_scale.valueChanged.connect(self._update_units)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(inner)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll = PanelScroll(inner, 300)
         bottom = QWidget()
         bl = QVBoxLayout(bottom)
         bl.setContentsMargins(12, 6, 12, 12)
@@ -906,7 +937,16 @@ class LayoutMixin:
         self.btn_run = QPushButton(tr("Vergleichen"))
         self.btn_run.setObjectName("primary")
         self.btn_run.clicked.connect(self.start_compute)
-        bl.addWidget(self.chk_live)
+        self.chk_expert = QCheckBox(tr("Alle Einstellungen"))
+        self.chk_expert.setToolTip(self.act_expert.toolTip())
+        self.chk_expert.toggled.connect(self.act_expert.setChecked)
+        self.act_expert.toggled.connect(lambda on: (self.chk_expert.blockSignals(True), self.chk_expert.setChecked(on),
+                                                    self.chk_expert.blockSignals(False)))
+        row = QHBoxLayout()
+        row.addWidget(self.chk_expert)
+        row.addStretch()
+        row.addWidget(self.chk_live)
+        bl.addLayout(row)
         bl.addWidget(self.btn_run)
         outer = QVBoxLayout(self.left)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -1030,17 +1070,22 @@ class LayoutMixin:
         l2.setContentsMargins(0, 6, 0, 0)
         h = QLabel(tr("Werkzeug links wählen (Text, Wolke, Pfeil …) und ins Bild klicken. Mit „Auswahl“ "
                    "anklicken, verschieben und an den Ecken die Größe ändern. Doppelklick = bearbeiten, "
-                   "Rechtsklick = Menü, Entf = löschen."))
+                   "Rechtsklick = Menü, Entf = löschen. Mehrere: Strg/Umschalt + Klick oder Umschalt + Rahmen ziehen."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         l2.addWidget(h)
         self.list_anns = QListWidget()
-        self.list_anns.currentRowChanged.connect(self._ann_row)
+        self.list_anns.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)  # Strg/Umschalt = mehrere
+        self.list_anns.itemSelectionChanged.connect(self._ann_list_selection)
         self.list_anns.itemDoubleClicked.connect(lambda it: self._ann_edit(self.list_anns.row(it)))
+        for key in ("Delete", "Backspace"):                # Entf in der Liste loescht die Auswahl
+            QShortcut(QKeySequence(key), self.list_anns, activated=self._ann_delete).setContext(
+                Qt.ShortcutContext.WidgetShortcut)
         l2.addWidget(self.list_anns, 1)
         row = QHBoxLayout()
         for text, fn in ((tr("Bearbeiten …"), lambda: self._ann_edit(self.canvas.ann_selected)),
-                         (tr("Duplizieren"), self._ann_duplicate), (tr("Löschen"), self._ann_delete)):
+                         (tr("Duplizieren"), self._ann_duplicate), (tr("Löschen"), self._ann_delete),
+                         (tr("Alle löschen …"), self._ann_clear)):
             b = QPushButton(text)
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b)
@@ -1159,8 +1204,10 @@ class LayoutMixin:
         for a in (self.act_search, self.act_search_next, self.act_search_prev,
                   self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate,
                   self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv,
-                  self.act_print, self.act_copy, self.act_find, self.act_proj_save, self.act_proj_save_as):
+                  self.act_print, self.act_copy, self.act_copy_sel, self.act_find, self.act_proj_save,
+                  self.act_proj_save_as):
             a.setEnabled(has)
+        self.act_move_sel.setEnabled(has and self.view_only)
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
         for b in self.seg_buttons.values():

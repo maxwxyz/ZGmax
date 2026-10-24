@@ -177,23 +177,23 @@ class RegionsMixin:
             return None
         return {t}
 
+    def _shown_regs(self):
+        """Die Aenderungen, die nach dem Filter in der Liste stehen (gleiche Auswahl fuer Liste und PDF)."""
+        pl = self.payload
+        regs = (pl or {}).get("regs") or []
+        types = self._filter_types()
+        f = self.cb_filter.currentData()
+        return [r for r in regs if (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
+                and (f != "open" or rep.reg_status(r) == "offen")]
+
     def _fill_table(self):
         pl = self.payload
         regs = pl["regs"] if pl else []
-        types = self._filter_types()
-        only_dims = self.cb_filter.currentData() == "dims"
-        only_open = self.cb_filter.currentData() == "open"
-        self.canvas.visible_types = types
+        self.canvas.visible_types = self._filter_types()
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)
-        for r in regs:
-            if types and r["typ"] not in types:
-                continue
-            if only_dims and not r.get("dim"):
-                continue
-            if only_open and rep.reg_status(r) != "offen":
-                continue
+        for r in self._shown_regs():
             row = self.table.rowCount()
             self.table.insertRow(row)
             st = rep.reg_status(r)

@@ -24,7 +24,8 @@ class AnnotationsMixin:
         c = QColorDialog.getColor(QColor(a["color"] if a else self.canvas.ann_color), self, tr("Farbe"))
         if c.isValid():
             if a:
-                a["color"] = c.name()
+                for b in self._sel_all():                   # Mehrfachauswahl: alle gewaehlten
+                    b["color"] = c.name()
                 self._set_color_btn(c.name(), default=False)
                 self.canvas.update()
                 self._commit()
@@ -35,10 +36,14 @@ class AnnotationsMixin:
         i = self.canvas.ann_selected
         return self.anns[i] if i is not None and 0 <= i < len(self.anns) else None
 
+    def _sel_all(self):
+        return [self.anns[i] for i in sorted(self.canvas.selected_anns())]
+
     def _ann_size(self):
         a = self._sel()
         if a:
-            a["size"] = self.s_asize.value()
+            for b in self._sel_all():
+                b["size"] = self.s_asize.value()
             self._commit()
         else:
             self.canvas.ann_size = self.s_asize.value()
@@ -62,6 +67,7 @@ class AnnotationsMixin:
         return lbl
 
     def _ann_refresh(self, select=None):
+        self.canvas.ann_multi = set()
         self.list_anns.blockSignals(True)
         self.list_anns.clear()
         for a in self.anns:
@@ -139,6 +145,36 @@ class AnnotationsMixin:
         self._sync_ann_controls()
         self._commit()
 
+    def _ann_multi_selected(self, rows):
+        """Mehrfachauswahl im Bild (Strg/Umschalt + Klick, Umschalt + Rahmen) in die Liste uebernehmen."""
+        self.list_anns.blockSignals(True)
+        self.list_anns.clearSelection()
+        for r in rows:
+            it = self.list_anns.item(r)
+            if it:
+                it.setSelected(True)
+        if rows:
+            self.list_anns.setCurrentRow(rows[-1], QItemSelectionModel.SelectionFlag.NoUpdate)
+        self.list_anns.blockSignals(False)
+        if rows:
+            self.tabs.setCurrentIndex(1)
+        self._sync_ann_controls()
+        self._update_options()
+        self.canvas.update()
+
+    def _ann_list_selection(self):
+        rows = sorted(self.list_anns.row(it) for it in self.list_anns.selectedItems())
+        if len(rows) <= 1:
+            self.canvas.ann_multi = set()
+            self._ann_row(rows[0] if rows else -1)
+        else:
+            self.canvas.ann_multi = set(rows)
+            cur = self.list_anns.currentRow()
+            self.canvas.ann_selected = cur if cur in rows else rows[-1]
+            self._sync_ann_controls()
+            self.canvas.update()
+        self._update_options()
+
     def _ann_row(self, row):
         self.canvas.ann_selected = row if row >= 0 else None
         if row >= 0:
@@ -185,14 +221,18 @@ class AnnotationsMixin:
             self._commit()
 
     def _ann_delete(self):
-        i = self.canvas.ann_selected
-        if i is not None and 0 <= i < len(self.anns):
-            del self.anns[i]
+        idx = sorted(self.canvas.selected_anns(), reverse=True)
+        if idx:
+            for i in idx:
+                del self.anns[i]
             self._ann_refresh(None)
             self._commit()
+            if len(idx) > 1:
+                self.statusBar().showMessage(tr("{} Markierungen gelöscht (Rückgängig: Strg+Z)").format(len(idx)), 5000)
 
     def _ann_clear(self):
-        if self.anns and QMessageBox.question(self, APP, "Alle Anmerkungen l\u00f6schen? (R\u00fcckg\u00e4ngig mit Strg+Z)") == QMessageBox.StandardButton.Yes:
+        if self.anns and QMessageBox.question(self, APP, tr("Alle {} Markierungen löschen? (Rückgängig mit Strg+Z)").format(
+                len(self.anns))) == QMessageBox.StandardButton.Yes:
             self.anns.clear()
             self._ann_refresh(None)
             self._commit()

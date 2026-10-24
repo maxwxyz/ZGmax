@@ -178,6 +178,10 @@ class Canvas(QWidget):
     annCreated = Signal(dict)
     placeRequested = Signal(str, float, float)
     annSelected = Signal(int)
+    annMultiSelected = Signal(list)              # mehrere Markierungen gewaehlt (Strg/Umschalt)
+    selCopy = Signal(int, int, int, int)         # Auswahl kopieren: Rechteck aufgezogen
+    selMove = Signal(int, int, int, int)         # Ausschnitt verschieben: Rechteck aufgezogen
+    floatDone = Signal(bool)                     # verschobenen Ausschnitt uebernehmen (True) / verwerfen
     annChanged = Signal()
     annEdit = Signal(int)
     annContext = Signal(int, object)
@@ -201,6 +205,8 @@ class Canvas(QWidget):
         self.visible_types = None
         self.selected = None
         self.ann_selected = None
+        self.ann_multi = set()                       # Mehrfachauswahl (mit ann_selected), leer = Einzelauswahl
+        self.float = None                            # schwebender Ausschnitt beim Verschieben (dict)
         self.zones = []
         self.mm_px = 25.4 / 200
         self.mode = "D"
@@ -516,6 +522,7 @@ class Canvas(QWidget):
             p.save()
             p.setTransform(self._xform())
             self._paint_image(p, self.width(), self.height())
+            self._paint_float(p)
             self._paint_overlays(p, w, h)
             p.restore()
             self._paint_legend(p)
@@ -530,6 +537,24 @@ class Canvas(QWidget):
         if self.loupe and self._mouse is not None and self.tool != "zone":
             self._paint_loupe(p)
         p.end()
+
+    def _paint_float(self, p):
+        """Verschobener Ausschnitt: Quelle mit Papierfarbe abgedeckt, Stueck an der neuen Stelle, gestrichelt umrandet."""
+        f = self.float
+        if not f:
+            return
+        x0, y0, x1, y1 = f["rect"]
+        X0, Y0 = self.to_wid(x0, y0)
+        X1, Y1 = self.to_wid(x1, y1)
+        src = QRectF(X0, Y0, X1 - X0, Y1 - Y0)
+        dst = src.translated(f["dx"] * self.scale, f["dy"] * self.scale)
+        p.drawImage(src, f["hole"])
+        p.drawImage(dst, f["piece"])
+        pen = QPen(QColor(ACCENT), 0, Qt.PenStyle.DashLine)
+        pen.setCosmetic(True)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(dst)
 
     def _paint_side_by_side(self, p, w, h):
         half = QWidget.width(self) // 2
@@ -899,11 +924,11 @@ class Canvas(QWidget):
             a1, b1 = self.to_wid(b[2], b[3])
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
-            if t not in ("arrow", "line", "measure"):
+            if t not in ("arrow", "line", "measure") or self.ann_multi:
                 p.drawRect(QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6))
             p.setPen(QPen(QColor(ACCENT), 1.6))
             p.setBrush(QColor("white"))
-            for _, hx, hy in ann_handles(shape, a):
+            for _, hx, hy in ([] if self.ann_multi else ann_handles(shape, a)):   # Griffe nur bei Einzelauswahl
                 X, Y = self.to_wid(hx, hy)
                 p.drawRect(QRectF(X - 4.5, Y - 4.5, 9, 9))
 
@@ -991,8 +1016,9 @@ class Canvas(QWidget):
                 p.fillRect(lb, QColor(ACCENT) if sel else col)
                 p.setPen(QColor("white"))
                 p.drawText(lb, Qt.AlignmentFlag.AlignCenter, label)
+        chosen = self.selected_anns()
         for i, a in enumerate(self.anns):
-            self._paint_ann(p, a, i == self.ann_selected)
+            self._paint_ann(p, a, i in chosen)
         if self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
             self._paint_ann(p, dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
@@ -1091,7 +1117,7 @@ class Canvas(QWidget):
         return self.mode == "S" and abs(x - self.split * self.width()) < 10
 
     def _hit_handle(self, ix, iy):
-        if self.ann_selected is None or not (0 <= self.ann_selected < len(self.anns)):
+        if self.ann_multi or self.ann_selected is None or not (0 <= self.ann_selected < len(self.anns)):
             return None
         m = 8 / self.scale
         for name, hx, hy in ann_handles(self.shape, self.anns[self.ann_selected]):
@@ -1127,21 +1153,40 @@ class Canvas(QWidget):
                 return
             self._drag = ("rzoom", e.position(), (ix, iy), e.globalPosition().toPoint())
             return
+        if left and self.float:                      # schwebender Ausschnitt: ziehen oder (Klick daneben) absetzen
+            x0, y0, x1, y1 = self.float["rect"]
+            dx, dy = self.float["dx"], self.float["dy"]
+            if x0 + dx <= ix <= x1 + dx and y0 + dy <= iy <= y1 + dy:
+                self._drag = ("float", (ix, iy), dx, dy)
+            else:
+                self.floatDone.emit(True)
+            return
         if e.button() == Qt.MouseButton.MiddleButton:
             self._drag = ("pan", pos, self.ox, self.oy)
         elif left and self._near_split(pos.x()):
             self._drag = ("split",)
         elif left and self.tool == "hand":
-            name = self._hit_handle(ix, iy) if self.show_overlays else None
+            add = bool(e.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+                                         | Qt.KeyboardModifier.MetaModifier))
+            name = self._hit_handle(ix, iy) if self.show_overlays and not add and not self.ann_multi else None
             i = self.hit_ann(ix, iy) if self.show_overlays else None
             if name:
                 self._drag = ("handle", name)
+            elif i is not None and add:                  # Strg/Umschalt + Klick: zur Auswahl hinzu / heraus
+                chosen = self.selected_anns()
+                chosen ^= {i}
+                self._set_multi(chosen)
             elif i is not None:
-                if i != self.ann_selected:
+                if i not in self.selected_anns():
+                    self.ann_multi = set()
                     self.ann_selected = i
                     self.annSelected.emit(i)
-                a = self.anns[i]
-                self._drag = ("move", (ix, iy), (a["x"], a["y"], a["x2"], a["y2"]), copy.deepcopy(a.get("pts")))
+                idx = sorted(self.selected_anns())
+                orig = {k: copy.deepcopy(self.anns[k]) for k in idx}
+                self._drag = ("move", (ix, iy), orig)
+            elif add and self.show_overlays and self.anns:  # Umschalt + Ziehen im Leeren: Auswahlrahmen
+                self._rubber = ((ix, iy), (ix, iy))
+                self._drag = ("selbox",)
             else:
                 self._drag = ("pan", pos, self.ox, self.oy)
         elif left and self.tool == "measure":
@@ -1152,7 +1197,7 @@ class Canvas(QWidget):
             if need and len(self.measure) >= need:
                 self.finish_measure()
             self.update()
-        elif left and self.tool in ("zone", "crop", "region", "zoom"):
+        elif left and self.tool in ("zone", "crop", "region", "zoom", "copysel", "cutmove"):
             self._rubber = ((ix, iy), (ix, iy))
             self._drag = ("rubber",)
         elif left and self.tool in ("text", "number", "approval"):
@@ -1214,7 +1259,7 @@ class Canvas(QWidget):
             self.oy = self._drag[3] - d.y() / self.scale
         elif kind == "split":
             self.split = float(np.clip(pos.x() / self.width(), 0.0, 1.0))
-        elif kind == "rubber":
+        elif kind in ("rubber", "selbox"):
             self._rubber = (self._rubber[0], (ix, iy))
             (ax, ay), (bx, by) = self._rubber
             rw, rh = abs(bx - ax), abs(by - ay)
@@ -1222,13 +1267,18 @@ class Canvas(QWidget):
                 tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
         elif kind == "ann":
             self._ann_prev = (self._ann_prev[0], (ix, iy))
+        elif kind == "float" and self.float:
+            _, (sx, sy), dx0, dy0 = self._drag
+            self.float["dx"], self.float["dy"] = round(dx0 + ix - sx), round(dy0 + iy - sy)
         elif kind == "move":
-            _, (sx, sy), (x, y, x2, y2), pts0 = self._drag
-            a = self.anns[self.ann_selected]
+            _, (sx, sy), orig = self._drag
             dx, dy = ix - sx, iy - sy
-            a["x"], a["y"], a["x2"], a["y2"] = x + dx, y + dy, x2 + dx, y2 + dy
-            if pts0:
-                a["pts"] = [[q[0] + dx, q[1] + dy] for q in pts0]
+            for k, o in orig.items():
+                if k < len(self.anns):
+                    a = self.anns[k]
+                    a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
+                    if o.get("pts"):
+                        a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
         elif kind == "handle":
             if self._drag[1].startswith("m"):
                 ix, iy, _k = self.snap_point(ix, iy)
@@ -1261,6 +1311,17 @@ class Canvas(QWidget):
                     self.annContext.emit(i, self._drag[3])
                 else:
                     self.contextRequested.emit(self._drag[3])
+        elif kind == "selbox" and self._rubber:
+            (ax, ay), (bx, by) = self._rubber
+            self._rubber = None
+            self.window().statusBar().clearMessage()
+            x0, x1, y0, y1 = min(ax, bx), max(ax, bx), min(ay, by), max(ay, by)
+            hit = set()
+            for k, a in enumerate(self.anns):
+                bx0, by0, bx1, by1 = rep.ann_bounds(self.shape, a)
+                if bx0 < x1 and bx1 > x0 and by0 < y1 and by1 > y0:
+                    hit.add(k)
+            self._set_multi(self.selected_anns() | hit)
         elif kind == "rubber" and self._rubber:
             (ax, ay), (bx, by) = self._rubber
             x, y = int(min(ax, bx)), int(min(ay, by))
@@ -1275,7 +1336,8 @@ class Canvas(QWidget):
                 h, w = self.shape
                 x, y = max(0, x), max(0, y)
                 zw, zh = min(zw, w - x), min(zh, h - y)
-                {"crop": self.cropDrawn, "region": self.regionDrawn}.get(self.tool, self.zoneDrawn).emit(x, y, zw, zh)
+                {"crop": self.cropDrawn, "region": self.regionDrawn, "copysel": self.selCopy,
+                 "cutmove": self.selMove}.get(self.tool, self.zoneDrawn).emit(x, y, zw, zh)
         elif kind == "ann" and self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
             self._ann_prev = None
@@ -1297,7 +1359,8 @@ class Canvas(QWidget):
 
     def _click(self, ix, iy):
         """Klick ins Leere: Auswahl aufheben oder nummerierte Aenderung waehlen."""
-        if self.ann_selected is not None:
+        if self.ann_selected is not None or self.ann_multi:
+            self.ann_multi = set()
             self.ann_selected = None
             self.annSelected.emit(-1)
         if not self.show_overlays or not self.show_regs:
@@ -1308,6 +1371,20 @@ class Canvas(QWidget):
         if hit:
             hit.sort(key=lambda r: r["w"] * r["h"])
             self.regionClicked.emit(hit[0]["nr"])
+
+    def selected_anns(self):
+        """Indizes aller gewaehlten Markierungen (Einzel- oder Mehrfachauswahl)."""
+        sel = {k for k in self.ann_multi if 0 <= k < len(self.anns)}
+        if self.ann_selected is not None and 0 <= self.ann_selected < len(self.anns):
+            sel.add(self.ann_selected)
+        return sel
+
+    def _set_multi(self, chosen):
+        chosen = sorted(chosen)
+        self.ann_multi = set(chosen) if len(chosen) > 1 else set()
+        self.ann_selected = chosen[-1] if chosen else None
+        self.annMultiSelected.emit(chosen)
+        self.update()
 
     def leaveEvent(self, e):
         self._mouse = None
@@ -1333,6 +1410,15 @@ class Canvas(QWidget):
     def keyPressEvent(self, e):
         k = e.key()
         step = 0.15 * min(self.width(), self.height())
+        if self.float and k in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.floatDone.emit(k != Qt.Key.Key_Escape)
+            return
+        if self.float and k in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down):
+            d = 10 if e.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1   # Pfeiltasten: pixelgenau schieben
+            self.float["dx"] += {Qt.Key.Key_Left: -d, Qt.Key.Key_Right: d}.get(k, 0)
+            self.float["dy"] += {Qt.Key.Key_Up: -d, Qt.Key.Key_Down: d}.get(k, 0)
+            self.update()
+            return
         if k == Qt.Key.Key_Escape:
             self.measure = []
             self._rubber = None

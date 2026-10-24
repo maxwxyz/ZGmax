@@ -95,6 +95,59 @@ def test_view_only_single_file(app, win, pair):
     win.grab()
 
 
+def test_move_region_undo_and_save(app, win, tmp_path, monkeypatch):
+    import cv2
+    import numpy as np
+    img = np.full((600, 800), 255, np.uint8)
+    cv2.rectangle(img, (100, 100), (200, 180), 0, 4)          # Kasten, der verschoben wird
+    p = tmp_path / "blatt.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.view_only and win.act_move_sel.isEnabled()
+    win.start_move_region()
+    win.chk_float_lines.setChecked(True)
+    win._sel_move(90, 90, 120, 100)
+    assert win.canvas.float is not None and win.btn_float_ok.isEnabled()
+    win.canvas.float["dx"], win.canvas.float["dy"] = 300, 200
+    win._float_done(True)
+    g = win.cache["g_" + str(p)]
+    assert g[100:181, 100:201].min() > 200                    # alte Stelle leer (Papier)
+    assert g[300:381, 400:501].min() < 50                     # Kasten an der neuen Stelle
+    assert win.payload["res"].a[300:381, 400:501].max() > 0   # Linienmaske nachgezogen
+    assert win.drawing_edited() and win.act_save_drawing.isEnabled()
+    win.undo()
+    assert g[100:181, 100:201].min() < 50 and g[300:381, 400:501].min() > 200
+    win.redo()
+    assert g[300:381, 400:501].min() < 50
+    out = tmp_path / "neu.png"
+    win._save_dialog = lambda *a: str(out)
+    assert win.save_drawing() and cv2.imread(str(out), 0)[300:381, 400:501].min() < 50
+    assert not win.drawing_edited()
+
+
+def test_copy_selection_geometry(app, win, pair, monkeypatch):
+    import ui_edit
+    seen = {}
+
+    def fake_exec(dlg):
+        for mode in ("all", "lines", "geometry"):
+            dlg.cb_mode.setCurrentIndex(dlg.cb_mode.findData(mode))
+            seen[mode] = dlg.result.copy()
+        dlg._copy()
+        return 1
+    monkeypatch.setattr(ui_edit.CopyDialog, "exec", fake_exec)
+    compare(app, win, *pair)
+    win.seg_buttons["B"].click()
+    win.start_copy_selection()
+    assert win.canvas.tool == "copysel"
+    win._sel_copy(50, 50, 400, 300)
+    assert seen["all"].shape == (300, 400, 4) and seen["all"][..., 3].min() == 255
+    assert seen["lines"][..., 3].min() == 0                   # Hintergrund durchsichtig
+    assert QApplication.clipboard().mimeData().hasImage()
+    assert win.canvas.tool == "hand"
+
+
 def test_side_by_side_and_navigation(app, win, pair):
     compare(app, win, *pair)
     win._set_mode("Y")
@@ -170,6 +223,62 @@ def test_annotations_exports(app, win, pair, tmp_path):
     assert {"Square", "Line", "FreeText", "Circle"} <= kinds
     img = win.export_render("D", True)
     assert img.shape[0] > 100
+
+
+def test_multi_select_and_delete(app, win, pair):
+    compare(app, win, *pair)
+    for k in range(4):
+        win._ann_created(dict(type="rect", x=100 + 300 * k, y=100, x2=300 + 300 * k, y2=250, text="", nr=0,
+                              color="#e11d48", size=2.0))
+    c = win.canvas
+    c._set_multi({0, 2})                                     # wie Strg+Klick auf zwei Rahmen
+    assert {it.text() for it in win.list_anns.selectedItems()} and len(win.list_anns.selectedItems()) == 2
+    win.s_asize.setValue(5.0)                                # Groesse gilt fuer beide
+    assert win.anns[0]["size"] == 5.0 and win.anns[2]["size"] == 5.0 and win.anns[1]["size"] == 2.0
+    win._ann_delete()
+    assert len(win.anns) == 2 and [a["x"] for a in win.anns] == [400, 1000]
+    win.list_anns.selectAll()                                # Auswahl in der Liste, Entf
+    assert c.selected_anns() == {0, 1}
+    win.list_anns.setFocus()
+    win._ann_delete()
+    assert win.anns == []
+    win.undo()
+    assert len(win.anns) == 2
+
+
+def test_annotated_pdf_only_shown_changes(app, win, pair, tmp_path):
+    import pymupdf
+    compare(app, win, *pair)
+    out = str(tmp_path / "a.pdf")
+    win._save_dialog = lambda *a: out
+    win.export_annotated_pdf()                               # ohne Suche: keine Aenderungen, keine Suche
+    wait(app, lambda: not win.running)
+    assert win.payload["regs_done"] is False
+    with pymupdf.open(out) as d:
+        assert len(list(d[0].annots())) == 0
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    n_all = len(win._shown_regs())
+    win.cb_filter.setCurrentIndex(win.cb_filter.findData("neu"))
+    shown = len(win._shown_regs())
+    assert 0 < shown < n_all
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    with pymupdf.open(out) as d:
+        assert len(list(d[0].annots())) == shown
+
+
+def test_left_panel_never_clips(app, win):
+    win.act_left.setChecked(True)
+    win.act_expert.setChecked(True)
+    for _ in range(5):
+        app.processEvents()
+    from ui_widgets import PanelScroll
+    sc = win.left.findChild(PanelScroll)
+    assert win.left.minimumSizeHint().width() >= sc.widget().minimumSizeHint().width()
+    assert win.chk_expert.isChecked()
+    win.chk_expert.setChecked(False)
+    assert not win.act_expert.isChecked()
 
 
 def test_multipage_tiff(app, win, tmp_path):

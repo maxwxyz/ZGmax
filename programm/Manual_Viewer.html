@@ -43,7 +43,7 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <a href="#quick">Quick start</a><a href="#start">Starting the program</a><a href="#window">The window</a>
 <a href="#navigation">Zooming and panning</a><a href="#views">Views</a><a href="#viewing">Viewing only, windows, closing</a>
 <a href="#sensitivity">Sensitivity, Auto-adjust</a><a href="#measure">Measuring and calibrating</a>
-<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#texts">Reading texts and dimensions</a>
+<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#copy">Copy selection, move region</a><a href="#texts">Reading texts and dimensions</a>
 <a href="#comments">Importing comments (XFDF, PDF)</a><a href="#align">Aligning manually</a>
 <a href="#pages">Multi-page files</a><a href="#regions">Region, matching areas, zones</a>
 <a href="#formats">PDF vector data, DXF</a><a href="#save">Saving and printing</a>
@@ -86,8 +86,8 @@ The first time, the required packages are installed in tested versions (internet
 <tr><th>Area</th><th>Contents</th></tr>
 <tr><td>Menu bar</td><td>All functions: <i>File</i>, <i>Edit</i>, <i>View</i>, <i>Tools</i>, <i>Review</i>, <i>Help</i>.</td></tr>
 <tr><td>Top bar</td><td><i>Open</i>, <i>Compare</i>, the view switch (Old, New, Compare, Side by side, Overlay, Slider, Blink),
-zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Settings</i> and
-<i>Changes and markups</i>.</td></tr>
+zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Options</i> (settings, left) and
+<i>List</i> (changes and markups, right).</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Zoom, Measure, Text, Cloud, Box, Arrow, Line, Marker, Number, Stamp;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
 <tr><td>Options bar (above the drawing)</td><td>Appears only when needed and shows the settings of the current tool or view,
@@ -97,7 +97,8 @@ e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for ma
 <tr><td>Message bar</td><td>Blue = information, yellow = warning, red = error (with <i>Details</i>). Used instead of many pop-ups.</td></tr>
 <tr><td>Status bar (bottom)</td><td>What is happening, progress in percent with <i>Cancel</i>, mouse position in px and mm.</td></tr>
 </table>
-<p>Rarely used things are hidden at first. <i>View → Show all settings</i> also shows region/zones, vector data,
+<p>Rarely used things are hidden at first. The checkbox <i>All settings</i> at the bottom of the <i>Options</i> panel
+(or <i>View → Show all settings</i>) also shows region/zones, vector data,
 advanced options and the log.</p>
 
 <h2 id="navigation">Zooming and panning</h2>
@@ -219,8 +220,10 @@ from PDF text, by text recognition for images) and offers to use the scale.</li>
 </table>
 <p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
 selected one. With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize; double-click =
-edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo. All markups are listed in the
-<i>Markups</i> tab on the right. <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
+edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo. <b>Selecting several:</b> hold
+<kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with <kbd>Shift</kbd>; then move, recolor,
+resize or delete them together. All markups are listed in the <i>Markups</i> tab on the right (select several there with
+<kbd>Ctrl</kbd>/<kbd>Shift</kbd> as well, <kbd>Del</kbd> deletes them; <i>Delete all …</i> empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
 
 <h2 id="review">Reviewing changes</h2>
 <ol>
@@ -246,6 +249,26 @@ the PDF report and the PDF with annotations – that is your review record.</p>
 In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.</p>
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
+
+<h2 id="copy">Copying a selection and moving a region</h2>
+<p><b>Copy selection</b> (<i>Edit → Copy selection …</i>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>, also in the
+right-click menu): drag an area. A window shows a preview and offers:</p>
+<ul>
+<li><i>Everything (with paper)</i> – the area as displayed;</li>
+<li><i>Lines only</i> – transparent paper, e.g. to paste into a presentation or over another image;</li>
+<li><i>Geometry only</i> – only the thick body edges; dimension lines, arrows, leader lines, centre lines, hatching and text
+are left out. The program distinguishes by <b>line width</b> and suggests a limit (<i>Lines from width</i>); the preview shows
+at once whether it fits, and you can change the width. Works well when the drawing uses thick and thin lines as the
+standards say; with scans where all lines are equally thin, little remains. Arrowheads touching edges or thin slanted
+edges may remain or be missing – please check.</li>
+</ul>
+<p><i>Copy</i> puts the image (with transparency) on the clipboard, <i>Save …</i> saves it as PNG.</p>
+<p><b>Move region</b> (<i>Edit → Move region</i>; when viewing a single drawing): drag an area, then drag it to the new place
+or nudge it with the arrow keys (<kbd>Shift</kbd> = 10 px). <i>Lines only (background stays)</i> moves only the lines;
+without the tick the whole area including paper moves. The vacated area gets the paper color of the drawing.
+<kbd>Enter</kbd> or <i>Apply</i> drops it, <kbd>Esc</kbd> cancels, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. Save the edited
+drawing with <i>File → Save edited drawing …</i> (PNG, TIFF, PDF, JPG; without markups). The original file stays unchanged;
+when closing, the program asks if the edit has not been saved.</p>
 
 <h2 id="texts">Reading texts and dimensions</h2>
 <p>In the section <i>Read texts and dimensions</i> (right panel, expand it):</p>
@@ -306,8 +329,9 @@ what is compared (e.g. everything except dimensions).</p>
 <table>
 <tr><th>Save ▾</th><th>Result</th></tr>
 <tr><td>Result image</td><td>As displayed (view, markups, legend) as PNG, JPG, TIFF or PDF</td></tr>
-<tr><td>PDF with annotations (Acrobat)</td><td>The result as PDF; changes as revision clouds and your markups as <b>real PDF
-comments</b> (click, reply and tick them off in Acrobat &amp; co.)</td></tr>
+<tr><td>PDF with annotations (Acrobat)</td><td>The result as PDF; your markups as <b>real PDF comments</b> (click, reply and
+tick them off in Acrobat &amp; co.). If changes were searched, those shown in the list (after the <i>Show</i> filter) are
+added as revision clouds; it does not search by itself.</td></tr>
 <tr><td>PDF report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
 <tr><td>List of changes (CSV)</td><td>For Excel: number, type, position, texts, dimension, description, status, comment</td></tr>
 <tr><td>Print to scale</td><td>100 % = actual sheet size, spread over several pages, or fitted</td></tr>
@@ -357,6 +381,7 @@ English), Deutsch or English. This manual also opens in the chosen language.</li
 <tr><td><kbd>H</kbd> / <kbd>L</kbd> / <kbd>R</kbd> / <kbd>I</kbd></td><td>Markups off/on, magnifier, rotate view, invert colors</td></tr>
 <tr><td><kbd>Del</kbd> / <kbd>Esc</kbd></td><td>Delete markup / leave tool</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Undo / redo</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Copy result / copy selection</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd> / <kbd>S</kbd> / <kbd>P</kbd> / <kbd>W</kbd> / <kbd>N</kbd></td><td>Open / save project, print, close, new window</td></tr>
 <tr><td><kbd>F1</kbd></td><td>This manual</td></tr>
 </table>

@@ -10,7 +10,7 @@ import sys
 
 import cv2
 import numpy as np
-from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
+from PySide6.QtCore import QByteArray, QEvent, QItemSelectionModel, QMimeData, QObject, QPointF, QRectF, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QGuiApplication, QIcon,
                            QImage, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap, QPolygonF, QShortcut,
                            QTransform)
@@ -51,6 +51,9 @@ TOOL_HINTS = {
     "highlight": tr("Fl\u00e4che aufziehen, die farbig hinterlegt wird (Textmarker)."),
     "arrow": tr("Vom Pfeilanfang zur Spitze ziehen."),
     "approval": tr("Ins Bild klicken, Status und Name w\u00e4hlen."),
+    "copysel": tr("Bereich aufziehen, der kopiert werden soll."),
+    "cutmove": tr("Bereich aufziehen, dann an die neue Stelle ziehen (Pfeiltasten = 1 px, mit Umschalt 10 px). "
+                  "Enter = übernehmen, Esc = abbrechen."),
     "zone": tr("Rahmen aufziehen. Dieser Bereich wird beim n\u00e4chsten Vergleich nicht verglichen."),
     "crop": tr("Rahmen aufziehen. Nur dieser Bereich wird verglichen (schneller)."),
 }

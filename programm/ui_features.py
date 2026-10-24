@@ -622,14 +622,15 @@ class FeaturesMixin:
         mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
         anns = copy.deepcopy(self.anns) if self.act_overlays.isChecked() else []
         names = (os.path.basename(self.path_a or ""), os.path.basename(self.path_b or ""))
+        # Nur was angezeigt wird: Aenderungen nur, wenn gesucht wurde, und nur die nach dem Filter sichtbaren
+        shown = self.act_overlays.isChecked() and self.canvas.show_regs and pl.get("regs_done") is not False
+        regs = copy.deepcopy(self._shown_regs()) if shown else []
 
         def work(ctx):
             ctx.progress(0.1, tr("Erzeuge Bild"))
             img = self.export_render(mode, False, legend=False)
-            if pl["regs_done"] is False and not self.view_only:
-                self._ensure_regs(ctx)
             ctx.progress(0.6, tr("Schreibe PDF"))
-            rep.build_annotated_pdf(path, img, pl["regs"] if self.canvas.show_regs else [], anns, dpi, mm, names)
+            rep.build_annotated_pdf(path, img, regs, anns, dpi, mm, names)
             return path
         self._run_job(work, tr("Erzeuge PDF mit Anmerkungen …"),
-                      lambda p: (self._fill_table(), self.banner.show_msg(tr("Gespeichert: {}").format(p), "info", timeout=10)))
+                      lambda p: self.banner.show_msg(tr("Gespeichert: {}").format(p), "info", timeout=10))
