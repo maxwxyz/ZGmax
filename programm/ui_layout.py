@@ -23,16 +23,27 @@ MORE_VIEWS = (("N", tr("Neu mit Änderungen"), "7", tr("Neue Zeichnung, neue und
               ("R", tr("Alt mit Änderungen"), "8", tr("Alte Zeichnung, entfernte und geänderte Stellen rot")))
 SEG_OF = {"N": "B", "R": "A"}
 TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben.")),
+         ("area", tr("Bereich"), "area", "B", tr("Bereich aufziehen (mit Umschalt/Strg weitere dazu). Wählt Zeichnung, "
+                                              "Markierungen und Änderungen darin: kopieren, ausschneiden, verschieben, "
+                                              "löschen, exportieren.")),
          ("zoom", tr("Zoom"), "zoom_box", "Z", tr("Zoom-Rahmen mit Fadenkreuz: Bereich aufziehen. Einfacher Klick = ganze "
                                             "Zeichnung. Geht auch jederzeit mit der rechten Maustaste.")),
          ("measure", tr("Messen"), "measure", "M", tr("Länge, Winkel, Radius, Fläche messen; rastet an Linien ein")),
          ("text", tr("Text"), "text", "T", tr("Ins Bild klicken und Text eingeben")),
          ("cloud", tr("Wolke"), "cloud", "W", tr("Revisionswolke aufziehen")),
          ("rect", tr("Rahmen"), "rect", "", tr("Rahmen aufziehen")),
+         ("ellipse", tr("Ellipse"), "ellipse", "", tr("Ellipse oder Kreis aufziehen")),
+         ("line", tr("Linie"), "line", "", tr("Linie vom Anfang zum Ende ziehen")),
          ("arrow", tr("Pfeil"), "arrow", "", tr("Pfeil vom Anfang zur Spitze ziehen")),
+         ("polyline", tr("Linienzug"), "polyline", "", tr("Punkte anklicken; Doppelklick, Enter oder Rechtsklick beendet")),
+         ("polygon", tr("Polygon"), "polygon", "", tr("Eckpunkte anklicken; Doppelklick, Enter oder Rechtsklick schließt")),
+         ("pen", tr("Stift"), "pen", "", tr("Freihand zeichnen; bleibt eine verschiebbare, änderbare Linie")),
          ("highlight", tr("Marker"), "highlight", "", tr("Textmarker: Fläche farbig hinterlegen")),
          ("number", tr("Nummer"), "number", "", tr("Fortlaufend nummerierte Kreise setzen")),
          ("approval", tr("Stempel"), "stamp", "", tr("Stempel mit Status, Name und Datum")))
+
+
+SHAPES = ("rect", "ellipse", "line", "arrow", "polyline", "polygon")   # in der Palette unter "Formen"
 
 
 class LayoutMixin:
@@ -93,6 +104,13 @@ class LayoutMixin:
         self.act_delete = A(tr("Markierung löschen"), self._ann_delete, "Delete", canvas_key=True)
         self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
         self.act_copy = A(tr("Ergebnis kopieren"), self.copy_result, "Ctrl+C", canvas_key=True)
+        self.act_paste = A(tr("Einfügen"), self.paste, "Ctrl+V",
+                           tr("Aus der Zwischenablage einfügen: Markierungen, Bild (verschiebbar) oder Text. Ist nichts "
+                              "geöffnet, wird ein Bild als Zeichnung geöffnet."))
+        self.act_open_clip = A(tr("Bild aus Zwischenablage öffnen"), self.open_clipboard,
+                               tip=tr("Z. B. ein Bildschirmfoto als Zeichnung öffnen"))
+        self.act_cut = A(tr("Ausschneiden"), lambda: self.area_cut() if self.canvas.sel_rects else None, "Ctrl+X",
+                         tr("Bereichsauswahl ausschneiden (Markierungen; beim Ansehen auch die Zeichnung)"))
         self.act_copy_sel = A(tr("Auswahl kopieren …"), self.start_copy_selection, "Ctrl+Shift+C",
                               tr("Bereich aufziehen und kopieren: alles, nur Linien oder nur die Geometrie "
                                  "(ohne Maße, Text und dünne Linien)"))
@@ -196,10 +214,16 @@ class LayoutMixin:
         self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
                                tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
         self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
-        self.act_ocr = A(tr("Text lesen (OCR)"), self.run_ocr)
-        self.act_pdftext = A(tr("Text aus PDF lesen"), self.run_pdftext)
-        self.act_dims = A(tr("Maßzahlen vergleichen"), self.run_dims)
-        self.act_index = A(tr("Index prüfen"), self.run_index)
+        self.act_text = A(tr("Text erkennen"), self.run_text,
+                          tip=tr("Liest den Text in jeder Änderung (Alt → Neu): aus dem PDF, wenn es echten Text "
+                                 "enthält, sonst per Texterkennung"))
+        self.act_dims = A(tr("Geänderte Maße finden"), self.run_dims,
+                          tip=tr("Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich "
+                                 "eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden "
+                                 "ausgeblendet; „Zeigen: Änderungen“ holt sie zurück."))
+        self.act_index = A(tr("Schriftfeld-Index prüfen"), self.run_index,
+                           tip=tr("Liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die "
+                                  "Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt."))
 
         self.act_help = A(tr("Anleitung"), self.open_help, "F1", ico="help")
         self.act_help_cli = A(tr("Anleitung Kommandozeile"),
@@ -217,7 +241,7 @@ class LayoutMixin:
         m.addAction(self.act_new_window)
         m.addAction(self.act_start)
         m.addSeparator()
-        for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_proj_open):
+        for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_open_clip, self.act_proj_open):
             m.addAction(a)
         self.menu_recent = m.addMenu(tr("Zuletzt verwendet"))
         self.menu_recent.aboutToShow.connect(self._fill_recent_menu)
@@ -246,7 +270,7 @@ class LayoutMixin:
         for a in (self.act_search, self.act_search_next, self.act_search_prev):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_delete, self.act_ann_clear, self.act_copy, self.act_copy_sel):
+        for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_copy, self.act_copy_sel, self.act_paste):
             m.addAction(a)
         m.addSeparator()
         m.addAction(self.act_move_sel)
@@ -313,7 +337,7 @@ class LayoutMixin:
         for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_pages, self.act_title, self.act_pdftext, self.act_dims, self.act_ocr, self.act_index):
+        for a in (self.act_pages, self.act_title, self.act_text, self.act_dims, self.act_index):
             m.addAction(a)
 
         m = mb.addMenu(tr("&Hilfe"))
@@ -340,7 +364,7 @@ class LayoutMixin:
         self.addToolBar(tb)
         self.tb = tb
         open_menu = QMenu(self)
-        for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_proj_open):
+        for a in (self.act_open_a, self.act_open_b, self.act_open_view, self.act_open_clip, self.act_proj_open):
             open_menu.addAction(a)
         self.menu_recent2 = open_menu.addMenu(tr("Zuletzt verwendet"))
         self.menu_recent2.aboutToShow.connect(lambda: self._fill_recent_menu(self.menu_recent2))
@@ -430,8 +454,21 @@ class LayoutMixin:
         lay.setContentsMargins(5, 8, 5, 8)
         lay.setSpacing(2)
         for key, *_ in TOOLS:
+            if key in SHAPES[1:]:
+                continue
             b = QToolButton()
-            b.setDefaultAction(self.tool_actions[key])
+            if key == SHAPES[0]:                      # alle Formen in einem Knopf, Auswahl ueber das Dreieck
+                menu = QMenu(b)
+                for k2 in SHAPES:
+                    menu.addAction(self.tool_actions[k2])
+                b.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+                b.setDefaultAction(self.tool_actions[key])
+                b.setMenu(menu)
+                b.setToolTip(tr("Formen: Rahmen, Ellipse, Linie, Pfeil, Linienzug, Polygon (Dreieck = andere Form)"))
+                self.shape_button = b
+                menu.triggered.connect(lambda act, b=b, m=menu: (b.setDefaultAction(act), b.setMenu(m)))
+            else:
+                b.setDefaultAction(self.tool_actions[key])
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
             b.setIconSize(QSize(22, 22))
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -509,6 +546,13 @@ class LayoutMixin:
         self.s_asize.set_silent = lambda v: (self.s_asize.blockSignals(True), self.s_asize.setValue(v),
                                              self.s_asize.blockSignals(False))
         l.addWidget(self.s_asize)
+        self.chk_keep_tool = QCheckBox(tr("Werkzeug behalten"))
+        self.chk_keep_tool.setToolTip(tr("Nach dem Zeichnen bleibt das Werkzeug aktiv – z. B. mehrere Pfeile "
+                                      "nacheinander. Aus: danach zurück zur Auswahl, um gleich zu verschieben. "
+                                      "Esc beendet das Werkzeug."))
+        self.chk_keep_tool.setChecked(self.settings.value("keep_tool", "false") == "true")
+        self.chk_keep_tool.toggled.connect(lambda on: self.settings.setValue("keep_tool", "true" if on else "false"))
+        l.addWidget(self.chk_keep_tool)
         self.lbl_stamp = QLabel(tr("Nächste Nummer"))
         self.sp_stamp = QSpinBox()
         self.sp_stamp.setRange(1, 9999)
@@ -552,6 +596,27 @@ class LayoutMixin:
             lambda _: setattr(self.canvas, "loupe_zoom", self.cb_loupe.currentData()))
         l.addWidget(self.cb_loupe)
         lay.addWidget(self.opt_loupe)
+        self.opt_area = QWidget()                     # Bereichsauswahl
+        l = QHBoxLayout(self.opt_area)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.lbl_area = QLabel("")
+        self.lbl_area.setObjectName("hint")
+        l.addWidget(self.lbl_area)
+        self.area_buttons = {}
+        for key, text, fn, tip in (
+                ("copy", tr("Kopieren"), lambda: self.area_copy(), tr("Wie angezeigt kopieren (Strg+C)")),
+                ("copyopt", tr("Kopieren …"), lambda: self.area_copy_options(),
+                 tr("Alles, nur Linien oder nur Geometrie kopieren (Strg+Umschalt+C)")),
+                ("cut", tr("Ausschneiden"), lambda: self.area_cut(), tr("Strg+X")),
+                ("delete", tr("Löschen"), lambda: self.area_delete(), tr("Markierungen und Änderungen in der Auswahl löschen (Entf)")),
+                ("clear", tr("Leeren"), lambda: self.area_clear(), tr("Zeichnungsinhalt der Auswahl entfernen (Papierfarbe)")),
+                ("export", tr("Exportieren …"), lambda: self.area_export(), tr("Auswahl als Bild oder PDF speichern"))):
+            b = QPushButton(text)
+            b.setToolTip(tip)
+            b.clicked.connect(fn)
+            l.addWidget(b)
+            self.area_buttons[key] = b
+        lay.addWidget(self.opt_area)
         self.opt_float = QWidget()                    # Ausschnitt verschieben
         l = QHBoxLayout(self.opt_float)
         l.setContentsMargins(0, 0, 0, 0)
@@ -569,7 +634,7 @@ class LayoutMixin:
         l.addWidget(self.btn_float_ok)
         l.addWidget(self.btn_float_cancel)
         lay.addWidget(self.opt_float)
-        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view, self.opt_float):  # nie zusammendruecken
+        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view, self.opt_float, self.opt_area):
             w.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.lbl_tool_hint = QLabel("")
         self.lbl_tool_hint.setObjectName("hint")
@@ -602,14 +667,20 @@ class LayoutMixin:
         view_opts = blink or single or m == "S"
         self.opt_view.setVisible(view_opts)
         self.opt_measure.setVisible(t == "measure")
-        self.opt_ann.setVisible(t in ("text", "number", "approval", "rect", "arrow", "cloud", "highlight")
+        self.opt_ann.setVisible(t in ("text", "number", "approval", "cloud", "highlight", "pen") + SHAPES
                                 or (t == "hand" and self.canvas.ann_selected is not None))
         self.lbl_stamp.setVisible(t == "number")
         self.sp_stamp.setVisible(t == "number")
         self.opt_loupe.setVisible(self.act_loupe.isChecked())
-        self.opt_float.setVisible(t == "cutmove" or self.canvas.float is not None)
+        has_sel = bool(self.canvas.sel_rects)
+        self.opt_area.setVisible(t == "area")
+        self.lbl_area.setVisible(has_sel)
+        for k, b in self.area_buttons.items():
+            b.setVisible(has_sel and (k != "clear" or self.view_only))
+        self.opt_float.setVisible(t == "cutmove" or self.canvas.float is not None or (t == "area" and self.view_only))
         for b in (self.btn_float_ok, self.btn_float_cancel):
             b.setEnabled(self.canvas.float is not None)
+            b.setVisible(t != "area")
         self.lbl_tool_hint.setText(TOOL_HINTS.get(t, "") if t != "hand" else "")
         self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or self.canvas.ann_selected is not None
                                     or (view_opts and self.payload is not None))
@@ -1000,10 +1071,11 @@ class LayoutMixin:
         self.cb_filter = QComboBox()
         for txt, key in ((tr("Änderungen"), "changes"), (tr("Alle (auch verschoben)"), "all"), (tr("entfernt"), "entfernt"),
                          (tr("neu"), "neu"), (tr("geändert"), "geaendert"), (tr("verschoben"), "verschoben"),
-                         (tr("Maße"), "dims"), (tr("offen"), "open")):
+                         (tr("nur geänderte Maße"), "dims"), (tr("offen"), "open")):
             self.cb_filter.addItem(txt, key)
-        self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „Maße“ = geänderte "
-                                  "Maßzahlen, „offen“ = noch nicht geprüft."))
+        self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „nur geänderte Maße“ = "
+                                  "Änderungen mit geänderter Maßzahl (nach „Geänderte Maße finden“), „offen“ = noch "
+                                  "nicht geprüft. Gilt für Liste, Bild und PDF."))
         self.cb_filter.currentIndexChanged.connect(self._fill_table)
         row.addWidget(self.cb_filter, 1)
         self.chk_regs = QCheckBox(tr("Im Bild zeigen"))
@@ -1040,7 +1112,7 @@ class LayoutMixin:
         l1.addLayout(row)
         QShortcut(QKeySequence("Delete"), self.table, activated=self._reg_delete).setContext(
             Qt.ShortcutContext.WidgetShortcut)
-        more = Collapsible(tr("Texte und Maße lesen"), tr("PDF-Text, Texterkennung (OCR), Maßzahlen, Index"))
+        more = Collapsible(tr("Text und Maße"), tr("Text erkennen, geänderte Maße, Schriftfeld-Index"))
         self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
                                  tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
         self.s_group.changed.connect(self._group_changed)
@@ -1048,19 +1120,17 @@ class LayoutMixin:
         self.group_timer = QTimer(self)
         self.group_timer.setSingleShot(True)
         self.group_timer.timeout.connect(self._regroup)
-        self.btn_pdftext = QPushButton(tr("Text aus PDF lesen (exakt)"))
-        self.btn_pdftext.clicked.connect(self.run_pdftext)
-        self.btn_dims = QPushButton(tr("Maßzahlen vergleichen"))
-        self.btn_dims.setToolTip(tr("Meldet Maße wie „12,5 → 12,8“ getrennt von rein grafischen Änderungen"))
-        self.btn_dims.clicked.connect(self.run_dims)
-        self.btn_ocr = QPushButton(tr("Text lesen (OCR)"))
-        self.btn_ocr.setToolTip(tr("Liest den Text in jedem geänderten Bereich. Braucht das Zusatzpaket "
-                                "rapidocr-onnxruntime."))
-        self.btn_ocr.clicked.connect(self.run_ocr)
-        self.btn_idx = QPushButton(tr("Index prüfen"))
-        self.btn_idx.clicked.connect(self.run_index)
-        for b in (self.btn_pdftext, self.btn_dims, self.btn_ocr, self.btn_idx):
+        for a in (self.act_text, self.act_dims, self.act_index):
+            b = QPushButton(a.text())
+            b.setToolTip(a.toolTip())
+            b.clicked.connect(a.trigger)
             more.body.addWidget(b)
+        h = QLabel(tr("Text erkennen: schreibt „alter Text → neuer Text“ in die Liste. Geänderte Maße finden: "
+                   "danach stehen nur noch Änderungen mit geänderten Maßzahlen in Liste und Bild – feine "
+                   "Strichänderungen an der Geometrie werden ausgeblendet."))
+        h.setObjectName("hint")
+        h.setWordWrap(True)
+        more.body.addWidget(h)
         l1.addWidget(more)
         tabs.addTab(t1, tr("Änderungen"))
 

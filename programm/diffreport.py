@@ -360,7 +360,59 @@ def index_check(res, regs, log=print, box=(0.45, 0.70)):
 APPROVAL_TITLES = (tr("FREIGEGEBEN"), tr("GEPRÜFT"), tr("ABGELEHNT"), tr("IN ARBEIT"))
 #   cloud     Revisionswolke um das Rechteck (x, y)-(x2, y2)
 #   highlight Textmarker: halbtransparente Flaeche (x, y)-(x2, y2)
-RECT_TYPES = ("rect", "cloud", "highlight")
+#   ellipse   Ellipse im Rechteck (x, y)-(x2, y2)
+#   image     eingefuegtes Bild im Rechteck (x, y)-(x2, y2), Inhalt als PNG (Base64) in "png"
+#   pen       Freihandlinie, polyline Linienzug, polygon geschlossener Linienzug: Punkte in "pts",
+#             (x, y)-(x2, y2) ist das umgebende Rechteck
+RECT_TYPES = ("rect", "cloud", "highlight", "ellipse", "image")
+
+# Feste Ebenen: Zeichnung, Aenderungsrahmen und die Markierungen nach Art. Ausgeblendete Ebenen werden weder
+# angezeigt noch gespeichert; in PDF mit Anmerkungen und SVG werden die Ebenen als echte Ebenen geschrieben.
+LAYERS = (("zeichnung", tr("Zeichnung")), ("aenderungen", tr("Änderungen")), ("markierungen", tr("Markierungen")),
+          ("masse", tr("Maße")), ("bilder", tr("Eingefügte Bilder")), ("zonen", tr("Zonen")))
+LAYER_NAMES = dict(LAYERS)
+
+
+def ann_layer(a):
+    """Ebene einer Anmerkung."""
+    return {"measure": "masse", "image": "bilder"}.get(a.get("type"), "markierungen")
+PTS_TYPES = ("pen", "polyline", "polygon")
+
+
+def pts_bbox(pts):
+    xs = [q[0] for q in pts]
+    ys = [q[1] for q in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+_IMG_CACHE = {}
+
+
+def ann_image(a):
+    """Eingefuegtes Bild einer Anmerkung als BGRA-Array (zwischengespeichert)."""
+    import base64
+    key = a.get("png", "")
+    img = _IMG_CACHE.get(key)
+    if img is None:
+        raw = np.frombuffer(base64.b64decode(key), np.uint8) if key else np.zeros(0, np.uint8)
+        img = cv2.imdecode(raw, cv2.IMREAD_UNCHANGED) if raw.size else None
+        if img is None:
+            img = np.zeros((1, 1, 4), np.uint8)
+        elif img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGRA)
+        elif img.shape[2] == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+        if len(_IMG_CACHE) > 64:
+            _IMG_CACHE.clear()
+        _IMG_CACHE[key] = img
+    return img
+
+
+def image_png(bgra):
+    """Bild (BGR/BGRA/Grau) als Base64-PNG fuer eine Anmerkung vom Typ image."""
+    import base64
+    ok, png = cv2.imencode(".png", bgra)
+    return base64.b64encode(png.tobytes()).decode("ascii") if ok else ""
 
 
 def _ref(shape, ref):
@@ -413,8 +465,32 @@ def cloud_points(x0, y0, x1, y1, r):
     return pts
 
 
-def ann_lines(a):
-    return (a.get("text") or " ").split("\n")
+def ann_lines(a, th=None):
+    """Zeilen eines Texts; mit Textfeldbreite "w" (Bildpixel) wird an Wortgrenzen umbrochen."""
+    lines = (a.get("text") or " ").split("\n")
+    w = a.get("w")
+    if not w or not th:
+        return lines
+    n = max(1, int(w / (0.55 * th)))                 # Zeichen je Zeile (mittlere Zeichenbreite)
+    out = []
+    for line in lines:
+        cur = ""
+        for word in line.split(" "):
+            while len(word) > n:                     # sehr lange Woerter hart trennen
+                if cur:
+                    out.append(cur)
+                    cur = ""
+                out.append(word[:n])
+                word = word[n:]
+            if not cur:
+                cur = word
+            elif len(cur) + 1 + len(word) <= n:
+                cur += " " + word
+            else:
+                out.append(cur)
+                cur = word
+        out.append(cur)
+    return out
 
 
 MEASURE_KINDS = {"dist": tr("L\u00e4nge"), "poly": tr("Linienzug"), "angle": tr("Winkel"), "radius": tr("Radius"), "area": tr("Fl\u00e4che")}
@@ -497,13 +573,18 @@ def ann_bounds(shape, a):
         r = 0.95 * th
         return x - r, y - r, x + r, y + r
     if t in ("text", "approval"):
-        lines = ann_lines(a)
+        lines = ann_lines(a, th)
         pad = 0.5 * th if t == "approval" else 0
-        return (x, y, x + max(len(s) for s in lines) * 0.58 * th + 2 * pad,
-                y + len(lines) * 1.25 * th + 2 * pad)
+        w = max(max(len(s) for s in lines) * 0.58 * th, a.get("w") or 0)
+        return (x, y, x + w + 2 * pad, y + len(lines) * 1.25 * th + 2 * pad)
     lw = ann_line_w(shape, a["size"])
     if t == "cloud":
         lw += cloud_radius(shape, a["size"])
+    if t in PTS_TYPES and a.get("pts"):
+        x0, y0, x1, y1 = pts_bbox(a["pts"])
+        return x0 - lw, y0 - lw, x1 + lw, y1 + lw
+    if t == "image":
+        lw = 0
     return (min(x, a["x2"]) - lw, min(y, a["y2"]) - lw, max(x, a["x2"]) + lw, max(y, a["y2"]) + lw)
 
 
@@ -530,7 +611,7 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
             d.text((x, y), str(a["nr"]), font=dc._font(max(6, int(stamp_font_h(th, a["nr"])))),
                    fill="white", anchor="mm")
         elif t == "text":
-            d.multiline_text((x, y), a.get("text", ""), font=dc._font(max(6, int(th))), fill=col,
+            d.multiline_text((x, y), "\n".join(ann_lines(a, th)), font=dc._font(max(6, int(th))), fill=col,
                              stroke_width=max(1, int(th / 12)), stroke_fill="white", spacing=int(th * 0.25))
         elif t == "approval":
             b = ann_bounds(shape, dict(a, x=x, y=y))
@@ -581,6 +662,27 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
             d = ImageDraw.Draw(im)
         elif t == "line":
             d.line([(x, y), (x2, y2)], fill=col, width=int(lw))
+        elif t == "ellipse":
+            d.ellipse([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw))
+        elif t in PTS_TYPES and a.get("pts"):
+            pl = [(q[0] - ox, q[1] - oy) for q in a["pts"]]
+            if t == "polygon" and len(pl) > 2:
+                pl = pl + [pl[0]]
+            if len(pl) == 1:
+                pl = pl * 2
+            d.line(pl, fill=col, width=int(lw), joint="curve")
+            if t == "pen":                               # runde Enden wie beim Stift
+                r_ = lw / 2
+                for q in (pl[0], pl[-1]):
+                    d.ellipse([q[0] - r_, q[1] - r_, q[0] + r_, q[1] + r_], fill=col)
+        elif t == "image":
+            src = ann_image(a)
+            bw, bh = int(round(abs(x2 - x))), int(round(abs(y2 - y)))
+            if bw > 0 and bh > 0:
+                tile = cv2.resize(src, (bw, bh), interpolation=cv2.INTER_AREA if bw < src.shape[1] else cv2.INTER_LINEAR)
+                pil = Image.fromarray(cv2.cvtColor(tile, cv2.COLOR_BGRA2RGBA))
+                im.paste(pil, (int(round(min(x, x2))), int(round(min(y, y2)))), pil)
+                d = ImageDraw.Draw(im)
         elif t == "arrow":
             ang = math.atan2(y2 - y, x2 - x)
             head = max(5 * lw, 0.8 * th)
@@ -993,17 +1095,24 @@ def _title_columns(toks, out):
 
 
 # ----------------------------------------------------------------- PDF mit Anmerkungen (Acrobat)
-def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", "")):
+def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", ""), layers=True):
     """Ergebnisbild als PDF; Aenderungen als Revisionswolken und eigene Markierungen als echte PDF-Anmerkungen
-    (in Acrobat & Co. anklick-, kommentier- und loeschbar)."""
+    (in Acrobat & Co. anklick-, kommentier- und loeschbar). layers=True: jede Art auf einer eigenen PDF-Ebene
+    (Zeichnung, Aenderungen, Markierungen, Masse, Eingefuegte Bilder), in Acrobat ein- und ausblendbar."""
     import math
     import pymupdf
     h, w = img_bgr.shape[:2]
     k = 72.0 / dpi
     doc = pymupdf.open()
     page = doc.new_page(width=w * k, height=h * k)
+    ocg = {}
+    if layers:
+        used = {"zeichnung"} | ({"aenderungen"} if regs else set()) | {ann_layer(a) for a in anns}
+        for key, name in LAYERS:
+            if key in used:
+                ocg[key] = doc.add_ocg(name, on=True)
     ok, png = cv2.imencode(".png", img_bgr)
-    page.insert_image(page.rect, stream=png.tobytes())
+    page.insert_image(page.rect, stream=png.tobytes(), oc=ocg.get("zeichnung", 0))
     shape = img_bgr.shape
 
     def rgb(col):
@@ -1029,6 +1138,8 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             txt.append(r["desc"])
         txt.append(tr("Prüfung: ") + review_text(r))
         info(an, tr("Änderung {}").format(r['nr']), "\n".join(txt))
+        if "aenderungen" in ocg:
+            an.set_oc(ocg["aenderungen"])
         an.update()
     for a in anns:
         t = a["type"]
@@ -1053,6 +1164,29 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             if t == "arrow":
                 an.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
             info(an, tr("Pfeil") if t == "arrow" else tr("Linie"), a.get("comment", ""))
+        elif t == "ellipse":
+            an = page.add_circle_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
+            an.set_colors(stroke=col)
+            an.set_border(width=lw)
+            info(an, tr("Ellipse"), a.get("comment", ""))
+        elif t in PTS_TYPES and a.get("pts"):
+            pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in a["pts"]]
+            if t == "pen":
+                an = page.add_ink_annot([[(q.x, q.y) for q in pts]])
+            elif t == "polygon":
+                an = page.add_polygon_annot(pts)
+            else:
+                an = page.add_polyline_annot(pts)
+            an.set_colors(stroke=col)
+            an.set_border(width=lw)
+            info(an, {"pen": tr("Freihand"), "polygon": tr("Polygon"), "polyline": tr("Linienzug")}[t],
+                 a.get("comment", ""))
+        elif t == "image":
+            ok, png = cv2.imencode(".png", ann_image(a))
+            if ok:
+                page.insert_image(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)),
+                                  stream=png.tobytes(), keep_proportion=False, oc=ocg.get("bilder", 0))
+            continue
         elif t in ("text", "approval"):
             b = ann_bounds(shape, a)
             rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + th, b[3] * k + th * 0.5)
@@ -1065,6 +1199,8 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             an.set_colors(stroke=col, fill=col)
             an.set_border(width=0.5)
             info(an, tr("Nummer {}").format(a['nr']), tr("Nummer {}").format(a['nr']))
+            if "markierungen" in ocg:
+                an.set_oc(ocg["markierungen"])
             an.update()
             an = page.add_freetext_annot(pymupdf.Rect(x - rr, y - rr * 0.75, x + rr, y + rr), str(a["nr"]),
                                          fontsize=max(4, rr), text_color=(1, 1, 1), align=1)
@@ -1079,6 +1215,8 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             info(an, tr("Maß"), measure_text(a, mm) if mm else "")
         else:
             continue
+        if ann_layer(a) in ocg:
+            an.set_oc(ocg[ann_layer(a)])
         an.update()
     doc.set_metadata({"title": f"Vergleich {names[0]} → {names[1]}", "creator": "ZGmax"})
     doc.save(path, deflate=True)

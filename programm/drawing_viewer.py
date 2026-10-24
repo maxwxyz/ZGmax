@@ -19,13 +19,13 @@ from ui_export import ExportMixin
 from ui_layout import LayoutMixin
 from ui_features import FeaturesMixin
 from ui_search import SearchMixin
-from ui_edit import EditMixin
+from ui_edit import AreaMixin, ClipboardMixin, EditMixin
 
 VERSION = "2.0"
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
-class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)
@@ -72,6 +72,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
         cv.regionClicked.connect(self._select_region_nr)
         cv.annCreated.connect(self._ann_created)
         cv.placeRequested.connect(self._place)
+        cv.textBoxDrawn.connect(lambda x, y, w: self._place("text", x, y, w))
         cv.annSelected.connect(self._ann_selected)
         cv.annMultiSelected.connect(self._ann_multi_selected)
         cv.annChanged.connect(self._ann_changed)
@@ -88,6 +89,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
         cv.selCopy.connect(self._sel_copy)
         cv.selMove.connect(self._sel_move)
         cv.floatDone.connect(self._float_done)
+        cv.areaChanged.connect(self._area_changed)
+        cv.areaMoveStarted.connect(self._area_move_started)
+        cv.areaMoved.connect(self._area_moved)
         self.debounce = QTimer(self)
         self.debounce.setSingleShot(True)
         self.debounce.timeout.connect(self.start_compute)
@@ -266,24 +270,28 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
             if self.path_a and self.path_b:
                 self.start_compute()
 
-    def run_pdftext(self):
-        if not self.payload:
+    def run_text(self):
+        """Text jeder Aenderung (A -> B): exakt aus dem PDF, wenn beide echten Text haben, sonst Texterkennung."""
+        if not self.payload or self.view_only:
             QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
-        if not (self.path_a.lower().endswith(".pdf") and self.path_b.lower().endswith(".pdf") and dv.available()):
-            QMessageBox.information(self, APP, tr("Der PDF-Text steht nur bei PDF-Dateien mit eingebettetem Text zur "
-                                    "Verf\u00fcgung. Bei Bildern hilft \u201eText lesen (OCR)\u201c."))
-            return
+        pdf = bool(self.path_a.lower().endswith(".pdf") and self.path_b.lower().endswith(".pdf") and dv.available())
         pl, pa, pb = self.payload, self.path_a, self.path_b
         na, nb, dpi = self.sp_pa.value(), self.sp_pb.value(), self.dpi_value()
+        wa, wb = (dv.pdf_words(pa, na), dv.pdf_words(pb, nb)) if pdf else ([], [])
+        if not (wa or wb) and not self.ensure_ocr(tr("Text zu lesen")):
+            return
 
         def work(log):
             self._ensure_regs(log)
-            wa, wb = dv.pdf_words(pa, na), dv.pdf_words(pb, nb)
-            if not (wa or wb):
-                log(tr("Kein eingebetteter Text gefunden (Pixelbild?). Bitte OCR verwenden."))
-            dv.fill_text(pl["regs"], wa, wb, dpi, log)
-        self._run_job(work, tr("Lese PDF-Text \u2026"), lambda _: (self._fill_table(), self._busy(False, tr("PDF-Text gelesen"))))
+            if wa or wb:
+                log(tr("Text aus dem PDF (exakt) …"))
+                dv.fill_text(pl["regs"], wa, wb, dpi, log)
+                return tr("PDF-Text")
+            rep.text_diff(pl["res"], pl["regs"], log)
+            return tr("Texterkennung")
+        self._run_job(work, tr("Lese Text \u2026"),
+                      lambda how: (self._fill_table(), self._busy(False, tr("Text gelesen ({})").format(how))))
 
     # --- Datei-Handling
     def open_file(self, which):
@@ -899,6 +907,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
         self.start_compute()
 
     def copy_result(self):
+        if self.canvas.tool == "area" and self.canvas.sel_rects:
+            self.area_copy()
+            return
+        if self.canvas.tool == "hand" and self.canvas.selected_anns():   # gewaehlte Markierungen kopieren
+            self.copy_markups()
+            return
         if not self._need_result():
             return
         mode, overlays = self.canvas.mode, self.act_overlays.isChecked()
@@ -920,6 +934,11 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
         m.addSeparator()
         if self.path_a and self.path_b:
             m.addAction(tr("A und B tauschen"), self.swap_ab)
+        if self.canvas.sel_rects:                        # Bereichsauswahl: ihre Befehle zuerst
+            for k, b in self.area_buttons.items():
+                if b.isVisible():
+                    m.addAction(b.text(), b.click)
+            m.addSeparator()
         m.addAction(self.act_copy)
         m.addAction(self.act_copy_sel)
         if self.view_only:
@@ -938,6 +957,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
             self._prev_tool = c.tool                   # Zoom-Rahmen ist einmalig, danach zurueck
         if c.float is not None and t != "cutmove":       # schwebenden Ausschnitt beim Werkzeugwechsel absetzen
             self._float_done(True)
+        if t != "area" and c.sel_rects:                  # Bereichsauswahl gilt nur im Werkzeug "Bereich"
+            c.sel_rects = []
         c.tool = t
         if c.ann_selected is not None or c.ann_multi:  # Werkzeugwechsel hebt die Auswahl auf (Leiste zeigt Vorgabe)
             c.ann_selected = None
@@ -948,10 +969,16 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
             self.list_anns.blockSignals(False)
             self._sync_ann_controls()
         c.measure = []
+        c.poly, c._poly_hover, c._pen = [], None, None
         c.snap_hint = None
         c.hover = None
         c._ann_prev = None
         c._rubber = None
+        b = getattr(self, "shape_button", None)
+        if b is not None and t in ("rect", "ellipse", "line", "arrow", "polyline", "polygon"):
+            m = b.menu()                                   # Formen-Knopf zeigt die zuletzt gewaehlte Form
+            b.setDefaultAction(self.tool_actions[t])
+            b.setMenu(m)
         if t in self.tool_actions:
             self.tool_actions[t].setChecked(True)
         else:                                  # Zone/Ausschnitt/Zoom: kein Knopf in der Palette
@@ -961,7 +988,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, RegionsMixi
                     a.setChecked(False)
                     a.actionGroup().setExclusive(True)
         if t in ("text", "number", "rect", "arrow", "approval", "zone", "crop", "measure", "region", "cloud",
-                 "highlight"):
+                 "highlight", "ellipse", "line", "polyline", "polygon", "pen", "area"):
             self.act_overlays.setChecked(True)
         self._update_options()
         c.setCursor(Qt.CursorShape.OpenHandCursor if t == "hand" else Qt.CursorShape.CrossCursor)
@@ -1115,6 +1142,20 @@ def selftest():
     return 0 if ok else 1
 
 
+def install_qt_translations(app):
+    """Knoepfe der Qt-eigenen Fenster (Speichern, Verwerfen, Abbrechen, Ja/Nein, Dateiauswahl) in der
+    Programmsprache. Englisch ist die Grundsprache von Qt und braucht nichts."""
+    from PySide6.QtCore import QLibraryInfo, QTranslator
+    if i18n.LANG == "en":
+        return None
+    t = QTranslator(app)
+    if t.load(f"qtbase_{i18n.LANG}", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(t)
+        return t
+    log.info("Qt-Uebersetzung qtbase_%s nicht gefunden", i18n.LANG)
+    return None
+
+
 def main():
     if "--selbsttest" in sys.argv:
         setup_logging()
@@ -1137,6 +1178,7 @@ def main():
     app.setApplicationVersion(VERSION)
     app.setStyle(tr("Fusion"))
     setup_logging()
+    install_qt_translations(app)
     log.info(tr("Start {} {} ({}, Python {})").format(APP, VERSION, sys.platform, sys.version.split()[0]))
     apply_theme(app, theme_setting(app_settings()))
     ico = os.path.join(HERE, "icon.png")

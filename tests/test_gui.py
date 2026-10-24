@@ -6,7 +6,7 @@ import time
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QSettings  # noqa: E402
+from PySide6.QtCore import QSettings, Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 
@@ -280,6 +280,162 @@ def test_left_panel_never_clips(app, win):
     assert win.chk_expert.isChecked()
     win.chk_expert.setChecked(False)
     assert not win.act_expert.isChecked()
+
+
+def test_drawing_tools_vector(app, win, pair, tmp_path):
+    import pymupdf
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    compare(app, win, *pair)
+    c = win.canvas
+    win._set_tool("pen")                                     # Freihand mit der Maus
+    QTest.mousePress(c, Qt.MouseButton.LeftButton, pos=QPoint(200, 200))
+    for x in range(205, 400, 5):
+        QTest.mouseMove(c, QPoint(x, 200 + (x % 40)))
+    QTest.mouseRelease(c, Qt.MouseButton.LeftButton, pos=QPoint(400, 230))
+    assert win.anns[-1]["type"] == "pen" and len(win.anns[-1]["pts"]) >= 3
+    assert c.tool == "pen"                                   # Stift bleibt aktiv
+    win._set_tool("polygon")
+    for pt in ((500, 300), (600, 300), (560, 380)):
+        QTest.mouseClick(c, Qt.MouseButton.LeftButton, pos=QPoint(*pt))
+    QTest.keyClick(c, Qt.Key.Key_Return)
+    assert win.anns[-1]["type"] == "polygon" and len(win.anns[-1]["pts"]) == 3
+    win._ann_created(dict(type="ellipse", x=100, y=500, x2=300, y2=600, text="", nr=0, color="#2563eb", size=2.0))
+    a = win.anns[-1]
+    ix, iy = 300, 550                                        # rechter Rand der Ellipse
+    assert c.hit_ann(ix, iy) == len(win.anns) - 1
+    pen = win.anns[0]
+    x0 = pen["x"]
+    win.canvas.ann_selected = 0                              # Freihand an der Ecke skalieren
+    from ui_canvas import apply_handle
+    apply_handle(c.shape, pen, "br", pen["x2"] + 100, pen["y2"] + 50)
+    assert abs(pen["x"] - x0) < 1e-6 and pen["x2"] > x0 + 100
+    win.grab()
+    out = str(tmp_path / "a.pdf")
+    win._save_dialog = lambda *a: out
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    with pymupdf.open(out) as d:
+        kinds = {an.type[1] for an in d[0].annots()}
+    assert {"Ink", "Polygon", "Circle"} <= kinds
+    img = win.export_render("D", True)
+    assert img.shape[0] > 100
+
+
+def test_paste_image_text_and_markups(app, win, pair, tmp_path):
+    from PySide6.QtGui import QColor, QImage
+    from PySide6.QtCore import QMimeData
+    cb = QApplication.clipboard()
+    img = QImage(120, 80, QImage.Format.Format_ARGB32)
+    img.fill(QColor("#3366cc"))
+    cb.setImage(img)
+    win.paste()                                              # nichts offen: Bild wird als Zeichnung geoeffnet
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.view_only and win.payload["res"].a.shape == (80, 120)
+    win.close_document()
+    compare(app, win, *pair)
+    cb.setImage(img)
+    win.paste()
+    a = win.anns[-1]
+    assert a["type"] == "image" and a["x2"] > a["x"] and win.canvas.selected_anns() == {len(win.anns) - 1}
+    md = QMimeData()
+    md.setText("Bitte prüfen")
+    cb.setMimeData(md)
+    win.paste()
+    assert win.anns[-1]["type"] == "text" and win.anns[-1]["text"] == "Bitte prüfen"
+    win.canvas._set_multi({0, 1})                            # Markierungen kopieren und einfuegen
+    win.copy_result()
+    win.paste()
+    assert len(win.anns) == 4 and win.anns[2]["type"] == "image"
+    img_out = win.export_render("D", True)
+    assert img_out.shape[0] > 100
+    cb.clear()
+
+
+def test_inline_text_box_and_keep_tool(app, win, pair):
+    import diffreport as rep
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    compare(app, win, *pair)
+    c = win.canvas
+    win.chk_keep_tool.setChecked(False)
+    win._set_tool("text")
+    QTest.mouseClick(c, Qt.MouseButton.LeftButton, pos=QPoint(300, 300))   # Klick: Text direkt im Bild
+    ed = c.inline_editor
+    assert ed is not None and ed.isVisible()
+    QTest.keyClicks(ed, "Hallo Welt")
+    QTest.keyClick(ed, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
+    assert c.inline_editor is None and win.anns[-1]["text"] == "Hallo Welt" and "w" not in win.anns[-1]
+    assert c.tool == "hand"
+    win._set_tool("text")                                    # Ziehen: Textfeld mit Umbruch
+    QTest.mousePress(c, Qt.MouseButton.LeftButton, pos=QPoint(200, 400))
+    QTest.mouseMove(c, QPoint(330, 430))
+    QTest.mouseRelease(c, Qt.MouseButton.LeftButton, pos=QPoint(330, 430))
+    ed = c.inline_editor
+    assert ed is not None and ed.a.get("w")
+    QTest.keyClicks(ed, "ein ziemlich langer Hinweistext, der umbrochen werden muss")
+    QTest.keyClick(ed, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
+    box = win.anns[-1]
+    th = rep.ann_text_h(c.shape, box["size"])
+    assert len(rep.ann_lines(box, th)) > 1
+    i = len(win.anns) - 1
+    win._ann_edit(i)                                         # bestehenden Text im Bild aendern, Esc = verwerfen
+    QTest.keyClicks(c.inline_editor, "XYZ")
+    QTest.keyClick(c.inline_editor, Qt.Key.Key_Escape)
+    assert "XYZ" not in win.anns[i]["text"]
+    win.chk_keep_tool.setChecked(True)                       # Werkzeug behalten: mehrere Pfeile nacheinander
+    win._set_tool("arrow")
+    for y in (500, 560):
+        QTest.mousePress(c, Qt.MouseButton.LeftButton, pos=QPoint(100, y))
+        QTest.mouseMove(c, QPoint(200, y + 20))
+        QTest.mouseRelease(c, Qt.MouseButton.LeftButton, pos=QPoint(200, y + 20))
+    assert [a["type"] for a in win.anns[-2:]] == ["arrow", "arrow"] and c.tool == "arrow"
+    win.chk_keep_tool.setChecked(False)
+
+
+def test_area_selection(app, win, tmp_path):
+    import cv2
+    import numpy as np
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    img = np.full((600, 800), 255, np.uint8)
+    cv2.rectangle(img, (100, 100), (200, 180), 0, 4)
+    cv2.rectangle(img, (500, 100), (600, 180), 0, 4)
+    p = tmp_path / "blatt.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    win._ann_created(dict(type="rect", x=120, y=120, x2=180, y2=160, text="", nr=0, color="#e11d48", size=2.0))
+    win._ann_created(dict(type="text", x=700, y=500, x2=700, y2=500, text="weit weg", nr=0, color="#e11d48", size=2.0))
+    c = win.canvas
+    win.start_area()
+    assert c.tool == "area"
+    c.sel_rects = [(90, 90, 210, 190)]
+    win._area_changed()
+    c.sel_rects.append((490, 90, 610, 190))                  # zweiter Rahmen (Umschalt)
+    win._area_changed()
+    assert c.selected_anns() == {0} and win.area_buttons["copy"].isVisible()
+    win.chk_float_lines.setChecked(False)
+    win._area_move_started()                                 # beide Rahmen samt Markierung 50 px nach unten
+    c.anns[0]["y"] += 50
+    c.anns[0]["y2"] += 50
+    c.sel_rects = [(r[0], r[1] + 50, r[2], r[3] + 50) for r in c.sel_rects]
+    win._area_moved(0, 50)
+    g = win.cache["g_" + str(p)]
+    assert g[150:231, 100:201].min() < 50 and g[150:231, 500:601].min() < 50
+    assert g[100:140, 100:201].min() > 200                   # alte Stelle leer
+    assert win.anns[0]["y"] == 170
+    win.area_copy()
+    md = QApplication.clipboard().mimeData()
+    assert md.hasImage() and md.hasFormat("application/x-zgmax-region")
+    win.area_delete()                                        # Entf: Markierung in der Auswahl weg, Zeichnung bleibt
+    assert [a["text"] for a in win.anns] == ["weit weg"]
+    win.paste()                                              # Bild + Markierung wieder eingefuegt
+    assert [a["type"] for a in win.anns][-2:] == ["image", "rect"]
+    win.undo()
+    win.undo()
+    assert len(win.anns) == 2
+    QApplication.clipboard().clear()
 
 
 def test_multipage_tiff(app, win, tmp_path):

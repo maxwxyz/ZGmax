@@ -190,6 +190,8 @@ class RegionsMixin:
         pl = self.payload
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()
+        f = self.cb_filter.currentData()                   # Masse/offen: auch im Bild nur diese Rahmen
+        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open") else None
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)
@@ -305,16 +307,6 @@ class RegionsMixin:
                                  "info", timeout=20)
         self._run_job(work, tr("Installiere Texterkennung \u2026"), done)
         return False
-
-    def run_ocr(self):
-        if not self._need_ocr():
-            return
-        pl = self.payload
-
-        def work(log):
-            self._ensure_regs(log)
-            rep.text_diff(pl["res"], pl["regs"], log)
-        self._run_job(work, tr("Lese Text \u2026"), lambda _: (self._fill_table(), self._busy(False, tr("Text gelesen"))))
 
     def run_index(self):
         if not self._need_ocr():

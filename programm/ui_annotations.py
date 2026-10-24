@@ -6,6 +6,78 @@ from ui_widgets import ApprovalDialog
 import diffxfdf as dx
 
 
+class InlineText(QPlainTextEdit):
+    """Texteingabe direkt im Bild (statt Eingabefenster). Strg+Enter oder Klick daneben = fertig, Esc = abbrechen."""
+    finished = Signal(bool)
+
+    def __init__(self, canvas, a):
+        super().__init__(canvas)
+        self.canvas, self.a = canvas, a
+        self._done = False
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.document().setDocumentMargin(1)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth if a.get("w")
+                             else QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setStyleSheet(f"QPlainTextEdit {{ background: rgba(255,255,255,215); color: {a['color']}; "
+                           f"border: 1px dashed {ACCENT}; padding: 0; }}")
+        self.setPlainText(a.get("text", ""))
+        self.setPlaceholderText(tr("Text …"))
+        self.textChanged.connect(self.place)
+        self.place()
+        self.show()
+        self.setFocus()
+        self.moveCursor(QTextCursor.MoveOperation.End)
+
+    def place(self):
+        c, a = self.canvas, self.a
+        th = max(9, rep.ann_text_h(c.shape, a["size"]) * c.scale)
+        f = QFont(UI_FONT)
+        f.setPixelSize(int(th))
+        if self.font() != f:
+            self.setFont(f)
+        fm = self.fontMetrics()
+        lines = (self.toPlainText() or " ").split("\n")
+        x, y = c.to_wid(a["x"], a["y"])
+        if a.get("w"):
+            w = a["w"] * c.scale
+            doc_lines = max(1, self.document().documentLayout().documentSize().height() // max(1, fm.lineSpacing()))
+            n = int(max(len(lines), doc_lines))
+        else:
+            w = max(fm.horizontalAdvance(s) for s in lines) + fm.averageCharWidth() * 3
+            n = len(lines)
+        geo = QRect(int(x) - 2, int(y) - 2, int(max(40, w)) + 6, int(n * fm.lineSpacing()) + 8)
+        if self.geometry() != geo:
+            self.setGeometry(geo)
+
+    def event(self, e):
+        # Strg+Enter (sonst "Vergleichen") und Esc gehoeren waehrend der Eingabe dem Textfeld
+        if e.type() == QEvent.Type.ShortcutOverride and e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter,
+                                                                     Qt.Key.Key_Escape):
+            e.accept()
+            return True
+        return super().event(e)
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key.Key_Escape:
+            self._finish(False)
+        elif e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and e.modifiers() & (
+                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier):
+            self._finish(True)
+        else:
+            super().keyPressEvent(e)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        QTimer.singleShot(0, lambda: self._finish(True))
+
+    def _finish(self, ok):
+        if not self._done:
+            self._done = True
+            self.finished.emit(ok)
+
+
 class AnnotationsMixin:
     """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
 
@@ -59,7 +131,9 @@ class AnnotationsMixin:
             return tr("Stempel: ") + " / ".join(a["text"].split("\n")[:2])
         if t == "measure":
             return f"{rep.MEASURE_KINDS.get(a.get('kind'), 'Ma\u00df')}: {rep.measure_text(a, self.canvas.mm_px)}"
-        lbl = {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Marker"), "arrow": tr("Pfeil"), "line": tr("Linie")}.get(t, t)
+        lbl = {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Marker"), "arrow": tr("Pfeil"),
+               "line": tr("Linie"), "ellipse": tr("Ellipse"), "pen": tr("Freihand"), "polyline": tr("Linienzug"),
+               "polygon": tr("Polygon"), "image": tr("Bild")}.get(t, t)
         if a.get("comment"):
             lbl += ": " + a["comment"].replace("\n", " ")[:40]
         if a.get("author"):
@@ -100,26 +174,63 @@ class AnnotationsMixin:
         if a["type"] == "measure" and a.get("kind") == "dist" and getattr(self, "_calib_pending", False):
             QTimer.singleShot(0, lambda: self._calibrate(math.hypot(a["x2"] - a["x"], a["y2"] - a["y"])))
         self.tabs.setCurrentIndex(1)
-        if a["type"] not in ("number", "measure"):
-            self._set_tool("hand")
+        if a["type"] not in ("number", "measure", "pen") and not self.chk_keep_tool.isChecked():
+            self._set_tool("hand")                        # Zaehlen, Messen, Freihand oder "Werkzeug behalten": bleibt
 
-    def _place(self, tool, x, y):
-        """Text, Nummer oder Freigabe setzen (ggf. mit Eingabedialog)."""
+    def _place(self, tool, x, y, w=None):
+        """Text, Nummer oder Freigabe setzen. Text wird direkt im Bild getippt."""
         base = dict(x=x, y=y, x2=x, y2=y, text="", nr=0, color=self.canvas.ann_color, size=self.canvas.ann_size)
         if tool == "number":
             self._ann_created(dict(base, type="number", nr=self.next_nr))
         elif tool == "text":
-            txt, ok = QInputDialog.getMultiLineText(self, tr("Text einf\u00fcgen"), tr("Anmerkung:"), "")
-            if ok and txt.strip():
-                self._ann_created(dict(base, type="text", text=txt.strip()))
-            else:
-                self._set_tool("hand")
+            self._text_inline(None, dict(base, type="text", **({"w": w} if w else {})))
         elif tool == "approval":
             t = self._approval_text("")
             if t:
                 self._ann_created(dict(base, type="approval", text=t))
             else:
                 self._set_tool("hand")
+
+    def _text_inline(self, idx, a):
+        """Text direkt im Bild schreiben (neu: idx None) oder aendern. Bei gedrehter Ansicht: Eingabefenster."""
+        c = self.canvas
+        if c.inline_editor is not None:
+            c.inline_editor._finish(True)
+        if c.rot % 4 != 0:
+            txt, ok = QInputDialog.getMultiLineText(self, tr("Text einf\u00fcgen"), tr("Anmerkung:"), a.get("text", ""))
+            if ok and txt.strip():
+                a["text"] = txt.strip()
+                if idx is None:
+                    self._ann_created(a)
+                else:
+                    self._ann_refresh(idx)
+                    self._commit()
+            return
+        ed = InlineText(c, a)
+        c.inline_editor, c.editing = ed, idx
+        c.update()
+        self.statusBar().showMessage(tr("Text tippen. Strg+Enter oder Klick daneben = fertig, Esc = abbrechen."), 8000)
+
+        def done(ok):
+            txt = ed.toPlainText().strip()
+            c.inline_editor, c.editing = None, None
+            ed.deleteLater()
+            c.setFocus()
+            if idx is None:
+                if ok and txt:
+                    self._ann_created(dict(a, text=txt))
+                elif not self.chk_keep_tool.isChecked():
+                    self._set_tool("hand")
+            elif ok and txt != a.get("text"):
+                if txt:
+                    a["text"] = txt
+                    self._ann_refresh(idx)
+                else:                                      # Text geleert: Markierung entfernen
+                    del self.anns[idx]
+                    self._ann_refresh(None)
+                self._commit()
+            c.update()
+        ed.finished.connect(done)
 
     def _approval_text(self, old):
         lines = old.split("\n") if old else []
@@ -186,6 +297,9 @@ class AnnotationsMixin:
         if i is None or not (0 <= i < len(self.anns)):
             return
         a = self.anns[i]
+        if a["type"] == "text" and self.canvas.rot % 4 == 0:
+            self._text_inline(i, a)
+            return
         if a["type"] == "text":
             txt, ok = QInputDialog.getMultiLineText(self, tr("Text \u00e4ndern"), tr("Anmerkung:"), a["text"])
             if ok and txt.strip():
@@ -221,6 +335,9 @@ class AnnotationsMixin:
             self._commit()
 
     def _ann_delete(self):
+        if self.canvas.tool == "area" and self.canvas.sel_rects:   # Entf in der Bereichsauswahl
+            self.area_delete()
+            return
         idx = sorted(self.canvas.selected_anns(), reverse=True)
         if idx:
             for i in idx:

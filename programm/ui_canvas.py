@@ -99,12 +99,19 @@ def ann_handles(shape, a):
         return [(f"m{i}", q[0], q[1]) for i, q in enumerate(a["pts"])]
     if t in ("arrow", "line"):
         return [("p1", a["x"], a["y"]), ("p2", a["x2"], a["y2"])]
+    if t in ("polyline", "polygon") and a.get("pts"):
+        return [(f"v{i}", q[0], q[1]) for i, q in enumerate(a["pts"])]
+    if t == "pen" and a.get("pts"):                  # Freihand: an den Ecken skalieren
+        x0, y0, x1, y1 = rep.pts_bbox(a["pts"])
+        return [("tl", x0, y0), ("tr", x1, y0), ("bl", x0, y1), ("br", x1, y1)]
     if t in rep.RECT_TYPES:
         x0, y0, x1, y1 = min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
         return [("tl", x0, y0), ("tr", x1, y0), ("bl", x0, y1), ("br", x1, y1)]
     b = rep.ann_bounds(shape, a)
     if t == "number":
         return [("size", b[2], a["y"])]
+    if t == "text" and a.get("w"):                   # Textfeld: rechts die Breite, unten rechts die Groesse
+        return [("tw", a["x"] + a["w"], (b[1] + b[3]) / 2), ("size", b[2], b[3])]
     return [("size", b[2], b[3])]
 
 
@@ -123,6 +130,24 @@ def ann_hit(shape, a, ix, iy, m):
         return False
     if t in ("arrow", "line"):
         return _dist_seg(ix, iy, a["x"], a["y"], a["x2"], a["y2"]) <= m + rep.ann_line_w(shape, a["size"])
+    if t in rep.PTS_TYPES and a.get("pts"):
+        pl = list(a["pts"]) + ([a["pts"][0]] if t == "polygon" else [])
+        mm = m + rep.ann_line_w(shape, a["size"])
+        if len(pl) == 1:
+            return math.hypot(ix - pl[0][0], iy - pl[0][1]) <= mm
+        if any(_dist_seg(ix, iy, *pl[i], *pl[i + 1]) <= mm for i in range(len(pl) - 1)):
+            return True
+        if t == "polygon" and len(pl) > 3:           # Polygon: auch innen anklickbar
+            return cv2.pointPolygonTest(np.float32(a["pts"]), (float(ix), float(iy)), False) >= 0
+        return False
+    if t == "image":
+        return min(a["x"], a["x2"]) <= ix <= max(a["x"], a["x2"]) and min(a["y"], a["y2"]) <= iy <= max(a["y"], a["y2"])
+    if t == "ellipse":
+        cx, cy = (a["x"] + a["x2"]) / 2, (a["y"] + a["y2"]) / 2
+        rx, ry = max(1.0, abs(a["x2"] - a["x"]) / 2), max(1.0, abs(a["y2"] - a["y"]) / 2)
+        d = math.hypot((ix - cx) / rx, (iy - cy) / ry)
+        mm = m + rep.ann_line_w(shape, a["size"])
+        return abs(d - 1) * min(rx, ry) <= mm
     if t in rep.RECT_TYPES:
         x0, y0, x1, y1 = min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
         if t == "cloud":                          # Wolke ragt ueber das Rechteck hinaus
@@ -142,6 +167,24 @@ def apply_handle(shape, a, name, px, py):
         a["pts"][int(name[1:])] = [px, py]
         a["x"], a["y"] = a["pts"][0]
         a["x2"], a["y2"] = a["pts"][-1]
+        return
+    if name.startswith("v") and a.get("pts"):
+        a["pts"][int(name[1:])] = [px, py]
+        a["x"], a["y"], a["x2"], a["y2"] = rep.pts_bbox(a["pts"])
+        return
+    if t == "pen" and a.get("pts") and name in ("tl", "tr", "bl", "br"):
+        x0, y0, x1, y1 = rep.pts_bbox(a["pts"])
+        fx, fy = (x1 if "l" in name else x0), (y1 if "t" in name else y0)   # fester Punkt: gegenueberliegende Ecke
+        ox_, oy_ = (x0 if "l" in name else x1), (y0 if "t" in name else y1)
+        sx = (px - fx) / (ox_ - fx) if abs(ox_ - fx) > 1e-6 else 1.0
+        sy = (py - fy) / (oy_ - fy) if abs(oy_ - fy) > 1e-6 else 1.0
+        if abs(sx) < 0.02 or abs(sy) < 0.02:
+            return
+        a["pts"] = [[fx + (q[0] - fx) * sx, fy + (q[1] - fy) * sy] for q in a["pts"]]
+        a["x"], a["y"], a["x2"], a["y2"] = rep.pts_bbox(a["pts"])
+        return
+    if name == "tw":
+        a["w"] = max(4 * rep.ann_unit(shape), px - a["x"])
         return
     if name == "p1":
         a["x"], a["y"] = px, py
@@ -177,11 +220,15 @@ class Canvas(QWidget):
     regionClicked = Signal(int)
     annCreated = Signal(dict)
     placeRequested = Signal(str, float, float)
+    textBoxDrawn = Signal(float, float, float)       # Textfeld aufgezogen: x, y, Breite (Bildpixel)
     annSelected = Signal(int)
     annMultiSelected = Signal(list)              # mehrere Markierungen gewaehlt (Strg/Umschalt)
     selCopy = Signal(int, int, int, int)         # Auswahl kopieren: Rechteck aufgezogen
     selMove = Signal(int, int, int, int)         # Ausschnitt verschieben: Rechteck aufgezogen
     floatDone = Signal(bool)                     # verschobenen Ausschnitt uebernehmen (True) / verwerfen
+    areaChanged = Signal()                       # Bereichsauswahl geaendert (neu, erweitert, aufgehoben)
+    areaMoveStarted = Signal()                   # Ziehen in der Bereichsauswahl beginnt (Zeichnung mitnehmen?)
+    areaMoved = Signal(int, int)                 # Bereichsauswahl um dx, dy verschoben (beim Loslassen)
     annChanged = Signal()
     annEdit = Signal(int)
     annContext = Signal(int, object)
@@ -203,10 +250,20 @@ class Canvas(QWidget):
         self.regs = []
         self.anns = []
         self.visible_types = None
+        self.visible_nrs = None                      # nur diese Nummern zeigen (Filter Masse/offen) oder None
         self.selected = None
         self.ann_selected = None
         self.ann_multi = set()                       # Mehrfachauswahl (mit ann_selected), leer = Einzelauswahl
         self.float = None                            # schwebender Ausschnitt beim Verschieben (dict)
+        self.sel_rects = []                          # Bereichsauswahl: Rechtecke (x0, y0, x1, y1) in Bildpixeln
+        self.layer_on = {k: True for k, _ in rep.LAYERS}      # Ebenen: sichtbar
+        self.layer_lock = {k: False for k, _ in rep.LAYERS}   # Ebenen: gesperrt (nicht waehlbar/aenderbar)
+        self.editing = None                          # Index des Texts, der gerade im Bild bearbeitet wird
+        self.inline_editor = None                    # Eingabefeld dafuer (wird bei Zoom/Verschieben mitgefuehrt)
+        self.poly = []                               # Punkte des Linienzugs/Polygons, das gerade entsteht
+        self._pen = None                             # Punkte der Freihandlinie, die gerade entsteht
+        self._poly_hover = None
+        self._qimg = {}                              # eingefuegte Bilder als QImage (nach PNG-Inhalt)
         self.zones = []
         self.mm_px = 25.4 / 200
         self.mode = "D"
@@ -521,7 +578,7 @@ class Canvas(QWidget):
         else:
             p.save()
             p.setTransform(self._xform())
-            self._paint_image(p, self.width(), self.height())
+            self._paint_base(p, self.width(), self.height())
             self._paint_float(p)
             self._paint_overlays(p, w, h)
             p.restore()
@@ -534,6 +591,8 @@ class Canvas(QWidget):
             mx, my = self._mouse.x(), self._mouse.y()
             p.drawLine(QPointF(0, my), QPointF(QWidget.width(self), my))
             p.drawLine(QPointF(mx, 0), QPointF(mx, QWidget.height(self)))
+        if self.inline_editor is not None:            # Texteingabe im Bild folgt Zoom und Verschieben
+            self.inline_editor.place()
         if self.loupe and self._mouse is not None and self.tool != "zone":
             self._paint_loupe(p)
         p.end()
@@ -566,7 +625,7 @@ class Canvas(QWidget):
             self.mode = m
             self._painting_side = m
             try:
-                self._paint_image(p, half, H)
+                self._paint_base(p, half, H)
                 self._paint_overlays(p, w, h)
             finally:
                 self.mode = "Y"
@@ -710,6 +769,21 @@ class Canvas(QWidget):
         p.drawLine(QPointF(cx, cy - 7), QPointF(cx, cy + 7))
         p.drawText(int(cx - D / 2 + 14), int(cy + D / 2 - 10), f"{Z:g}\u00d7")
 
+    def _paint_base(self, p, W, H):
+        """Zeichnung - oder, wenn ihre Ebene ausgeblendet ist, leeres Papier."""
+        if self.layer_on.get("zeichnung", True):
+            self._paint_image(p, W, H)
+            return
+        h, w = self.shape
+        a, b = self.to_wid(0, 0), self.to_wid(w, h)
+        p.fillRect(QRectF(QPointF(*a), QPointF(*b)).normalized(), QColor(26, 24, 22) if self.invert else QColor("white"))
+
+    def ann_visible(self, a):
+        return self.layer_on.get(rep.ann_layer(a), True)
+
+    def ann_editable(self, a):
+        return self.ann_visible(a) and not self.layer_lock.get(rep.ann_layer(a), False)
+
     def _paint_image(self, p, W, H):
         """Zeichnet den sichtbaren Bildausschnitt in Geraete-Pixeln (scharf auf Retina/HiDPI)."""
         h, w = self.shape
@@ -812,10 +886,11 @@ class Canvas(QWidget):
                 box = QRectF(x, y, 20000, 20000)
                 fl = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
                 p.setPen(QColor("white"))
+                txt = "\n".join(rep.ann_lines(a, rep.ann_text_h(shape, a["size"])))
                 for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    p.drawText(box.translated(dx, dy), fl, a["text"])
+                    p.drawText(box.translated(dx, dy), fl, txt)
                 p.setPen(col)
-                p.drawText(box, fl, a["text"])
+                p.drawText(box, fl, txt)
         elif t == "approval":
             b = rep.ann_bounds(shape, a)
             a0, b0 = self.to_wid(b[0], b[1])
@@ -906,6 +981,27 @@ class Canvas(QWidget):
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             p.setPen(pen)
             p.drawLine(QPointF(x, y), QPointF(x2, y2))
+        elif t == "ellipse":
+            x2, y2 = self.to_wid(a["x2"], a["y2"])
+            p.setPen(QPen(col, lw))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
+        elif t in rep.PTS_TYPES and a.get("pts"):
+            pen = QPen(col, lw)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in a["pts"]])
+            if t == "polygon":
+                p.drawPolygon(pg)
+            elif len(a["pts"]) == 1:
+                p.drawPoint(pg[0])
+            else:
+                p.drawPolyline(pg)
+        elif t == "image":
+            x2, y2 = self.to_wid(a["x2"], a["y2"])
+            p.drawImage(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), self._ann_qimage(a))
         elif t == "arrow":
             x2, y2 = self.to_wid(a["x2"], a["y2"])
             ang = math.atan2(y2 - y, x2 - x)
@@ -980,18 +1076,20 @@ class Canvas(QWidget):
                 p.drawRect(r)
         if not self.show_overlays:
             return
-        for x, y, zw, zh in self.zones:
+        for x, y, zw, zh in (self.zones if self.layer_on.get("zonen", True) else []):
             a = self.to_wid(x, y)
             r = QRectF(a[0], a[1], zw * s, zh * s)
             p.fillRect(r, QColor(250, 204, 21, 70))
             p.setPen(QPen(QColor("#ca8a04"), 1.5, Qt.PenStyle.DashLine))
             p.drawRect(r)
-        if self.regs and self.show_regs:
+        if self.regs and self.show_regs and self.layer_on.get("aenderungen", True):
             font = QFont(UI_FONT, 8)
             font.setBold(True)
             p.setFont(font)
             for r in self.regs:
                 if self.visible_types is not None and r["typ"] not in self.visible_types:
+                    continue
+                if self.visible_nrs is not None and r["nr"] not in self.visible_nrs:
                     continue
                 a = self.to_wid(r["x"] - 10, r["y"] - 10)
                 rw, rh = (r["w"] + 20) * s, (r["h"] + 20) * s
@@ -1018,13 +1116,35 @@ class Canvas(QWidget):
                 p.drawText(lb, Qt.AlignmentFlag.AlignCenter, label)
         chosen = self.selected_anns()
         for i, a in enumerate(self.anns):
-            self._paint_ann(p, a, i in chosen)
+            if i != self.editing and self.ann_visible(a):   # nicht: gerade direkt bearbeiteter Text, aus. Ebene
+                self._paint_ann(p, a, i in chosen)
         if self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
             self._paint_ann(p, dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
                                     color=self.ann_color, size=self.ann_size))
+        if self._pen:
+            self._paint_ann(p, dict(type="pen", pts=self._pen, x=0, y=0, x2=0, y2=0, text="", nr=0,
+                                    color=self.ann_color, size=self.ann_size))
+        if self.poly:
+            pts = self.poly + ([self._poly_hover] if self._poly_hover else [])
+            self._paint_ann(p, dict(type="polyline" if len(pts) < 3 else self.tool, pts=pts, x=0, y=0, x2=0, y2=0,
+                                    text="", nr=0, color=self.ann_color, size=self.ann_size))
+            p.setPen(QPen(QColor(ACCENT), 1.4))
+            p.setBrush(QColor("white"))
+            for q in self.poly:
+                p.drawEllipse(QPointF(*self.to_wid(*q)), 3.5, 3.5)
         if self.measure or (self.tool == "measure" and self.snap_hint):
             self._paint_measure(p)
+        if self.sel_rects:                             # Bereichsauswahl: gestrichelt, leicht getoent
+            for x0, y0, x1, y1 in self.sel_rects:
+                a, b = self.to_wid(x0, y0), self.to_wid(x1, y1)
+                rr = QRectF(QPointF(*a), QPointF(*b)).normalized()
+                p.setBrush(QColor(37, 99, 235, 28))
+                p.setPen(QPen(QColor("white"), 1.6))
+                p.drawRect(rr)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(QPen(QColor(ACCENT), 1.6, Qt.PenStyle.DashLine))
+                p.drawRect(rr)
         if self._rubber:
             (ax, ay), (bx, by) = self._rubber
             a, b = self.to_wid(ax, ay), self.to_wid(bx, by)
@@ -1125,10 +1245,49 @@ class Canvas(QWidget):
                 return name
         return None
 
+    def _ann_qimage(self, a):
+        key = a.get("png", "")
+        img = self._qimg.get(key)
+        if img is None:
+            arr = np.ascontiguousarray(rep.ann_image(a))
+            img = QImage(arr.data, arr.shape[1], arr.shape[0], arr.strides[0], QImage.Format.Format_ARGB32).copy()
+            if len(self._qimg) > 64:
+                self._qimg.clear()
+            self._qimg[key] = img
+        return img
+
+    def finish_poly(self):
+        """Linienzug/Polygon abschliessen (Doppelklick, Enter, Rechtsklick)."""
+        pts = []
+        for q in self.poly:                          # doppelte Punkte (Doppelklick) entfernen
+            if not pts or math.hypot(q[0] - pts[-1][0], q[1] - pts[-1][1]) > 2 / self.scale:
+                pts.append([float(q[0]), float(q[1])])
+        self.poly, self._poly_hover = [], None
+        if len(pts) >= (3 if self.tool == "polygon" else 2):
+            x0, y0, x1, y1 = rep.pts_bbox(pts)
+            self.annCreated.emit(dict(type=self.tool, pts=pts, x=x0, y=y0, x2=x1, y2=y1, text="", nr=0,
+                                      color=self.ann_color, size=self.ann_size))
+        self.update()
+
+    def _finish_pen(self):
+        pts = self._pen or []
+        self._pen = None
+        if len(pts) >= 2:                            # glaetten: Punkte auf eine Abweichung < ~0,6 Bildschirmpixel
+            arr = np.float32(pts).reshape(-1, 1, 2)
+            arr = cv2.approxPolyDP(arr, 0.6 / self.scale, False).reshape(-1, 2)
+            pts = [[float(q[0]), float(q[1])] for q in arr]
+        if pts:
+            x0, y0, x1, y1 = rep.pts_bbox(pts)
+            if len(pts) == 1:
+                pts = [pts[0], [pts[0][0] + 0.01, pts[0][1]]]
+            self.annCreated.emit(dict(type="pen", pts=pts, x=x0, y=y0, x2=x1, y2=y1, text="", nr=0,
+                                      color=self.ann_color, size=self.ann_size))
+        self.update()
+
     def hit_ann(self, ix, iy):
         m = 7 / self.scale
         for i in reversed(range(len(self.anns))):
-            if ann_hit(self.shape, self.anns[i], ix, iy, m):
+            if self.ann_editable(self.anns[i]) and ann_hit(self.shape, self.anns[i], ix, iy, m):
                 return i
         return None
 
@@ -1150,6 +1309,9 @@ class Canvas(QWidget):
         if e.button() == Qt.MouseButton.RightButton:
             if self.tool == "measure" and self.measure:
                 self.finish_measure()
+                return
+            if self.tool in ("polyline", "polygon") and self.poly:
+                self.finish_poly()
                 return
             self._drag = ("rzoom", e.position(), (ix, iy), e.globalPosition().toPoint())
             return
@@ -1197,15 +1359,34 @@ class Canvas(QWidget):
             if need and len(self.measure) >= need:
                 self.finish_measure()
             self.update()
+        elif left and self.tool == "area":
+            add = bool(e.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+                                         | Qt.KeyboardModifier.MetaModifier))
+            if not add and self.in_selection(ix, iy):     # in die Auswahl klicken und ziehen = verschieben
+                self.areaMoveStarted.emit()
+                idx = sorted(self.selected_anns())
+                self._drag = ("areamove", (ix, iy), {k: copy.deepcopy(self.anns[k]) for k in idx},
+                              list(self.sel_rects))
+            else:
+                self._rubber = ((ix, iy), (ix, iy))
+                self._drag = ("area", add)
         elif left and self.tool in ("zone", "crop", "region", "zoom", "copysel", "cutmove"):
             self._rubber = ((ix, iy), (ix, iy))
             self._drag = ("rubber",)
-        elif left and self.tool in ("text", "number", "approval"):
+        elif left and self.tool == "text":                 # Klick = Text an der Stelle, Ziehen = Textfeld
+            self._rubber = ((ix, iy), (ix, iy))
+            self._drag = ("textbox",)
+        elif left and self.tool in ("number", "approval"):
             self.placeRequested.emit(self.tool, ix, iy)
         elif left and self.tool == "align":
             sx, sy, _k = self.snap_point(ix, iy)
             self.alignPoint.emit(self._side if self.mode == "Y" else "A", sx, sy)
-        elif left and self.tool in ("rect", "arrow", "cloud", "highlight"):
+        elif left and self.tool == "pen":
+            self._pen = [[ix, iy]]
+            self._drag = ("pen",)
+        elif left and self.tool in ("polyline", "polygon"):
+            self.poly.append([ix, iy])
+        elif left and self.tool in ("rect", "arrow", "cloud", "highlight", "ellipse", "line"):
             self._ann_prev = ((ix, iy), (ix, iy))
             self._drag = ("ann",)
         self.update()
@@ -1234,8 +1415,13 @@ class Canvas(QWidget):
                     self._hit_handle(ix, iy) or self.hit_ann(ix, iy) is not None):
                 cur = Qt.CursorShape.SizeAllCursor
             self.setCursor(cur)
+        elif self.tool == "area" and self.res is not None and self.in_selection(ix, iy):
+            self.setCursor(Qt.CursorShape.SizeAllCursor)
         else:
             self.setCursor(Qt.CursorShape.CrossCursor)
+        if self._drag is None and self.poly:              # Linienzug: Vorschau bis zum Mauszeiger
+            self._poly_hover = [ix, iy]
+            self.update()
         if self._drag is None:
             if self.tool == "measure" and self.res is not None:
                 sx, sy, k = self.snap_point(ix, iy)
@@ -1259,7 +1445,19 @@ class Canvas(QWidget):
             self.oy = self._drag[3] - d.y() / self.scale
         elif kind == "split":
             self.split = float(np.clip(pos.x() / self.width(), 0.0, 1.0))
-        elif kind in ("rubber", "selbox"):
+        elif kind == "areamove":
+            _, (sx, sy), orig, rects0 = self._drag
+            dx, dy = round(ix - sx), round(iy - sy)
+            for k, o in orig.items():
+                if k < len(self.anns):
+                    a = self.anns[k]
+                    a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
+                    if o.get("pts"):
+                        a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
+            self.sel_rects = [(r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy) for r in rects0]
+            if self.float:
+                self.float["dx"], self.float["dy"] = dx, dy
+        elif kind in ("rubber", "selbox", "textbox", "area"):
             self._rubber = (self._rubber[0], (ix, iy))
             (ax, ay), (bx, by) = self._rubber
             rw, rh = abs(bx - ax), abs(by - ay)
@@ -1267,6 +1465,10 @@ class Canvas(QWidget):
                 tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
         elif kind == "ann":
             self._ann_prev = (self._ann_prev[0], (ix, iy))
+        elif kind == "pen" and self._pen is not None:
+            q = self._pen[-1]
+            if math.hypot(ix - q[0], iy - q[1]) >= 1.5 / self.scale:
+                self._pen.append([ix, iy])
         elif kind == "float" and self.float:
             _, (sx, sy), dx0, dy0 = self._drag
             self.float["dx"], self.float["dy"] = round(dx0 + ix - sx), round(dy0 + iy - sy)
@@ -1311,6 +1513,33 @@ class Canvas(QWidget):
                     self.annContext.emit(i, self._drag[3])
                 else:
                     self.contextRequested.emit(self._drag[3])
+        elif kind == "area":
+            r = self._rubber
+            self._rubber = None
+            self.window().statusBar().clearMessage()
+            if r and abs(r[1][0] - r[0][0]) * self.scale > 4 and abs(r[1][1] - r[0][1]) * self.scale > 4:
+                h, w = self.shape
+                x0, x1 = sorted((r[0][0], r[1][0]))
+                y0, y1 = sorted((r[0][1], r[1][1]))
+                rect = (max(0, int(x0)), max(0, int(y0)), min(w, int(round(x1))), min(h, int(round(y1))))
+                self.sel_rects = (self.sel_rects if self._drag[1] else []) + [rect]
+            elif not self._drag[1]:                    # Klick ins Leere: Auswahl aufheben
+                self.sel_rects = []
+            self.areaChanged.emit()
+        elif kind == "areamove":
+            _, (sx, sy), _o, rects0 = self._drag
+            dx = self.sel_rects[0][0] - rects0[0][0] if self.sel_rects and rects0 else 0
+            dy = self.sel_rects[0][1] - rects0[0][1] if self.sel_rects and rects0 else 0
+            self._drag = None
+            self.areaMoved.emit(dx, dy)
+        elif kind == "textbox" and self._rubber:
+            (ax, ay), (bx, by) = self._rubber
+            self._rubber = None
+            self.window().statusBar().clearMessage()
+            if abs(bx - ax) * self.scale > 20:
+                self.textBoxDrawn.emit(min(ax, bx), min(ay, by), abs(bx - ax))
+            else:
+                self.placeRequested.emit("text", ax, ay)
         elif kind == "selbox" and self._rubber:
             (ax, ay), (bx, by) = self._rubber
             self._rubber = None
@@ -1347,6 +1576,8 @@ class Canvas(QWidget):
                 color = "#facc15" if self.tool == "highlight" and self.ann_color == "#e11d48" else self.ann_color
                 self.annCreated.emit(dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
                                           color=color, size=self.ann_size))
+        elif kind == "pen":
+            self._finish_pen()
         elif kind in ("move", "handle"):
             if self._moved:
                 self.annChanged.emit()
@@ -1367,10 +1598,14 @@ class Canvas(QWidget):
             return
         hit = [r for r in self.regs if r["x"] - 10 <= ix <= r["x"] + r["w"] + 10
                and r["y"] - 10 <= iy <= r["y"] + r["h"] + 10
-               and (self.visible_types is None or r["typ"] in self.visible_types)]
+               and (self.visible_types is None or r["typ"] in self.visible_types)
+               and (self.visible_nrs is None or r["nr"] in self.visible_nrs)]
         if hit:
             hit.sort(key=lambda r: r["w"] * r["h"])
             self.regionClicked.emit(hit[0]["nr"])
+
+    def in_selection(self, ix, iy):
+        return any(r[0] <= ix <= r[2] and r[1] <= iy <= r[3] for r in self.sel_rects)
 
     def selected_anns(self):
         """Indizes aller gewaehlten Markierungen (Einzel- oder Mehrfachauswahl)."""
@@ -1399,6 +1634,9 @@ class Canvas(QWidget):
         if self.tool == "measure" and self.measure:
             self.finish_measure()
             return
+        if self.tool in ("polyline", "polygon") and self.poly:
+            self.finish_poly()
+            return
         if self.tool != "hand" or self.res is None:
             return
         i = self.hit_ann(*self.to_img(self._vp(e.position()))) if self.show_overlays else None
@@ -1419,7 +1657,11 @@ class Canvas(QWidget):
             self.float["dy"] += {Qt.Key.Key_Up: -d, Qt.Key.Key_Down: d}.get(k, 0)
             self.update()
             return
+        if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.poly:
+            self.finish_poly()
+            return
         if k == Qt.Key.Key_Escape:
+            self.poly, self._poly_hover, self._pen = [], None, None
             self.measure = []
             self._rubber = None
             self._ann_prev = None

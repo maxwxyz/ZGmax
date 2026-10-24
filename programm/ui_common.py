@@ -10,9 +10,9 @@ import sys
 
 import cv2
 import numpy as np
-from PySide6.QtCore import QByteArray, QEvent, QItemSelectionModel, QMimeData, QObject, QPointF, QRectF, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
+from PySide6.QtCore import QByteArray, QEvent, QItemSelectionModel, QMimeData, QObject, QPointF, QRect, QRectF, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QGuiApplication, QIcon,
-                           QImage, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap, QPolygonF, QShortcut,
+                           QImage, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QTextCursor,
                            QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QButtonGroup, QCheckBox,
                                QColorDialog, QComboBox, QDialog, QDialogButtonBox,
@@ -52,6 +52,13 @@ TOOL_HINTS = {
     "arrow": tr("Vom Pfeilanfang zur Spitze ziehen."),
     "approval": tr("Ins Bild klicken, Status und Name w\u00e4hlen."),
     "copysel": tr("Bereich aufziehen, der kopiert werden soll."),
+    "area": tr("Bereich aufziehen; mit Umschalt oder Strg weitere dazu. In die Auswahl klicken und ziehen = "
+               "verschieben. Strg+C kopieren, Strg+X ausschneiden, Entf löschen, Esc aufheben."),
+    "ellipse": tr("Ellipse aufziehen (Kreis: ungefähr quadratisch ziehen)."),
+    "line": tr("Vom Anfang zum Ende ziehen."),
+    "polyline": tr("Punkte anklicken. Doppelklick, Enter oder Rechtsklick beendet, Esc bricht ab."),
+    "polygon": tr("Eckpunkte anklicken. Doppelklick, Enter oder Rechtsklick schließt das Polygon, Esc bricht ab."),
+    "pen": tr("Mit gedrückter Maustaste zeichnen. Jede Linie bleibt einzeln verschieb- und änderbar."),
     "cutmove": tr("Bereich aufziehen, dann an die neue Stelle ziehen (Pfeiltasten = 1 px, mit Umschalt 10 px). "
                   "Enter = übernehmen, Esc = abbrechen."),
     "zone": tr("Rahmen aufziehen. Dieser Bereich wird beim n\u00e4chsten Vergleich nicht verglichen."),

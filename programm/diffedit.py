@@ -40,7 +40,33 @@ def line_mask(ink_patch, grow=1):
     return m
 
 
-def move_region(images, ink, rect, dx, dy, only_lines=False):
+def region_mask(rects, bbox):
+    """Vereinigung mehrerer Rechtecke als Maske im umgebenden Rechteck bbox."""
+    x0, y0, x1, y1 = bbox
+    m = np.zeros((y1 - y0, x1 - x0), bool)
+    for a, b, c, d in rects:
+        m[max(0, b - y0):max(0, d - y0), max(0, a - x0):max(0, c - x0)] = True
+    return m
+
+
+def bbox_of(rects):
+    return min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects)
+
+
+def fill_region(images, ink, rect, region=None, only_lines=False):
+    """Bereich leeren: Linien (oder alles) im Rechteck/in der Maske bekommen die Papierfarbe."""
+    x0, y0, x1, y1 = clip_rect(rect, ink.shape)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    mask = line_mask(ink[y0:y1, x0:x1], 2) if only_lines else np.ones((y1 - y0, x1 - x0), bool)
+    if region is not None:
+        mask &= region[:y1 - y0, :x1 - x0]
+    for img in images:
+        img[y0:y1, x0:x1][mask] = paper_color(img, ink, (x0, y0, x1, y1))
+    return x0, y0, x1, y1
+
+
+def move_region(images, ink, rect, dx, dy, only_lines=False, region=None):
     """Verschiebt den Ausschnitt rect um (dx, dy) in allen Bildern (gleiche Groesse, z. B. Grau und Farbe).
     only_lines: nur die Linien wandern, der Hintergrund am Ziel bleibt. Die frei gewordene Flaeche bekommt die
     Papierfarbe. Rueckgabe: veraendertes Rechteck (Vereinigung von Quelle und Ziel) oder None."""
@@ -53,6 +79,8 @@ def move_region(images, ink, rect, dx, dy, only_lines=False):
     if tx1 <= tx0 or ty1 <= ty0:                    # ganz aus dem Blatt geschoben: nur entfernen
         tx0 = ty0 = tx1 = ty1 = 0
     mask = line_mask(ink[y0:y1, x0:x1], 2) if only_lines else np.ones((y1 - y0, x1 - x0), bool)
+    if region is not None:                          # mehrere Rechtecke: nur deren Inhalt
+        mask &= region[:y1 - y0, :x1 - x0]
     for img in images:
         piece = img[y0:y1, x0:x1].copy()
         bg = paper_color(img, ink, (x0, y0, x1, y1))

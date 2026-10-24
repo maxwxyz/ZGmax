@@ -134,6 +134,18 @@ def to_annotations(items, k, size=2.0, map_point=None):
             (ax, ay), (bx, by) = P(r[0], r[1]), P(r[2], r[3])
             box = (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))
         kind = it["kind"]
+        pts = [P(*p) for p in it.get("pts") or []]
+        if kind == "ellipse" and box is not None and not it.get("cloudy"):
+            anns.append(dict(base, type="ellipse", x=box[0], y=box[1], x2=box[2], y2=box[3]))
+            continue
+        if kind in ("polygon", "polyline", "ink") and not it.get("cloudy") and len(pts) >= 2:
+            if kind == "ink":                            # Freihand: Punkte ausduennen
+                step = max(1, len(pts) // 200)
+                pts = pts[::step] + ([pts[-1]] if (len(pts) - 1) % step else [])
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            anns.append(dict(base, type={"ink": "pen"}.get(kind, kind), pts=[list(p) for p in pts],
+                             x=min(xs), y=min(ys), x2=max(xs), y2=max(ys)))
+            continue
         if kind in ("rect", "ellipse", "polygon", "highlight") or (kind == "polyline" and it.get("cloudy")):
             if kind in ("polygon", "polyline") and it.get("pts"):
                 ps = [P(*p) for p in it["pts"]]
@@ -200,6 +212,14 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
             r2 = f'rect="{xl:.2f},{ytop - hpt:.2f},{xl + wpt:.2f},{ytop:.2f}"'
             rows.append(f'<freetext {common} {r2} defaultstyle="font: Helvetica 10pt; color:{col}">'
                         f"<contents>{escape(txt)}</contents></freetext>")
+        elif t == "ellipse":
+            rows.append(f"<circle {common} {rect}>{body}</circle>")
+        elif t in ("pen", "polyline", "polygon") and a.get("pts"):
+            verts = ";".join(f"{X(p[0])},{Y(p[1])}" for p in a["pts"])
+            if t == "pen":
+                rows.append(f"<ink {common} {rect}><inklist><gesture>{verts}</gesture></inklist>{body}</ink>")
+            else:
+                rows.append(f"<{t} {common} {rect}><vertices>{verts}</vertices>{body}</{t}>")
         elif t == "measure":
             pts = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
             verts = ";".join(f"{X(p[0])},{Y(p[1])}" for p in pts)

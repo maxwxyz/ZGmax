@@ -201,6 +201,45 @@ def _draw(p, name):
     elif name == "sidebyside":
         p.drawRoundedRect(r(3, 5, 8, 14), 1.5, 1.5)
         p.drawRoundedRect(r(13, 5, 8, 14), 1.5, 1.5)
+    elif name == "ellipse":
+        p.drawEllipse(r(3, 6, 18, 12))
+    elif name == "line":
+        p.drawLine(QPointF(5, 19), QPointF(19, 5))
+    elif name in ("polyline", "polygon"):
+        pts = [QPointF(4, 18), QPointF(8, 6), QPointF(15, 12), QPointF(20, 5)]
+        if name == "polygon":
+            pts = [QPointF(4, 17), QPointF(7, 6), QPointF(15, 9), QPointF(20, 18)]
+            pts.append(pts[0])
+        for i in range(len(pts) - 1):
+            p.drawLine(pts[i], pts[i + 1])
+    elif name == "pen":
+        path = QPainterPath()
+        path.moveTo(3, 18)
+        path.cubicTo(7, 10, 10, 22, 14, 14)
+        path.cubicTo(16, 10, 18, 12, 21, 6)
+        p.drawPath(path)
+    elif name == "shapes":
+        p.drawRect(r(3, 3, 10, 9))
+        p.drawEllipse(r(10, 10, 11, 11))
+    elif name == "area":
+        pen = p.pen()
+        dash = QPen(pen)
+        dash.setDashPattern([2, 2])
+        p.setPen(dash)
+        p.drawRect(r(3, 4, 18, 14))
+        p.setPen(pen)
+        p.drawLine(QPointF(14, 13), QPointF(21, 20))
+        p.drawLine(QPointF(14, 13), QPointF(14, 19))
+        p.drawLine(QPointF(14, 13), QPointF(20, 13))
+    elif name == "layers":
+        for dy in (0, 5, 10):
+            path = QPainterPath()
+            path.moveTo(12, 3 + dy)
+            path.lineTo(21, 7 + dy)
+            path.lineTo(12, 11 + dy)
+            path.lineTo(3, 7 + dy)
+            path.closeSubpath()
+            p.drawPath(path)
     elif name == "magic":
         p.drawLine(QPointF(4, 20), QPointF(15, 9))
         for (x, y) in ((17, 4), (20, 8), (13, 3)):
