@@ -70,11 +70,15 @@ def test_project_roundtrip(app, win, pair, tmp_path):
     assert win.project_save(True)
     data = json.load(open(path))
     assert data["format"] == "zgmax" and data["annotations"][0]["text"] == "Hallo"
-    win.anns.clear()
-    win.project_open(path)
-    wait(app, lambda: not win.running)
-    assert win.anns and win.anns[0]["text"] == "Hallo"
-    assert win.zones == [(10, 10, 50, 50)]
+    import drawing_viewer as vw
+    win.project_open(path)                                   # schon etwas offen: Projekt im eigenen Fenster
+    other = vw.WINDOWS[-1]
+    assert other is not win
+    wait(app, lambda: not other.running)
+    assert other.anns and other.anns[0]["text"] == "Hallo"
+    assert other.zones == [(10, 10, 50, 50)]
+    other._dirty = False
+    other.close()
 
 
 def test_theme_switch(app, win):
@@ -455,13 +459,11 @@ def test_layers_and_svg_pdf_export(app, win, pair, tmp_path):
     with pymupdf.open(out) as d:
         names = {v["name"] for v in d.get_ocgs().values()}
     assert {"Zeichnung", "Änderungen", "Markierungen", "Maße"} <= names
-    tbl = win.tbl_layers                                     # Masse ausblenden: nicht mehr im Bild/Export
-    row = [k for k, _ in __import__("diffreport").LAYERS].index("masse")
-    tbl.item(row, 0).setCheckState(Qt.CheckState.Unchecked)
+    win.layer_checks["masse"].setChecked(False)              # Masse ausblenden: nicht mehr im Bild/Export
     assert not win.canvas.layer_on["masse"]
     assert [a["type"] for a in win._export_anns()] == ["rect"]
     assert win.canvas.hit_ann(300, 400) is None              # ausgeblendet: nicht anklickbar
-    tbl.item([k for k, _ in __import__("diffreport").LAYERS].index("markierungen"), 1).setCheckState(Qt.CheckState.Checked)
+    win.layer_locks["markierungen"].setChecked(True)
     assert win.canvas.hit_ann(100, 150) is None              # gesperrt: nicht anklickbar
     svg = str(tmp_path / "a.svg")
     win.export_svg(path=svg)
@@ -538,6 +540,176 @@ def test_searchable_pdf_and_vectorize(app, win, tmp_path, monkeypatch):
     assert ezdxf.readfile(str(tmp_path / "v.dxf")).modelspace().query("LWPOLYLINE")
     with pymupdf.open(str(tmp_path / "v.pdf")) as d:
         assert len(d[0].get_drawings()) > 0
+
+
+def test_zones_select_move_delete_and_align_off(app, win, pair):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    compare(app, win, *pair)
+    win._add_zone(100, 100, 200, 150)
+    c = win.canvas
+    assert c.zones and c.hit_zone(150, 150) == 0
+    c.zone_sel = None
+    c._drag = None
+    c.zone_sel = 0                                           # ziehen wie mit der Maus
+    c._drag = ("zmove", (150, 150), tuple(c.zones[0]))
+    c.zones[0] = (150, 120, 200, 150)
+    c._moved = 3
+    c.zoneSelected.emit(0)
+    c.zoneEdited.emit(0, *c.zones[0])
+    assert win.zones[0][:2] == (150 + win.origin[0], 120 + win.origin[1])
+    win._ann_delete()                                        # Entf loescht die gewaehlte Zone
+    assert win.zones == []
+    win.undo()
+    assert len(win.zones) == 1
+    win.chk_align.setChecked(False)                          # ohne Ausrichtung vergleichen
+    assert win.params().align == "off" and win.params().max_shift == 0
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert win.payload is not None
+    win.chk_align.setChecked(True)
+
+
+def test_redact_and_pixelate_burned_everywhere(app, win, tmp_path):
+    import cv2
+    import numpy as np
+    import pymupdf
+    img = np.full((600, 900), 255, np.uint8)
+    cv2.putText(img, "GEHEIM 4711", (80, 200), cv2.FONT_HERSHEY_SIMPLEX, 2.2, 0, 5)
+    cv2.rectangle(img, (500, 350), (800, 550), 0, 6)
+    p = tmp_path / "scan.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    win._ann_created(dict(type="redact", x=60, y=120, x2=560, y2=230, text="", nr=0, color="#000000", size=2.0))
+    win._ann_created(dict(type="pixelate", x=480, y=330, x2=820, y2=570, text="", nr=0, color="#000000", size=4.0))
+    win.grab()                                               # Anzeige (Mosaik) laeuft
+    win.act_overlays.setChecked(False)                       # auch mit ausgeblendeten Markierungen eingebrannt
+    out = win.export_render("A", False, legend=False)
+    assert out[150:200, 100:500].max() < 10                  # schwarz
+    win.anns[0]["fill"] = "paper"                             # mit Papierfarbe: weiss ausgemalt, Schrift weg
+    out2 = win.export_render("A", False, legend=False)
+    assert out2[150:200, 100:500].min() > 230
+    win.anns[0]["fill"] = "black"
+    gray = out[350:550, 500:800].min(axis=2)
+    assert gray.min() > 100                                  # Mosaik: keine schwarzen Linien mehr
+    win.act_overlays.setChecked(True)
+    pdf = str(tmp_path / "s.pdf")
+    win._save_dialog = lambda *a: pdf
+    win.export_searchable_pdf()
+    wait(app, lambda: not win.running, timeout=120)
+    with pymupdf.open(pdf) as d:
+        assert not d[0].search_for("GEHEIM")                 # kein Text unter der Schwaerzung
+    ann_pdf = str(tmp_path / "a.pdf")
+    win._save_dialog = lambda *a: ann_pdf
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    with pymupdf.open(ann_pdf) as d:
+        pix = d[0].get_pixmap(dpi=72)
+    win.start_area()                                         # Kopieren ohne Papier
+    win.canvas.sel_rects = [(450, 300, 850, 600)]
+    win._area_changed()
+    win.chk_float_lines.setChecked(True)
+    bgra, _ = win._area_bgra(True)
+    assert bgra[..., 3].min() == 0 and bgra[..., 3].max() == 255
+    QApplication.clipboard().clear()
+
+
+def test_documents_windows_settings_legend_measure(app, win, pair, tmp_path):
+    import diffreport as rep
+    import drawing_viewer as vw
+    compare(app, win, *pair)
+    n = len(vw.WINDOWS)
+    win.open_recent({"a": pair[0], "b": None, "project": None})     # anderes Dokument: eigenes Fenster
+    assert len(vw.WINDOWS) == n + 1 and win.path_b == pair[1]
+    other = vw.WINDOWS[-1]
+    wait(app, lambda: other.payload is not None and not other.running)
+    assert other.view_only and other.anns == []
+    other.close()
+    win.act_legend.setChecked(False)                                  # Legende: Ansicht und Bild
+    assert win.settings.value("legend") == "false"
+    w0 = win.export_render("D", False).shape[1]
+    win.act_legend.setChecked(True)
+    assert win.export_render("D", False).shape[1] > w0
+    win._ann_created(dict(type="measure", kind="dist", pts=[[100, 300], [700, 300]], x=100, y=300, x2=700, y2=300,
+                          text="", nr=0, color="#2563eb", size=2.0))
+    a = win.anns[-1]
+    cx, cy, ang, ax, ay = rep.measure_label(a, win.canvas.shape)
+    assert abs(ang) < 1e-6 and cy < 300 and abs(cx - 400) < 1        # mittig ueber der Masslinie
+    from ui_canvas import apply_handle
+    apply_handle(win.canvas.shape, a, "lbl", 450, 200)                # Wert verschieben
+    assert rep.measure_label(a, win.canvas.shape)[:2] == (450, 200)
+    win.cb_unit.setCurrentIndex(win.cb_unit.findData("cm"))
+    win.sp_dec.setValue(1)
+    assert rep.measure_text(a, win.canvas.mm_px).endswith(" cm") and "." in rep.measure_text(a, win.canvas.mm_px)
+    win.cb_unit.setCurrentIndex(win.cb_unit.findData("mm"))
+    win.sp_dec.setValue(2)
+    regs = win.payload["regs"] or []
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    for r in win.payload["regs"]:                                     # geaenderter Text: Filter in Liste und Bild
+        r["text_a"], r["text_b"] = ("25,4", "25,8") if r["nr"] == 1 else ("A", "A")
+    win.cb_filter.setCurrentIndex(win.cb_filter.findData("text"))
+    assert [r["nr"] for r in win._shown_regs()] == [1] and win.canvas.visible_nrs == {1}
+    win.cb_filter.setCurrentIndex(win.cb_filter.findData("changes"))
+    win.settings.setValue("keep_tool", "true")                       # alle Einstellungen zuruecksetzen
+    win.settings.setValue("recent", "[]")
+    from PySide6.QtWidgets import QMessageBox
+    QMessageBox.exec = lambda self: QMessageBox.StandardButton.Reset
+    try:
+        win.reset_all_settings()
+    finally:
+        del QMessageBox.exec
+    assert win.settings.value("keep_tool") is None and win.settings.value("recent") == "[]"
+
+
+def test_enabled_states_by_mode(app, win, pair):
+    assert not win.act_ann_save.isEnabled() and not win.act_delete.isEnabled()      # nichts offen
+    win._set_file("A", pair[0])
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.view_only and not win.act_export_pdf.isEnabled() and not win.act_crop.isEnabled()
+    assert win.act_adjust.isEnabled() and win.act_export_ocrpdf.isEnabled()
+    win.close_document()
+    compare(app, win, *pair)
+    assert win.act_export_pdf.isEnabled() and not win.act_adjust.isEnabled() and not win.act_export_ocrpdf.isEnabled()
+    assert not win.act_align_reset.isEnabled()
+    win.resize(1100, 800)                                            # schmal: Leiste oben nur Symbole
+    for _ in range(10):
+        app.processEvents()
+    win._fit_toolbar()
+    assert win._tb_text[0].toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
+
+
+def test_pdf_comments_imported_and_pdf_layers(app, win, tmp_path):
+    import pymupdf
+    p = str(tmp_path / "kommentiert.pdf")
+    d = pymupdf.open()
+    pg = d.new_page(width=595, height=420)
+    oc_mass = d.add_ocg("Bemaßung", on=True)
+    pg.draw_rect(pymupdf.Rect(50, 50, 300, 200), width=2)
+    pg.insert_text((60, 300), "100", fontsize=20, oc=oc_mass)
+    an = pg.add_rect_annot(pymupdf.Rect(320, 60, 500, 180))
+    an.set_colors(stroke=(1, 0, 0))
+    an.set_info(title="Prüfer", content="bitte ändern")
+    an.update()
+    d.save(p)
+    win._set_file("A", p)
+    wait(app, lambda: win.payload is not None and not win.running)
+    for _ in range(5):
+        app.processEvents()
+    assert [a["type"] for a in win.anns] == ["rect"] and win.anns[0]["author"] == "Prüfer"   # bearbeitbar
+    k = win.dpi_value() / 72
+    g = win.cache["g_" + p]
+    assert g[int(120 * k), int(320 * k) + 2] > 200            # Kommentar nicht ins Bild gezeichnet
+    assert win.pdf_layer_box.isVisibleTo(win) or not win.pdf_layer_box.isHidden()
+    ink_before = int((win.payload["res"].a[int(280 * k):int(305 * k), int(55 * k):int(110 * k)] > 0).sum())
+    assert ink_before > 0
+    win._pdf_layer_toggled("Bemaßung", False)                  # PDF-Ebene ausblenden
+    wait(app, lambda: not win.running)
+    assert int((win.payload["res"].a[int(280 * k):int(305 * k), int(55 * k):int(110 * k)] > 0).sum()) == 0
+    n = len(win.anns)
+    win._auto_import_pdf_comments()                           # nicht doppelt
+    assert len(win.anns) == n
 
 
 def test_multipage_tiff(app, win, tmp_path):

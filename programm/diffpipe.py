@@ -179,6 +179,13 @@ def prepare_pair_tf(a, b, align="affine", log=print):
     sx, sy = a.shape[1] / b.shape[1], a.shape[0] / b.shape[0]
     tf = {"shape": a.shape[:2], "src_shape": b.shape[:2], "resize": not (abs(sx - 1) < 0.01 and abs(sy - 1) < 0.01),
           "shrink": b.shape[0] > a.shape[0], "M": None, "exact": False}
+    if align == "off":                               # gar nicht ausrichten: B liegt links oben auf A, wie es ist
+        tf["resize"] = False
+        canvas = np.zeros(a.shape, np.uint8)
+        hh, ww = min(a.shape[0], b.shape[0]), min(a.shape[1], b.shape[1])
+        canvas[:hh, :ww] = b[:hh, :ww]
+        log(tr("Ohne Ausrichtung (Zeichnungen liegen übereinander, wie sie sind)."))
+        return canvas, tf
     b = match_size(a, b)
     if align == "none":
         return b, tf
@@ -430,6 +437,27 @@ def suggest_params(gray_a, gray_b, dpi=200, base=None, log=print, cancel=None):
     p.tol = next((t for t in range(1, 7) if counts[t + 1] > 0.6 * max(1, counts[t])), 6)
     drop = 100 * (1 - counts[p.tol] / max(1, counts[0]))
     why.append(tr("Toleranz {} px: bis dahin verschwinden {:.0f} % der Abweichungen (nur ungenau übereinanderliegende Linien); mehr Toleranz würde vor allem echte Änderungen schlucken.").format(p.tol, drop))
+    # Verzug: wie weit liegen einzelne Felder nach der Gesamtausrichtung noch daneben? (Stichprobe von Kacheln)
+    shifts = []
+    H, W = a.shape
+    step = max(p.cell, int(max(H, W) / 7))
+    search = int(np.clip(round(60 * k), 10, 150))
+    for y in range(0, max(1, H - p.cell + 1), step):
+        for x in range(0, max(1, W - p.cell + 1), step):
+            ta = a[y:y + p.cell, x:x + p.cell]
+            if int((ta > 0).sum()) < 300:
+                continue
+            tb = np.pad(b[y:y + p.cell, x:x + p.cell], search)[:ta.shape[0] + 2 * search, :ta.shape[1] + 2 * search]
+            if tb.shape[0] < ta.shape[0] + 2 * search or tb.shape[1] < ta.shape[1] + 2 * search:
+                continue
+            bp = np.pad(b, search)[y:y + ta.shape[0] + 2 * search, x:x + ta.shape[1] + 2 * search]
+            dx, dy = dc.best_shift(ta, bp, search)
+            shifts.append(max(abs(dx), abs(dy)))
+    if shifts:
+        worst = float(np.percentile(shifts, 90))
+        p.max_shift = int(np.clip(np.ceil(worst * 1.5) + 3, 5, 100))
+        why.append(tr("Max. Kachelverschiebung {} px: einzelne Bereiche liegen nach dem Ausrichten bis etwa {:.0f} px "
+                      "daneben (gemessen an {} Stellen).").format(p.max_shift, worst, len(shifts)))
     p.min_area = int(np.clip(round(3 * stroke * stroke + 8 * k), 5, 400))
     why.append(tr("Mindestgröße {} px: Linien sind etwa {:.1f} px breit; kleinere Punkte gelten als Staub.").format(p.min_area, stroke))
     log(tr("Automatisch eingestellt: ") + " ".join(why))

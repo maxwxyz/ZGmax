@@ -170,8 +170,11 @@ class EditMixin:
         part = c._layer(mode, 0, y, y + h, x, x + w)
         if part is None:
             return
+        part = rep.apply_redactions(np.ascontiguousarray(part).copy(), self.anns, (x, y), c.shape)
         if mode in ("A", "B"):
-            ink = (c.res.a if mode == "A" else c.res.b)[y:y + h, x:x + w]
+            ink = (c.res.a if mode == "A" else c.res.b)[y:y + h, x:x + w].copy()
+            for b in rep.redaction_boxes(self.anns):
+                ink[max(0, int(b[1]) - y):max(0, int(b[3]) + 1 - y), max(0, int(b[0]) - x):max(0, int(b[2]) + 1 - x)] = 0
         else:                                              # farbige Ansicht: alles Nicht-Weisse ist Linie
             ink = ((part.min(axis=2) < 200) * 255).astype(np.uint8)
         dlg = CopyDialog(self, np.ascontiguousarray(part), np.ascontiguousarray(ink), c.mm_px, self.dpi_value())
@@ -318,7 +321,7 @@ class EditMixin:
         if not out:
             return False
         from PIL import Image
-        img = imgs[-1]
+        img = rep.apply_redactions(imgs[-1].copy(), self.anns)     # Schwaerzungen einbrennen
         pil = Image.fromarray(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         dpi = self.dpi_value()
         ext = os.path.splitext(out)[1].lower()
@@ -464,9 +467,17 @@ class AreaMixin:
         if self.payload is not None:
             self._set_tool("area")
 
-    def _area_bbox(self):
+    def _area_bbox(self, clip=True):
+        """Umgebendes Rechteck der Bereichsauswahl; clip=False: auch ueber den Blattrand hinaus (Zuschneiden)."""
         r = self.canvas.sel_rects
-        return de.bbox_of(r) if r else None
+        if not r:
+            return None
+        b = de.bbox_of(r)
+        if not clip:
+            return b
+        h, w = self.canvas.shape
+        b = (max(0, b[0]), max(0, b[1]), min(w, b[2]), min(h, b[3]))
+        return b if b[2] > b[0] and b[3] > b[1] else None
 
     def _area_items(self):
         """(Indizes der Markierungen, Aenderungen) in der Bereichsauswahl."""
@@ -479,10 +490,20 @@ class AreaMixin:
                 anns.append(k)
         if c.layer_lock.get("aenderungen") or not c.layer_on.get("aenderungen", True):
             return anns, []
+        return anns, self._area_regs(rects)
+
+    def _area_zones(self):
+        c = self.canvas
+        if c.layer_lock.get("zonen") or not c.layer_on.get("zonen", True):
+            return []
+        return [k for k, (x, y, w, h) in enumerate(c.zones)
+                if any(x < r[2] and x + w > r[0] and y < r[3] and y + h > r[1] for r in c.sel_rects)]
+
+    def _area_regs(self, rects):
         regs = [g for g in ((self.payload or {}).get("regs") or [])
                 if any(g["x"] < r[2] and g["x"] + g["w"] > r[0] and g["y"] < r[3] and g["y"] + g["h"] > r[1]
                        for r in rects)]
-        return anns, regs
+        return regs
 
     def _area_changed(self):
         c = self.canvas
@@ -535,6 +556,7 @@ class AreaMixin:
         out = np.ascontiguousarray(c._layer(mode, 0, y0, y1, x0, x1)).copy()
         if not c.layer_on.get("zeichnung", True):
             out[:] = 255
+        rep.apply_redactions(out, self.anns, (x0, y0), c.shape)   # Schwaerzungen immer
         if overlays and c.show_overlays:
             if self.payload.get("regs") and c.show_regs and c.layer_on.get("aenderungen", True):
                 regs = [dict(g, x=g["x"] - x0, y=g["y"] - y0) for g in self._shown_regs()]
@@ -546,7 +568,7 @@ class AreaMixin:
         """Markierungen fuer Bild, PDF und Bericht: nur bei eingeblendeten Markierungen und nur sichtbare Ebenen."""
         if not self.act_overlays.isChecked():
             return []
-        return [copy.deepcopy(a) for a in self.anns if self.canvas.ann_visible(a)]
+        return [copy.deepcopy(self.anns[i]) for i in rep.layer_order(self.anns) if self.canvas.ann_visible(self.anns[i])]
 
     def _export_regs(self):
         c = self.canvas
@@ -575,11 +597,22 @@ class AreaMixin:
         self.banner.show_msg(tr("Gespeichert: {}").format(path), "info", timeout=8)
         return path
 
-    def _area_bgra(self, overlays=True):
+    def _area_bgra(self, overlays=True, only_lines=None):
+        """Bereich als BGRA (ausserhalb der Rechtecke durchsichtig). only_lines: auch das Papier durchsichtig,
+        nur Linien (und Markierungen) bleiben - wie beim Verschieben mit "Nur Linien"."""
         bbox = self._area_bbox()
         out = self.render_region(bbox, overlays)
-        alpha = de.region_mask(self.canvas.sel_rects, bbox).astype(np.uint8) * 255
-        return np.dstack([out, alpha]), bbox
+        region = de.region_mask(self.canvas.sel_rects, bbox)
+        if only_lines is None:
+            only_lines = self.chk_float_lines.isChecked()
+        if only_lines:
+            plain = self.render_region(bbox, False)
+            gray = plain.min(axis=2) if plain.ndim == 3 else plain
+            keep = de.line_mask(((gray < 200) * 255).astype(np.uint8), 1)
+            if overlays:
+                keep |= (out != plain).any(axis=2) if out.ndim == 3 else out != plain
+            region &= keep
+        return np.dstack([out, region.astype(np.uint8) * 255]), bbox
 
     def area_copy(self):
         """Auswahl wie angezeigt in die Zwischenablage; fuer dieses Programm auch Zeichnung und Markierungen getrennt."""
@@ -610,11 +643,17 @@ class AreaMixin:
     def area_delete(self):
         """Markierungen und Aenderungen in der Auswahl loeschen (die Zeichnung selbst bleibt)."""
         anns, regs = self._area_items()
-        if not anns and not regs:
-            self.statusBar().showMessage(tr("In der Auswahl sind keine Markierungen oder Änderungen."), 5000)
+        zones = self._area_zones()
+        if not anns and not regs and not zones:
+            self.statusBar().showMessage(tr("In der Auswahl sind keine Markierungen, Änderungen oder Zonen."), 5000)
             return
         for k in sorted(anns, reverse=True):
             del self.anns[k]
+        if zones:
+            for k in sorted(zones, reverse=True):
+                del self.zones[k]
+            self._refresh_zones()
+            self._param_changed()
         if regs:
             nrs = {g["nr"] for g in regs}
             self.payload["regs"][:] = [g for g in self.payload["regs"] if g["nr"] not in nrs]
@@ -821,17 +860,28 @@ class SheetEditMixin:
         self.start_compute()
 
     def sheet_crop(self):
-        bbox = self._area_bbox()
+        """Zuschneiden auf die Bereichsauswahl. Beim Ansehen: die Zeichnung selbst (ragt der Bereich ueber das Blatt,
+        wird es vergroessert, der neue Rand bekommt die Papierfarbe). Im Vergleich: nur diesen Teil vergleichen."""
+        bbox = self._area_bbox(clip=False)
         if bbox is None:
             self.banner.show_msg(tr("Erst mit dem Werkzeug „Bereich“ (B) den Teil aufziehen, der bleiben soll."),
                                  "info", timeout=8)
+            return
+        if not self.view_only:                             # Vergleich: Ausschnitt vergleichen
+            b = self._area_bbox()
+            self.canvas.sel_rects = []
+            self._crop_drawn(b[0], b[1], b[2] - b[0], b[3] - b[1])
             return
         imgs, _ = self._sheet_images()
         if imgs is None:
             return
         x0, y0 = bbox[0], bbox[1]
-        self._sheet_edit(de.crop_images(imgs, bbox), lambda x, y: (x - x0, y - y0),
-                         label=tr("Zugeschnitten auf {} × {} px").format(bbox[2] - bbox[0], bbox[3] - bbox[1]))
+        new = de.crop_images(imgs, bbox, self.payload["res"].a)
+        grown = new[0].shape[:2] != (min(bbox[3], imgs[0].shape[0]) - max(bbox[1], 0),
+                                     min(bbox[2], imgs[0].shape[1]) - max(bbox[0], 0))
+        self._sheet_edit(new, lambda x, y: (x - x0, y - y0),
+                         label=(tr("Blatt vergrößert auf {} × {} px") if grown else tr("Zugeschnitten auf {} × {} px"))
+                         .format(bbox[2] - bbox[0], bbox[3] - bbox[1]))
 
     def sheet_rotate(self, quarter):
         imgs, _ = self._sheet_images()
@@ -886,6 +936,8 @@ class OcrPdfMixin:
         gray = self.cache.get("g_" + path)
         img = self.export_render("A", self.act_overlays.isChecked(), legend=False)
 
+        boxes = rep.redaction_boxes(self.anns)
+
         def work(ctx):
             lines = dv.text_lines(path, page, dpi) if pdf else []
             if not lines:
@@ -893,6 +945,8 @@ class OcrPdfMixin:
                 lines = rep.ocr_lines(gray, progress=lambda f: ctx.progress(0.05 + 0.85 * f, tr("Texterkennung")),
                                       cancel=ctx.cancelled)
             ctx.progress(0.92, tr("Schreibe PDF"))
+            lines = [ln for ln in lines if not any(ln[0] < b[2] and ln[2] > b[0] and ln[1] < b[3] and ln[3] > b[1]
+                                                   for b in boxes)]   # kein Text unter Schwaerzungen
             return rep.build_searchable_pdf(out, img, lines, dpi, os.path.basename(path))
         self._run_job(work, tr("Erzeuge durchsuchbares PDF …"),
                       lambda n: self.banner.show_msg(tr("Gespeichert: {} ({} Textzeilen durchsuchbar)").format(out, n),
@@ -966,6 +1020,9 @@ class VectorizeMixin:
         part = np.ascontiguousarray(ink[y0:y1, x0:x1])
         if dlg.cb_area.currentData() == "area":            # mehrere Rechtecke: nur deren Inhalt
             part = part * de.region_mask(c.sel_rects, bbox)
+        part = part.copy()
+        for b in rep.redaction_boxes(self.anns):            # Geschwaerztes wird nicht vektorisiert
+            part[max(0, int(b[1]) - y0):max(0, int(b[3]) + 1 - y0), max(0, int(b[0]) - x0):max(0, int(b[2]) + 1 - x0)] = 0
         vmode, eps, dpi, mm = dlg.cb_mode.currentData(), dlg.sp_eps.value(), self.dpi_value(), c.mm_px
 
         def work(ctx):

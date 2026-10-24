@@ -235,6 +235,41 @@ def find_text(lines, query):
     return sorted(out, key=lambda r: (round(r[1] / 20), r[0]))
 
 
+def ocr_any_orientation(gray, min_score=0.55):
+    """Text in jeder Lage: waagerecht, senkrecht von unten nach oben (typische Bemassung) und von oben nach unten.
+    Jede Fundstelle wird in der Drehung gelesen, in der sie am sichersten erkannt wird.
+    Rueckgabe [(x0, y0, x1, y1, text, score), ...] im Koordinatensystem von gray, in Lesereihenfolge."""
+    H, W = gray.shape[:2]
+    eng = _ocr_engine()
+    found = []
+    for rot in (0, 1, 3):                          # 0 Grad, 90 Grad links (unten->oben), 90 Grad rechts
+        img = np.ascontiguousarray(np.rot90(gray, rot)) if rot else gray
+        res, _ = eng(img)
+        for box, text, score in res or []:
+            text = str(text).strip()
+            if not text or float(score) < min_score:
+                continue
+            pts = []
+            for px, py in box:                     # Punkte zurueck in die ungedrehte Lage
+                if rot == 1:                       # np.rot90(k=1): (x, y) -> (y, W-1-x)
+                    px, py = W - 1 - py, px
+                elif rot == 3:                     # np.rot90(k=3): (x, y) -> (H-1-y, x)
+                    px, py = py, H - 1 - px
+                pts.append((px, py))
+            xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+            found.append((min(xs), min(ys), max(xs), max(ys), text, float(score) * len(text)))
+    found.sort(key=lambda t: -t[5])                # sicherste zuerst; Ueberschneidungen nur einmal
+    keep = []
+    for f in found:
+        area = max(1.0, (f[2] - f[0]) * (f[3] - f[1]))
+        if any(min(f[2], k[2]) - max(f[0], k[0]) > 0 and min(f[3], k[3]) - max(f[1], k[1]) > 0 and
+               (min(f[2], k[2]) - max(f[0], k[0])) * (min(f[3], k[3]) - max(f[1], k[1])) > 0.3 * area for k in keep):
+            continue
+        keep.append(f)
+    keep.sort(key=lambda t: (round(t[1] / max(10, t[3] - t[1])), t[0]))
+    return keep
+
+
 def ocr_box(ink, box, pad=15, max_area=6_000_000):
     x, y, w, h = box
     H, W = ink.shape
@@ -243,7 +278,13 @@ def ocr_box(ink, box, pad=15, max_area=6_000_000):
         return tr("(Bereich zu gross)")
     crop = 255 - ink[y0:y1, x0:x1]
     crop = cv2.copyMakeBorder(crop, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
-    return " ".join(t[3] for t in ocr_image(crop)).strip()
+    return " ".join(t[4] for t in ocr_any_orientation(crop)).strip()
+
+
+def text_changed(r):
+    """Hat sich der gelesene Text einer Aenderung geaendert (Gross-/Kleinschreibung und Leerzeichen egal)?"""
+    a, b = r.get("text_a") or "", r.get("text_b") or ""
+    return bool(a or b) and _norm(a).replace(" ", "") != _norm(b).replace(" ", "")
 
 
 def _norm(s):
@@ -364,18 +405,113 @@ APPROVAL_TITLES = (tr("FREIGEGEBEN"), tr("GEPRÜFT"), tr("ABGELEHNT"), tr("IN AR
 #   image     eingefuegtes Bild im Rechteck (x, y)-(x2, y2), Inhalt als PNG (Base64) in "png"
 #   pen       Freihandlinie, polyline Linienzug, polygon geschlossener Linienzug: Punkte in "pts",
 #             (x, y)-(x2, y2) ist das umgebende Rechteck
-RECT_TYPES = ("rect", "cloud", "highlight", "ellipse", "image")
+RECT_TYPES = ("rect", "cloud", "highlight", "ellipse", "image", "redact", "pixelate")
+REDACT_TYPES = ("redact", "pixelate")       # unkenntlich machen: wird in jede Ausgabe eingebrannt
 
 # Feste Ebenen: Zeichnung, Aenderungsrahmen und die Markierungen nach Art. Ausgeblendete Ebenen werden weder
 # angezeigt noch gespeichert; in PDF mit Anmerkungen und SVG werden die Ebenen als echte Ebenen geschrieben.
-LAYERS = (("zeichnung", tr("Zeichnung")), ("aenderungen", tr("Änderungen")), ("markierungen", tr("Markierungen")),
-          ("masse", tr("Maße")), ("bilder", tr("Eingefügte Bilder")), ("zonen", tr("Zonen")))
+LAYERS = (("zeichnung", tr("Zeichnung")), ("zonen", tr("Zonen")), ("aenderungen", tr("Änderungen")),
+          ("bilder", tr("Eingefügte Bilder")), ("markierungen", tr("Markierungen")), ("masse", tr("Maße")),
+          ("schwaerzung", tr("Schwärzungen")))   # unten -> oben
 LAYER_NAMES = dict(LAYERS)
 
 
 def ann_layer(a):
     """Ebene einer Anmerkung."""
-    return {"measure": "masse", "image": "bilder"}.get(a.get("type"), "markierungen")
+    return {"measure": "masse", "image": "bilder", "redact": "schwaerzung", "pixelate": "schwaerzung"}.get(
+        a.get("type"), "markierungen")
+
+
+def pixel_block(shape, size):
+    """Kantenlaenge der Mosaik-Bloecke beim Verpixeln (Bildpixel); nie so fein, dass Schrift erkennbar bliebe."""
+    return int(max(12, round(4 * ann_unit(shape) * size)))
+
+
+def pixelate(part, blk, seed=0):
+    """Unumkehrbares Mosaik: Blockmittel, dazu Zufallsrauschen je Block und nur wenige Stufen - so laesst sich der
+    Inhalt auch mit "Entpixeln"-Verfahren nicht zurueckrechnen. Gleiches seed = gleiches Bild (Anzeige = Export)."""
+    h, w = part.shape[:2]
+    sw, sh = max(1, w // blk), max(1, h // blk)
+    small = cv2.resize(part, (sw, sh), interpolation=cv2.INTER_AREA).astype(np.int16)
+    rng = np.random.default_rng(seed)
+    small += rng.integers(-28, 29, size=small.shape[:2] + ((1,) if small.ndim == 3 else ()), dtype=np.int16)
+    small = (np.clip(small, 0, 255) // 32 * 32 + 16).astype(np.uint8)   # 8 Stufen je Kanal
+    return cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
+
+
+def redact_seed(a):
+    return int(abs(a["x"]) * 7 + abs(a["y"]) * 13 + abs(a["x2"]) * 17 + abs(a["y2"]) * 19) % (2 ** 31)
+
+
+def paper_around(img, x0, y0, x1, y1, ring=24):
+    """Papierfarbe rund um ein Rechteck (helle Pixel im Rand), fuer "mit Papierfarbe schwaerzen"."""
+    h, w = img.shape[:2]
+    X0, Y0, X1, Y1 = max(0, x0 - ring), max(0, y0 - ring), min(w, x1 + ring), min(h, y1 + ring)
+    box = img[Y0:Y1, X0:X1].reshape(-1, *img.shape[2:]) if img.ndim == 3 else img[Y0:Y1, X0:X1].reshape(-1)
+    gray = box.min(axis=1) if img.ndim == 3 else box
+    light = box[gray > 150]
+    if len(light) == 0:
+        return (255, 255, 255) if img.ndim == 3 else 255
+    med = np.median(light, axis=0)
+    return tuple(int(v) for v in med) if img.ndim == 3 else int(med)
+
+
+def apply_redactions(img, anns, offset=(0, 0), ref_shape=None):
+    """Schwaerzen und Verpixeln in das Bild einbrennen (BGR oder Grau, an Ort und Stelle). Wird bei jeder Ausgabe
+    angewendet - auch wenn Markierungen ausgeblendet sind -, damit der Inhalt darunter nirgends erhalten bleibt."""
+    shape = _ref(img.shape, ref_shape)
+    ox, oy = offset
+    h, w = img.shape[:2]
+    for a in anns or []:
+        if a.get("type") not in REDACT_TYPES:
+            continue
+        x0 = int(np.floor(min(a["x"], a["x2"]) - ox))
+        y0 = int(np.floor(min(a["y"], a["y2"]) - oy))
+        x1 = int(np.ceil(max(a["x"], a["x2"]) - ox))
+        y1 = int(np.ceil(max(a["y"], a["y2"]) - oy))
+        x0, y0, x1, y1 = max(0, x0), max(0, y0), min(w, x1), min(h, y1)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        part = img[y0:y1, x0:x1]
+        if a["type"] == "redact":                    # schwarz - oder auf Wunsch in Papierfarbe (weiss "ausmalen")
+            if a.get("fill") == "paper":
+                part[:] = paper_around(img, x0, y0, x1, y1)
+            else:
+                part[:] = 0
+        else:
+            part[:] = pixelate(part, pixel_block(shape, a["size"]), redact_seed(a))
+    return img
+
+
+def redaction_boxes(anns):
+    return [(min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"]))
+            for a in anns or [] if a.get("type") in REDACT_TYPES]
+
+
+def redact_result(res, anns):
+    """Kopie des Vergleichsergebnisses, in der geschwaerzte/verpixelte Bereiche leer sind (fuer Berichte)."""
+    import copy as _copy
+    boxes = redaction_boxes(anns)
+    if not boxes:
+        return res
+    r = _copy.copy(res)
+    for name in ("a", "b", "oa", "ob", "both", "moved"):
+        arr = getattr(r, name)
+        if arr is None:
+            continue
+        arr = arr.copy()
+        for x0, y0, x1, y1 in boxes:
+            arr[max(0, int(y0)):max(0, int(y1) + 1), max(0, int(x0)):max(0, int(x1) + 1)] = 0
+        setattr(r, name, arr)
+    return r
+
+
+LAYER_RANK = {k: i for i, (k, _) in enumerate(LAYERS)}
+
+
+def layer_order(anns):
+    """Indizes der Anmerkungen in Zeichenreihenfolge: untere Ebenen zuerst, innerhalb einer Ebene wie angelegt."""
+    return sorted(range(len(anns)), key=lambda i: (LAYER_RANK[ann_layer(anns[i])], i))
 PTS_TYPES = ("pen", "polyline", "polygon")
 
 
@@ -509,27 +645,80 @@ def circle_3pts(p, q, r):
     return ux, uy, ((ax - ux) ** 2 + (ay - uy) ** 2) ** 0.5
 
 
-def measure_text(a, mm):
-    """Messwert als Text. mm = Millimeter je Bildpixel (inkl. Massstab)."""
+# Anzeige der Messwerte (Einheit, Nachkommastellen); vom Programm aus den Einstellungen gesetzt
+MEASURE_FMT = {"unit": "mm", "dec": 2}
+UNITS = {"mm": 1.0, "cm": 0.1, "m": 0.001, "in": 1 / 25.4}
+
+
+def _num(v, dec):
+    return f"{v:.{dec}f}"
+
+
+def measure_text(a, mm, fmt=None):
+    """Messwert als Text. mm = Millimeter je Bildpixel (inkl. Massstab); fmt = {"unit", "dec"}."""
     import math
+    fmt = fmt or MEASURE_FMT
+    unit, dec = fmt.get("unit", "mm"), int(fmt.get("dec", 2))
+    f = UNITS.get(unit, 1.0)
     pts = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
     k = a.get("kind", "dist")
     if k in ("dist", "poly"):
         L = sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1))
-        return tr("{:.2f} mm").format(L * mm)
+        return f"{_num(L * mm * f, dec)} {unit}"
     if k == "angle" and len(pts) >= 3:
         v1 = (pts[0][0] - pts[1][0], pts[0][1] - pts[1][1])
         v2 = (pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])
         ang = abs(math.degrees(math.atan2(v1[0] * v2[1] - v1[1] * v2[0], v1[0] * v2[0] + v1[1] * v2[1])))
-        return f"{ang:.2f}°"
+        return f"{_num(ang, max(0, dec - 1))}°"
     if k == "radius" and len(pts) >= 3:
         c = circle_3pts(*pts[:3])
-        return "gerade" if c is None else tr("R {:.2f} mm  (Ø {:.2f})").format(c[2] * mm, 2 * c[2] * mm)
+        return tr("gerade") if c is None else f"R {_num(c[2] * mm * f, dec)} {unit}  (Ø {_num(2 * c[2] * mm * f, dec)})"
     if k == "area" and len(pts) >= 3:
         s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
                 for i in range(len(pts)))
-        return tr("{:.1f} mm²").format(abs(s) / 2 * mm * mm)
+        return f"{_num(abs(s) / 2 * mm * mm * f * f, max(0, dec - 1))} {unit}²"
     return ""
+
+
+def measure_label(a, shape):
+    """Lage des Messwerts wie bei einer Bemassung: (cx, cy, winkel_grad, ax, ay) in Bildpixeln. Bei einer Laenge
+    steht der Wert mittig ueber der Masslinie und parallel zu ihr (immer lesbar, nie kopfueber); sonst waagerecht
+    ueber dem Mittelpunkt. Mit "lo" (Verschiebung durch den Benutzer) liegt er daneben; (ax, ay) ist dann der
+    Punkt, zu dem eine Hinweislinie fuehrt."""
+    import math
+    pts = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
+    _lw, th, _al = measure_style(shape, a["size"])
+    k = a.get("kind", "dist")
+    ang = 0.0
+    if k == "dist" and len(pts) >= 2:
+        (x0, y0), (x1, y1) = pts[0][:2], pts[-1][:2]
+        ax, ay = (x0 + x1) / 2, (y0 + y1) / 2
+        ang = math.degrees(math.atan2(y1 - y0, x1 - x0))
+        if ang > 90:
+            ang -= 180
+        elif ang <= -90:
+            ang += 180
+    elif k == "radius" and len(pts) >= 3 and circle_3pts(*pts[:3]):
+        c = circle_3pts(*pts[:3])
+        ax, ay = c[0], c[1]
+    elif k == "angle" and len(pts) >= 3:
+        ax, ay = pts[1][0], pts[1][1]
+    else:
+        ax = sum(p[0] for p in pts) / len(pts)
+        ay = sum(p[1] for p in pts) / len(pts)
+    r = math.radians(ang)
+    gap = 0.75 * th                                 # Mitte des Werts ueber der Linie
+    cx, cy = ax + math.sin(r) * gap, ay - math.cos(r) * gap
+    if k == "dist" and len(pts) >= 2 and MEASURE_FMT.get("mm"):
+        L = math.hypot(pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1])
+        tw = 0.62 * th * len(measure_text(a, MEASURE_FMT["mm"]))
+        if tw + th > L:                             # kurzes Mass: Wert ausserhalb, hinter dem Pfeil (wie im CAD)
+            ex, ey = (pts[-1][0], pts[-1][1]) if pts[-1][0] >= pts[0][0] else (pts[0][0], pts[0][1])
+            cx, cy = ex + math.cos(r) * (tw / 2 + 0.8 * th), ey + math.sin(r) * (tw / 2 + 0.8 * th)
+    lo = a.get("lo")
+    if lo:
+        cx, cy = ax + lo[0], ay + lo[1]
+    return cx, cy, ang, ax, ay
 
 
 def measure_style(shape, size):
@@ -566,9 +755,10 @@ def ann_bounds(shape, a):
     x, y, t = a["x"], a["y"], a["type"]
     if t == "measure":
         pts = a.get("pts") or [[x, y], [a["x2"], a["y2"]]]
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
-        return min(xs) - th, min(ys) - th, max(xs) + th * 6, max(ys) + th * 1.5
+        cx, cy, _ang, _ax, _ay = measure_label(a, shape)
+        xs = [p[0] for p in pts] + [cx - th * 3, cx + th * 3]
+        ys = [p[1] for p in pts] + [cy - th, cy + th]
+        return min(xs) - th * 0.5, min(ys) - th * 0.5, max(xs) + th * 0.5, max(ys) + th * 0.5
     if t == "number":
         r = 0.95 * th
         return x - r, y - r, x + r, y + r
@@ -600,6 +790,8 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
     im = Image.fromarray(np.ascontiguousarray(img_bgr[:, :, ::-1]))
     d = ImageDraw.Draw(im)
     for a in anns:
+        if a["type"] in REDACT_TYPES:                 # zum Schluss, ueber allem (apply_redactions)
+            continue
         th = ann_text_h(shape, a["size"])
         lw = ann_line_w(shape, a["size"])
         col = a["color"]
@@ -639,15 +831,24 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
                 for p in pp:
                     r_ = max(2.0, 1.4 * mlw)
                     d.ellipse([p[0] - r_, p[1] - r_, p[0] + r_, p[1] + r_], outline=col, width=max(1, int(mlw)))
-            if mm:
+            if mm:                                    # Wert ueber der Masslinie, parallel zu ihr
                 txt = measure_text(a, mm)
-                tx = sum(p[0] for p in pp) / len(pp)
-                ty = sum(p[1] for p in pp) / len(pp)
+                cx, cy, ang, ax, ay = measure_label(a, shape)
+                cx, cy, ax, ay = cx - ox, cy - oy, ax - ox, ay - oy
+                if a.get("lo"):
+                    d.line([(cx, cy), (ax, ay)], fill=col, width=max(1, int(mlw)))
                 f = dc._font(max(6, int(mth)))
                 w_ = d.textlength(txt, font=f)
-                d.rounded_rectangle([tx - w_ / 2 - mth * 0.3, ty - mth * 1.55, tx + w_ / 2 + mth * 0.3, ty - mth * 0.2],
-                                    radius=mth * 0.2, fill="white", outline=col, width=max(1, int(mlw)))
-                d.text((tx - w_ / 2, ty - mth * 1.5), txt, font=f, fill=col)
+                bw, bh = int(w_ + mth * 0.6) + 2, int(mth * 1.3) + 2
+                lab = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
+                ld = ImageDraw.Draw(lab)
+                ld.rounded_rectangle([0, 0, bw - 1, bh - 1], radius=mth * 0.25, fill="white", outline=col,
+                                     width=max(1, int(mlw)))
+                ld.text((bw / 2, bh / 2), txt, font=f, fill=col, anchor="mm")
+                if abs(ang) > 0.1:
+                    lab = lab.rotate(-ang, resample=Image.BICUBIC, expand=True)
+                im.paste(lab, (int(round(cx - lab.width / 2)), int(round(cy - lab.height / 2))), lab)
+                d = ImageDraw.Draw(im)
         elif t == "rect":
             d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw))
         elif t == "cloud":
@@ -692,6 +893,7 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
                        (x2 - head * math.cos(ang - 0.4), y2 - head * math.sin(ang - 0.4)),
                        (x2 - head * math.cos(ang + 0.4), y2 - head * math.sin(ang + 0.4))], fill=col)
     img_bgr[:] = np.asarray(im)[:, :, ::-1]
+    apply_redactions(img_bgr, anns, offset, ref_shape)
     return img_bgr
 
 
@@ -1143,6 +1345,8 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
         an.update()
     for a in anns:
         t = a["type"]
+        if t in REDACT_TYPES:                         # steckt schon im Bild (eingebrannt)
+            continue
         col = rgb(a["color"])
         th = ann_text_h(shape, a["size"]) * k
         lw = max(0.5, ann_line_w(shape, a["size"]) * k)
@@ -1213,6 +1417,18 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             if a.get("kind", "dist") == "dist":
                 an.set_line_ends(pymupdf.PDF_ANNOT_LE_CLOSED_ARROW, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
             info(an, tr("Maß"), measure_text(a, mm) if mm else "")
+            if mm:                                    # Wert auch sichtbar (nicht nur beim Anklicken)
+                if "masse" in ocg:
+                    an.set_oc(ocg["masse"])
+                an.update()
+                cx, cy, _ang, _ax, _ay = measure_label(a, shape)
+                txt = measure_text(a, mm)
+                mth = measure_style(shape, a["size"])[1] * k
+                tw = pymupdf.get_text_length(txt, fontname="helv", fontsize=mth) + mth * 0.6
+                an = page.add_freetext_annot(pymupdf.Rect(cx * k - tw / 2, cy * k - mth * 0.7, cx * k + tw / 2,
+                                                          cy * k + mth * 0.7), txt, fontsize=mth, text_color=col,
+                                             fill_color=(1, 1, 1), align=1)
+                info(an, tr("Maß"), txt)
         else:
             continue
         if ann_layer(a) in ocg:
@@ -1265,9 +1481,11 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
         body.append(f'<text x="{r["x"] - ox - 12:.1f}" y="{r["y"] - oy - 16:.1f}" fill="{col}" '
                     f'font-family="Arial" font-size="{ann_text_h(shape, 1.2):.1f}" font-weight="bold">{r["nr"]}</text>')
     layer("aenderungen", body)
-    groups = {"markierungen": [], "masse": [], "bilder": []}
+    groups = {"markierungen": [], "masse": [], "bilder": [], "schwaerzung": []}
     for a in anns or []:
         t, col = a["type"], a.get("color", "#e11d48")
+        if t in REDACT_TYPES:                         # steckt schon im Bild der Zeichnung (eingebrannt)
+            continue
         th, lw = ann_text_h(shape, a["size"]), ann_line_w(shape, a["size"])
         x, y, x2, y2 = a["x"], a["y"], a["x2"], a["y2"]
         stroke = f'fill="none" stroke="{col}" stroke-width="{lw:.1f}" stroke-linecap="round" stroke-linejoin="round"'
@@ -1327,12 +1545,15 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
             if a.get("kind", "dist") == "dist" and len(pp) >= 2:
                 for tip, frm in ((pp[0], pp[1]), (pp[-1], pp[-2])):
                     g.append(f'<polygon points="{" ".join(P(*q) for q in arrow_head(tip, frm, alen))}" fill="{col}"/>')
-            if mm:
-                tx = sum(q[0] for q in pp) / len(pp)
-                ty = sum(q[1] for q in pp) / len(pp)
-                g.append(f'<text x="{tx - ox:.1f}" y="{ty - oy - mth * 0.4:.1f}" fill="{col}" font-family="Arial" '
-                         f'font-size="{mth:.1f}" text-anchor="middle" stroke="white" stroke-width="{mth / 6:.1f}" '
-                         f'paint-order="stroke">{escape(measure_text(a, mm))}</text>')
+            if mm:                                    # Wert ueber der Masslinie, parallel zu ihr
+                cx, cy, ang, ax, ay = measure_label(a, shape)
+                if a.get("lo"):
+                    g.append(f'<line x1="{cx - ox:.1f}" y1="{cy - oy:.1f}" x2="{ax - ox:.1f}" y2="{ay - oy:.1f}" '
+                             f'stroke="{col}" stroke-width="{mlw:.1f}"/>')
+                g.append(f'<text x="{cx - ox:.1f}" y="{cy - oy + mth * 0.35:.1f}" fill="{col}" font-family="Arial" '
+                         f'font-weight="bold" font-size="{mth:.1f}" text-anchor="middle" stroke="white" '
+                         f'stroke-width="{mth / 6:.1f}" paint-order="stroke" '
+                         f'transform="rotate({ang:.2f} {cx - ox:.1f} {cy - oy:.1f})">{escape(measure_text(a, mm))}</text>')
         elif t == "image":
             g.append(img_tag(ann_image(a), x0 - ox, y0 - oy, x1 - x0, y1 - y0))
     for key in ("markierungen", "masse", "bilder"):

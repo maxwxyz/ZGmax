@@ -187,6 +187,8 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
     rows = []
     for a in anns:
         t = a["type"]
+        if t in ("redact", "pixelate"):              # Schwaerzungen sind keine Kommentare
+            continue
         col = a.get("color", "#e11d48")
         common = (f'page="{page}" color="{col}" title="{escape(a.get("author") or "ZGmax")}" '
                   f'date="{escape(a.get("date") or now)}" width="1.5"')

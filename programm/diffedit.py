@@ -177,9 +177,21 @@ def cut_out(img, ink, rect, mode="all", width=None, drop_small=40):
 
 
 # ----------------------------------------------------------------- ganze Zeichnung (Groesse/Lage aendert sich)
-def crop_images(images, rect):
-    x0, y0, x1, y1 = clip_rect(rect, images[0].shape)
-    return [np.ascontiguousarray(im[y0:y1, x0:x1]) for im in images]
+def crop_images(images, rect, ink=None):
+    """Auf rect zuschneiden. Ragt rect ueber das Blatt hinaus, wird das Blatt vergroessert; der neue Rand bekommt
+    die Papierfarbe (aus ink bestimmt, sonst Weiss)."""
+    h, w = images[0].shape[:2]
+    x0, y0, x1, y1 = (int(v) for v in rect)
+    out = []
+    for im in images:
+        bg = paper_color(im, ink) if ink is not None else (255 if im.ndim == 2 else (255, 255, 255))
+        canvas = np.empty((y1 - y0, x1 - x0) + im.shape[2:], im.dtype)
+        canvas[:] = bg
+        sx0, sy0, sx1, sy1 = max(0, x0), max(0, y0), min(w, x1), min(h, y1)
+        if sx1 > sx0 and sy1 > sy0:
+            canvas[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = im[sy0:sy1, sx0:sx1]
+        out.append(canvas)
+    return out
 
 
 def rotate_images(images, quarter):

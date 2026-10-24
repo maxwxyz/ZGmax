@@ -66,8 +66,24 @@ CAD_EXT = {".dxf"}                                            # wird mit ezdxf n
 OUT_FORMATS = ("png", "jpg", "tif", "pdf", "bmp", "webp")
 
 
-def _read_pdf_like(path, page, dpi):
-    """PDF/SVG/XPS: Seite mit PyMuPDF auf weissem Grund in 'dpi' rendern -> BGR-Bild."""
+def pdf_layers(path):
+    """Namen der Ebenen (Optional Content) einer PDF-Datei, in Dateireihenfolge; [] ohne Ebenen."""
+    try:
+        import pymupdf as fitz
+        with fitz.open(path) as doc:
+            names = []
+            for v in (doc.get_ocgs() or {}).values():
+                if v.get("name") and v["name"] not in names:
+                    names.append(v["name"])
+            return names
+    except Exception:                                # keine PDF oder kein PyMuPDF
+        return []
+
+
+def _read_pdf_like(path, page, dpi, hidden_layers=()):
+    """PDF/SVG/XPS: Seite mit PyMuPDF auf weissem Grund in 'dpi' rendern -> BGR-Bild. Kommentare (Anmerkungen) werden
+    nicht mitgezeichnet - das Programm uebernimmt sie als bearbeitbare Markierungen. hidden_layers: Namen von
+    PDF-Ebenen, die ausgeblendet werden."""
     try:
         import pymupdf as fitz
     except ImportError:
@@ -80,7 +96,12 @@ def _read_pdf_like(path, page, dpi):
         raise DiffError(tr("{}: Seite {} existiert nicht (Seiten: 1-{})").format(os.path.basename(path), page, doc.page_count))
     if doc.page_count > 1:
         log.info(tr("  {}: {} Seiten, verwende Seite {} (mit --page-a / --page-b waehlbar)").format(os.path.basename(path), doc.page_count, page))
-    pix = doc[page - 1].get_pixmap(dpi=dpi, alpha=False, colorspace=fitz.csRGB)
+    if hidden_layers:                                # PDF-Ebenen ausblenden (wie der Haken in einem PDF-Programm)
+        hide = set(hidden_layers)
+        for c in doc.layer_ui_configs() or []:
+            if c.get("text") in hide and c.get("on"):
+                doc.set_layer_ui_config(c["number"], action=2)   # 2 = aus
+    pix = doc[page - 1].get_pixmap(dpi=dpi, alpha=False, colorspace=fitz.csRGB, annots=False)
     img = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width, 3)
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
@@ -128,13 +149,30 @@ def _read_with_pil(path, page):
     return cv2.cvtColor(np.array(rgb), cv2.COLOR_RGB2BGR)
 
 
-def read_image(path, page=1, dpi=200):
+def imread_any(path, flags=cv2.IMREAD_COLOR):
+    """cv2.imread, das auch Pfade mit Umlauten liest (Windows: cv2.imread kann nur ASCII-Pfade)."""
+    try:
+        data = np.fromfile(path, np.uint8)
+    except OSError:
+        return None
+    return cv2.imdecode(data, flags) if data.size else None
+
+
+def imwrite_any(path, img, params=None):
+    """cv2.imwrite fuer beliebige Pfade (Umlaute, Windows)."""
+    ok, buf = cv2.imencode(os.path.splitext(path)[1] or ".png", img, params or [])
+    if ok:
+        buf.tofile(path)
+    return bool(ok)
+
+
+def read_image(path, page=1, dpi=200, hidden_layers=()):
     """Liest ein Bild in beliebigem unterstuetzten Format als BGR-Array."""
     if not os.path.isfile(path):
         raise DiffError(tr("Datei nicht gefunden: {}").format(path))
     ext = os.path.splitext(path)[1].lower()
     if ext in VECTOR_EXT:
-        return _read_pdf_like(path, page, dpi)
+        return _read_pdf_like(path, page, dpi, hidden_layers)
     if ext in CAD_EXT:
         return _read_dxf(path, dpi)
     if ext == ".dwg":
@@ -152,7 +190,7 @@ def read_image(path, page=1, dpi=200):
             pass
     if ext in {".tif", ".tiff", ".gif"} and page != 1:
         return _read_with_pil(path, page)
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
+    img = imread_any(path)
     if img is None:                                  # unbekannte Endung oder exotische Kompression
         try:
             img = _read_with_pil(path, page)
@@ -197,11 +235,11 @@ def save_output(img_bgr, path, fmt, dpi=200, quality=95):
         log.warning(tr("  Warnung: WebP erlaubt max. 16383 px je Seite - speichere stattdessen als PNG"))
         path, fmt = os.path.splitext(path)[0] + ".png", "png"
     if fmt in ("png", "bmp"):
-        ok = cv2.imwrite(path, img_bgr)
+        ok = imwrite_any(path, img_bgr)
     elif fmt == "webp":
-        ok = cv2.imwrite(path, img_bgr, [cv2.IMWRITE_WEBP_QUALITY, quality])
+        ok = imwrite_any(path, img_bgr, [cv2.IMWRITE_WEBP_QUALITY, quality])
     elif fmt == "jpg":
-        ok = cv2.imwrite(path, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        ok = imwrite_any(path, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
     else:                                            # tif, pdf -> Pillow
         from PIL import Image
         Image.MAX_IMAGE_PIXELS = None

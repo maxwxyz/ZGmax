@@ -59,6 +59,8 @@ TOOL_HINTS = {
     "polyline": tr("Punkte anklicken. Doppelklick, Enter oder Rechtsklick beendet, Esc bricht ab."),
     "polygon": tr("Eckpunkte anklicken. Doppelklick, Enter oder Rechtsklick schließt das Polygon, Esc bricht ab."),
     "pen": tr("Mit gedrückter Maustaste zeichnen. Jede Linie bleibt einzeln verschieb- und änderbar."),
+    "redact": tr("Bereich aufziehen, der geschwärzt wird. In Bild, PDF, Druck und Kopie wird er eingebrannt."),
+    "pixelate": tr("Bereich aufziehen, der verpixelt wird (Größe = Blockgröße). In jeder Ausgabe eingebrannt."),
     "cutmove": tr("Bereich aufziehen, dann an die neue Stelle ziehen (Pfeiltasten = 1 px, mit Umschalt 10 px). "
                   "Enter = übernehmen, Esc = abbrechen."),
     "zone": tr("Rahmen aufziehen. Dieser Bereich wird beim n\u00e4chsten Vergleich nicht verglichen."),

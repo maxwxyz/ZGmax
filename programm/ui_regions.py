@@ -171,7 +171,7 @@ class RegionsMixin:
 
     def _filter_types(self):
         t = self.cb_filter.currentData()
-        if t in ("dims", "open", "changes"):
+        if t in ("dims", "open", "changes", "text"):
             return {"entfernt", "neu", "geaendert"}  # nur verschobene Teile sind keine echte Aenderung
         if t == "all":
             return None
@@ -184,14 +184,14 @@ class RegionsMixin:
         types = self._filter_types()
         f = self.cb_filter.currentData()
         return [r for r in regs if (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
-                and (f != "open" or rep.reg_status(r) == "offen")]
+                and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
     def _fill_table(self):
         pl = self.payload
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()
         f = self.cb_filter.currentData()                   # Masse/offen: auch im Bild nur diese Rahmen
-        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open") else None
+        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text") else None
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)

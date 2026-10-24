@@ -20,8 +20,7 @@ class InlineText(QPlainTextEdit):
         self.document().setDocumentMargin(1)
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth if a.get("w")
                              else QPlainTextEdit.LineWrapMode.NoWrap)
-        self.setStyleSheet(f"QPlainTextEdit {{ background: rgba(255,255,255,215); color: {a['color']}; "
-                           f"border: 1px dashed {ACCENT}; padding: 0; }}")
+        self._px = None
         self.setPlainText(a.get("text", ""))
         self.setPlaceholderText(tr("Text …"))
         self.textChanged.connect(self.place)
@@ -32,10 +31,14 @@ class InlineText(QPlainTextEdit):
 
     def place(self):
         c, a = self.canvas, self.a
-        th = max(9, rep.ann_text_h(c.shape, a["size"]) * c.scale)
-        f = QFont(UI_FONT)
-        f.setPixelSize(int(th))
-        if self.font() != f:
+        th = int(max(9, rep.ann_text_h(c.shape, a["size"]) * c.scale))
+        if th != self._px:                        # Schriftgroesse wie im Bild (Stylesheet, sonst gewinnt das Farbschema)
+            self._px = th
+            self.setStyleSheet(f"QPlainTextEdit {{ background: rgba(255,255,255,215); color: {a['color']}; "
+                               f"border: 1px dashed {ACCENT}; padding: 0; font-family: '{UI_FONT}'; "
+                               f"font-size: {th}px; }}")
+            f = QFont(UI_FONT)
+            f.setPixelSize(th)
             self.setFont(f)
         fm = self.fontMetrics()
         lines = (self.toPlainText() or " ").split("\n")
@@ -99,6 +102,7 @@ class AnnotationsMixin:
                 for b in self._sel_all():                   # Mehrfachauswahl: alle gewaehlten
                     b["color"] = c.name()
                 self._set_color_btn(c.name(), default=False)
+                self._ann_update_items(self.canvas.selected_anns())
                 self.canvas.update()
                 self._commit()
             else:
@@ -121,6 +125,18 @@ class AnnotationsMixin:
             self.canvas.ann_size = self.s_asize.value()
         self.canvas.update()
 
+    @staticmethod
+    def _swatch(col):
+        pm = QPixmap(14, 14)
+        pm.fill(QColor(0, 0, 0, 0))
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(QPen(QColor(0, 0, 0, 60), 1))
+        p.setBrush(QColor(col))
+        p.drawRoundedRect(QRectF(1, 1, 12, 12), 3, 3)
+        p.end()
+        return QIcon(pm)
+
     def _ann_label(self, a):
         t = a["type"]
         if t == "number":
@@ -133,7 +149,8 @@ class AnnotationsMixin:
             return f"{rep.MEASURE_KINDS.get(a.get('kind'), 'Ma\u00df')}: {rep.measure_text(a, self.canvas.mm_px)}"
         lbl = {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Marker"), "arrow": tr("Pfeil"),
                "line": tr("Linie"), "ellipse": tr("Ellipse"), "pen": tr("Freihand"), "polyline": tr("Linienzug"),
-               "polygon": tr("Polygon"), "image": tr("Bild")}.get(t, t)
+               "polygon": tr("Polygon"), "image": tr("Bild"), "redact": tr("Schwärzung"),
+               "pixelate": tr("Verpixelung")}.get(t, t)
         if a.get("comment"):
             lbl += ": " + a["comment"].replace("\n", " ")[:40]
         if a.get("author"):
@@ -145,7 +162,9 @@ class AnnotationsMixin:
         self.list_anns.blockSignals(True)
         self.list_anns.clear()
         for a in self.anns:
-            self.list_anns.addItem(self._ann_label(a))
+            it = QListWidgetItem(self._ann_label(a))
+            it.setIcon(self._swatch(a.get("color", "#000000")))   # Farbe der Markierung
+            self.list_anns.addItem(it)
         ok = select is not None and 0 <= select < len(self.anns)
         if ok:
             self.list_anns.setCurrentRow(select)
@@ -247,12 +266,16 @@ class AnnotationsMixin:
         if i >= 0:
             self.tabs.setCurrentIndex(1)
 
-    def _ann_changed(self):
-        i = self.canvas.ann_selected
-        if i is not None and 0 <= i < len(self.anns):
-            it = self.list_anns.item(i)
+    def _ann_update_items(self, idx):
+        """Listeneintraege (Text, Farbfeld) nach einer Aenderung nachziehen, ohne die Auswahl zu verlieren."""
+        for i in idx:
+            it = self.list_anns.item(i) if 0 <= i < len(self.anns) else None
             if it:
                 it.setText(self._ann_label(self.anns[i]))
+                it.setIcon(self._swatch(self.anns[i].get("color", "#000000")))
+
+    def _ann_changed(self):
+        self._ann_update_items(self.canvas.selected_anns())
         self._sync_ann_controls()
         self._commit()
 
@@ -338,6 +361,9 @@ class AnnotationsMixin:
         if self.canvas.tool == "area" and self.canvas.sel_rects:   # Entf in der Bereichsauswahl
             self.area_delete()
             return
+        if self.canvas.zone_sel is not None:                      # Entf bei gewaehlter Zone
+            self._zone_delete()
+            return
         idx = sorted(self.canvas.selected_anns(), reverse=True)
         if idx:
             for i in idx:
@@ -371,7 +397,7 @@ class AnnotationsMixin:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"version": 3, "coords": "global", "annotations": self._state()["anns"]},
                           f, ensure_ascii=False, indent=1)
-            self._log(tr("Anmerkungen gespeichert: {}").format(path))
+            self._saved(path)
 
     def ann_load(self):
         d = self.settings.value("outdir", "")
@@ -435,15 +461,7 @@ class AnnotationsMixin:
         except Exception as e:                       # noqa: BLE001
             self.banner.show_msg(tr("Kommentare konnten nicht gelesen werden: {}").format(e), "error")
             return
-        ox, oy = self.origin
-        vec = self.chk_vec.isChecked() and self.chk_vec.isEnabled()
-        if side == "A" or self.view_only or vec:
-            mp = lambda x, y: (x - ox, y - oy)                                           # noqa: E731
-        else:
-            def mp(x, y):
-                q = dp.map_points_tf([(x, y)], self.cache.get("tf"), self.cache.get("box_b"), self.manual_tf)[0]
-                return float(q[0]), float(q[1])
-        new = dx.to_annotations(items, k, self.canvas.ann_size, mp)
+        new = self._comments_to_markups(items, side, k)
         if not new:
             self.banner.show_msg(tr("In der Datei wurden keine \u00fcbernehmbaren Kommentare f\u00fcr diese Seite gefunden."),
                                  "warn", timeout=10)
@@ -456,6 +474,50 @@ class AnnotationsMixin:
         extra = tr(" ({} Kommentare anderer Art übersprungen)").format(skipped) if skipped else ""
         self.banner.show_msg(tr("{} Kommentare als {} Markierungen übernommen{}.").format(len(items), len(new), extra), "info",
                              timeout=12)
+
+    def _comments_to_markups(self, items, side, k):
+        """Kommentare (PDF-Punkte) in Markierungen in der Lage der Anzeige (B: wie ausgerichtet)."""
+        ox, oy = self.origin
+        vec = self.chk_vec.isChecked() and self.chk_vec.isEnabled()
+        if side == "A" or self.view_only or vec:
+            mp = lambda x, y: (x - ox, y - oy)                                           # noqa: E731
+        else:
+            def mp(x, y):
+                q = dp.map_points_tf([(x, y)], self.cache.get("tf"), self.cache.get("box_b"), self.manual_tf)[0]
+                return float(q[0]), float(q[1])
+        return dx.to_annotations(items, k, self.canvas.ann_size, mp)
+
+    def _auto_import_pdf_comments(self):
+        """Beim Oeffnen einer PDF: deren Kommentare als bearbeitbare Markierungen uebernehmen (einmal je Datei und
+        Seite und Fenster; nicht bei Projekten - die haben ihre Markierungen schon)."""
+        if self.payload is None or self.project_path or not dv.available():
+            return
+        done = self.__dict__.setdefault("_comments_done", set())
+        sides = [("A", self.path_a, self.sp_pa.value())]
+        if not self.view_only and self.path_b:
+            sides.append(("B", self.path_b, self.sp_pb.value()))
+        new, n_items = [], 0
+        for side, path, page in sides:
+            if not path or not path.lower().endswith(".pdf") or (path, page) in done:
+                continue
+            done.add((path, page))
+            try:
+                items, _skipped = dx.pdf_comments(path, page)
+                if items:
+                    k, _h = self._sheet_geometry(side)
+                    got = self._comments_to_markups(items, side, k)
+                    for a in got:
+                        a["source"] = "AB"[side == "B"] if not self.view_only else ""
+                    new += got
+                    n_items += len(items)
+            except Exception as e:                   # noqa: BLE001 - Kommentare sind Beiwerk, Fehler nur melden
+                log.warning("Kommentare aus %s nicht gelesen: %s", path, e)
+        if new:
+            self.anns.extend(new)
+            self._ann_refresh(None)
+            self._commit()
+            self.banner.show_msg(tr("{} Kommentare aus der PDF als bearbeitbare Markierungen übernommen (Ebene "
+                                    "Markierungen; rückgängig mit Strg+Z).").format(n_items), "info", timeout=12)
 
     def export_xfdf(self):
         if not self.anns:

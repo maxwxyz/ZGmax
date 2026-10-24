@@ -98,6 +98,36 @@ class Job(QThread):
             self.failed.emit(f"{type(e).__name__}: {e}")
 
 
+class PaletteFrame(QFrame):
+    """Werkzeugpalette: passt sie nicht in die Hoehe (kleiner Bildschirm, grosse Skalierung), zeigt sie nur Symbole
+    (Name im Tooltip) statt Symbol mit Text - nichts wird abgeschnitten."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.compact = False
+
+    def _buttons(self):
+        return [b for b in self.findChildren(QToolButton) if b.parent() is self]
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        QTimer.singleShot(0, self._fit)
+
+    def _fit(self):
+        bs = self._buttons()
+        if not bs:
+            return
+        # Bedarf mit Text unter dem Symbol: Symbol + eine Textzeile + Rand je Knopf (unabhaengig vom Zustand)
+        full = sum(b.iconSize().height() + b.fontMetrics().height() + 6 for b in bs) \
+            + self.layout().spacing() * len(bs) + 16
+        want = full > self.height()
+        if want != self.compact:
+            self.compact = want
+            for b in bs:
+                b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly if want
+                                     else Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+
+
 class PanelScroll(QScrollArea):
     """Scrollbereich einer Seitenleiste, der nie schmaler wird als sein Inhalt: sonst schneidet er rechts
     Knoepfe ab (Windows mit groesserer Schrift oder Skalierung, laengere Texte im Englischen)."""
@@ -278,7 +308,7 @@ class SliderRow(QWidget):
         self.default = val
         self.spin = QDoubleSpinBox()
         self.spin.setDecimals(decimals)
-        self.spin.setRange(lo, hi * 100 if hi > 0 else 100000.0)   # im Feld sind auch gr\u00f6\u00dfere Werte als am Regler m\u00f6glich
+        self.spin.setRange(min(lo, 0), hi * 100 if hi > 0 else 100000.0)   # im Feld auch Werte ausserhalb des Reglers
         self.spin.setSingleStep(step)
         self.spin.setValue(val)
         self.spin.setFixedWidth(84)
@@ -295,7 +325,8 @@ class SliderRow(QWidget):
         lay.setSpacing(2)
         lay.addLayout(top)
         lay.addWidget(self.slider)
-        self.setToolTip(tip + ("\n\n" if tip else "") + tr("Im Zahlenfeld kann auch ein gr\u00f6\u00dferer Wert als am Regler eingetippt werden."))
+        self.setToolTip(tip + ("\n\n" if tip else "") + tr("Im Zahlenfeld kann jeder Wert eingetippt werden – auch kleinere "
+                                                          "oder größere als am Regler und Zwischenwerte."))
         self.slider.valueChanged.connect(self._from_slider)
         self.spin.valueChanged.connect(self._from_spin)
 

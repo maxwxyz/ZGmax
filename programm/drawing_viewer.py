@@ -88,6 +88,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         cv.filesDropped.connect(self._files_dropped)
         cv.alignPoint.connect(self._align_point)
         cv.selCopy.connect(self._sel_copy)
+        cv.zoneEdited.connect(self._zone_edited)
+        cv.zoneSelected.connect(self._zone_selected)
         cv.selMove.connect(self._sel_move)
         cv.floatDone.connect(self._float_done)
         cv.areaChanged.connect(self._area_changed)
@@ -291,8 +293,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
                 return tr("PDF-Text")
             rep.text_diff(pl["res"], pl["regs"], log)
             return tr("Texterkennung")
-        self._run_job(work, tr("Lese Text \u2026"),
-                      lambda how: (self._fill_table(), self._busy(False, tr("Text gelesen ({})").format(how))))
+        def done(how):
+            n = sum(1 for r in pl["regs"] if rep.text_changed(r))
+            self._fill_table()
+            self._busy(False, tr("Text gelesen ({}): {} Änderungen mit geändertem Text").format(how, n))
+            if n:
+                self.cb_filter.setCurrentIndex(self.cb_filter.findData("text"))
+        self._run_job(work, tr("Lese Text \u2026"), done)
 
     # --- Datei-Handling
     def open_file(self, which):
@@ -428,6 +435,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self._files_dropped([u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()])
 
     def _files_dropped(self, files):
+        if self.payload is not None or self.path_a or self.path_b:   # schon etwas offen: neues Fenster
+            self._doc_window()._files_dropped(files)
+            return
         proj = [f for f in files if f.lower().endswith(PROJECT_EXT)]
         if proj:
             self.project_open(proj[0])
@@ -447,6 +457,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
 
     def _update_units(self, *_):
         self.canvas.mm_px = 25.4 / max(1, self.dpi_value()) * self.scale_n()
+        rep.MEASURE_FMT["mm"] = self.canvas.mm_px     # fuer die Lage der Messwerte (Platz auf kurzen Massen)
         if hasattr(self, "lbl_meas_scale"):
             n = self.scale_n()
             txt = f"1 : {n:g}" if n >= 1 else f"{1 / n:g} : 1"
@@ -489,8 +500,9 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
 
     def params(self):
         return dp.Params(
-            thr=int(self.s_thr.value()), align=self.cb_align.currentText(), cell=int(self.s_cell.value()),
-            max_shift=int(self.s_maxs.value()), tol=int(self.s_tol.value()), hatch=int(self.s_hatch.value()),
+            thr=int(self.s_thr.value()), align=self.cb_align.currentText() if self.chk_align.isChecked() else "off",
+            cell=max(32, int(self.s_cell.value())),
+            max_shift=int(self.s_maxs.value()) if self.chk_align.isChecked() else 0, tol=int(self.s_tol.value()), hatch=int(self.s_hatch.value()),
             move=int(self.s_move.value()), obj_shift=int(self.s_obj.value()), obj_rotate=float(self.s_rot.value()),
             min_area=int(self.s_area.value()), ignore=self._local_zones(self._compute_origin()),
             ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked(),
@@ -513,6 +525,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self.chk_edges.setChecked(True)
         self.chk_glyphs.setChecked(True)
         self.chk_flatten.setChecked(False)
+        self.chk_align.setChecked(True)
 
     # --- Zonen und Ausschnitt
     def _add_zone(self, x, y, w, h):
@@ -530,6 +543,33 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self._refresh_zones()
             self._param_changed()
             self._commit()
+
+    def _zone_edited(self, i, x, y, w, h):
+        """Zone im Bild verschoben oder in der Groesse geaendert (lokale Koordinaten -> global)."""
+        if 0 <= i < len(self.zones):
+            ox, oy = self.origin
+            self.zones[i] = (x + ox, y + oy, w, h)
+            self._refresh_zones()
+            self.canvas.zone_sel = i
+            self._param_changed()
+            self._commit()
+
+    def _zone_selected(self, i):
+        self.list_zones.blockSignals(True)
+        self.list_zones.setCurrentRow(i)
+        self.list_zones.blockSignals(False)
+        if i >= 0:
+            self.statusBar().showMessage(tr("Zone gewählt: ziehen = verschieben, Ecken = Größe, Entf = löschen"), 5000)
+
+    def _zone_delete(self, idx=None):
+        i = self.canvas.zone_sel if idx is None else idx
+        if i is None or not (0 <= i < len(self.zones)):
+            return
+        del self.zones[i]
+        self.canvas.zone_sel = None
+        self._refresh_zones()
+        self._param_changed()
+        self._commit()
 
     def _clear_zones(self):
         if self.zones:
@@ -566,7 +606,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
 
     def _crop_drawn(self, x, y, w, h):
         if w < 200 or h < 200:
-            self._log(tr("Ausschnitt zu klein (mindestens 200 x 200 Pixel)."))
+            self.banner.show_msg(tr("Ausschnitt zu klein (mindestens 200 × 200 Pixel)."), "warn", timeout=8)
             return
         ox, oy = self.origin
         self.crop = (ox + x, oy + y, w, h)
@@ -656,6 +696,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
                     dpi=self.dpi_value(), params=self.params(), crop=self.crop, crop_b=self.crop_b,
                     manual=self.manual_tf,
                     vf=self.vfilter, origin=self._compute_origin(), single=single,
+                    pdf_off=tuple(sorted(getattr(self, "pdf_off", set()))),
                     vec=(not single) and self.chk_vec.isChecked() and self.chk_vec.isEnabled(),
                     vtol=self.sp_vtol.value())
         self.pending = False
@@ -668,21 +709,22 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self._run_job(lambda ctx: self._compute(snap, ctx),
                       tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap))
 
-    def _gray(self, path, page, dpi, log, vf=(None, None)):
+    def _gray(self, path, page, dpi, log, vf=(None, None), hidden=()):
         filt = vf if (path.lower().endswith(".pdf") and vf != (None, None)) else (None, None)
+        hidden = tuple(sorted(hidden)) if path.lower().endswith(".pdf") else ()
         try:                                         # Datei auf der Platte geaendert -> neu laden
             stt = os.stat(path)
             stamp = (stt.st_mtime_ns, stt.st_size)
         except OSError:
             stamp = None
-        key = ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt))
+        key = ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt), hidden)
         if self.cache.get("gk_" + path) != key:
             log(tr("Lade {} …").format(os.path.basename(path)))
             if filt != (None, None):
                 self.cache["g_" + path] = dv.render_gray(path, page, dpi, *filt)
                 self.cache["c_" + path] = None
             else:
-                img = dc.read_image(path, page, dpi)
+                img = dc.read_image(path, page, dpi, hidden)
                 self.cache["g_" + path] = img.min(axis=2)            # dunkelster Kanal (wie load_gray)
                 self.cache["c_" + path] = img if dp.is_colored(img) else None   # Farbfassung nur, wenn farbig
             self.cache["gk_" + path] = key
@@ -715,7 +757,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if snap.get("vec"):
             return self._compute_vec(snap, log)
         log.progress(0.01, tr("Lade ") + os.path.basename(snap["pa"]))
-        ga = self._gray(snap["pa"], snap["page_a"], snap["dpi"], log, snap["vf"])
+        ga = self._gray(snap["pa"], snap["page_a"], snap["dpi"], log, snap["vf"], snap.get("pdf_off", ()))
         log.check()
         if self.payload is None:                     # erste Berechnung: schon mal Zeichnung A zeigen
             k = min(1.0, 2400 / max(ga.shape))
@@ -731,7 +773,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             pc = build_color_pyramids(ca, len(pa))
             return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
         log.progress(0.12, tr("Lade ") + os.path.basename(snap["pb"]))
-        gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"])
+        gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"], snap.get("pdf_off", ()))
         log.check()
         key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
                snap["crop"], snap.get("crop_b"), repr(snap.get("manual")))
@@ -807,6 +849,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self.restore_regs = None
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
         self._update_enabled()
+        self._refresh_pdf_layers()
+        QTimer.singleShot(0, self._auto_import_pdf_comments)
         if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
             QTimer.singleShot(0, self.run_search)
         self._fill_table()
@@ -856,6 +900,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self.chk_highlight.blockSignals(False)
         fit_after = (m == "Y") != (self.canvas.mode == "Y")      # Nebeneinander halbiert die Breite
         self.canvas.mode = m
+        self.act_legend.setEnabled(m in ("D", "O", "N", "R") and not self.view_only)   # Legende nur im Vergleich
         if fit_after:
             self.canvas.fit()
         if m == "K" and self.act_pause.isChecked():
@@ -924,6 +969,10 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         QGuiApplication.clipboard().setImage(img)
         self._log(tr("Ergebnis in die Zwischenablage kopiert."))
 
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        QTimer.singleShot(0, self._fit_toolbar)
+
     def _canvas_menu(self, gpos):
         m = QMenu(self)
         m.addAction(self.act_fit)
@@ -935,13 +984,17 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         m.addSeparator()
         if self.path_a and self.path_b:
             m.addAction(tr("A und B tauschen"), self.swap_ab)
+        if self.canvas.zone_sel is not None:
+            m.addAction(tr("Zone löschen"), self._zone_delete)
+            m.addSeparator()
         if self.canvas.sel_rects:                        # Bereichsauswahl: ihre Befehle zuerst
             for k, b in self.area_buttons.items():
                 if b.isVisible():
                     m.addAction(b.text(), b.click if isinstance(b, QPushButton) else b.trigger)
             m.addSeparator()
-        m.addAction(self.act_copy)
-        m.addAction(self.act_copy_sel)
+        if not self.canvas.sel_rects:                    # mit Bereichsauswahl stehen Kopieren & Co. schon oben
+            m.addAction(self.act_copy)
+            m.addAction(self.act_copy_sel)
         if self.view_only:
             m.addAction(self.act_move_sel)
         m.addAction(self.act_export_img)
@@ -960,6 +1013,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self._float_done(True)
         if t != "area" and c.sel_rects:                  # Bereichsauswahl gilt nur im Werkzeug "Bereich"
             c.sel_rects = []
+        c.zone_sel = None
         c.tool = t
         if c.ann_selected is not None or c.ann_multi:  # Werkzeugwechsel hebt die Auswahl auf (Leiste zeigt Vorgabe)
             c.ann_selected = None
@@ -975,9 +1029,10 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         c.hover = None
         c._ann_prev = None
         c._rubber = None
-        b = getattr(self, "shape_button", None)
-        if b is not None and t in ("rect", "ellipse", "line", "arrow", "polyline", "polygon"):
-            m = b.menu()                                   # Formen-Knopf zeigt die zuletzt gewaehlte Form
+        c._drag = None                                   # angefangenes Ziehen gehoert zum alten Werkzeug
+        b = getattr(self, "group_buttons", {}).get(t)
+        if b is not None:
+            m = b.menu()                                   # Gruppenknopf zeigt das zuletzt gewaehlte Werkzeug
             b.setDefaultAction(self.tool_actions[t])
             b.setMenu(m)
         if t in self.tool_actions:
@@ -989,7 +1044,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
                     a.setChecked(False)
                     a.actionGroup().setExclusive(True)
         if t in ("text", "number", "rect", "arrow", "approval", "zone", "crop", "measure", "region", "cloud",
-                 "highlight", "ellipse", "line", "polyline", "polygon", "pen", "area"):
+                 "highlight", "ellipse", "line", "polyline", "polygon", "pen", "area", "redact", "pixelate"):
             self.act_overlays.setChecked(True)
         self._update_options()
         c.setCursor(Qt.CursorShape.OpenHandCursor if t == "hand" else Qt.CursorShape.CrossCursor)
@@ -1076,7 +1131,11 @@ def setup_logging():
         app = QApplication.instance()
         for w in (app.topLevelWidgets() if app else []):
             if isinstance(w, MainWindow):
-                w.banner.show_msg(tr("Unerwarteter Fehler: {}: {}").format(et.__name__, ev), "error", text)
+                if issubclass(et, PermissionError):   # typisch Windows: Datei in Acrobat/Excel geoeffnet
+                    msg = tr("Datei kann nicht geschrieben werden – ist sie in einem anderen Programm geöffnet? ({})")
+                    w.banner.show_msg(msg.format(getattr(ev, "filename", "") or ev), "error", text)
+                else:
+                    w.banner.show_msg(tr("Unerwarteter Fehler: {}: {}").format(et.__name__, ev), "error", text)
                 break
     sys.excepthook = hook
 
@@ -1101,8 +1160,8 @@ def selftest():
     img2 = img.copy()
     cv2.circle(img2, (500, 200), 60, 0, 3)
     pa, pb = os.path.join(tmp, "a.png"), os.path.join(tmp, "b.png")
-    cv2.imwrite(pa, img)
-    cv2.imwrite(pb, img2)
+    dc.imwrite_any(pa, img)
+    dc.imwrite_any(pb, img2)
 
     def compare():
         p = dp.Params()

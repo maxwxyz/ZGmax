@@ -240,6 +240,24 @@ def _draw(p, name):
             path.lineTo(3, 7 + dy)
             path.closeSubpath()
             p.drawPath(path)
+    elif name == "redact":
+        p.drawRect(r(3, 5, 18, 14))
+        p.fillRect(r(5, 8, 14, 3), p.pen().color())
+        p.fillRect(r(5, 13, 10, 3), p.pen().color())
+    elif name == "pixelate":
+        for i, (x, y) in enumerate(((3, 4), (9, 4), (15, 4), (3, 10), (9, 10), (15, 10), (3, 16), (9, 16), (15, 16))):
+            if i % 2 == 0:
+                p.fillRect(r(x, y, 6, 6), p.pen().color())
+            else:
+                p.drawRect(r(x + 0.5, y + 0.5, 5, 5))
+    elif name == "lock":
+        p.drawRoundedRect(r(5, 11, 14, 10), 1.5, 1.5)
+        path = QPainterPath()
+        path.moveTo(8, 11)
+        path.lineTo(8, 8)
+        path.arcTo(r(8, 3.5, 8, 9), 180, -180)
+        path.lineTo(16, 11)
+        p.drawPath(path)
     elif name == "magic":
         p.drawLine(QPointF(4, 20), QPointF(15, 9))
         for (x, y) in ((17, 4), (20, 8), (13, 3)):

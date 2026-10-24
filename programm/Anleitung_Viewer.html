@@ -88,9 +88,11 @@ installiert (Internet nötig). Direkt: <code>python programm/drawing_viewer.py [
 <tr><td>Menüleiste</td><td>Alle Funktionen: <i>Datei</i>, <i>Bearbeiten</i>, <i>Ansicht</i>, <i>Werkzeuge</i>, <i>Prüfen</i>, <i>Hilfe</i>.</td></tr>
 <tr><td>Leiste oben</td><td><i>Öffnen</i>, <i>Vergleichen</i>, die Ansichten als Umschalter (Alt, Neu, Vergleich, Nebeneinander, Überlagern,
 Schieber, Blinken), Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten
-<i>Optionen</i> (Einstellungen, links) und <i>Liste</i> (Änderungen und Markierungen, rechts).</td></tr>
+<i>Optionen</i> (Einstellungen, links) und <i>Elemente</i> (Änderungen, Markierungen, Ebenen – rechts). Ist das Fenster
+schmal, zeigen diese Knöpfe nur ihr Symbol (Name im Tooltip).</td></tr>
 <tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
-Linie, Pfeil, Linienzug, Polygon), Stift, Marker, Nummer, Stempel;
+Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer, Stempel; bei wenig
+Platz nur Symbole;
 unten Lupe und Übersicht. Das gewählte Werkzeug ist blau.</td></tr>
 <tr><td>Optionszeile (über dem Bild)</td><td>Erscheint nur bei Bedarf und zeigt die Einstellungen des gewählten Werkzeugs,
 z. B. beim Messen Messart, Einrasten, Maßstab und <i>Kalibrieren</i>; beim Markieren Farbe und Größe; beim Blinken
@@ -130,7 +132,8 @@ die ganze Zeichnung mit dem sichtbaren Ausschnitt. Klicken oder ziehen springt d
 <tr><th>Ansicht</th><th>Taste</th><th>Zeigt</th></tr>
 <tr><td>Alt / Neu</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Nur die alte bzw. neue Zeichnung im Original (grau bzw. farbig wie in der Datei).
 Mit <i>Änderungen hervorheben</i> in der Optionszeile (<kbd>8</kbd> / <kbd>7</kbd>) erscheinen darin entfernte Stellen rot bzw. neue blau.</td></tr>
-<tr><td>Vergleich</td><td><kbd>3</kbd></td><td>Das Ergebnis in Farbe (Legende unten links)</td></tr>
+<tr><td>Vergleich</td><td><kbd>3</kbd></td><td>Das Ergebnis in Farbe (Legende unten links; abschaltbar mit <i>Ansicht →
+Legende anzeigen</i> – gilt auch für Bild, Kopie und Druck)</td></tr>
 <tr><td>Nebeneinander</td><td><kbd>9</kbd></td><td>Alt links, neu rechts; beide Hälften zoomen und verschieben gemeinsam</td></tr>
 <tr><td>Überlagern</td><td><kbd>4</kbd></td><td>Beide ohne Toleranz übereinander – zeigt, was die Automatik herausrechnet</td></tr>
 <tr><td>Blinken</td><td><kbd>6</kbd></td><td>Wechselt zwischen alt und neu; Geschwindigkeit und Pause erscheinen in der Optionszeile.
@@ -149,8 +152,11 @@ für die Anzeige; gespeicherte Bilder und Ausdrucke bleiben normal. Unabhängig 
 <ul>
 <li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Zeichnung
 ansehen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
-Markieren, Drucken und Speichern. Ist bereits ein Vergleich offen, öffnet sich die Zeichnung in einem <b>neuen
-Fenster</b>; der Vergleich bleibt erhalten.</li>
+Markieren, Drucken und Speichern.</li>
+<li><b>Jedes Dokument in seinem Fenster:</b> Ist schon etwas offen, öffnen <i>Zeichnung ansehen</i>, <i>Zuletzt
+verwendet</i>, <i>Projekt öffnen</i> und hineingezogene Dateien ein <b>neues Fenster</b> – Markierungen und Prüfstand
+eines Dokuments vermischen sich so nie. Nur <i>Alte/Neue Zeichnung öffnen</i> tauscht bewusst eine Seite des aktuellen
+Vergleichs. Das Menü <i>Fenster</i> listet alle offenen Fenster zum Wechseln.</li>
 <li><b>Mehrere Vergleiche gleichzeitig:</b> <i>Datei → Neues Fenster</i> (<kbd>Strg</kbd>+<kbd>N</kbd>). Jedes Fenster
 ist unabhängig (eigene Dateien, Markierungen, Einstellungen der Ansicht).</li>
 <li><b>Schließen, ohne das Programm zu beenden:</b> <i>Datei → Schließen</i> (<kbd>Strg</kbd>+<kbd>W</kbd>). Bei ungespeicherten
@@ -170,10 +176,15 @@ Punkt (●) am Knopf zeigt, dass sich seit der letzten Berechnung etwas geänder
 Unterschiede bei Toleranz 0, 1, 2 … und wählt die Stelle, ab der mehr Toleranz kaum noch etwas entfernt (sonst würde
 sie echte Änderungen verschlucken).</li>
 <li><i>Mindestgröße</i> – aus der gemessenen Strichstärke.</li>
+<li><i>Max. Kachelverschiebung</i> – gemessen: wie weit einzelne Bereiche nach dem Ausrichten noch daneben liegen.</li>
 <li><i>Suchbereiche</i> (Kacheln, Verschiebungen, Schraffur) – auf die Auflösung (dpi) umgerechnet.</li>
 </ul>
 <p>Was eine <i>wichtige</i> Änderung ist, kann das Programm nicht wissen; die Vorschläge stehen in der Hinweisleiste und
-lassen sich jederzeit von Hand ändern.</p>
+lassen sich jederzeit von Hand ändern. In die Zahlenfelder lässt sich jeder Wert tippen, auch kleinere oder größere
+als am Regler.</p>
+<p><b>Zeichnungen ausrichten</b> (Haken, Standard an): Neu wird auf Alt ausgerichtet. Ohne Haken liegen beide genau so
+übereinander, wie sie in den Dateien sind (links oben bündig, ohne Skalieren und ohne Feinausrichtung) – z. B. für
+exakt gleich erzeugte PDF aus dem CAD.</p>
 <div class="tip"><b>Kantensäume:</b> Liegen Linien in der neuen Zeichnung um einen Pixel versetzt oder sind sie etwas
 dicker gescannt/gerendert, entstehen dünne rote/blaue Säume direkt an grauen Linien. Diese werden standardmäßig
 ignoriert (bleiben grau). Eigene Linien mit Abstand zur alten Linie bleiben Änderungen. Abschaltbar unter
@@ -198,7 +209,10 @@ echten Linien, bietet die Hinweisleiste zusätzlich den genaueren <a href="#form
 <p><b>Einrasten:</b> Der Zeiger rastet an Linien ein (grünes Quadrat); an zwei parallelen Linien wird automatisch der
 senkrechte Abstand gemessen. <kbd>Umschalt</kbd> gedrückt = frei messen. Messungen bleiben als Maß im Bild, lassen sich mit
 <i>Auswahl</i> verschieben und an den weißen Punkten ändern. Maße sehen aus wie eine Bemaßung: dünne Linie, Pfeilspitzen,
-gut lesbare Zahl; die <i>Größe</i> in der Optionszeile ändert Zahl und Pfeile gemeinsam (auch im Export und PDF).</p>
+der Wert mittig über der Maßlinie und parallel zu ihr; bei kurzen Maßen steht er außen hinter dem Pfeil. Den Wert kann
+man an seinem Punkt beliebig verschieben (dann führt eine Hinweislinie zur Messung). <i>Größe</i> ändert Zahl und Pfeile
+gemeinsam; die Zahl wächst mit dem Zoom wie auf dem Papier und wird nie unlesbar klein. <b>Einheit</b> (mm, cm, m, in)
+und <b>Stellen</b> (Nachkommastellen) stehen in der Messen-Zeile und gelten für alle Maße, die Liste und alle Exporte.</p>
 <p><b>Stimmen die mm?</b> Umgerechnet wird mit <i>mm = Pixel × 25,4 ÷ dpi × Maßstab</i>. Die Auflösung liest das Programm
 aus der Datei (sonst 200 dpi).</p>
 <ul>
@@ -219,12 +233,20 @@ Text direkt, bei Bildern per Texterkennung) und bietet den Maßstab zur Übernah
 mit automatischem Zeilenumbruch (Breite später am Punkt rechts ändern). <kbd>Strg</kbd>+<kbd>Enter</kbd> oder Klick
 daneben = fertig, <kbd>Esc</kbd> = verwerfen. Doppelklick auf einen Text ändert ihn an Ort und Stelle.</td></tr>
 <tr><td>Wolke (<kbd>W</kbd>)</td><td>Revisionswolke aufziehen</td></tr>
-<tr><td>Formen ▾</td><td>Ein Knopf für <i>Rahmen, Ellipse, Linie, Pfeil, Linienzug, Polygon</i>; das kleine Dreieck wählt die
-Form, der Knopf zeigt die zuletzt benutzte. Rahmen/Ellipse aufziehen, Linie/Pfeil vom Anfang zum Ende ziehen.
+<tr><td>Formen ▾</td><td>Ein Knopf für <i>Rahmen, Ellipse, Linie, Linienzug, Polygon</i>; das kleine Dreieck wählt die
+Form, der Knopf zeigt die zuletzt benutzte. Rahmen/Ellipse aufziehen, Linie vom Anfang zum Ende ziehen.
 Linienzug und Polygon: Punkte anklicken, Doppelklick, <kbd>Enter</kbd> oder Rechtsklick beendet; die Eckpunkte lassen
 sich danach einzeln verschieben.</td></tr>
+<tr><td>Pfeil</td><td>Vom Anfang zur Spitze ziehen</td></tr>
 <tr><td>Stift</td><td>Freihand zeichnen. Jede Linie bleibt eine eigene Markierung; an den Ecken skalieren.</td></tr>
 <tr><td>Marker</td><td>Fläche farbig hinterlegen (Textmarker, Standard gelb)</td></tr>
+<tr><td>Schwärzen ▾</td><td><i>Schwärzen</i> (schwarze Fläche; mit dem Haken <i>Mit Papierfarbe</i> stattdessen in der Farbe
+des Papiers ringsum, meist weiß „ausgemalt“) oder <i>Verpixeln</i> (grobes Mosaik mit Rauschen und wenigen Stufen, nicht
+zurückrechenbar; <i>Größe</i> = Blockgröße)
+aufziehen – um Namen, Preise, Kundendaten unkenntlich zu machen. Im Programm bleibt es eine verschiebbare Markierung;
+in <b>jeder Ausgabe</b> (Bild, PDF, SVG, Bericht, Druck, Kopie, durchsuchbares PDF, Vektorisieren, bearbeitete Zeichnung)
+wird es unwiderruflich eingebrannt – auch wenn Markierungen ausgeblendet sind. Darunter liegender Text wird nicht als
+durchsuchbarer Text mitgespeichert. Die Originaldatei bleibt unverändert.</td></tr>
 <tr><td>Nummer</td><td>Jeder Klick setzt den nächsten nummerierten Kreis; Startnummer in der Optionszeile</td></tr>
 <tr><td>Stempel</td><td>Klick, dann Status (FREIGEGEBEN, GEPRÜFT …), Name und Datum</td></tr>
 </table>
@@ -250,8 +272,8 @@ Markierungen, Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht ge
 Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style="color:#16a34a">● geprüft</span>,
 <span style="color:#7c3aed">● abgelehnt</span> – in der Liste und an den Rahmen im Bild.</li>
 </ol>
-<p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „Maße“ (geänderte
-Maßzahlen) oder „offen“ filterbar. Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
+<p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „nur geänderter Text“,
+„nur geänderte Maße“ oder „offen“ filterbar (gilt für Liste, Bild und PDF). Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
 Doppelklick bearbeitet Text A/B und Beschreibung. <i>Selbst markieren</i> nimmt einen aufgezogenen Bereich als eigene
 Änderung auf; <i>Löschen</i> entfernt unerwünschte Funde. <i>Prüfen → Abgelehnte als Zonen übernehmen</i> macht aus allen abgelehnten
 Funden Zonen, die bei den nächsten Vergleichen (auch im Stapel) nicht mehr gemeldet werden. Status und Kommentare werden im <b>Projekt</b> gespeichert und
@@ -273,15 +295,17 @@ Markierungen, Maße und Änderungsrahmen. Die Optionszeile zeigt Größe und Anz
 <table>
 <tr><th>Befehl</th><th>Wirkung</th></tr>
 <tr><td>Kopieren (<kbd>Strg</kbd>+<kbd>C</kbd>)</td><td>Wie angezeigt, mit Markierungen, als Bild in die Zwischenablage
-(außerhalb der Rechtecke durchsichtig). In ZGmax eingefügt, kommen Zeichnungsteil (als Bild) und Markierungen getrennt
+(außerhalb der Rechtecke durchsichtig; mit <i>Nur Linien (ohne Papier)</i> auch das Papier). In ZGmax eingefügt, kommen Zeichnungsteil (als Bild) und Markierungen getrennt
 und einzeln bearbeitbar zurück.</td></tr>
 <tr><td>Verschieben</td><td>In die Auswahl klicken und ziehen. Markierungen wandern immer mit; beim Ansehen einer einzelnen
-Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (Hintergrund bleibt)</i> nur die Linien. Die frei gewordene
+Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (ohne Papier)</i> nur die Linien. Die frei gewordene
 Fläche bekommt die Papierfarbe.</td></tr>
+<tr><td>Zuschneiden</td><td>Beim Ansehen: nur den Bereich behalten. Ragt der Bereich über das Blatt hinaus, wird das Blatt
+<b>vergrößert</b> (neuer Rand in Papierfarbe). Im Vergleich: nur diesen Teil vergleichen.</td></tr>
 <tr><td>Löschen (<kbd>Entf</kbd>)</td><td>Markierungen und Änderungen in der Auswahl löschen; die Zeichnung bleibt.</td></tr>
 <tr><td>Exportieren …</td><td>Auswahl als PNG, TIFF, JPG, PDF oder SVG mit Ebenen speichern.</td></tr>
-<tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>),
-<i>Zeichnung im Bereich leeren</i> und <i>Auf Bereich zuschneiden</i> (die beiden letzten beim Ansehen einer Zeichnung).</td></tr>
+<tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>)
+und <i>Zeichnung im Bereich leeren</i> (beim Ansehen einer Zeichnung).</td></tr>
 </table>
 <p><kbd>Esc</kbd> hebt die Auswahl auf. Alle Änderungen an der Zeichnung lassen sich mit <kbd>Strg</kbd>+<kbd>Z</kbd>
 rückgängig machen.</p>
@@ -313,11 +337,12 @@ für kleinere Dateien) oder <i>Nur Auflösung ändern</i> (falsche dpi-Angabe ko
 </table>
 
 <h2 id="ebenen">Ebenen</h2>
-<p><i>Ansicht → Ebenen</i> blendet rechts den Reiter <i>Ebenen</i> ein (sonst verborgen). Feste Ebenen: <i>Zeichnung,
-Änderungen, Markierungen, Maße, Eingefügte Bilder, Zonen</i>. Je Ebene:</p>
+<p><i>Ansicht → Ebenen</i> blendet rechts den Reiter <i>Ebenen</i> ein (sonst verborgen). Feste Ebenen, von oben nach
+unten wie sie übereinanderliegen: <i>Schwärzungen, Maße, Markierungen, Eingefügte Bilder, Änderungen, Zonen,
+Zeichnung</i>. Je Ebene ein Haken (sichtbar) und ein Schloss (gesperrt):</p>
 <ul>
 <li><b>Sichtbar</b> – ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren (z. B. die
-Zeichnung ausblenden, um nur die Markierungen zu exportieren).</li>
+Zeichnung ausblenden, um nur die Markierungen zu exportieren). Ausnahme: Schwärzungen werden immer eingebrannt.</li>
 <li><b>Gesperrt</b> – Inhalte lassen sich nicht anklicken, verschieben oder löschen (z. B. Maße sperren, während man
 Wolken zeichnet; gesperrte Zeichnung = keine Bildbearbeitung).</li>
 </ul>
@@ -325,12 +350,17 @@ Wolken zeichnet; gesperrte Zeichnung = keine Bildbearbeitung).</li>
 links unter <i>Ebenen</i> ein- und ausblendbar). <i>Als SVG mit Ebenen</i> erzeugt Ebenen für Inkscape, Illustrator &amp; Co.;
 Markierungen und Änderungsrahmen sind dort einzelne, bearbeitbare Vektoren. TIFF und PNG kennen keine allgemein lesbaren
 Ebenen und werden flach gespeichert.</p>
+<p><b>Ebenen der PDF-Datei:</b> Hat eine PDF eigene Ebenen (z. B. Bemaßung, Text, verdeckte Kanten aus dem CAD), stehen
+sie darunter im Abschnitt <i>Ebenen der PDF-Datei</i>. Ohne Haken wird die Ebene nicht gezeichnet und – im Vergleich –
+auch nicht verglichen. Die Auswahl wird im Projekt gespeichert.</p>
 
 <h2 id="texte">Text und Maße</h2>
 <p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Prüfen</i>):</p>
 <ul>
-<li><b>Text erkennen</b>: schreibt zu jeder Änderung „alter Text → neuer Text“ in die Liste. Bei PDF mit echtem Text wird
-dieser genommen (exakt, sofort), sonst die Texterkennung (deutsch und englisch, auch Ø, ±, °).</li>
+<li><b>Geänderten Text finden</b>: liest den Text jeder Änderung – auch Maße und senkrecht stehende Texte, in beiden
+Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Bei PDF mit echtem Text wird dieser genommen
+(exakt, sofort), sonst die Texterkennung (deutsch und englisch, auch Ø, ±, °). Danach stehen in Liste, Bild und PDF
+<b>nur noch Änderungen mit geändertem Text</b> (Filter <i>Zeigen: nur geänderter Text</i>).</li>
 <li><b>Geänderte Maße finden</b>: liest die Zahlen jeder Änderung und vergleicht sie (auch R- und M-Angaben). Danach
 stehen in Liste, Bild und PDF <b>nur noch Änderungen, bei denen sich eine Maßzahl geändert hat</b> („12,5 → 12,8“);
 feine Strichänderungen an der Geometrie werden ausgeblendet (Filter <i>Zeigen: nur geänderte Maße</i>).
@@ -343,6 +373,9 @@ Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</li
 Installation an (ca. 60 MB, Internet nötig).</p>
 
 <h2 id="kommentare">Kommentare einlesen und weitergeben (XFDF, PDF)</h2>
+<p><b>PDF mit Kommentaren öffnen:</b> Die Kommentare werden nicht ins Bild gezeichnet, sondern automatisch als
+<b>bearbeitbare Markierungen</b> übernommen (im Vergleich die von Alt und Neu, jeweils an der richtigen Stelle) –
+verschieben, ändern, löschen wie eigene. Bei Projekten geschieht das nicht, die enthalten ihre Markierungen schon.</p>
 <p><i>Datei → Kommentare einlesen (XFDF, PDF) …</i> übernimmt Anmerkungen aus anderen Programmen als eigene Markierungen:</p>
 <ul>
 <li><b>XFDF</b> (Kommentar-Export aus Acrobat, Bluebeam, PDF-XChange …) und</li>
@@ -373,7 +406,9 @@ vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (
 <li><b>Ausschnitt</b>: nur einen Teil vergleichen (schneller). Rahmen in A aufziehen; der passende Bereich in B wird automatisch gesucht.</li>
 <li><b>Bereiche zuordnen (A ↔ B)</b>: Bereich in A und passenden Bereich in B selbst wählen – z. B. wenn eine Ansicht auf dem
 Blatt verschoben oder anders skaliert wurde. Größenunterschiede gleicht das Programm aus.</li>
-<li><b>Zonen</b>: Bereiche, die nicht verglichen werden (Schriftfeld, Stempel). <b>Randstreifen</b>: Blattrand ausnehmen.</li>
+<li><b>Zonen</b>: Bereiche, die nicht verglichen werden (Schriftfeld, Stempel). Im Bild mit <i>Auswahl</i> anklicken:
+ziehen = verschieben, Ecken = Größe ändern, <kbd>Entf</kbd> oder Rechtsklick = löschen (auch in der Liste der Zonen).
+<b>Randstreifen</b>: Blattrand ausnehmen.</li>
 </ul>
 <p>Markierungen, Maße und Zonen gehören zum Blatt: Bei Ausschnittwechsel bleiben sie an derselben Stelle der Zeichnung.</p>
 
@@ -400,7 +435,7 @@ oder nur der gewählte Bereich; DXF in mm (mit Maßstab). Text wird als Linien g
 <tr><td>PDF mit Anmerkungen (Acrobat)</td><td>Ergebnis als PDF; eigene Markierungen als <b>echte PDF-Kommentare</b>
 (in Acrobat &amp; Co. anklicken, beantworten, abhaken). Wurden Änderungen gesucht, kommen die in der Liste angezeigten
 (nach dem Filter <i>Zeigen</i>) als Revisionswolken dazu; gesucht wird dafür nicht automatisch.</td></tr>
-<tr><td>PDF-Bericht</td><td>Übersicht, Liste und Detailbilder je Änderung, mit Prüfstatus und Kommentaren</td></tr>
+<tr><td>PDF-Änderungsbericht</td><td>Übersicht, Liste und Detailbilder je Änderung, mit Prüfstatus und Kommentaren</td></tr>
 <tr><td>Änderungsliste (CSV)</td><td>Für Excel: Nummer, Art, Position, Texte, Maß, Beschreibung, Status, Kommentar</td></tr>
 <tr><td>Drucken im Maßstab</td><td>100 % = Originalgröße des Blatts, auf mehrere Seiten verteilt, oder eingepasst</td></tr>
 <tr><td>Projekt (.zgmax)</td><td>Dateien, Einstellungen, Markierungen, Zonen und Prüfstand. Zieht man Projekt und Zeichnungen
@@ -422,6 +457,9 @@ sonst Englisch), Deutsch oder English. Auch diese Anleitung erscheint in der gew
 Bildschirmen oder für ältere Augen.</li>
 </ul>
 <p>Beides gilt nach einem Neustart; das Programm bietet ihn gleich an (offene Arbeit wird vorher gesichert).</p>
+<p><b>Alle Einstellungen zurücksetzen</b> (<i>Hilfe</i>): Darstellung, Sprache, Größe, Werte des Vergleichs,
+Werkzeugoptionen und Fensterlage zurück auf Standard; auf Wunsch bleibt die Liste <i>Zuletzt verwendet</i>. Dateien,
+Projekte und Markierungen bleiben unverändert.</p>
 
 <h2 id="erweitert">Alle Einstellungen (Expertenmodus)</h2>
 <table>

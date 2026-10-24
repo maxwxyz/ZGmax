@@ -187,3 +187,17 @@ def test_move_region_fills_paper():
     r = de.move_region([g], ink, (40, 40, 110, 70), 150, 100, only_lines=True)
     assert r == (40, 40, 260, 170)
     assert (g[50:60, 50:100] == 230).all() and (g[150:160, 200:250] == 0).all()
+
+
+def test_umlaut_paths(tmp_path):
+    """Pfade mit Umlauten (Windows: cv2.imread/imwrite koennen nur ASCII)."""
+    import numpy as np
+    import diffcore as dc
+    d = tmp_path / "Zeichnungen Müller ß"
+    d.mkdir()
+    img = np.full((50, 80, 3), 255, np.uint8)
+    img[10:20, 10:60] = 0
+    p = str(d / "Änderung.png")
+    assert dc.imwrite_any(p, img)
+    back = dc.read_image(p)
+    assert back.shape == (50, 80, 3) and back[15, 30].max() == 0

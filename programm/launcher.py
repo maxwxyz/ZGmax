@@ -50,7 +50,7 @@ def main():
         # Schreiben dorthin wuerde dann fehlschlagen.
         logdir = os.path.expanduser("~/Library/Logs") if sys.platform == "darwin" else HERE
         try:
-            log = open(os.path.join(logdir, "ZGmax.log"), "w")
+            log = open(os.path.join(logdir, "ZGmax.log"), "w", encoding="utf-8", errors="replace")
         except OSError:
             log = subprocess.DEVNULL
         subprocess.Popen([sys.executable, "-u", viewer, *args], cwd=HERE, start_new_session=True,

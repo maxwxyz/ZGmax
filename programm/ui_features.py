@@ -107,7 +107,16 @@ class FeaturesMixin:
         win.lbl_b.setText(tr("(nicht gewählt)"))
         win._set_file("A", path)
 
+    def _doc_window(self):
+        """Fenster fuer ein weiteres Dokument: ist hier schon etwas offen, ein neues Fenster - Markierungen,
+        Pruefstand und Einstellungen eines Dokuments bleiben so getrennt."""
+        return self.new_window() if (self.payload is not None or self.path_a or self.path_b) else self
+
     def open_recent(self, r):
+        w = self._doc_window()
+        if w is not self:
+            w.open_recent(r)
+            return
         if r.get("project"):
             if os.path.isfile(r["project"]):
                 self.project_open(r["project"])
@@ -549,6 +558,7 @@ class FeaturesMixin:
         self.origin = (0, 0)
         self.anns.clear()
         self.zones.clear()
+        self.pdf_off, self._comments_done = set(), set()
         self.project_path = None
         self.restore_regs = None
         self.index_info = None

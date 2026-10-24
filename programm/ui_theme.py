@@ -68,7 +68,7 @@ QLabel#hint {{ color: {t['muted']}; }}
 QLabel#file {{ background: {t['window']}; border: 1px solid {t['border']}; border-radius: 5px; padding: 4px 8px; }}
 QToolBar#main QToolButton {{ padding: 5px 9px; }}
 QFrame#segbox {{ background: {t['segbg']}; border-radius: 9px; }}
-QToolButton#seg {{ background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 4px 11px;
+QToolButton#seg {{ background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px;
                   color: {t['text2']}; }}
 QToolButton#seg:hover {{ background: {t['seghover']}; }}
 QToolButton#seg:checked {{ background: {t['surface']}; border: 1px solid {t['border2']}; color: {t['accent']};

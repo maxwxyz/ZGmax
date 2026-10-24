@@ -44,6 +44,7 @@ class ProjectMixin:
         self._update_title()
 
     def _apply_state(self, st):
+        self.canvas.reset_interaction()            # Rueckgaengig mitten in einer Eingabe: diese verwerfen
         ox, oy = self.origin
         anns = copy.deepcopy(st["anns"])
         for a in anns:
@@ -101,7 +102,9 @@ class ProjectMixin:
             "files": {"a": pa, "b": pb, "page_a": self.sp_pa.value(), "page_b": self.sp_pb.value()},
             "dpi": self.dpi_value(), "scale": self.scale_n(),
             "params": dict(sliders, align=self.cb_align.currentText(), edge_noise=self.chk_edges.isChecked(),
-                           glyphs=self.chk_glyphs.isChecked(), flatten=self.chk_flatten.isChecked()),
+                           glyphs=self.chk_glyphs.isChecked(), flatten=self.chk_flatten.isChecked(),
+                           align_on=self.chk_align.isChecked()),
+            "pdf_layers_off": sorted(getattr(self, "pdf_off", set())),
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -145,7 +148,7 @@ class ProjectMixin:
         self.project_path = path
         self._dirty = False
         self._update_title()
-        self._log(tr("Projekt gespeichert: {}").format(path))
+        self._saved(path)
         return True
 
     def project_open(self, path=None):
@@ -155,8 +158,8 @@ class ProjectMixin:
                                                   tr("ZGmax-Projekt (*{})").format(PROJECT_EXT))
             if not path:
                 return
-        if self.running:
-            QMessageBox.information(self, APP, tr("Bitte warten, es l\u00e4uft noch eine Berechnung."))
+        if self.payload is not None or self.path_a or self.path_b:   # eigenes Fenster fuer das Projekt
+            self._doc_window().project_open(path)
             return
         try:
             with open(path, encoding="utf-8") as f:
@@ -205,11 +208,13 @@ class ProjectMixin:
                   "s_group"):
             if k in pr:
                 getattr(self, k).set_silent(pr[k])
-        for key, chk in (("edge_noise", self.chk_edges), ("glyphs", self.chk_glyphs), ("flatten", self.chk_flatten)):
+        for key, chk in (("edge_noise", self.chk_edges), ("glyphs", self.chk_glyphs), ("flatten", self.chk_flatten),
+                         ("align_on", self.chk_align)):
             if key in pr:
                 quiet(chk, lambda chk=chk, key=key: chk.setChecked(bool(pr[key])))
         if pr.get("align"):
             quiet(self.cb_align, lambda: self.cb_align.setCurrentText(pr["align"]))
+        self.pdf_off = set(data.get("pdf_layers_off") or [])
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)

@@ -87,9 +87,10 @@ The first time, the required packages are installed in tested versions (internet
 <tr><td>Menu bar</td><td>All functions: <i>File</i>, <i>Edit</i>, <i>View</i>, <i>Tools</i>, <i>Review</i>, <i>Help</i>.</td></tr>
 <tr><td>Top bar</td><td><i>Open</i>, <i>Compare</i>, the view switch (Old, New, Compare, Side by side, Overlay, Slider, Blink),
 zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Options</i> (settings, left) and
-<i>List</i> (changes and markups, right).</td></tr>
+<i>Items</i> (changes, markups, layers – right). In a narrow window these buttons show only their icon (name in the
+tooltip).</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
-arrow, polyline, polygon), Pen, Marker, Number, Stamp;
+polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number, Stamp; icons only when space is short;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
 <tr><td>Options bar (above the drawing)</td><td>Appears only when needed and shows the settings of the current tool or view,
 e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for markups; speed and pause for Blink;
@@ -129,7 +130,8 @@ drawing with the visible area. Click or drag to jump there.</td></tr>
 <tr><th>View</th><th>Key</th><th>Shows</th></tr>
 <tr><td>Old / New</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Only the old or new drawing, as in the file (gray or in color).
 With <i>Highlight changes</i> in the options bar (<kbd>8</kbd> / <kbd>7</kbd>), removed parts appear red in Old and new parts blue in New.</td></tr>
-<tr><td>Compare</td><td><kbd>3</kbd></td><td>The result in color (legend at the bottom left)</td></tr>
+<tr><td>Compare</td><td><kbd>3</kbd></td><td>The result in color (legend at the bottom left; can be switched off with
+<i>View → Show legend</i> – also applies to image, copy and print)</td></tr>
 <tr><td>Side by side</td><td><kbd>9</kbd></td><td>Old on the left, new on the right; both halves zoom and pan together</td></tr>
 <tr><td>Overlay</td><td><kbd>4</kbd></td><td>Both on top of each other without tolerance – shows what the automatic filtering removes</td></tr>
 <tr><td>Slider</td><td><kbd>5</kbd></td><td>Old on the left, new on the right; drag the divider with the mouse</td></tr>
@@ -148,7 +150,11 @@ prints stay normal. Separately, <i>View → Appearance</i> (Automatic, Light, Da
 <ul>
 <li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → View drawing …</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
-saving work. If a comparison is already open, the drawing opens in a <b>new window</b>; the comparison is kept.</li>
+saving work.</li>
+<li><b>Each document in its own window:</b> if something is already open, <i>View drawing</i>, <i>Recently used</i>,
+<i>Open project</i> and dropped files open a <b>new window</b> – markups and review state of different documents never
+mix. Only <i>Open old/new drawing</i> deliberately replaces one side of the current comparison. The <i>Window</i> menu
+lists all open windows for switching.</li>
 <li><b>Several comparisons at once:</b> <i>File → New window</i> (<kbd>Ctrl</kbd>+<kbd>N</kbd>). Each window is
 independent (own files, markups and view settings).</li>
 <li><b>Close without quitting:</b> <i>File → Close</i> (<kbd>Ctrl</kbd>+<kbd>W</kbd>). If markups or review results are
@@ -168,11 +174,14 @@ that something changed since the last calculation.</p>
 differences at tolerance 0, 1, 2 … and picks the point after which more tolerance hardly removes anything (otherwise it
 would swallow real changes).</li>
 <li><i>Minimum size</i> – from the measured line width.</li>
+<li><i>Max. tile shift</i> – measured: how far individual areas are still off after alignment.</li>
 <li><i>Search ranges</i> (tiles, shifts, hatching) – converted to the resolution (dpi).</li>
 <li><i>Even out uneven paper</i> – switched on for shadows or yellowed paper.</li>
 </ul>
 <p>The program cannot know which change is <i>important</i>; the suggestions appear in the message bar and can be
-changed by hand at any time.</p>
+changed by hand at any time. Any value can be typed into the number fields, also smaller or larger than the slider allows.</p>
+<p><b>Align drawings</b> (checkbox, on by default): New is aligned to Old. Without it both lie on top of each other exactly
+as they are in the files (top left aligned, no scaling, no fine alignment) – e.g. for PDFs generated identically from CAD.</p>
 <div class="tip"><b>Edge fringes:</b> if lines in the new drawing are offset by one pixel or scanned/rendered slightly
 thicker, thin red/blue fringes appear right next to gray lines. These are ignored by default (they stay gray). Separate
 lines at a distance from the old line remain changes. Can be switched off under <i>Show all settings → Advanced options →
@@ -196,8 +205,11 @@ and <i>Calibrate</i>.</p>
 </table>
 <p><b>Snap to lines:</b> the pointer snaps to lines (green square); between two parallel lines the perpendicular distance
 is measured automatically. Hold <kbd>Shift</kbd> = measure freely. Measurements stay in the drawing as dimensions, can be
-moved with <i>Select</i> and changed at the white handles. They look like a drawing dimension: thin line, arrowheads,
-readable number; <i>Size</i> in the options bar changes number and arrows together (also in exports and PDFs).</p>
+moved with <i>Select</i> and changed at the white handles. They look like a drawing dimension: thin line, arrowheads, the
+value centred above the dimension line and parallel to it; on short dimensions it sits outside, past the arrow. The value
+can be dragged at its own handle (a leader line then points to the measurement). <i>Size</i> changes number and arrows
+together; the number grows with the zoom like on paper and never becomes unreadably small. <b>Unit</b> (mm, cm, m, in) and
+<b>decimals</b> are in the measure bar and apply to all measurements, the list and all exports.</p>
 <p><b>Are the mm correct?</b> The conversion is <i>mm = pixels × 25.4 ÷ dpi × scale</i>. The program reads the
 resolution from the file (otherwise 200 dpi).</p>
 <ul>
@@ -218,11 +230,18 @@ from PDF text, by text recognition for images) and offers to use the scale.</li>
 with automatic line wrapping (change the width later at the right handle). <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or a click
 elsewhere = done, <kbd>Esc</kbd> = discard. Double-click a text to edit it in place.</td></tr>
 <tr><td>Cloud (<kbd>W</kbd>)</td><td>Drag a revision cloud</td></tr>
-<tr><td>Shapes ▾</td><td>One button for <i>box, ellipse, line, arrow, polyline, polygon</i>; the small triangle picks the shape,
-the button shows the last one used. Drag a box/ellipse, drag a line/arrow from start to end. Polyline and polygon: click
+<tr><td>Shapes ▾</td><td>One button for <i>box, ellipse, line, polyline, polygon</i>; the small triangle picks the shape,
+the button shows the last one used. Drag a box/ellipse, drag a line from start to end. Polyline and polygon: click
 points, double-click, <kbd>Enter</kbd> or right-click finishes; the corner points can be moved individually later.</td></tr>
+<tr><td>Arrow</td><td>Drag from the start to the tip</td></tr>
 <tr><td>Pen</td><td>Draw freehand. Each stroke stays its own markup; scale it at the corners.</td></tr>
 <tr><td>Marker</td><td>Highlight an area in color (highlighter, yellow by default)</td></tr>
+<tr><td>Redact ▾</td><td>Drag <i>Redact</i> (black area; with the checkbox <i>With paper color</i> filled with the color of the
+surrounding paper instead, usually “painted” white) or <i>Pixelate</i> (coarse mosaic with noise and few levels, cannot be
+reversed; <i>Size</i> = block size) – to make names,
+prices or customer data unrecognizable. In the program it stays a movable markup; in <b>every output</b> (image, PDF, SVG,
+report, print, copy, searchable PDF, vectorizing, edited drawing) it is burnt in irreversibly – even when markups are
+hidden. Text underneath is not saved as searchable text. The original file stays unchanged.</td></tr>
 <tr><td>Number</td><td>Each click places the next numbered circle; start number in the options bar</td></tr>
 <tr><td>Stamp</td><td>Click, then status (APPROVED, CHECKED …), name and date</td></tr>
 </table>
@@ -247,8 +266,8 @@ empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden 
 The status is shown in color: <span style="color:#f97316">● open</span>, <span style="color:#16a34a">● checked</span>,
 <span style="color:#7c3aed">● rejected</span> – in the list and on the frames in the drawing.</li>
 </ol>
-<p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “Dimensions”
-(changed dimension values) or “open”. Clicking a row jumps into the drawing, clicking a frame selects the row;
+<p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “changed text
+only”, “changed dimensions only” or “open” (applies to list, drawing and PDF). Clicking a row jumps into the drawing, clicking a frame selects the row;
 double-click edits text A/B and the description. <i>Mark manually</i> adds a dragged area as your own change;
 <i>Delete</i> removes unwanted hits. <i>Review → Turn rejected into zones</i> turns all rejected hits into zones that are no
 longer reported in later comparisons (batch too). Status and comments are saved in the <b>project</b> and appear in the CSV,
@@ -269,13 +288,15 @@ The options bar shows its size and counts and offers:</p>
 <table>
 <tr><th>Command</th><th>Effect</th></tr>
 <tr><td>Copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>)</td><td>As displayed, with markups, as an image on the clipboard (transparent outside the
-rectangles). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
+rectangles; with <i>Lines only (without paper)</i> the paper too). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
 <tr><td>Move</td><td>Click into the selection and drag. Markups always move along; when viewing a single drawing the drawing
-content too – with <i>Lines only (background stays)</i> only the lines. The vacated area gets the paper color.</td></tr>
+content too – with <i>Lines only (without paper)</i> only the lines. The vacated area gets the paper color.</td></tr>
+<tr><td>Crop</td><td>When viewing: keep only the region. If the region extends beyond the sheet, the sheet is <b>enlarged</b>
+(new margin in paper color). In a comparison: compare only this part.</td></tr>
 <tr><td>Delete (<kbd>Del</kbd>)</td><td>Delete markups and changes in the selection; the drawing stays.</td></tr>
 <tr><td>Export …</td><td>Save the selection as PNG, TIFF, JPG, PDF or SVG with layers.</td></tr>
-<tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>), <i>Clear drawing in
-region</i> and <i>Crop to region</i> (the last two when viewing a drawing).</td></tr>
+<tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>) and <i>Clear drawing
+in region</i> (when viewing a drawing).</td></tr>
 </table>
 <p><kbd>Esc</kbd> clears the selection. All edits of the drawing can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
 <p><b>Copy lines or geometry only</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>): a window shows a preview.
@@ -305,23 +326,29 @@ files) or <i>Change resolution only</i> (correct a wrong dpi value; the mm value
 </table>
 
 <h2 id="layers">Layers</h2>
-<p><i>View → Layers</i> shows the <i>Layers</i> tab on the right (hidden otherwise). Fixed layers: <i>Drawing, Changes,
-Markups, Dimensions, Pasted images, Zones</i>. For each layer:</p>
+<p><i>View → Layers</i> shows the <i>Layers</i> tab on the right (hidden otherwise). Fixed layers, from top to bottom as
+they lie on each other: <i>Redactions, Dimensions, Markups, Pasted images, Changes, Zones, Drawing</i>. Each has a checkbox
+(visible) and a lock:</p>
 <ul>
 <li><b>Visible</b> – hidden layers appear neither on screen nor when saving, printing or copying (e.g. hide the drawing to
-export only the markups).</li>
+export only the markups). Exception: redactions are always burnt in.</li>
 <li><b>Locked</b> – contents cannot be clicked, moved or deleted (e.g. lock dimensions while drawing clouds; a locked drawing
 cannot be edited).</li>
 </ul>
 <p><b>Saving as layers:</b> <i>PDF with annotations</i> creates a real PDF layer for each visible layer (toggle them in
 Acrobat under <i>Layers</i>). <i>As SVG with layers</i> creates layers for Inkscape, Illustrator &amp; co.; markups and
 change frames are individual, editable vectors there. TIFF and PNG have no generally readable layers and are saved flat.</p>
+<p><b>Layers of the PDF file:</b> if a PDF has its own layers (e.g. dimensions, text, hidden edges from CAD), they appear below
+in the section <i>Layers of the PDF file</i>. Unticked, a layer is not drawn and – in a comparison – not compared either.
+The choice is saved in the project.</p>
 
 <h2 id="texts">Text and dimensions</h2>
 <p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Review</i> menu):</p>
 <ul>
-<li><b>Recognize text</b>: writes “old text → new text” for each change into the list. For PDFs with real text that text
-is used (exact, instant), otherwise text recognition (German and English, also Ø, ±, °).</li>
+<li><b>Find changed text</b>: reads the text of each change – also dimensions and vertical text in both reading
+directions – and writes “old text → new text” into the list. For PDFs with real text that text is used (exact, instant),
+otherwise text recognition (German and English, also Ø, ±, °). Afterwards list, drawing and PDF show <b>only changes with
+changed text</b> (filter <i>Show: changed text only</i>).</li>
 <li><b>Find changed dimensions</b>: reads the numbers of each change and compares them (also R and M values). Afterwards
 list, drawing and PDF show <b>only changes in which a dimension value changed</b> (“12.5 → 12.8”); small line changes in
 the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.</li>
@@ -333,6 +360,9 @@ changed but the index stayed the same – or the other way round.</li>
 (about 60 MB, internet needed).</p>
 
 <h2 id="comments">Importing and passing on comments (XFDF, PDF)</h2>
+<p><b>Opening a PDF with comments:</b> the comments are not drawn into the image but taken over automatically as
+<b>editable markups</b> (in a comparison those of Old and New, each at the right place) – move, change and delete them like
+your own. This does not happen for projects, which already contain their markups.</p>
 <p><i>File → Import comments (XFDF, PDF) …</i> takes over annotations from other programs as your own markups:</p>
 <ul>
 <li><b>XFDF</b> (comment export from Acrobat, Bluebeam, PDF-XChange …) and</li>
@@ -362,7 +392,9 @@ and writes the number of changes per page into the list (red = changed, green = 
 <li><b>Region</b>: compare only part of the sheet (faster). Drag a frame in A; the matching area in B is found automatically.</li>
 <li><b>Match areas (A ↔ B)</b>: choose an area in A and the matching area in B yourself – e.g. when a view was moved or
 scaled on the sheet. The program compensates for size differences.</li>
-<li><b>Zones</b>: areas that are not compared (title block, stamps). <b>Border strip</b>: exclude the sheet border.</li>
+<li><b>Zones</b>: areas that are not compared (title block, stamps). Click them in the drawing with <i>Select</i>: drag =
+move, corners = resize, <kbd>Del</kbd> or right-click = delete (also in the zone list). <b>Border strip</b>: exclude the
+sheet border.</li>
 </ul>
 <p>Markups, measurements and zones belong to the sheet: when the region changes, they stay at the same place on the drawing.</p>
 
@@ -389,7 +421,7 @@ region; DXF in mm (with scale). Text is drawn as lines, not recognized as text.<
 <tr><td>PDF with annotations (Acrobat)</td><td>The result as PDF; your markups as <b>real PDF comments</b> (click, reply and
 tick them off in Acrobat &amp; co.). If changes were searched, those shown in the list (after the <i>Show</i> filter) are
 added as revision clouds; it does not search by itself.</td></tr>
-<tr><td>PDF report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
+<tr><td>PDF change report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
 <tr><td>List of changes (CSV)</td><td>For Excel: number, type, position, texts, dimension, description, status, comment</td></tr>
 <tr><td>Print to scale</td><td>100 % = actual sheet size, spread over several pages, or fitted</td></tr>
 <tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones and review state. If you move the project together with the
@@ -411,6 +443,8 @@ English), Deutsch or English. This manual also opens in the chosen language.</li
 <li><b>Size:</b> <i>View → Interface size</i>: 90 % to 150 % – larger text and buttons, e.g. on large screens.</li>
 </ul>
 <p>Both take effect after a restart, which the program offers right away (open work is saved first).</p>
+<p><b>Reset all settings</b> (<i>Help</i>): appearance, language, size, comparison values, tool options and window position
+back to defaults; optionally the <i>Recently used</i> list is kept. Files, projects and markups stay unchanged.</p>
 
 <h2 id="advanced">All settings (expert mode)</h2>
 <table>

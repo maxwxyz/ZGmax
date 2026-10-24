@@ -9,6 +9,11 @@ class ExportMixin:
     """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
 
     # --- Export
+    def _saved(self, path):
+        """Einheitliche Rueckmeldung nach dem Speichern einer Datei (Hinweisleiste und Protokoll)."""
+        self._log(tr("Gespeichert: {}").format(path))
+        self.banner.show_msg(tr("Gespeichert: {}").format(path), "info", timeout=10)
+
     def _need_result(self):
         if not self.payload:
             QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
@@ -30,8 +35,11 @@ class ExportMixin:
             self.settings.setValue("outdir", os.path.dirname(path))
         return path
 
-    def export_render(self, mode, overlays, legend=True):
-        """Baut das Ergebnisbild wie angezeigt (Ansicht + Markierungen + Anmerkungen + Legende)."""
+    def export_render(self, mode, overlays, legend=None):
+        """Baut das Ergebnisbild wie angezeigt (Ansicht + Markierungen + Anmerkungen + Legende).
+        legend=None: wie in der Ansicht eingestellt (Ansicht > Legende anzeigen)."""
+        if legend is None:
+            legend = self.act_legend.isChecked()
         pl = self.payload
         res = pl["res"]
         if mode in ("A", "B", "K"):
@@ -56,6 +64,7 @@ class ExportMixin:
             if pl["regs"] and self.canvas.show_regs and self.canvas.layer_on.get("aenderungen", True):
                 rep.draw_marks(out, pl["regs"], cloud=self.act_clouds.isChecked())
             rep.draw_annotations(out, self._export_anns(), mm=self.canvas.mm_px)
+        rep.apply_redactions(out, self.anns)        # Schwaerzen/Verpixeln immer, auch ohne Markierungen
         if legend and mode in ("D", "S", "O", "N", "R"):
             out = dc.add_legend(out, os.path.basename(self.path_a), os.path.basename(self.path_b),
                                 bool(res.moved.any()) and mode in ("D", "S"), self._info())
@@ -117,7 +126,7 @@ class ExportMixin:
             out = self.export_render(mode, overlays)
             fp, fmt = dc.resolve_output(path, None)
             return dc.save_output(out, fp, fmt, dpi, 95)
-        self._run_job(work, tr("Speichere \u2026"), lambda p: self._log(tr("Bild gespeichert: {}").format(path)))
+        self._run_job(work, tr("Speichere \u2026"), lambda p: self._saved(path))
 
     def export_csv(self):
         if not self._need_result():
@@ -131,7 +140,7 @@ class ExportMixin:
             self._ensure_regs(log)
             rep.write_csv(path, pl["regs"], dpi, sn)
             return path
-        self._run_job(work, tr("Speichere \u2026"), lambda p: (self._fill_table(), self._log(tr("Liste gespeichert: {}").format(p))))
+        self._run_job(work, tr("Speichere \u2026"), lambda p: (self._fill_table(), self._saved(p)))
 
     def export_pdf(self):
         if not self._need_result():
@@ -145,11 +154,15 @@ class ExportMixin:
 
         def work(log):
             self._ensure_regs(log)
-            rep.build_report(path, pl["res"], pl["regs"], names[0], names[1], dpi, info, idx, 40, log,
-                             anns=anns, scale_n=sn)
+            boxes = rep.redaction_boxes(self.anns)        # geschwaerzte Bereiche: auch im Bericht unkenntlich
+            regs = [dict(g, text_a="", text_b="", dim="") if any(
+                g["x"] < b[2] and g["x"] + g["w"] > b[0] and g["y"] < b[3] and g["y"] + g["h"] > b[1] for b in boxes)
+                else g for g in pl["regs"]]
+            rep.build_report(path, rep.redact_result(pl["res"], self.anns), regs, names[0], names[1], dpi, info, idx,
+                             40, log, anns=anns, scale_n=sn)
             return path
         self._run_job(work, tr("Erstelle Bericht \u2026"),
-                      lambda p: (self._fill_table(), self._log(tr("Bericht gespeichert: {}").format(p))))
+                      lambda p: (self._fill_table(), self._saved(p)))
 
     def copy_cli(self):
         if not (self.path_a and self.path_b):

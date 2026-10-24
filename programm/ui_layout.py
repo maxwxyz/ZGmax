@@ -9,7 +9,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
-from ui_widgets import Banner, Collapsible, OverlayHost, PanelScroll, Section, SliderRow
+from ui_widgets import Banner, Collapsible, OverlayHost, PaletteFrame, PanelScroll, Section, SliderRow
 
 VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
          ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
@@ -34,16 +34,21 @@ TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. L
          ("rect", tr("Rahmen"), "rect", "", tr("Rahmen aufziehen")),
          ("ellipse", tr("Ellipse"), "ellipse", "", tr("Ellipse oder Kreis aufziehen")),
          ("line", tr("Linie"), "line", "", tr("Linie vom Anfang zum Ende ziehen")),
-         ("arrow", tr("Pfeil"), "arrow", "", tr("Pfeil vom Anfang zur Spitze ziehen")),
          ("polyline", tr("Linienzug"), "polyline", "", tr("Punkte anklicken; Doppelklick, Enter oder Rechtsklick beendet")),
          ("polygon", tr("Polygon"), "polygon", "", tr("Eckpunkte anklicken; Doppelklick, Enter oder Rechtsklick schließt")),
+         ("arrow", tr("Pfeil"), "arrow", "", tr("Pfeil vom Anfang zur Spitze ziehen")),
          ("pen", tr("Stift"), "pen", "", tr("Freihand zeichnen; bleibt eine verschiebbare, änderbare Linie")),
          ("highlight", tr("Marker"), "highlight", "", tr("Textmarker: Fläche farbig hinterlegen")),
+         ("redact", tr("Schwärzen"), "redact", "", tr("Bereich schwärzen: in jeder Ausgabe (Bild, PDF, Druck, Kopie) "
+                                                     "unwiderruflich eingebrannt")),
+         ("pixelate", tr("Verpixeln"), "pixelate", "", tr("Bereich verpixeln (Mosaik); Größe = Blockgröße. In jeder "
+                                                         "Ausgabe eingebrannt")),
          ("number", tr("Nummer"), "number", "", tr("Fortlaufend nummerierte Kreise setzen")),
          ("approval", tr("Stempel"), "stamp", "", tr("Stempel mit Status, Name und Datum")))
 
 
-SHAPES = ("rect", "ellipse", "line", "arrow", "polyline", "polygon")   # in der Palette unter "Formen"
+SHAPES = ("rect", "ellipse", "line", "polyline", "polygon")   # in der Palette unter "Formen" (Pfeil eigener Knopf)
+PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"))             # je ein Knopf mit Auswahl ueber das Dreieck
 
 
 class LayoutMixin:
@@ -90,7 +95,7 @@ class LayoutMixin:
                                 tip=tr("Zeichnung, Änderungen und Markierungen als getrennte Ebenen; Markierungen als "
                                        "Vektoren (in Inkscape, Illustrator & Co. bearbeitbar)"))
         self.act_export_annpdf = A(tr("PDF mit Anmerkungen (Acrobat) …"), self.export_annotated_pdf)
-        self.act_export_pdf = A(tr("PDF-Bericht …"), self.export_pdf)
+        self.act_export_pdf = A(tr("PDF-Änderungsbericht …"), self.export_pdf)
         self.act_export_csv = A(tr("Änderungsliste (CSV) …"), self.export_csv)
         self.act_print = A(tr("Drucken im Maßstab …"), self.print_scaled, "Ctrl+P", ico="print")
         self.act_ann_save = A(tr("Markierungen speichern …"), self.ann_save)
@@ -113,7 +118,9 @@ class LayoutMixin:
         self.act_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self, activated=self.redo)
         self.act_delete = A(tr("Markierung löschen"), self._ann_delete, "Delete", canvas_key=True)
         self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
-        self.act_copy = A(tr("Ergebnis kopieren"), self.copy_result, "Ctrl+C", canvas_key=True)
+        self.act_copy = A(tr("Kopieren"), self.copy_result, "Ctrl+C",
+                          tr("Bereichsauswahl, gewählte Markierungen oder sonst die ganze Ansicht (wie angezeigt) "
+                             "kopieren"), canvas_key=True)
         self.act_paste = A(tr("Einfügen"), self.paste, "Ctrl+V",
                            tr("Aus der Zwischenablage einfügen: Markierungen, Bild (verschiebbar) oder Text. Ist nichts "
                               "geöffnet, wird ein Bild als Zeichnung geöffnet."))
@@ -121,7 +128,7 @@ class LayoutMixin:
                                tip=tr("Z. B. ein Bildschirmfoto als Zeichnung öffnen"))
         self.act_cut = A(tr("Ausschneiden"), lambda: self.area_cut() if self.canvas.sel_rects else None, "Ctrl+X",
                          tr("Bereichsauswahl ausschneiden (Markierungen; beim Ansehen auch die Zeichnung)"))
-        self.act_copy_sel = A(tr("Auswahl kopieren …"), self.start_copy_selection, "Ctrl+Shift+C",
+        self.act_copy_sel = A(tr("Nur Linien/Geometrie kopieren …"), self.start_copy_selection, "Ctrl+Shift+C",
                               tr("Bereich aufziehen und kopieren: alles, nur Linien oder nur die Geometrie "
                                  "(ohne Maße, Text und dünne Linien)"))
         self.act_move_sel = A(tr("Ausschnitt verschieben"), self.start_move_region,
@@ -179,14 +186,23 @@ class LayoutMixin:
                             tip=tr("Nummerierte \u00c4nderungen als Wolke statt als Rahmen zeigen und speichern"),
                             ico="cloud", checkable=True)
         self.act_clouds.setChecked(self.settings.value("clouds", "false") == "true")
+        self.act_legend = A(tr("Legende anzeigen"), self._toggle_legend,
+                            tip=tr("Farblegende im Vergleich – auch beim Speichern als Bild, Kopieren und Drucken"),
+                            checkable=True)
+        self.act_legend.setChecked(self.settings.value("legend", "true") == "true")
+        self.act_reset_settings = A(tr("Alle Einstellungen zurücksetzen …"), self.reset_all_settings,
+                                    tip=tr("Darstellung, Sprache, Größe, Werte des Vergleichs und Werkzeugoptionen auf "
+                                           "Standard; Dateien und Projekte bleiben unverändert"))
         self.act_layers = A(tr("Ebenen"), self._toggle_layers_tab, tip=tr("Ebenen ein-/ausblenden und sperren"),
                             ico="layers", checkable=True)
-        self.act_left = A(tr("Einstellungen"), lambda on: self.left.setVisible(on), tip=tr("Einstellungen ein-/ausblenden"),
+        self.act_left = A(tr("Optionen"), lambda on: self.left.setVisible(on),
+                          tip=tr("Seitenleiste mit den Einstellungen des Vergleichs ein-/ausblenden"),
                           ico="settings", checkable=True)
-        self.act_right = A(tr("Änderungen und Markierungen"), lambda on: self.right.setVisible(on),
-                           tip=tr("Liste der Änderungen und Markierungen ein-/ausblenden"), ico="list", checkable=True)
+        self.act_right = A(tr("Elemente"), lambda on: self.right.setVisible(on),
+                           tip=tr("Seitenleiste mit allem, was auf der Zeichnung liegt: Änderungen, Markierungen und "
+                                  "(über Ansicht → Ebenen) Ebenen"), ico="list", checkable=True)
         self.act_left.setIconText(tr("Optionen"))         # kurz fuer die Leiste oben; Menue behaelt den langen Text
-        self.act_right.setIconText(tr("Liste"))
+        self.act_right.setIconText(tr("Elemente"))
         self.act_expert = A(tr("Alle Einstellungen zeigen"), self._set_expert, tip=tr("Auch selten gebrauchte Einstellungen, "
                             "Vektordaten, Zonen und das Protokoll zeigen"), checkable=True)
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
@@ -235,9 +251,11 @@ class LayoutMixin:
         self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
                                tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
         self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
-        self.act_text = A(tr("Text erkennen"), self.run_text,
-                          tip=tr("Liest den Text in jeder Änderung (Alt → Neu): aus dem PDF, wenn es echten Text "
-                                 "enthält, sonst per Texterkennung"))
+        self.act_text = A(tr("Geänderten Text finden"), self.run_text,
+                          tip=tr("Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten "
+                                 "Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), "
+                                 "deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich "
+                                 "geändert hat; „Zeigen: Änderungen“ holt alles zurück."))
         self.act_dims = A(tr("Geänderte Maße finden"), self.run_dims,
                           tip=tr("Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich "
                                  "eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden "
@@ -270,9 +288,9 @@ class LayoutMixin:
         for a in (self.act_proj_save, self.act_proj_save_as, self.act_close):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
-                  self.act_export_pdf, self.act_export_csv, self.act_print):
-            m.addAction(a)
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
+                  self.act_vectorize, None, self.act_export_pdf, self.act_export_csv, None, self.act_print):
+            m.addSeparator() if a is None else m.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         m.addSeparator()
         for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf):
             m.addAction(a)
@@ -312,7 +330,8 @@ class LayoutMixin:
         for a in (self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_layers, self.act_clouds):
+        for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_legend, self.act_layers,
+                  self.act_clouds):
             m.addAction(a)
         m.addSeparator()
         m.addAction(self.act_color)
@@ -370,11 +389,14 @@ class LayoutMixin:
         for a in (self.act_pages, self.act_title, self.act_text, self.act_dims, self.act_index):
             m.addAction(a)
 
+        self.menu_windows = mb.addMenu(tr("&Fenster"))       # alle offenen Fenster (je Dokument eines)
+        self.menu_windows.aboutToShow.connect(self._fill_window_menu)
+
         m = mb.addMenu(tr("&Hilfe"))
         for a in (self.act_help, self.act_help_cli, self.act_keys):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_logfile, self.act_cli, self.act_about):
+        for a in (self.act_logfile, self.act_cli, self.act_reset_settings, self.act_about):
             m.addAction(a)
 
     # ----------------------------------------------------------------- Werkzeugleiste oben
@@ -383,10 +405,44 @@ class LayoutMixin:
         w = tb.widgetForAction(act)
         if w is not None and text_beside:
             w.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            self._tb_text.append(w)
         return w
+
+    def _fit_toolbar(self):
+        """Ist das Fenster zu schmal fuer die Leiste oben, zeigen Oeffnen, Vergleichen, Speichern, Optionen und
+        Elemente nur ihr Symbol (Name im Tooltip) - statt dass Knoepfe im Ueberlauf-Menue verschwinden."""
+        tb = getattr(self, "main_toolbar", None)
+        if tb is None:
+            return
+        need = 24
+        for act in tb.actions():                  # ueber die Aktionen: im Ueberlauf versteckte Knoepfe zaehlen mit
+            if not act.isVisible():
+                continue
+            if act.isSeparator():
+                need += 10
+                continue
+            w = tb.widgetForAction(act)
+            if w is None:
+                continue
+            if w in self._tb_text:                 # Breite mit Text (auch wenn gerade nur das Symbol zu sehen ist)
+                need += w.iconSize().width() + w.fontMetrics().horizontalAdvance(w.text()) + 34
+            else:
+                need += max(0, w.sizeHint().width()) + tb.layout().spacing()
+        ext = tb.findChild(QToolButton, "qt_toolbar_ext_button")
+        now_compact = bool(self._tb_text) and \
+            self._tb_text[0].toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
+        if now_compact:
+            compact = need > tb.width() - 20       # erst mit etwas Luft wieder Text zeigen (kein Flackern)
+        else:
+            compact = need > tb.width() or bool(ext and ext.isVisible())
+        style = Qt.ToolButtonStyle.ToolButtonIconOnly if compact else Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        for w in self._tb_text:
+            if w.toolButtonStyle() != style:
+                w.setToolButtonStyle(style)
 
     def _build_toolbar(self):
         tb = QToolBar(tr("Hauptleiste"))
+        self.main_toolbar, self._tb_text = tb, []
         tb.setObjectName("main")
         tb.setMovable(False)
         tb.setIconSize(QSize(20, 20))
@@ -409,6 +465,7 @@ class LayoutMixin:
         b.setMenu(open_menu)
         b.setToolTip(tr("Zeichnungen oder Projekt öffnen"))
         tb.addWidget(b)
+        self._tb_text.append(b)
         self.btn_compare_tb = self._tb_button(tb, self.act_compare)
         self.act_compare_tb = tb.actions()[-1]
         self.sep_views = tb.addSeparator()
@@ -445,14 +502,14 @@ class LayoutMixin:
         self.lbl_zoom.clicked.connect(self._zoom100)
         tb.addWidget(self.lbl_zoom)
         tb.addAction(self.act_zoom_in)
-        self._tb_button(tb, self.act_fit)
+        self._tb_button(tb, self.act_fit, text_beside=False)          # Symbol genuegt (F, Doppelklick)
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
         save = QMenu(self)
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
-                  self.act_export_pdf, self.act_export_csv, self.act_print):
-            save.addAction(a)
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
+                  self.act_vectorize, None, self.act_export_pdf, self.act_export_csv, None, self.act_print):
+            save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         save.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as):
             save.addAction(a)
@@ -465,6 +522,7 @@ class LayoutMixin:
         b.setMenu(save)
         b.setToolTip(tr("Ergebnis, Bericht oder Projekt speichern; drucken"))
         tb.addWidget(b)
+        self._tb_text.append(b)
         tb.addSeparator()
         self._tb_button(tb, self.act_left)
         self._tb_button(tb, self.act_right)
@@ -478,25 +536,27 @@ class LayoutMixin:
 
     # ----------------------------------------------------------------- Werkzeugpalette links am Bild
     def _build_palette(self):
-        pal = QFrame()
+        pal = PaletteFrame()                          # wird bei wenig Hoehe zu reinen Symbolen
         pal.setObjectName("palette")
-        pal.setFixedWidth(76)
+        pal.setFixedWidth(84)
         lay = QVBoxLayout(pal)
         lay.setContentsMargins(5, 8, 5, 8)
         lay.setSpacing(2)
+        self.group_buttons = {}
         for key, *_ in TOOLS:
-            if key in SHAPES[1:]:
+            group = next((g for g in PALETTE_GROUPS if key in g), None)
+            if group and key != group[0]:
                 continue
             b = QToolButton()
-            if key == SHAPES[0]:                      # alle Formen in einem Knopf, Auswahl ueber das Dreieck
+            if group:                                 # mehrere Werkzeuge in einem Knopf, Auswahl ueber das Dreieck
                 menu = QMenu(b)
-                for k2 in SHAPES:
+                for k2 in group:
                     menu.addAction(self.tool_actions[k2])
                 b.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
                 b.setDefaultAction(self.tool_actions[key])
                 b.setMenu(menu)
-                b.setToolTip(tr("Formen: Rahmen, Ellipse, Linie, Pfeil, Linienzug, Polygon (Dreieck = andere Form)"))
-                self.shape_button = b
+                for k2 in group:
+                    self.group_buttons[k2] = b
                 menu.triggered.connect(lambda act, b=b, m=menu: (b.setDefaultAction(act), b.setMenu(m)))
             else:
                 b.setDefaultAction(self.tool_actions[key])
@@ -543,6 +603,21 @@ class LayoutMixin:
         self.chk_snap.setToolTip(tr("Umschalt gedrückt halten = vorübergehend frei messen"))
         self.chk_snap.toggled.connect(self._toggle_snap)
         l.addWidget(self.chk_snap)
+        self.cb_unit = QComboBox()                    # Anzeige der Messwerte
+        for u in rep.UNITS:
+            self.cb_unit.addItem(u, u)
+        self.cb_unit.setToolTip(tr("Einheit der Messwerte"))
+        self.sp_dec = QSpinBox()
+        self.sp_dec.setRange(0, 4)
+        self.sp_dec.setToolTip(tr("Nachkommastellen der Messwerte"))
+        self.sp_dec.setPrefix(tr("Stellen: "))
+        rep.MEASURE_FMT.update(unit=self.settings.value("meas_unit", "mm"), dec=int(self.settings.value("meas_dec", 2)))
+        self.cb_unit.setCurrentIndex(max(0, self.cb_unit.findData(rep.MEASURE_FMT["unit"])))
+        self.sp_dec.setValue(rep.MEASURE_FMT["dec"])
+        self.cb_unit.currentIndexChanged.connect(lambda _: self._measure_fmt())
+        self.sp_dec.valueChanged.connect(lambda _: self._measure_fmt())
+        l.addWidget(self.cb_unit)
+        l.addWidget(self.sp_dec)
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         l.addWidget(sep)
@@ -566,6 +641,11 @@ class LayoutMixin:
         self.btn_color = QPushButton(tr("Farbe"))
         self.btn_color.clicked.connect(self._pick_color)
         l.addWidget(self.btn_color)
+        self.chk_redact_paper = QCheckBox(tr("Mit Papierfarbe (weiß ausmalen)"))
+        self.chk_redact_paper.setToolTip(tr("Statt schwarz in der Farbe des Papiers ringsum füllen – der Inhalt "
+                                         "verschwindet unauffällig"))
+        self.chk_redact_paper.toggled.connect(self._redact_fill_changed)
+        l.addWidget(self.chk_redact_paper)
         l.addWidget(QLabel(tr("Größe")))
         self.s_asize = QDoubleSpinBox()
         self.s_asize.setRange(0.5, 12)
@@ -644,8 +724,9 @@ class LayoutMixin:
                  tr("Markierungen und Änderungen in der Auswahl löschen (Entf)"), True),
                 ("clear", tr("Zeichnung im Bereich leeren"), lambda: self.area_clear(),
                  tr("Zeichnungsinhalt der Auswahl entfernen (Papierfarbe)"), False),
-                ("crop", tr("Auf Bereich zuschneiden"), lambda: self.sheet_crop(),
-                 tr("Nur diesen Bereich der Zeichnung behalten"), False),
+                ("crop", tr("Zuschneiden"), lambda: self.sheet_crop(),
+                 tr("Nur diesen Bereich behalten. Ragt der Bereich über das Blatt hinaus, wird das Blatt vergrößert "
+                    "(neuer Rand in Papierfarbe). Im Vergleich: nur diesen Teil vergleichen."), True),
                 ("export", tr("Exportieren …"), lambda: self.area_export(),
                  tr("Auswahl als Bild, PDF oder SVG speichern"), True)):
             if main:
@@ -668,9 +749,10 @@ class LayoutMixin:
         self.opt_float = QWidget()                    # Ausschnitt verschieben
         l = QHBoxLayout(self.opt_float)
         l.setContentsMargins(0, 0, 0, 0)
-        self.chk_float_lines = QCheckBox(tr("Nur Linien (Hintergrund bleibt)"))
-        self.chk_float_lines.setToolTip(tr("Nur die Linien wandern; Papier, Flecken und Hintergrund am Ziel bleiben. "
-                                        "Die frei gewordene Stelle bekommt die Papierfarbe."))
+        self.chk_float_lines = QCheckBox(tr("Nur Linien (ohne Papier)"))
+        self.chk_float_lines.setToolTip(tr("Verschieben: nur die Linien wandern, Papier und Hintergrund am Ziel bleiben; "
+                                        "die frei gewordene Stelle bekommt die Papierfarbe. Kopieren und Exportieren: "
+                                        "das Papier wird durchsichtig, nur Linien und Markierungen bleiben."))
         self.chk_float_lines.setChecked(True)
         self.chk_float_lines.toggled.connect(lambda _: (self._float_images(), self.canvas.update()))
         l.addWidget(self.chk_float_lines)
@@ -715,8 +797,19 @@ class LayoutMixin:
         view_opts = blink or single or m == "S"
         self.opt_view.setVisible(view_opts)
         self.opt_measure.setVisible(t == "measure")
-        self.opt_ann.setVisible(t in ("text", "number", "approval", "cloud", "highlight", "pen") + SHAPES
+        self.opt_ann.setVisible(t in ("text", "number", "approval", "cloud", "highlight", "pen", "arrow", "redact",
+                                      "pixelate") + SHAPES
                                 or (t == "hand" and self.canvas.ann_selected is not None))
+        sel = self.canvas.anns[self.canvas.ann_selected] if (
+            self.canvas.ann_selected is not None and self.canvas.ann_selected < len(self.canvas.anns)) else None
+        sel_t = sel["type"] if sel else None
+        redact_ctx = t in ("redact", "pixelate") or (t == "hand" and sel_t in ("redact", "pixelate"))
+        self.btn_color.setVisible(not redact_ctx)             # Schwaerzen ist schwarz, Verpixeln hat keine Farbe
+        self.chk_redact_paper.setVisible(t == "redact" or (t == "hand" and sel_t == "redact"))
+        if sel_t == "redact":
+            self.chk_redact_paper.blockSignals(True)
+            self.chk_redact_paper.setChecked(sel.get("fill") == "paper")
+            self.chk_redact_paper.blockSignals(False)
         self.lbl_stamp.setVisible(t == "number")
         self.sp_stamp.setVisible(t == "number")
         self.opt_loupe.setVisible(self.act_loupe.isChecked())
@@ -725,8 +818,8 @@ class LayoutMixin:
         self.lbl_area.setVisible(has_sel)
         self.btn_area_more.setVisible(has_sel)
         for k, b in self.area_buttons.items():
-            b.setVisible(has_sel and (k not in ("clear", "crop") or self.view_only))
-        self.opt_float.setVisible(t == "cutmove" or self.canvas.float is not None or (t == "area" and self.view_only))
+            b.setVisible(has_sel and (k != "clear" or self.view_only))
+        self.opt_float.setVisible(t in ("cutmove", "area") or self.canvas.float is not None)
         for b in (self.btn_float_ok, self.btn_float_cancel):
             b.setEnabled(self.canvas.float is not None)
             b.setVisible(t != "area")
@@ -826,6 +919,14 @@ class LayoutMixin:
         self.btn_auto = b
         row = QHBoxLayout()
         row.addWidget(b)
+        self.chk_align = QCheckBox(tr("Zeichnungen ausrichten"))
+        self.chk_align.setChecked(True)
+        self.chk_align.setToolTip(tr("An (Standard): Neu wird auf Alt ausgerichtet (Verschiebung, Drehung, Maßstab, "
+                                  "Feinausrichtung in Kacheln). Aus: beide liegen genau so übereinander, wie sie in den "
+                                  "Dateien sind (links oben bündig, ohne Skalieren) – z. B. wenn schon exakt "
+                                  "ausgerichtete PDF aus dem CAD verglichen werden."))
+        self.chk_align.toggled.connect(lambda _: self._param_changed())
+        sec.body.addWidget(self.chk_align)
         b2 = QPushButton(tr("Manuell ausrichten"))
         b2.setToolTip(self.act_align.toolTip())
         b2.clicked.connect(self.start_manual_align)
@@ -939,6 +1040,11 @@ class LayoutMixin:
         zon.body.addWidget(self.btn_zone)
         self.list_zones = QListWidget()
         self.list_zones.setFixedHeight(64)
+        self.list_zones.currentRowChanged.connect(
+            lambda r: (setattr(self.canvas, "zone_sel", r if r >= 0 else None), self.canvas.update()))
+        for key in ("Delete", "Backspace"):
+            QShortcut(QKeySequence(key), self.list_zones, activated=lambda: self._zone_delete(
+                self.list_zones.currentRow())).setContext(Qt.ShortcutContext.WidgetShortcut)
         zon.body.addWidget(self.list_zones)
         row = QHBoxLayout()
         b1, b2 = QPushButton(tr("Entfernen")), QPushButton(tr("Alle löschen"))
@@ -1120,7 +1226,7 @@ class LayoutMixin:
         self.cb_filter = QComboBox()
         for txt, key in ((tr("Änderungen"), "changes"), (tr("Alle (auch verschoben)"), "all"), (tr("entfernt"), "entfernt"),
                          (tr("neu"), "neu"), (tr("geändert"), "geaendert"), (tr("verschoben"), "verschoben"),
-                         (tr("nur geänderte Maße"), "dims"), (tr("offen"), "open")):
+                         (tr("nur geänderter Text"), "text"), (tr("nur geänderte Maße"), "dims"), (tr("offen"), "open")):
             self.cb_filter.addItem(txt, key)
         self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „nur geänderte Maße“ = "
                                   "Änderungen mit geänderter Maßzahl (nach „Geänderte Maße finden“), „offen“ = noch "
@@ -1161,7 +1267,7 @@ class LayoutMixin:
         l1.addLayout(row)
         QShortcut(QKeySequence("Delete"), self.table, activated=self._reg_delete).setContext(
             Qt.ShortcutContext.WidgetShortcut)
-        more = Collapsible(tr("Text und Maße"), tr("Text erkennen, geänderte Maße, Schriftfeld-Index"))
+        more = Collapsible(tr("Text und Maße"), tr("Geänderten Text, geänderte Maße, Schriftfeld-Index"))
         self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
                                  tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
         self.s_group.changed.connect(self._group_changed)
@@ -1174,9 +1280,9 @@ class LayoutMixin:
             b.setToolTip(a.toolTip())
             b.clicked.connect(a.trigger)
             more.body.addWidget(b)
-        h = QLabel(tr("Text erkennen: schreibt „alter Text → neuer Text“ in die Liste. Geänderte Maße finden: "
-                   "danach stehen nur noch Änderungen mit geänderten Maßzahlen in Liste und Bild – feine "
-                   "Strichänderungen an der Geometrie werden ausgeblendet."))
+        h = QLabel(tr("Beide lesen den Text jeder Änderung (auch senkrechte Maße) und schreiben „alt → neu“ in die "
+                   "Liste. Danach bleiben in Liste und Bild nur Änderungen mit geändertem Text bzw. geänderter "
+                   "Maßzahl – feine Strichänderungen an der Geometrie werden ausgeblendet."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         more.body.addWidget(h)
@@ -1192,7 +1298,7 @@ class LayoutMixin:
                    "Rechtsklick = Menü, Entf = löschen. Mehrere: Strg/Umschalt + Klick oder Umschalt + Rahmen ziehen."))
         h.setObjectName("hint")
         h.setWordWrap(True)
-        l2.addWidget(h)
+        ann_hint = h                                  # Hinweis unter der Liste (wie bei den Ebenen)
         self.list_anns = QListWidget()
         self.list_anns.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)  # Strg/Umschalt = mehrere
         self.list_anns.itemSelectionChanged.connect(self._ann_list_selection)
@@ -1209,6 +1315,7 @@ class LayoutMixin:
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b, i // 2, i % 2)
         l2.addLayout(row)
+        l2.addWidget(ann_hint)
         tabs.addTab(t2, tr("Markierungen"))
         tabs.addTab(self._build_layers_tab(), tr("Ebenen"))
         on = self.settings.value("layers_tab", "false") == "true"
@@ -1230,44 +1337,123 @@ class LayoutMixin:
         t.setObjectName("panel")
         l = QVBoxLayout(t)
         l.setContentsMargins(0, 6, 0, 0)
-        tbl = QTableWidget(len(rep.LAYERS), 3)
-        tbl.setHorizontalHeaderLabels([tr("Sichtbar"), tr("Gesperrt"), tr("Ebene")])
-        tbl.verticalHeader().setVisible(False)
-        tbl.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for row, (key, name) in enumerate(rep.LAYERS):
-            for col in (0, 1):
-                it = QTableWidgetItem()
-                it.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-                it.setCheckState(Qt.CheckState.Checked if col == 0 else Qt.CheckState.Unchecked)
-                it.setData(Qt.ItemDataRole.UserRole, key)
-                tbl.setItem(row, col, it)
-            tbl.setItem(row, 2, QTableWidgetItem(name))
-        tbl.resizeColumnsToContents()
-        tbl.itemChanged.connect(self._layer_item_changed)
-        self.tbl_layers = tbl
-        l.addWidget(tbl, 1)
-        h = QLabel(tr("Ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren. "
-                   "Gesperrte Ebenen lassen sich nicht auswählen oder ändern. „PDF mit Anmerkungen“ und „Als SVG mit "
-                   "Ebenen“ speichern die sichtbaren Ebenen als echte Ebenen."))
+        box = QFrame()
+        box.setObjectName("card")
+        bl = QVBoxLayout(box)
+        bl.setContentsMargins(10, 6, 6, 6)
+        bl.setSpacing(2)
+        self.layer_checks, self.layer_locks = {}, {}
+        for key, name in reversed(rep.LAYERS):          # oberste Ebene oben, Zeichnung (unterste) unten
+            row = QHBoxLayout()
+            chk = QCheckBox(name)
+            chk.setChecked(True)
+            chk.setToolTip(tr("Sichtbar: ein- oder ausblenden"))
+            chk.toggled.connect(lambda on, k=key: self._layer_set(k, visible=on))
+            lock = QToolButton()
+            lock.setCheckable(True)
+            lock.setIcon(icon("lock"))
+            self._icon_buttons.append((lock, "lock"))
+            lock.setToolTip(tr("Sperren: Inhalte lassen sich nicht auswählen, verschieben oder löschen"))
+            lock.setAutoRaise(True)
+            lock.toggled.connect(lambda on, k=key: self._layer_set(k, locked=on))
+            row.addWidget(chk, 1)
+            row.addWidget(lock)
+            bl.addLayout(row)
+            self.layer_checks[key], self.layer_locks[key] = chk, lock
+        l.addWidget(box)
+        self.pdf_layer_box = QFrame()                 # Ebenen aus der PDF-Datei selbst (Optional Content)
+        self.pdf_layer_box.setObjectName("card")
+        pl = QVBoxLayout(self.pdf_layer_box)
+        pl.setContentsMargins(10, 6, 6, 6)
+        pl.setSpacing(2)
+        t1 = QLabel(tr("Ebenen der PDF-Datei"))
+        t1.setObjectName("sec")
+        pl.addWidget(t1)
+        self.pdf_layer_rows = QVBoxLayout()
+        pl.addLayout(self.pdf_layer_rows)
+        self.pdf_layer_box.hide()
+        l.addWidget(self.pdf_layer_box)
+        h = QLabel(tr("Ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren – "
+                   "außer Schwärzungen: Die werden immer eingebrannt. Gesperrte Ebenen lassen sich nicht auswählen "
+                   "oder ändern. „PDF mit Anmerkungen“ und „Als SVG mit Ebenen“ speichern die sichtbaren Ebenen als "
+                   "echte Ebenen."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         l.addWidget(h)
+        l.addStretch()
         return t
 
-    def _layer_item_changed(self, it):
-        key = it.data(Qt.ItemDataRole.UserRole)
-        on = it.checkState() == Qt.CheckState.Checked
+    def _refresh_pdf_layers(self):
+        """Ebenen der geoeffneten PDF-Datei(en) als Haken anbieten; ausgeblendete werden nicht gezeichnet und nicht
+        verglichen."""
+        names = []
+        for p in (self.path_a, self.path_b):
+            if p and p.lower().endswith(".pdf"):
+                names += [n for n in dc.pdf_layers(p) if n not in names]
+        while self.pdf_layer_rows.count():
+            w = self.pdf_layer_rows.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        off = self.__dict__.setdefault("pdf_off", set())
+        off &= set(names)
+        for n in names:
+            chk = QCheckBox(n)
+            chk.setChecked(n not in off)
+            chk.toggled.connect(lambda on, n=n: self._pdf_layer_toggled(n, on))
+            self.pdf_layer_rows.addWidget(chk)
+        self.pdf_layer_box.setVisible(bool(names))
+
+    def _pdf_layer_toggled(self, name, on):
+        (self.pdf_off.discard if on else self.pdf_off.add)(name)
+        self.start_compute()                       # neu zeichnen (und vergleichen) ohne/mit dieser Ebene
+
+    def _layer_set(self, key, visible=None, locked=None):
         c = self.canvas
-        if it.column() == 0:
-            c.layer_on[key] = on
-        else:
-            c.layer_lock[key] = on
+        if visible is not None:
+            c.layer_on[key] = visible
+        if locked is not None:
+            c.layer_lock[key] = locked
         keep = {k for k in c.selected_anns() if c.ann_editable(c.anns[k])}   # Auswahl nur auf waehlbaren Ebenen
         if keep != c.selected_anns():
             c._set_multi(keep)
+        if key == "zonen" and c.zone_sel is not None and (not c.layer_on["zonen"] or c.layer_lock["zonen"]):
+            c.zone_sel = None
         c.update()
+
+    def _fill_window_menu(self):
+        import drawing_viewer
+        m = self.menu_windows
+        m.clear()
+        m.addAction(self.act_new_window)
+        m.addSeparator()
+        for w in drawing_viewer.WINDOWS + ([] if self in drawing_viewer.WINDOWS else [self]):
+            title = w.windowTitle().replace(" \u2013 " + APP, "") or APP
+            a = m.addAction(title, lambda w=w: (w.showNormal() if w.isMinimized() else None, w.raise_(),
+                                                 w.activateWindow()))
+            a.setCheckable(True)
+            a.setChecked(w is self)
+
+    def _measure_fmt(self):
+        rep.MEASURE_FMT.update(unit=self.cb_unit.currentData(), dec=self.sp_dec.value())
+        self.settings.setValue("meas_unit", rep.MEASURE_FMT["unit"])
+        self.settings.setValue("meas_dec", rep.MEASURE_FMT["dec"])
+        self._update_units()                       # Liste und Bild neu beschriften
+
+    def _redact_fill_changed(self, on):
+        c = self.canvas
+        changed = False
+        for k in c.selected_anns():
+            if c.anns[k]["type"] == "redact":
+                c.anns[k]["fill"] = "paper" if on else "black"
+                changed = True
+        if changed:
+            self._commit()
+        c.update()
+
+    def _toggle_legend(self, on):
+        self.settings.setValue("legend", "true" if on else "false")
+        self.canvas.show_legend = on and not self.view_only
+        self.canvas.update()
 
     def _toggle_layers_tab(self, on):
         self.settings.setValue("layers_tab", "true" if on else "false")
@@ -1320,6 +1506,38 @@ class LayoutMixin:
                "The language will change after a restart.")
         self.banner.show_msg(msg, "info", action=("Jetzt neu starten" if target == "de" else "Restart now",
                                                   self.restart_app))
+
+    def reset_all_settings(self):
+        """Alle gespeicherten Einstellungen auf Standard (nach Rueckfrage); Darstellung/Sprache/Groesse per Neustart."""
+        box = QMessageBox(self)
+        box.setWindowTitle(APP)
+        box.setText(tr("Alle Einstellungen auf Standard zurücksetzen?"))
+        box.setInformativeText(tr("Darstellung, Sprache, Größe der Oberfläche, Werte des Vergleichs, Werkzeugoptionen "
+                                  "und Fensterlage. Zeichnungen, Projekte und Markierungen bleiben unverändert."))
+        keep = QCheckBox(tr("Liste „Zuletzt verwendet“ behalten"))
+        keep.setChecked(True)
+        box.setCheckBox(keep)
+        box.setStandardButtons(QMessageBox.StandardButton.Reset | QMessageBox.StandardButton.Cancel)
+        if box.exec() != QMessageBox.StandardButton.Reset:
+            return
+        st = self.settings
+        st.setFallbacksEnabled(False)                  # nur die eigenen Schluessel (macOS: nie die globalen)
+        for k in st.allKeys():
+            if not (k == "recent" and keep.isChecked()):
+                st.remove(k)
+        st.setFallbacksEnabled(True)
+        st.sync()
+        self._reset_params()
+        for chk, on in ((self.chk_keep_tool, False), (self.chk_float_lines, True), (self.chk_live, False)):
+            chk.setChecked(on)
+        for act, on in ((self.act_legend, True), (self.act_clouds, False), (self.act_expert, False),
+                        (self.act_layers, False)):
+            if act.isChecked() != on:
+                act.trigger()
+        self.set_theme("auto")
+        self.theme_actions["auto"].setChecked(True)
+        self.banner.show_msg(tr("Einstellungen zurückgesetzt. Sprache und Größe der Oberfläche gelten nach einem "
+                                "Neustart."), "info", action=(tr("Jetzt neu starten"), self.restart_app), timeout=20)
 
     def restart_app(self):
         """Programm neu starten (z. B. fuer die Groesse der Oberflaeche); Ungespeichertes wird vorher abgefragt."""
@@ -1385,8 +1603,17 @@ class LayoutMixin:
                   self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
                   self.act_proj_save_as):
             a.setEnabled(has)
-        for a in self.sheet_actions:
+        for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_ann_save, self.act_ann_load,
+                  self.act_import_comments, self.act_export_xfdf, self.act_title):   # brauchen ein Dokument
+            a.setEnabled(has)
+        for a in self.sheet_actions + (self.act_export_ocrpdf,):     # nur beim Ansehen einer einzelnen Zeichnung
             a.setEnabled(has and self.view_only)
+        for a in (self.act_find, self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment,
+                  self.act_export_pdf, self.act_export_csv, self.act_auto, self.act_text, self.act_dims,
+                  self.act_index, self.act_rej_zones, self.act_pages, self.act_match, self.act_align, self.act_zone,
+                  self.act_crop, self.act_crop_off, self.act_clouds):
+            a.setEnabled(has and not self.view_only)                  # nur im Vergleich
+        self.act_align_reset.setEnabled(has and not self.view_only and getattr(self, "manual_tf", None) is not None)
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
         for b in self.seg_buttons.values():
@@ -1402,12 +1629,10 @@ class LayoutMixin:
         self.act_view_box.setVisible(not on)
         self.sep_views.setVisible(not on)
         self.act_compare_tb.setVisible(not on)
-        for key in ("A", "B", "D", "Y", "O", "K", "S", "N", "R"):
-            self.mode_actions[key].setEnabled(not on)
-        for a in (self.act_find, self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment,
-                  self.act_export_pdf, self.act_export_csv, self.act_auto):
-            a.setEnabled(not on)
-        self.canvas.show_legend = not on
+        self._update_enabled()
+        QTimer.singleShot(0, self._fit_toolbar)
+        self.canvas.show_legend = not on and self.act_legend.isChecked()
+        self.act_legend.setEnabled(not on and self.canvas.mode in ("D", "O", "N", "R"))
         self.tabs.setTabVisible(0, not on)
         if on:
             self.act_left.setChecked(False)
