@@ -186,8 +186,8 @@ that something changed since the last calculation.</p>
 <p><b>Filter lines</b> (left panel, when viewing and comparing): shows and compares only lines of a certain stroke width.
 <i>Contours only (thick lines)</i> hides dimension, leader and center lines, hatching and normal text – what remains are
 the object outlines; the program determines the limit from the drawing. <i>Thin lines only</i> shows the opposite. With
-<i>Choose stroke width</i> you enter the width in pixels from … to … (<i>none</i> = no limit). The filter takes effect at
-once; the mode chip then shows <i>· Line filter</i>. It is saved in the project. It only works if the drawing has
+<i>Choose stroke width</i> you enter the width in pixels from … to … (<i>none</i> = no limit). When viewing, the filter takes effect
+at once, in a comparison with <i>Compare</i>; the mode chip then shows <i>· Line filter</i>. It is saved in the project. It only works if the drawing has
 different line weights.</p>
 <p><b>Auto-adjust</b> measures the current pair of drawings:</p>
 <ul>
@@ -567,7 +567,8 @@ menu <i>ZGmax → About ZGmax</i>) and is stored in every project; a project fro
 <tr><td>Ignore edge fringes on lines</td><td>See <a href="#sensitivity">Edge fringes</a></td></tr>
 <tr><td>Check characters exactly / Even out uneven paper</td><td>See <a href="#sensitivity">More checks</a></td></tr>
 </table>
-<p><b>Recompute automatically</b> (bottom of the left panel, on by default): every change of a setting compares again shortly afterwards. Off: only with <i>Compare</i> – useful for very large drawings. When viewing a single drawing everything takes effect at once. Fine alignment in tiles and object rotation are set by <i>Auto-adjust</i>; they can only be changed on the command line now.</p>
+<p><b>Recompute automatically</b> (bottom of the left panel, off by default): changed settings apply with <i>Compare</i>;
+a dot (●) on the button shows that a new comparison is due. On: every change compares again shortly afterwards. When viewing a single drawing everything takes effect at once. Fine alignment in tiles and object rotation are set by <i>Auto-adjust</i>; they can only be changed on the command line now.</p>
 
 <h2 id="menus">All menu commands</h2>
 <p class="muted">Generated automatically from the program menus (<code>packaging/menu_reference.py</code>); menus with changing content (recently used, windows, saved views, tool chest) are not listed here.</p>

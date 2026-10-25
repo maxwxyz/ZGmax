@@ -342,10 +342,10 @@ class PanelsMixin:
         bl = QVBoxLayout(bottom)
         bl.setContentsMargins(12, 6, 12, 12)
         self.chk_live = QCheckBox(tr("Automatisch neu berechnen"))
-        self.chk_live.setChecked(self.settings.value("live", "true") == "true")
-        self.chk_live.setToolTip(tr("An (Standard): jede Änderung einer Einstellung vergleicht kurz danach neu. "
-                                 "Aus: erst mit „Vergleichen“ (für sehr große Zeichnungen). Beim Ansehen einer "
-                                 "Zeichnung wirkt alles sofort."))
+        self.chk_live.setChecked(self.settings.value("live", "false") == "true")
+        self.chk_live.setToolTip(tr("Aus (Standard): Geänderte Einstellungen gelten erst mit „Vergleichen“ (● am Knopf "
+                                 "zeigt, dass neu verglichen werden sollte). An: jede Änderung vergleicht kurz danach "
+                                 "neu. Beim Ansehen einer Zeichnung wirkt alles sofort."))
         self.chk_live.toggled.connect(lambda on: self.settings.setValue("live", "true" if on else "false"))
         self.btn_run = QPushButton(tr("Vergleichen"))
         self.btn_run.setObjectName("primary")

@@ -1149,7 +1149,7 @@ class LayoutMixin:
         st.setFallbacksEnabled(True)
         st.sync()
         self._reset_params()
-        for chk, on in ((self.chk_keep_tool, False), (self.chk_float_lines, True), (self.chk_live, True)):
+        for chk, on in ((self.chk_keep_tool, False), (self.chk_float_lines, True), (self.chk_live, False)):
             chk.setChecked(on)
         for act, on in ((self.act_legend, True), (self.act_clouds, False), (self.act_expert, False),
                         (self.act_layers, False)):

@@ -1456,7 +1456,8 @@ def test_line_filter_contour_list_and_renumber(app, win, pair, tmp_path):
     win.cb_lines.setCurrentIndex(win.cb_lines.findData("custom"))
     assert not win.row_lines.isHidden()
     win.sp_wmin.setValue(3)                                       # nur Linien ab 3 px: Raster und Schraffur weg
-    assert "Linienfilter" in win.mode_chip.text()
+    assert "Linienfilter" in win.mode_chip.text() and "●" in win.btn_run.text()   # im Vergleich: mit Vergleichen
+    win.start_compute()
     wait(app, lambda: not win.debounce.isActive() and not win.running)
     assert 0 < int((win.payload["res"].a > 0).sum()) < n_all
     path = str(tmp_path / "p.zgmax")
@@ -1465,6 +1466,7 @@ def test_line_filter_contour_list_and_renumber(app, win, pair, tmp_path):
     data = load_project(path)
     assert data["params"]["lines"] == "custom" and data["params"]["line_min"] == 3
     win.cb_lines.setCurrentIndex(0)
+    win.start_compute()
     wait(app, lambda: not win.debounce.isActive() and not win.running)
     assert int((win.payload["res"].a > 0).sum()) == n_all
     win.find_regs()
