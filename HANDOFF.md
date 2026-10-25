@@ -22,4 +22,13 @@ fertige Stand 786153d. Lokal weitermachen: `git fetch origin && git checkout wip
 - Lokal: `packaging/build_mac.sh`, `ZGmax --selbsttest`, Sichtprüfung (Linienfilter-Leiste, Modus-Schild, Dark Mode).
 - Antwort an den Nutzer offen: Über-Fenster auf dem Mac im Programmmenü „ZGmax → Über ZGmax“.
 - Letzte Nutzerfrage kam abgeschnitten an („gibts ein modus um farben zu …“) – nachfragen.
-- Vorschläge für weitere Funktionen (an Nutzer gegeben): siehe letzte Antwort.
+- Vorschläge an den Nutzer (noch nicht beauftragt), Reihenfolge = Priorität:
+  1. Änderungsliste ins Rückgängig aufnehmen (`ui_project._state` kennt nur anns/zones/frame/edit: Löschen, Status,
+     Neu nummerieren, Liste leeren sind nicht rückgängig zu machen).
+  2. Linienfilter: Hinweis, wenn `suggest_geometry_width` None liefert (Filter wirkt nicht); bei Vektor-PDF die echte
+     Strichbreite aus dem PDF statt der Pixelheuristik; Konturen-Heuristik an echten Zeichnungen (Scans, 400 dpi) prüfen.
+  3. Neuberechnen vereinheitlichen: Linienfilter rechnet sofort, Regler nur mit „Automatisch neu berechnen“.
+  4. Expertenregler ausdünnen (Kachelgröße, Max. Kachelverschiebung, Objekt-Drehung nur CLI/Automatik).
+  5. Gespeicherte Ausschnitte (Ansichten merken), Druck eines Ausschnitts im Maßstab.
+  6. `ui_canvas.py` (2200 Z.) und `ui_layout.py` (1880 Z.) aufteilen (Werkzeuge als eigene Klassen).
+  7. Golden-Tests mit echten, anonymisierten Zeichnungen (Scan, PDF-Vektor, DXF).
