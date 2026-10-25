@@ -36,7 +36,13 @@ class ReviewMixin:
             return
         self.canvas.selected = None
         self.review_step(1)
+        self._reviewing = True
         self._review_hint()
+
+    def _review_progress(self):
+        """Nach jedem Status: Fortschritt in der Hinweisleiste nachfuehren (nur waehrend des Rundgangs)."""
+        if getattr(self, "_reviewing", False) and self.banner.isVisible():
+            self._review_hint()
 
     def _review_hint(self):
         regs = [r for r in (self.payload or {}).get("regs") or [] if r["typ"] != "verschoben"]

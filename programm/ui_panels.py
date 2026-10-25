@@ -435,7 +435,7 @@ class PanelsMixin:
         self.ed_reg_search = self._search_field(tr("Suchen: Nr., Text, Maß, Kommentar"), self._fill_table)
         l1.addWidget(self.ed_reg_search)
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Text / Kommentar")])
+        self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Inhalt")])
         self.table.verticalHeader().hide()
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)

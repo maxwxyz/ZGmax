@@ -274,7 +274,7 @@ class RegionsMixin:
                                      "schneller l\u00e4dt."))
         else:
             cnt = {k: sum(1 for r in regs if r["typ"] == k) for k in rep.TYPE_LABEL}
-            st = [rep.reg_status(r) for r in regs]
+            st = [rep.reg_status(r) for r in regs if r["typ"] != "verschoben"]   # nur Verschobenes: nichts zu pruefen
             done = tr("{} geprüft, {} abgelehnt, {} offen").format(st.count('ok'), st.count('abgelehnt'), st.count('offen'))
             nd = sum(1 for r in regs if r.get("dim"))
             s = (tr("{} Bereiche: {} entfernt, {} neu, {} geändert, {} verschoben.\nPrüfung: {}  (N = nächste, G = geprüft, X = abgelehnt)").format(len(regs), cnt['entfernt'], cnt['neu'], cnt['geaendert'], cnt['verschoben'], done))

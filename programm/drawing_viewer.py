@@ -1069,7 +1069,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.banner.show_msg(tr("Linienfilter wirkt hier nicht: Die Zeichnung hat keine deutlich "
                                     "unterschiedlichen Strichstärken. Es werden alle Linien gezeigt."), "info",
                                  timeout=12)
-        self._regs_stale = False
+        self._regs_stale = self._reviewing = False
         self._regs_ver = getattr(self, "_regs_ver", 0) + 1    # neue Liste: Rueckgaengig beginnt fuer sie neu
         self._cur_state = self._state()
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)

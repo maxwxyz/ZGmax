@@ -152,7 +152,9 @@ class StartPage(QWidget):
                 ("3", tr("Prüfen"), tr("„Prüfen starten“ zeigt jede Änderung: G = geprüft, X = abgelehnt, "
                                        "C = Kommentar. Am Ende „Prüfung abschließen“."))):
             col = QVBoxLayout()
+            col.setSpacing(2)
             top = QHBoxLayout()
+            top.setSpacing(8)
             n = QLabel(nr)
             n.setObjectName("stepnr")
             tt = QLabel(title)

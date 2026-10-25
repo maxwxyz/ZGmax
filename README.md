@@ -16,7 +16,9 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 * Views: old, new, compare (red/blue/gray, green = moved), side by side, overlay, slider, blink
 * Robust raster comparison: global and tile alignment, hatching, moved blocks/objects, edge fringes, glyph check,
   paper flattening, auto-adjust of the parameters; exact vector comparison for CAD PDFs
-* Review workflow: numbered changes, checked/rejected/comment, CSV, PDF report, PDF with Acrobat annotations
+* Review workflow: “Start review” walk-through, numbered changes, checked/rejected/comment, search, review record
+  with approval and checksum, CSV, PDF report, dimension-change table with tolerances, PDF with Acrobat annotations
+* Folder comparison (own release vs. supplier data set) with overview; line filter (contours / thin lines)
 * Measuring with snapping and calibration; vector markups (text typed in place or as wrapping text box, cloud, box,
   ellipse, line, arrow, polyline, polygon, freehand pen, highlight, number, stamp, pasted images), multi-selection
 * Region tool: one or more rectangles selecting drawing content, markups and changes – copy, cut, paste, move, delete,

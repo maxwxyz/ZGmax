@@ -420,6 +420,7 @@ class FeaturesMixin:
         nr = r["nr"]
         self._fill_table()
         self._commit()
+        self._review_progress()
         if status == "ok":
             self.review_step(1)
         else:

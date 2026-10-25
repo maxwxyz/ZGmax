@@ -538,6 +538,7 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
                                                Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton, e.modifiers()))
             return
         self._drag = self._rubber = self._ann_prev = None
+        self._guides = []
         self.window().statusBar().clearMessage()
         self.update()
 
