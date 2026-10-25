@@ -65,6 +65,7 @@ class ExportMixin:
                 rep.draw_marks(out, pl["regs"], cloud=self.act_clouds.isChecked())
             rep.draw_annotations(out, self._export_anns(), mm=self.canvas.mm_px)
         rep.apply_redactions(out, self.anns)        # Schwaerzen/Verpixeln immer, auch ohne Markierungen
+        out = self._apply_frame(out)                # Zuschnitt-Rahmen (nur Ausgaben)
         if legend and mode in ("D", "S", "O", "N", "R"):
             out = dc.add_legend(out, os.path.basename(self.path_a), os.path.basename(self.path_b),
                                 bool(res.moved.any()) and mode in ("D", "S"), self._info())

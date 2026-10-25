@@ -559,6 +559,7 @@ class FeaturesMixin:
         self.anns.clear()
         self.zones.clear()
         self.pdf_off, self._comments_done = set(), set()
+        self.crop_frame = None
         self.project_path = None
         self.restore_regs = None
         self.index_info = None
@@ -636,6 +637,12 @@ class FeaturesMixin:
         shown = (self.act_overlays.isChecked() and self.canvas.show_regs and pl.get("regs_done") is not False
                  and self.canvas.layer_on.get("aenderungen", True))
         regs = copy.deepcopy(self._shown_regs()) if shown else []
+
+        f = self._frame_local()
+        if f is not None:                              # Zuschnitt: Lage der Kommentare mitverschieben
+            for a in anns:
+                shift_ann(a, -f[0], -f[1])
+            regs = [dict(g, x=g["x"] - f[0], y=g["y"] - f[1]) for g in regs]
 
         def work(ctx):
             ctx.progress(0.1, tr("Erzeuge Bild"))

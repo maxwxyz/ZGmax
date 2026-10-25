@@ -671,7 +671,7 @@ def test_enabled_states_by_mode(app, win, pair):
     assert win.act_adjust.isEnabled() and win.act_export_ocrpdf.isEnabled()
     win.close_document()
     compare(app, win, *pair)
-    assert win.act_export_pdf.isEnabled() and not win.act_adjust.isEnabled() and not win.act_export_ocrpdf.isEnabled()
+    assert win.act_export_pdf.isEnabled() and not win.act_adjust.isEnabled() and win.act_export_ocrpdf.isEnabled()
     assert not win.act_align_reset.isEnabled()
     win.resize(1100, 800)                                            # schmal: Leiste oben nur Symbole
     for _ in range(10):
@@ -710,6 +710,38 @@ def test_pdf_comments_imported_and_pdf_layers(app, win, tmp_path):
     n = len(win.anns)
     win._auto_import_pdf_comments()                           # nicht doppelt
     assert len(win.anns) == n
+
+
+def test_crop_frame_only_on_output(app, win, pair, tmp_path):
+    import pymupdf
+    compare(app, win, *pair)
+    win._ann_created(dict(type="rect", x=300, y=300, x2=400, y2=380, text="", nr=0, color="#e11d48", size=2.0))
+    h, w = win.canvas.shape
+    full = win.export_render("D", True, legend=False)
+    win.start_area()
+    win.canvas.sel_rects = [(200, 200, 700, 600)]
+    win._area_changed()
+    assert win.area_buttons["crop"].isVisible()              # im Vergleich verfuegbar
+    win.set_crop_frame()
+    assert win.canvas.crop_frame == (200, 200, 700, 600) and win.payload["res"].a.shape == (h, w)   # nichts geloescht
+    out = win.export_render("D", True, legend=False)
+    assert out.shape[:2] == (400, 500)
+    assert (out == full[200:600, 200:700]).all()
+    win.canvas.frameEdited.emit(150, 200, 700, 650)          # Rahmen angepasst (wie mit der Maus)
+    assert win.export_render("D", False, legend=False).shape[:2] == (450, 550)
+    pdf = str(tmp_path / "z.pdf")
+    win._save_dialog = lambda *a: pdf
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    with pymupdf.open(pdf) as d:
+        pg = d[0]                                           # Seite festhalten (sonst ungueltige Anmerkung)
+        r = next(a for a in pg.annots() if a.type[1] == "Square").rect
+        k = 72 / win.dpi_value()
+        assert abs(r.x0 - 150 * k) < 3                          # Kommentar mit dem Zuschnitt verschoben
+    win.undo()
+    assert win.canvas.crop_frame == (200, 200, 700, 600)
+    win.clear_crop_frame()
+    assert win.export_render("D", False, legend=False).shape[:2] == (h, w)
 
 
 def test_multipage_tiff(app, win, tmp_path):

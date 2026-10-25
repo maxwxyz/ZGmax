@@ -233,6 +233,7 @@ class Canvas(QWidget):
     floatDone = Signal(bool)                     # verschobenen Ausschnitt uebernehmen (True) / verwerfen
     zoneEdited = Signal(int, int, int, int, int)  # Zone i verschoben/geaendert: x, y, w, h (Bildpixel)
     zoneSelected = Signal(int)                   # Zone angeklickt (-1 = keine)
+    frameEdited = Signal(int, int, int, int)     # Zuschnitt-Rahmen geaendert: x0, y0, x1, y1 (Bildpixel)
     areaChanged = Signal()                       # Bereichsauswahl geaendert (neu, erweitert, aufgehoben)
     areaMoveStarted = Signal()                   # Ziehen in der Bereichsauswahl beginnt (Zeichnung mitnehmen?)
     areaMoved = Signal(int, int)                 # Bereichsauswahl um dx, dy verschoben (beim Loslassen)
@@ -264,6 +265,7 @@ class Canvas(QWidget):
         self.float = None                            # schwebender Ausschnitt beim Verschieben (dict)
         self.sel_rects = []                          # Bereichsauswahl: Rechtecke (x0, y0, x1, y1) in Bildpixeln
         self.zone_sel = None                         # gewaehlte Zone (Index) oder None
+        self.crop_frame = None                       # Zuschnitt fuer Ausgaben (x0, y0, x1, y1) oder None
         self.layer_on = {k: True for k, _ in rep.LAYERS}      # Ebenen: sichtbar
         self.layer_lock = {k: False for k, _ in rep.LAYERS}   # Ebenen: gesperrt (nicht waehlbar/aenderbar)
         self.editing = None                          # Index des Texts, der gerade im Bild bearbeitet wird
@@ -433,6 +435,7 @@ class Canvas(QWidget):
     def clear(self):
         """Keine Zeichnung mehr anzeigen (Dokument geschlossen)."""
         self.reset_interaction()
+        self.crop_frame = None
         self.res = self.pa = self.pb = self.pd = self.po = None
         self.pc = (None, None)
         self.regs, self.measure, self.zones = [], [], []
@@ -800,7 +803,7 @@ class Canvas(QWidget):
         p.fillRect(QRectF(QPointF(*a), QPointF(*b)).normalized(), QColor(26, 24, 22) if self.invert else QColor("white"))
 
     def ann_visible(self, a):
-        return self.layer_on.get(rep.ann_layer(a), True)
+        return self.layer_on.get(rep.ann_layer(a), True) and not a.get("hidden")
 
     def ann_editable(self, a):
         return self.ann_visible(a) and not self.layer_lock.get(rep.ann_layer(a), False)
@@ -1196,6 +1199,8 @@ class Canvas(QWidget):
                 p.drawEllipse(QPointF(*self.to_wid(*q)), 3.5, 3.5)
         if self.measure or (self.tool == "measure" and self.snap_hint):
             self._paint_measure(p)
+        if self.crop_frame is not None and self.show_overlays:
+            self._paint_crop_frame(p)
         if self.sel_rects:                             # Bereichsauswahl: gestrichelt, leicht getoent
             for x0, y0, x1, y1 in self.sel_rects:
                 a, b = self.to_wid(x0, y0), self.to_wid(x1, y1)
@@ -1434,6 +1439,8 @@ class Canvas(QWidget):
             elif add and self.show_overlays and self.anns:  # Umschalt + Ziehen im Leeren: Auswahlrahmen
                 self._rubber = ((ix, iy), (ix, iy))
                 self._drag = ("selbox",)
+            elif self._frame_handle(ix, iy) is not None:    # Zuschnitt-Rahmen an Ecke/Kante anpassen
+                self._drag = ("fhandle", self._frame_handle(ix, iy), tuple(self.crop_frame))
             elif self._zone_handle(ix, iy) is not None:     # Ecke der gewaehlten Zone: Groesse aendern
                 self._drag = ("zhandle", self._zone_handle(ix, iy), tuple(self.zones[self.zone_sel]))
             elif self.hit_zone(ix, iy) is not None:          # Zone anklicken: waehlen und verschieben
@@ -1507,7 +1514,7 @@ class Canvas(QWidget):
             elif self._drag is not None:
                 cur = Qt.CursorShape.SizeAllCursor
             elif self.res is not None and self.show_overlays and (
-                    self._hit_handle(ix, iy) or self.hit_ann(ix, iy) is not None):
+                    self._hit_handle(ix, iy) or self.hit_ann(ix, iy) is not None or self._frame_handle(ix, iy)):
                 cur = Qt.CursorShape.SizeAllCursor
             self.setCursor(cur)
         elif self.tool == "area" and self.res is not None and self.in_selection(ix, iy):
@@ -1560,6 +1567,19 @@ class Canvas(QWidget):
                 tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
         elif kind == "ann":
             self._ann_prev = (self._ann_prev[0], (ix, iy))
+        elif kind == "fhandle" and self.crop_frame is not None:
+            _, name, (x0, y0, x1, y1) = self._drag
+            if "l" in name:
+                x0 = ix
+            if "r" in name:
+                x1 = ix
+            if "t" in name:
+                y0 = iy
+            if "b" in name:
+                y1 = iy
+            x0, x1 = sorted((int(round(x0)), int(round(x1))))
+            y0, y1 = sorted((int(round(y0)), int(round(y1))))
+            self.crop_frame = (x0, y0, max(x0 + 2, x1), max(y0 + 2, y1))
         elif kind == "zmove" and self.zone_sel is not None:
             _, (sx, sy), (x, y, w, h) = self._drag
             self.zones[self.zone_sel] = (int(round(x + ix - sx)), int(round(y + iy - sy)), w, h)
@@ -1702,6 +1722,9 @@ class Canvas(QWidget):
                                           color=color, size=self.ann_size, **extra))
         elif kind == "pen":
             self._finish_pen()
+        elif kind == "fhandle" and self.crop_frame is not None:
+            if self._moved:
+                self.frameEdited.emit(*self.crop_frame)
         elif kind in ("zmove", "zhandle") and self.zone_sel is not None:
             if self._moved:
                 self.zoneEdited.emit(self.zone_sel, *self.zones[self.zone_sel])
@@ -1724,6 +1747,42 @@ class Canvas(QWidget):
             if x - m <= ix <= x + w + m and y - m <= iy <= y + h + m:
                 return k
         return None
+
+    def _frame_points(self):
+        x0, y0, x1, y1 = self.crop_frame
+        xm, ym = (x0 + x1) / 2, (y0 + y1) / 2
+        return (("tl", x0, y0), ("tr", x1, y0), ("bl", x0, y1), ("br", x1, y1),
+                ("t", xm, y0), ("b", xm, y1), ("l", x0, ym), ("r", x1, ym))
+
+    def _frame_handle(self, ix, iy):
+        if self.crop_frame is None or not self.show_overlays:
+            return None
+        m = 9 / self.scale
+        for name, hx, hy in self._frame_points():
+            if abs(ix - hx) <= m and abs(iy - hy) <= m:
+                return name
+        return None
+
+    def _paint_crop_frame(self, p):
+        """Zuschnitt: aussen abgedunkelt, Rahmen mit Anfassern (gilt nur fuer Ausgaben)."""
+        x0, y0, x1, y1 = self.crop_frame
+        a, b = self.to_wid(x0, y0), self.to_wid(x1, y1)
+        r = QRectF(QPointF(*a), QPointF(*b)).normalized()
+        outside = QPainterPath()
+        outside.addRect(QRectF(self.rect()).adjusted(-5000, -5000, 5000, 5000))
+        inner = QPainterPath()
+        inner.addRect(r)
+        p.fillPath(outside.subtracted(inner), QColor(15, 23, 42, 110))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor("white"), 2))
+        p.drawRect(r)
+        p.setPen(QPen(QColor(ACCENT), 2, Qt.PenStyle.DashLine))
+        p.drawRect(r)
+        p.setPen(QPen(QColor(ACCENT), 1.6))
+        p.setBrush(QColor("white"))
+        for _n, hx, hy in self._frame_points():
+            X, Y = self.to_wid(hx, hy)
+            p.drawRect(QRectF(X - 5, Y - 5, 10, 10))
 
     def _zone_handle(self, ix, iy):
         if self.zone_sel is None or self.zone_sel >= len(self.zones):

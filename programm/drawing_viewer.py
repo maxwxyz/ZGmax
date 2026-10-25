@@ -89,6 +89,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         cv.alignPoint.connect(self._align_point)
         cv.selCopy.connect(self._sel_copy)
         cv.zoneEdited.connect(self._zone_edited)
+        cv.frameEdited.connect(self._frame_edited)
         cv.zoneSelected.connect(self._zone_selected)
         cv.selMove.connect(self._sel_move)
         cv.floatDone.connect(self._float_done)
@@ -829,6 +830,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
                              pc=r.get("pc"))
         self._crop_seen = snap["crop"]
         self.canvas.zones = self._local_zones()
+        self._refresh_frame()
         self.canvas.set_preview(None, None)
         self.stack.setCurrentWidget(self.work)
         was_view_only = self.view_only

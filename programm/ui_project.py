@@ -14,7 +14,9 @@ class ProjectMixin:
         anns = copy.deepcopy(self.anns)
         for a in anns:
             shift_ann(a, ox, oy)                   # global speichern
-        return {"anns": anns, "zones": [list(z) for z in self.zones], "edit": getattr(self, "_edit_ver", 0)}
+        f = getattr(self, "crop_frame", None)
+        return {"anns": anns, "zones": [list(z) for z in self.zones], "edit": getattr(self, "_edit_ver", 0),
+                "frame": list(f) if f else None}
 
     def _reset_history(self):
         self._edits, self._edit_ver, self._edit_saved = [], 0, True      # Bildaenderungen (Ausschnitt verschieben)
@@ -50,6 +52,8 @@ class ProjectMixin:
         for a in anns:
             shift_ann(a, -ox, -oy)
         zones = [tuple(z) for z in st["zones"]]
+        self.crop_frame = tuple(st["frame"]) if st.get("frame") else None
+        self._refresh_frame()
         zones_changed = zones != self.zones
         self.anns[:] = anns
         self.zones[:] = zones
@@ -109,7 +113,7 @@ class ProjectMixin:
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
             "crop": list(self.crop) if self.crop else None,
-            "zones": st["zones"], "annotations": st["anns"],
+            "zones": st["zones"], "annotations": st["anns"], "crop_frame": st.get("frame"),
             "view": {"mode": self.canvas.mode, "overlays": self.act_overlays.isChecked()},
             "approval_name": self.settings.value("approval_name", ""),
             "crop_b": list(self.crop_b) if self.crop_b else None,
@@ -235,6 +239,8 @@ class ProjectMixin:
         self.manual_tf = ma if (isinstance(ma, list) and len(ma) == 2) else None
         self.act_align_reset.setEnabled(self.manual_tf is not None)
         self.anns[:] = rep.upgrade_annotations(copy.deepcopy(data.get("annotations", [])))   # global; origin = (0, 0)
+        self.crop_frame = tuple(data["crop_frame"]) if data.get("crop_frame") else None
+        self._refresh_frame()
         if data.get("approval_name"):
             self.settings.setValue("approval_name", data["approval_name"])
         self._update_units()

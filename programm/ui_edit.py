@@ -321,7 +321,7 @@ class EditMixin:
         if not out:
             return False
         from PIL import Image
-        img = rep.apply_redactions(imgs[-1].copy(), self.anns)     # Schwaerzungen einbrennen
+        img = self._apply_frame(rep.apply_redactions(imgs[-1].copy(), self.anns))   # Schwaerzungen, Zuschnitt
         pil = Image.fromarray(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         dpi = self.dpi_value()
         ext = os.path.splitext(out)[1].lower()
@@ -587,6 +587,9 @@ class AreaMixin:
         if not path:
             return
         h, w = c.shape
+        if bbox is None and self._frame_local() is not None:     # Zuschnitt-Rahmen (innerhalb des Blatts)
+            f = self._frame_local()
+            bbox = (max(0, f[0]), max(0, f[1]), min(w, f[2]), min(h, f[3]))
         bbox = bbox or (0, 0, w, h)
         img = self.render_region(bbox, overlays=False) if c.layer_on.get("zeichnung", True) else None
         x0, y0, x1, y1 = bbox
@@ -859,18 +862,71 @@ class SheetEditMixin:
             self._update_units()
         self.start_compute()
 
-    def sheet_crop(self):
-        """Zuschneiden auf die Bereichsauswahl. Beim Ansehen: die Zeichnung selbst (ragt der Bereich ueber das Blatt,
-        wird es vergroessert, der neue Rand bekommt die Papierfarbe). Im Vergleich: nur diesen Teil vergleichen."""
+    # --- Zuschnitt: verstellbarer Rahmen, gilt nur fuer Ausgaben (Speichern, Drucken, Kopieren)
+    def set_crop_frame(self):
+        """Zuschneiden: die Bereichsauswahl wird zum Zuschnitt-Rahmen. Nichts wird geloescht; der Rahmen laesst sich
+        an den Anfassern anpassen und wirkt erst beim Speichern, Drucken und Kopieren (auch im Vergleich)."""
         bbox = self._area_bbox(clip=False)
         if bbox is None:
             self.banner.show_msg(tr("Erst mit dem Werkzeug „Bereich“ (B) den Teil aufziehen, der bleiben soll."),
                                  "info", timeout=8)
             return
-        if not self.view_only:                             # Vergleich: Ausschnitt vergleichen
-            b = self._area_bbox()
-            self.canvas.sel_rects = []
-            self._crop_drawn(b[0], b[1], b[2] - b[0], b[3] - b[1])
+        ox, oy = self.origin
+        self.crop_frame = (bbox[0] + ox, bbox[1] + oy, bbox[2] + ox, bbox[3] + oy)   # global wie Zonen
+        self.canvas.sel_rects = []
+        self._set_tool("hand")
+        self._refresh_frame()
+        self._commit()
+        self.banner.show_msg(tr("Zuschnitt gesetzt: gilt beim Speichern, Drucken und Kopieren. Rand an den Anfassern "
+                                "anpassen; aufheben unter Bearbeiten → Zuschnitt aufheben."), "info",
+                             action=(tr("Aufheben"), self.clear_crop_frame), timeout=12)
+
+    def clear_crop_frame(self):
+        if getattr(self, "crop_frame", None) is not None:
+            self.crop_frame = None
+            self._refresh_frame()
+            self._commit()
+
+    def _refresh_frame(self):
+        f = getattr(self, "crop_frame", None)
+        ox, oy = self.origin
+        self.canvas.crop_frame = None if f is None else (f[0] - ox, f[1] - oy, f[2] - ox, f[3] - oy)
+        for a in (getattr(self, "act_frame_clear", None), getattr(self, "act_frame_apply", None)):
+            if a is not None:
+                a.setEnabled(f is not None and (a is self.act_frame_clear or self.view_only))
+        self.canvas.update()
+
+    def _frame_edited(self, x0, y0, x1, y1):
+        ox, oy = self.origin
+        self.crop_frame = (x0 + ox, y0 + oy, x1 + ox, y1 + oy)
+        self._refresh_frame()
+        self._commit()
+
+    def _frame_local(self):
+        return self.canvas.crop_frame
+
+    def _apply_frame(self, img):
+        """Bild auf den Zuschnitt-Rahmen bringen (ausserhalb des Blatts: weisser Rand)."""
+        f = self._frame_local()
+        return img if f is None else de.crop_images([img], f)[0]
+
+    def apply_crop_frame(self):
+        """Zuschnitt endgueltig auf die Zeichnung anwenden (beim Ansehen einer einzelnen Zeichnung)."""
+        f = self._frame_local()
+        if f is None:
+            return
+        self.canvas.sel_rects = [f]
+        self.crop_frame = None
+        self._refresh_frame()
+        self.sheet_crop()
+
+    def sheet_crop(self):
+        """Zeichnung endgueltig auf die Bereichsauswahl zuschneiden (ragt sie ueber das Blatt, wird es vergroessert,
+        der neue Rand bekommt die Papierfarbe). Nur beim Ansehen einer einzelnen Zeichnung."""
+        bbox = self._area_bbox(clip=False)
+        if bbox is None:
+            self.banner.show_msg(tr("Erst mit dem Werkzeug „Bereich“ (B) den Teil aufziehen, der bleiben soll."),
+                                 "info", timeout=8)
             return
         imgs, _ = self._sheet_images()
         if imgs is None:
@@ -920,21 +976,24 @@ class OcrPdfMixin:
     def export_searchable_pdf(self):
         if not self._need_result():
             return
+        c = self.canvas
+        side = "A"                                         # im Vergleich: die gerade gezeigte Zeichnung
         if not self.view_only:
-            self.banner.show_msg(tr("Durchsuchbares PDF: bitte die Zeichnung einzeln ansehen (Datei → Zeichnung "
-                                    "ansehen)."), "info", timeout=8)
-            return
-        path = self.path_a or self.path_b
-        pdf = path.lower().endswith(".pdf") and dv.available() and not getattr(self, "_edit_ver", 0)
+            side = "B" if c.mode in ("B", "N") or (c.mode in ("K", "S", "Y") and c._side == "B") else "A"
+        path = (self.path_a if side == "A" else self.path_b) or self.path_a or self.path_b
+        # Text direkt aus der PDF nur, wenn das Bild der Datei entspricht (Einzelansicht, ohne Bearbeitung)
+        pdf = (self.view_only and path.lower().endswith(".pdf") and dv.available() and not getattr(self, "_edit_ver", 0)
+               and self._frame_local() is None)
         if not pdf and not rep.ocr_available() and not self.ensure_ocr(tr("Text für ein durchsuchbares PDF zu lesen")):
             return
         base = os.path.splitext(os.path.basename(path))[0] + "_durchsuchbar.pdf"
         out = self._save_dialog(tr("Durchsuchbares PDF speichern"), tr("PDF (*.pdf)"), base)
         if not out:
             return
-        page, dpi = self.sp_pa.value(), self.dpi_value()
-        gray = self.cache.get("g_" + path)
-        img = self.export_render("A", self.act_overlays.isChecked(), legend=False)
+        page, dpi = (self.sp_pa if side == "A" else self.sp_pb).value(), self.dpi_value()
+        img = self.export_render(side, self.act_overlays.isChecked(), legend=False)
+        plain = self.export_render(side, False, legend=False)   # Texterkennung auf dem Bild in Ergebnislage
+        gray = plain.min(axis=2) if plain.ndim == 3 else plain
 
         boxes = rep.redaction_boxes(self.anns)
 
@@ -1016,6 +1075,9 @@ class VectorizeMixin:
         ink = c.res.a if mode == "A" else c.res.b
         h, w = ink.shape
         bbox = self._area_bbox() if dlg.cb_area.currentData() == "area" else (0, 0, w, h)
+        if dlg.cb_area.currentData() != "area" and self._frame_local() is not None:   # Zuschnitt
+            f = self._frame_local()
+            bbox = (max(0, f[0]), max(0, f[1]), min(w, f[2]), min(h, f[3]))
         x0, y0, x1, y1 = bbox
         part = np.ascontiguousarray(ink[y0:y1, x0:x1])
         if dlg.cb_area.currentData() == "area":            # mehrere Rechtecke: nur deren Inhalt

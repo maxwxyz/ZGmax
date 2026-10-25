@@ -138,8 +138,14 @@ class LayoutMixin:
                                   tip=tr("Die Zeichnung mit verschobenen Ausschnitten als Bild oder PDF speichern "
                                          "(ohne Markierungen)"))
         self.act_save_drawing.setEnabled(False)
-        self.act_sheet_crop = A(tr("Auf Bereich zuschneiden"), lambda: self.sheet_crop(),
-                                tip=tr("Nur den mit „Bereich“ gewählten Teil behalten"))
+        self.act_sheet_crop = A(tr("Auf Bereich zuschneiden (endgültig)"), lambda: self.sheet_crop(),
+                                tip=tr("Die Zeichnung selbst auf den mit „Bereich“ gewählten Teil zuschneiden"))
+        self.act_frame_clear = A(tr("Zuschnitt aufheben"), lambda: self.clear_crop_frame(),
+                                 tip=tr("Den Zuschnitt-Rahmen entfernen; Ausgaben zeigen wieder das ganze Blatt"))
+        self.act_frame_apply = A(tr("Zuschnitt endgültig anwenden"), lambda: self.apply_crop_frame(),
+                                 tip=tr("Die Zeichnung selbst auf den Zuschnitt-Rahmen zuschneiden (rückgängig mit Strg+Z)"))
+        self.act_frame_clear.setEnabled(False)
+        self.act_frame_apply.setEnabled(False)
         self.act_rot_cw = A(tr("90° nach rechts drehen"), lambda: self.sheet_rotate(1))
         self.act_rot_ccw = A(tr("90° nach links drehen"), lambda: self.sheet_rotate(3))
         self.act_rot_180 = A(tr("180° drehen"), lambda: self.sheet_rotate(2))
@@ -322,6 +328,8 @@ class LayoutMixin:
                 sm.addSeparator()
         sm.addSeparator()
         sm.addAction(self.act_save_drawing)
+        m.addAction(self.act_frame_clear)
+        m.addAction(self.act_frame_apply)
 
         m = mb.addMenu(tr("&Ansicht"))
         for key, *_ in VIEWS + MORE_VIEWS:
@@ -724,9 +732,9 @@ class LayoutMixin:
                  tr("Markierungen und Änderungen in der Auswahl löschen (Entf)"), True),
                 ("clear", tr("Zeichnung im Bereich leeren"), lambda: self.area_clear(),
                  tr("Zeichnungsinhalt der Auswahl entfernen (Papierfarbe)"), False),
-                ("crop", tr("Zuschneiden"), lambda: self.sheet_crop(),
-                 tr("Nur diesen Bereich behalten. Ragt der Bereich über das Blatt hinaus, wird das Blatt vergrößert "
-                    "(neuer Rand in Papierfarbe). Im Vergleich: nur diesen Teil vergleichen."), True),
+                ("crop", tr("Zuschneiden"), lambda: self.set_crop_frame(),
+                 tr("Zuschnitt-Rahmen setzen: Speichern, Drucken und Kopieren zeigen nur diesen Teil (ragt er über das "
+                    "Blatt, mit Rand). Nichts wird gelöscht; der Rahmen lässt sich an den Anfassern anpassen."), True),
                 ("export", tr("Exportieren …"), lambda: self.area_export(),
                  tr("Auswahl als Bild, PDF oder SVG speichern"), True)):
             if main:
@@ -1302,6 +1310,7 @@ class LayoutMixin:
         self.list_anns = QListWidget()
         self.list_anns.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)  # Strg/Umschalt = mehrere
         self.list_anns.itemSelectionChanged.connect(self._ann_list_selection)
+        self.list_anns.itemChanged.connect(self._ann_item_checked)   # Haken = Markierung sichtbar
         self.list_anns.itemDoubleClicked.connect(lambda it: self._ann_edit(self.list_anns.row(it)))
         for key in ("Delete", "Backspace"):                # Entf in der Liste loescht die Auswahl
             QShortcut(QKeySequence(key), self.list_anns, activated=self._ann_delete).setContext(
@@ -1318,7 +1327,7 @@ class LayoutMixin:
         l2.addWidget(ann_hint)
         tabs.addTab(t2, tr("Markierungen"))
         tabs.addTab(self._build_layers_tab(), tr("Ebenen"))
-        on = self.settings.value("layers_tab", "false") == "true"
+        on = self.settings.value("layers_tab", "true") == "true"      # Ebenen standardmaessig sichtbar
         tabs.setTabVisible(2, on)
         self.act_layers.blockSignals(True)
         self.act_layers.setChecked(on)
@@ -1606,7 +1615,7 @@ class LayoutMixin:
         for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_ann_save, self.act_ann_load,
                   self.act_import_comments, self.act_export_xfdf, self.act_title):   # brauchen ein Dokument
             a.setEnabled(has)
-        for a in self.sheet_actions + (self.act_export_ocrpdf,):     # nur beim Ansehen einer einzelnen Zeichnung
+        for a in self.sheet_actions:                                  # nur beim Ansehen einer einzelnen Zeichnung
             a.setEnabled(has and self.view_only)
         for a in (self.act_find, self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment,
                   self.act_export_pdf, self.act_export_csv, self.act_auto, self.act_text, self.act_dims,

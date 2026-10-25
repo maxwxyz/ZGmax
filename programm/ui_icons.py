@@ -221,16 +221,18 @@ def _draw(p, name):
     elif name == "shapes":
         p.drawRect(r(3, 3, 10, 9))
         p.drawEllipse(r(10, 10, 11, 11))
-    elif name == "area":
+    elif name == "area":                            # Auswahlrahmen: gestrichelt mit Anfassern an den Ecken
         pen = p.pen()
         dash = QPen(pen)
-        dash.setDashPattern([2, 2])
+        dash.setDashPattern([1.6, 1.6])
         p.setPen(dash)
-        p.drawRect(r(3, 4, 18, 14))
+        p.drawRect(r(4, 5, 16, 14))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(pen.color())
+        for cx, cy in ((4, 5), (20, 5), (4, 19), (20, 19)):
+            p.drawRect(r(cx - 2, cy - 2, 4, 4))
+        p.setBrush(Qt.BrushStyle.NoBrush)
         p.setPen(pen)
-        p.drawLine(QPointF(14, 13), QPointF(21, 20))
-        p.drawLine(QPointF(14, 13), QPointF(14, 19))
-        p.drawLine(QPointF(14, 13), QPointF(20, 13))
     elif name == "layers":
         for dy in (0, 5, 10):
             path = QPainterPath()

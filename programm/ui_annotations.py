@@ -164,6 +164,9 @@ class AnnotationsMixin:
         for a in self.anns:
             it = QListWidgetItem(self._ann_label(a))
             it.setIcon(self._swatch(a.get("color", "#000000")))   # Farbe der Markierung
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            it.setCheckState(Qt.CheckState.Unchecked if a.get("hidden") else Qt.CheckState.Checked)
+            it.setToolTip(tr("Haken = im Bild und in Ausgaben sichtbar"))
             self.list_anns.addItem(it)
         ok = select is not None and 0 <= select < len(self.anns)
         if ok:
@@ -265,6 +268,20 @@ class AnnotationsMixin:
         self._ann_refresh(i if i >= 0 else None)
         if i >= 0:
             self.tabs.setCurrentIndex(1)
+
+    def _ann_item_checked(self, it):
+        """Haken in der Liste: einzelne Markierung ein-/ausblenden (ausgeblendet = auch nicht gespeichert/gedruckt)."""
+        i = self.list_anns.row(it)
+        if not (0 <= i < len(self.anns)):
+            return
+        hidden = it.checkState() != Qt.CheckState.Checked
+        if bool(self.anns[i].get("hidden")) != hidden:
+            if hidden:
+                self.anns[i]["hidden"] = True
+            else:
+                self.anns[i].pop("hidden", None)
+            self.canvas.update()
+            self._commit()
 
     def _ann_update_items(self, idx):
         """Listeneintraege (Text, Farbfeld) nach einer Aenderung nachziehen, ohne die Auswahl zu verlieren."""
@@ -387,6 +404,7 @@ class AnnotationsMixin:
             m.addAction(tr("Bearbeiten\u2026"), lambda: self._ann_edit(i))
         m.addAction(tr("Farbe\u2026"), self._pick_color)
         m.addAction(tr("Duplizieren"), self._ann_duplicate)
+        m.addAction(tr("Ausblenden"), lambda: self.list_anns.item(i).setCheckState(Qt.CheckState.Unchecked))
         m.addSeparator()
         m.addAction(tr("L\u00f6schen"), self._ann_delete)
         m.exec(pos)
