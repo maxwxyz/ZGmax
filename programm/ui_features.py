@@ -94,8 +94,16 @@ class FeaturesMixin:
     def show_start(self):
         self.start.set_files(self.path_a, self.path_b)
         self.start.set_recent(recent_list(self.settings))
+        self.start.set_back(self.payload is not None)
         self.stack.setCurrentWidget(self.start)
+        self.start.setFocus()
         self._update_enabled()
+
+    def show_work(self):
+        """Von der Startseite zurueck zur geoeffneten Zeichnung."""
+        if self.payload is not None:
+            self.stack.setCurrentWidget(self.work)
+            self.canvas.setFocus()
 
     def open_view_only(self):
         d = self.settings.value("dir", "")

@@ -398,6 +398,20 @@ class Banner(QFrame):
 
 
 # ----------------------------------------------------------------- Bausteine
+class DoubleClickFilter(QObject):
+    """Ruft callback(widget) bei Doppelklick auf ein Widget auf (z. B. Werkzeugknopf: Werkzeug behalten)."""
+
+    def __init__(self, callback, parent=None):
+        super().__init__(parent)
+        self.callback = callback
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Type.MouseButtonDblClick and ev.button() == Qt.MouseButton.LeftButton:
+            self.callback(obj)
+            return True
+        return False
+
+
 class WheelGuard(QObject):
     """Mausrad ueber Reglern/Feldern scrollt die Seitenleiste, statt Werte zu aendern
     (ausser das Feld wurde vorher angeklickt)."""

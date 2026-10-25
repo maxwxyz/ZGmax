@@ -57,6 +57,7 @@ class StartPage(QWidget):
     recentChosen = Signal(dict)
     projectRequested = Signal()
     viewOnly = Signal()
+    backRequested = Signal()               # zurueck zur offenen Zeichnung
 
     def __init__(self):
         super().__init__()
@@ -69,7 +70,16 @@ class StartPage(QWidget):
         lay.setSpacing(14)
         brand = QLabel(tr("{}  <span style='font-weight:400'>· {}</span>").format(APP, APP_SUBTITLE))
         brand.setObjectName("brand")
-        lay.addWidget(brand)
+        top = QHBoxLayout()
+        top.addWidget(brand)
+        top.addStretch()
+        self.btn_back = QPushButton(tr("← Zurück zur Zeichnung"))   # nur sichtbar, wenn schon etwas offen ist
+        self.btn_back.setObjectName("primary")
+        self.btn_back.setToolTip(tr("Zur geöffneten Zeichnung zurück (Esc)"))
+        self.btn_back.clicked.connect(self.backRequested.emit)
+        self.btn_back.setVisible(False)
+        top.addWidget(self.btn_back)
+        lay.addLayout(top)
         h = QLabel(tr("Zeichnungen vergleichen oder ansehen"))
         h.setObjectName("bigtitle")
         sub = QLabel(tr("Zwei Dateien hierher ziehen (alt und neu) – oder links die alte und rechts die neue "
@@ -113,6 +123,15 @@ class StartPage(QWidget):
         center.addStretch(1)
         outer.addLayout(center)
         outer.addStretch(2)
+
+    def set_back(self, on):
+        self.btn_back.setVisible(on)
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key.Key_Escape and self.btn_back.isVisible():
+            self.backRequested.emit()
+            return
+        super().keyPressEvent(e)
 
     def set_files(self, a, b):
         self.card_a.set_file(a)

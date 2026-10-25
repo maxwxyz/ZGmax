@@ -128,6 +128,33 @@ def suggest_geometry_width(ink, max_width=16, share=0.5):
     return thick - 1 if thick >= 3 else None
 
 
+def width_band(ink, lo=0, hi=0):
+    """Nur Linien mit einer Strichbreite von lo bis hi Pixel (0 = ohne Grenze) - z. B. nur Konturen (dicke Linien)
+    oder nur Mass-/Hinweislinien und Text. Rueckgabe uint8 0/255 wie ink."""
+    m = ink > 0
+    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    keep = m
+    if lo and lo > 1:                                  # Kern der dicken Linien, Kanten wieder dazu (Scans)
+        keep = (cv2.dilate(open_lines(m, lo).astype(np.uint8), se) > 0) & m
+    if hi and hi > 0:
+        thick = (cv2.dilate(open_lines(m, hi + 1).astype(np.uint8), se) > 0) & m
+        keep = keep & ~thick
+    return keep.astype(np.uint8) * 255
+
+
+def resolve_band(ink, mode, lo=0, hi=0):
+    """Linienfilter als (lo, hi) in Pixeln: 'contours' = ab der Breite der Koerperkanten, 'thin' = darunter
+    (beides aus der Zeichnung bestimmt), 'custom' = lo/hi, sonst (0, 0) = alle Linien."""
+    if mode in ("contours", "thin"):
+        gw = suggest_geometry_width(ink)
+        if gw is None:                                 # keine deutlich dickeren Linien: Filter wirkt nicht
+            return 0, 0
+        return (gw, 0) if mode == "contours" else (0, gw - 1)
+    if mode == "custom":
+        return int(lo), int(hi)
+    return 0, 0
+
+
 def geometry_mask(ink, width=None, drop_small=40, keep_ratio=0.0):
     """Nur die Geometrie einer technischen Zeichnung: dicke Linien (Koerperkanten). Duenne Linien (Masslinien,
     Hinweislinien, Mittellinien, Schraffur) und Text in normaler Schriftstaerke fallen weg; kleine gefuellte Flecken

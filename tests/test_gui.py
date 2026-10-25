@@ -451,7 +451,7 @@ def test_layers_and_svg_pdf_export(app, win, pair, tmp_path):
     win.find_regs()
     wait(app, lambda: not win.running)
     win.act_layers.setChecked(True)
-    assert win.tabs.isTabVisible(2)
+    assert win.tabs.isTabVisible(win.tabs.indexOf(win.tab_layers))
     out = str(tmp_path / "a.pdf")
     win._save_dialog = lambda *a: out
     win.export_annotated_pdf()

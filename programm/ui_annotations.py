@@ -335,7 +335,7 @@ class AnnotationsMixin:
         self._commit()
         if a["type"] == "measure" and a.get("kind") == "dist" and getattr(self, "_calib_pending", False):
             QTimer.singleShot(0, lambda: self._calibrate(math.hypot(a["x2"] - a["x"], a["y2"] - a["y"])))
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentWidget(self.tab_anns)
         if a["type"] not in ("number", "measure", "pen") and not self.chk_keep_tool.isChecked():
             self._set_tool("hand")                        # Zaehlen, Messen, Freihand oder "Werkzeug behalten": bleibt
 
@@ -475,7 +475,7 @@ class AnnotationsMixin:
     def _ann_selected(self, i):
         self._ann_refresh(i if i >= 0 else None)
         if i >= 0:
-            self.tabs.setCurrentIndex(1)
+            self.tabs.setCurrentWidget(self.tab_anns)
 
     def _ann_item_checked(self, it):
         """Haken in der Liste: einzelne Markierung ein-/ausblenden (ausgeblendet = auch nicht gespeichert/gedruckt)."""
@@ -568,7 +568,7 @@ class AnnotationsMixin:
             self.list_anns.setCurrentRow(rows[-1], QItemSelectionModel.SelectionFlag.NoUpdate)
         self.list_anns.blockSignals(False)
         if rows:
-            self.tabs.setCurrentIndex(1)
+            self.tabs.setCurrentWidget(self.tab_anns)
         self._sync_ann_controls()
         self._update_options()
         self.canvas.update()
@@ -749,7 +749,7 @@ class AnnotationsMixin:
         self._ann_refresh(None)
         self._commit()
         self.act_right.setChecked(True)
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentWidget(self.tab_anns)
         extra = tr(" ({} Kommentare anderer Art übersprungen)").format(skipped) if skipped else ""
         self.banner.show_msg(tr("{} Kommentare als {} Markierungen übernommen{}.").format(len(items), len(new), extra), "info",
                              timeout=12)

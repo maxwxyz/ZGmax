@@ -1384,6 +1384,8 @@ class Canvas(QWidget):
             a = self.anns[i]
             if i != self.editing and self.ann_visible(a):   # nicht: gerade direkt bearbeiteter Text, aus. Ebene
                 self._paint_ann(p, a, i in chosen)
+        if getattr(self, "_guides", None) and self._drag is not None and self._drag[0] in ("move", "handle"):
+            self._paint_guides(p)
         if self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
             if self.tool == "straighten":                 # nachgezeichnete Kante: duenne blaue Linie
@@ -1648,7 +1650,7 @@ class Canvas(QWidget):
             name = self._hit_handle(ix, iy) if self.show_overlays and not add and not self.ann_multi else None
             i = self.hit_ann(ix, iy) if self.show_overlays else None
             if name:
-                self._drag = ("handle", name)
+                self._drag = ("handle", name, (ix, iy))
             elif i is not None and add:                  # Strg/Umschalt + Klick: zur Auswahl hinzu / heraus
                 chosen = self.selected_anns()
                 chosen ^= {i}
@@ -1833,6 +1835,18 @@ class Canvas(QWidget):
         elif kind == "move":
             _, (sx, sy), orig = self._drag
             dx, dy = ix - sx, iy - sy
+            mods = e.modifiers()
+            if mods & Qt.KeyboardModifier.ShiftModifier:          # Umschalt: nur waagerecht oder senkrecht
+                if abs(dx) >= abs(dy):
+                    dy = 0
+                else:
+                    dx = 0
+            if not mods & Qt.KeyboardModifier.AltModifier:        # Alt: ohne Einrasten an anderen Elementen
+                boxes = [rep.ann_bounds(self.shape, o) for o in orig.values()]
+                box = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                       max(b[2] for b in boxes), max(b[3] for b in boxes))
+                dx, dy = self._align_snap(box, dx, dy, set(orig), lock_x=dx == 0 and dy != 0,
+                                          lock_y=dy == 0 and dx != 0)
             for k, o in orig.items():
                 if k < len(self.anns):
                     a = self.anns[k]
@@ -1840,10 +1854,61 @@ class Canvas(QWidget):
                     if o.get("pts"):
                         a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
         elif kind == "handle":
+            mods = e.modifiers()
+            if mods & Qt.KeyboardModifier.ShiftModifier:          # Umschalt: Ecke nur waagerecht oder senkrecht
+                sx, sy = self._drag[2]
+                if abs(ix - sx) >= abs(iy - sy):
+                    iy = sy
+                else:
+                    ix = sx
             if self._drag[1].startswith("m"):
                 ix, iy, _k = self.snap_point(ix, iy)
+            elif not mods & Qt.KeyboardModifier.AltModifier:     # Kante/Ecke an anderen Elementen einrasten
+                dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})
+                ix, iy = ix + dx, iy + dy
             apply_handle(self.shape, self.anns[self.ann_selected], self._drag[1], ix, iy)
         self.update()
+
+    def _align_snap(self, box, dx, dy, skip, lock_x=False, lock_y=False):
+        """Einrasten beim Verschieben: Kanten und Mitte des verschobenen Rahmens (box + dx/dy) an Kanten und Mitten
+        der anderen Markierungen, wenn sie naeher als 6 Bildschirmpixel liegen. Merkt Hilfslinien zum Zeichnen.
+        Rueckgabe: angepasstes (dx, dy)."""
+        self._guides = []
+        if not self.anns:
+            return dx, dy
+        tol = 6 / self.scale
+        xs, ys = [], []
+        for k, a in enumerate(self.anns):
+            if k in skip or not self.ann_visible(a):
+                continue
+            x0, y0, x1, y1 = rep.ann_bounds(self.shape, a)
+            xs += [x0, (x0 + x1) / 2, x1]
+            ys += [y0, (y0 + y1) / 2, y1]
+        if not xs:
+            return dx, dy
+        mine_x = [box[0] + dx, (box[0] + box[2]) / 2 + dx, box[2] + dx]
+        mine_y = [box[1] + dy, (box[1] + box[3]) / 2 + dy, box[3] + dy]
+        best = min(((t - m, t) for m in mine_x for t in xs), key=lambda v: abs(v[0]))
+        if not lock_x and abs(best[0]) < tol:
+            dx += best[0]
+            self._guides.append(("v", best[1]))
+        best = min(((t - m, t) for m in mine_y for t in ys), key=lambda v: abs(v[0]))
+        if not lock_y and abs(best[0]) < tol:
+            dy += best[0]
+            self._guides.append(("h", best[1]))
+        return dx, dy
+
+    def _paint_guides(self, p):
+        """Hilfslinien beim Einrasten an anderen Elementen (gestrichelt, Akzentfarbe)."""
+        pen = QPen(QColor(ACCENT), 1, Qt.PenStyle.DashLine)
+        p.setPen(pen)
+        for kind, v in getattr(self, "_guides", []):
+            if kind == "v":
+                x = self.to_wid(v, 0)[0]
+                p.drawLine(QPointF(x, 0), QPointF(x, self.height()))
+            else:
+                y = self.to_wid(0, v)[1]
+                p.drawLine(QPointF(0, y), QPointF(self.width(), y))
 
     def _zoom_rect(self, ax, ay, bx, by):
         zw, zh = abs(bx - ax), abs(by - ay)
@@ -1857,6 +1922,7 @@ class Canvas(QWidget):
         if self._drag is None:
             return
         kind = self._drag[0]
+        self._guides = []
         if kind == "rzoom":
             if self._rubber:
                 (ax, ay), (bx, by) = self._rubber
@@ -2041,6 +2107,8 @@ class Canvas(QWidget):
         if hit:
             hit.sort(key=lambda r: r["w"] * r["h"])
             self.regionClicked.emit(hit[0]["nr"])
+        elif self.selected is not None:                  # Klick ins Leere hebt auch die Aenderungs-Auswahl auf
+            self.regionClicked.emit(-1)
 
     def in_selection(self, ix, iy):
         return any(r[0] <= ix <= r[2] and r[1] <= iy <= r[3] for r in self.sel_rects)
@@ -2108,6 +2176,8 @@ class Canvas(QWidget):
             self._rubber = None
             self._ann_prev = None
             self._drag = None
+            if self.selected is not None and self.tool == "hand":   # Esc: gewaehlte Aenderung abwaehlen
+                self.regionClicked.emit(-1)
             self.update()
             self.escapePressed.emit()
         elif k in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.tool == "measure" and self.measure:

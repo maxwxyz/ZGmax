@@ -11,7 +11,7 @@ THEMES = {
         accent=ACCENT, accent_hover="#1d4ed8", accent_off="#93b4f5",
         window="#f4f5f7", surface="#ffffff", border="#e0e3e8", border2="#cfd5de",
         text="#1f2937", text2="#374151", muted="#6b7280", disabled="#9ca3af",
-        hover="#eef1f6", sel_bg="#dbe7fd", sel_fg="#111827", grid="#eef0f3", groove="#dde1e8", track="#e5e8ee",
+        hover="#eef1f6", sel_bg="#dbe7fd", sel_fg="#111827", on_bg="#dbe7fd", on_hover="#c9dafc", on_fg="#1d4ed8", grid="#eef0f3", groove="#dde1e8", track="#e5e8ee",
         canvas="#e6e9ef", frame="#9aa3b2", legend_bg=(255, 255, 255, 225), segbg="#eceef2", seghover="#e2e5ea",
         info_bg="#e8f0fe", info_fg="#1e3a8a", warn_bg="#fef3c7", warn_fg="#78350f", err_bg="#fee2e2", err_fg="#7f1d1d",
         name="light"),
@@ -19,7 +19,7 @@ THEMES = {
         accent="#3b82f6", accent_hover="#2563eb", accent_off="#34507f",
         window="#1c1f24", surface="#262a31", border="#353b44", border2="#4a515c",
         text="#e5e7eb", text2="#d1d5db", muted="#9ca3af", disabled="#6b7280",
-        hover="#323842", sel_bg="#1e3a6e", sel_fg="#f3f4f6", grid="#30353c", groove="#3a4049", track="#353b44",
+        hover="#323842", sel_bg="#1e3a6e", sel_fg="#f3f4f6", on_bg="#1e3a6e", on_hover="#25467f", on_fg="#93c0ff", grid="#30353c", groove="#3a4049", track="#353b44",
         canvas="#15171b", frame="#5b6472", legend_bg=(38, 42, 49, 230), segbg="#1c1f24", seghover="#2c3139",
         info_bg="#1e2f52", info_fg="#dbe7fd", warn_bg="#463710", warn_fg="#fde68a", err_bg="#4c1d1d", err_fg="#fecaca",
         name="dark"),
@@ -36,8 +36,8 @@ QMainWindow, QWidget#panel {{ background: {t['window']}; }}
 QToolBar {{ background: {t['surface']}; border: none; border-bottom: 1px solid {t['border']}; spacing: 4px; padding: 4px 10px; }}
 QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 12px; }}
 QToolButton:hover {{ background: {t['hover']}; }}
-QToolButton:checked {{ background: {t['accent']}; color: white; }}
-QToolButton:checked:hover {{ background: {t['accent_hover']}; }}
+QToolButton:checked {{ background: {t['on_bg']}; color: {t['on_fg']}; border: 1px solid {t['on_bg']}; }}
+QToolButton:checked:hover {{ background: {t['on_hover']}; }}
 QToolButton::menu-indicator {{ image: none; }}
 QToolButton#qt_toolbar_ext_button {{ background: #f59e0b; color: white; font-weight: 700; border-radius: 6px; min-width: 34px; padding: 2px 8px; font-size: 16px; }}
 QToolButton#qt_toolbar_ext_button:hover {{ background: #d97706; }}
@@ -101,6 +101,7 @@ QFrame#dropcard[filled="true"] {{ border-style: solid; border-color: {t['accent'
 QListWidget#recent {{ padding: 4px; }}
 QListWidget#recent::item {{ padding: 6px 8px; border-radius: 6px; }}
 QListWidget#recent::item:hover {{ background: {t['hover']}; }}
+QListView::item {{ padding: 2px 0px; }}
 QCheckBox::indicator, QAbstractItemView::indicator {{ width: 15px; height: 15px; border: 1.5px solid {t['muted']}; border-radius: 4px; background: {t['surface']}; }}
 QCheckBox::indicator:checked, QAbstractItemView::indicator:checked {{ background: {t['accent']}; border-color: {t['accent']}; image: url("{t.get('check_png', '')}"); }}
 QCheckBox::indicator:disabled {{ border-color: {t['disabled']}; background: {t['window']}; }}

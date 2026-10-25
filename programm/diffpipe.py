@@ -33,6 +33,9 @@ class Params:
     glyphs: bool = True            # Zeichenpruefung: aehnliche Ziffern/Buchstaben (1 -> 3) sicher erkennen
     ignore: list = field(default_factory=list)    # Zonen (x, y, b, h) in Pixeln von A
     ignore_border: int = 0         # Randstreifen (Pixel), der nicht verglichen wird
+    lines: str = "all"             # Linienfilter: all | contours | thin | custom (gilt fuer Anzeige und Vergleich)
+    line_min: int = 0              # bei custom: Strichbreite von ... bis ... Pixel (0 = ohne Grenze)
+    line_max: int = 0
     verbose: bool = False
 
     def align_key(self):
@@ -306,11 +309,25 @@ def stage(progress, cancel, lo, hi, text):
     return tick
 
 
+def apply_line_filter(a, b, p, log=print):
+    """Linienfilter (Params.lines) auf beide Tinten anwenden; die Breiten bestimmt Zeichnung A, damit beide Seiten
+    gleich behandelt werden."""
+    if p.lines == "all":
+        return a, b
+    import diffedit as de
+    lo, hi = de.resolve_band(a, p.lines, p.line_min, p.line_max)
+    if not lo and not hi:
+        return a, b
+    log(tr("  Linienfilter: Strichbreite {} bis {} px").format(lo or 1, hi or "∞"))
+    return de.width_band(a, lo, hi), de.width_band(b, lo, hi)
+
+
 def run_compare(a, b, p, log=print, cancel=None, progress=None):
     """Vergleicht A mit ausgerichtetem B. Gibt Result zurueck.
     cancel(): True = abbrechen (loest dc.Cancelled aus); progress(anteil 0..1, text)."""
     def st(lo, hi, text):
         return stage(progress, cancel, lo, hi, text)
+    a, b = apply_line_filter(a, b, p, log)
     zone = make_zone(a.shape, p.ignore, p.ignore_border)
     ac, bc = a, b
     if zone is not None:

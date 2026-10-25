@@ -165,7 +165,7 @@ class RegionsMixin:
     def _regs_ready(self):
         self.act_overlays.setChecked(True)
         self.chk_regs.setChecked(True)
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentWidget(self.tab_regs)
         if self.payload["regs"] and not self.act_right.isChecked() and not getattr(self, "_right_auto_done", False):
             self.act_right.setChecked(True)            # beim ersten Mal die Liste zeigen: dort geht es weiter
             self._right_auto_done = True
@@ -180,17 +180,25 @@ class RegionsMixin:
             return None
         return {t}
 
-    def _shown_regs(self):
-        """Die Aenderungen, die nach dem Filter in der Liste stehen (gleiche Auswahl fuer Liste und PDF)."""
-        pl = self.payload
-        regs = (pl or {}).get("regs") or []
-        types = self._filter_types()
-        f = self.cb_filter.currentData()
+    def _filter_spec(self):
+        """Aktueller Listenfilter (fuer Hintergrundarbeiten, die keine Widgets lesen duerfen)."""
+        return self.cb_filter.currentData(), self._filter_types()
+
+    @staticmethod
+    def filter_regs(regs, spec):
+        f, types = spec
         return [r for r in regs if (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
                 and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
+    def _shown_regs(self):
+        """Die Aenderungen, die nach dem Filter in der Liste stehen (gleiche Auswahl fuer Liste, PDF-Bericht, CSV und
+        PDF mit Anmerkungen)."""
+        pl = self.payload
+        return self.filter_regs((pl or {}).get("regs") or [], self._filter_spec())
+
     def _fill_table(self):
         self._update_review_enabled()
+        self._regs_listed = self._shown_regs()             # fuer Ausgaben aus dem Hintergrund (ohne Widgets)
         pl = self.payload
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()
@@ -244,7 +252,10 @@ class RegionsMixin:
 
     def _table_selected(self):
         rows = self.table.selectionModel().selectedRows()
-        if not rows:
+        if not rows:                                       # Auswahl in der Liste aufgehoben: auch im Bild
+            if self.canvas.selected is not None:
+                self.canvas.selected = None
+                self.canvas.update()
             return
         r = self._reg(int(self.table.item(rows[0].row(), 1).text()))
         if r:
@@ -263,7 +274,13 @@ class RegionsMixin:
             self.lbl_summary.setText(txt + tr("Geprüft: {}").format(sum(1 for x in regs if x['checked'])))
 
     def _select_region_nr(self, nr):
-        self.tabs.setCurrentIndex(0)
+        if nr < 0:                                         # abwaehlen (Klick ins Leere, Esc)
+            self.table.clearSelection()
+            self.table.setCurrentCell(-1, -1)
+            self.canvas.selected = None
+            self.canvas.update()
+            return
+        self.tabs.setCurrentWidget(self.tab_regs)
         for row in range(self.table.rowCount()):
             if int(self.table.item(row, 1).text()) == nr:
                 self.table.selectRow(row)

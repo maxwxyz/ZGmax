@@ -9,7 +9,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
-from ui_widgets import Banner, Collapsible, ElideLabel, FlowLayout, OverlayHost, PaletteFrame, PanelScroll, Section, SliderRow
+from ui_widgets import Banner, Collapsible, DoubleClickFilter, ElideLabel, FlowLayout, OverlayHost, PaletteFrame, PanelScroll, Section, SliderRow
 
 VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
          ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
@@ -48,7 +48,8 @@ TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. L
 
 
 SHAPES = ("rect", "ellipse", "line", "polyline", "polygon")   # in der Palette unter "Formen" (Pfeil eigener Knopf)
-PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"))             # je ein Knopf mit Auswahl ueber das Dreieck
+PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"), ("number", "approval"))   # je ein Knopf, Auswahl ueber das Dreieck
+NAV_TOOLS = ("hand", "area", "zoom", "measure")              # Doppelklick hier: "Werkzeug behalten" aus
 
 
 class LayoutMixin:
@@ -617,6 +618,7 @@ class LayoutMixin:
         lay.setContentsMargins(5, 8, 5, 8)
         lay.setSpacing(2)
         self.group_buttons = {}
+        self._dbl_filter = DoubleClickFilter(self._tool_double_clicked, self)
         for key, *_ in TOOLS:
             group = next((g for g in PALETTE_GROUPS if key in g), None)
             if group and key != group[0]:
@@ -637,6 +639,7 @@ class LayoutMixin:
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
             b.setIconSize(QSize(22, 22))
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            b.installEventFilter(self._dbl_filter)
             lay.addWidget(b)
             if key == "measure":
                 line = QFrame()
@@ -653,6 +656,19 @@ class LayoutMixin:
             lay.addWidget(b)
         self.palette_frame = pal
         return pal
+
+    def _tool_double_clicked(self, button):
+        """Doppelklick auf ein Zeichenwerkzeug: Werkzeug behalten an (mehrere hintereinander zeichnen).
+        Doppelklick auf Auswahl, Bereich, Zoom oder Messen: Werkzeug behalten wieder aus."""
+        act = button.defaultAction()
+        key = next((k for k, a in self.tool_actions.items() if a is act), None)
+        if key is None or not act.isEnabled():
+            return
+        self._set_tool(key)
+        keep = key not in NAV_TOOLS
+        self.chk_keep_tool.setChecked(keep)
+        self.statusBar().showMessage(tr("Werkzeug behalten: an – „{}“ bleibt nach dem Zeichnen aktiv (Esc beendet).")
+                                     .format(act.text()) if keep else tr("Werkzeug behalten: aus"), 6000)
 
     # ----------------------------------------------------------------- Optionsleiste (je Werkzeug)
     def _build_options(self):
@@ -918,6 +934,7 @@ class LayoutMixin:
         self.start.recentChosen.connect(self.open_recent)
         self.start.projectRequested.connect(self.project_open)
         self.start.viewOnly.connect(lambda: self.start_compute())
+        self.start.backRequested.connect(self.show_work)
         self.stack.addWidget(self.start)
         work = QWidget()
         v = QVBoxLayout(work)
@@ -1359,8 +1376,9 @@ class LayoutMixin:
         for b in (self.btn_region, self.btn_regdel, self.btn_regclr):
             row.addWidget(b)
         l1.addLayout(row)
-        QShortcut(QKeySequence("Delete"), self.table, activated=self._reg_delete).setContext(
-            Qt.ShortcutContext.WidgetShortcut)
+        for key in ("Delete", "Backspace"):            # Mac: die Taste "delete" ist Backspace
+            QShortcut(QKeySequence(key), self.table, activated=self._reg_delete).setContext(
+                Qt.ShortcutContext.WidgetShortcut)
         more = Collapsible(tr("Text und Maße"), tr("Geänderten Text, geänderte Maße, Schriftfeld-Index"))
         self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
                                  tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
@@ -1381,7 +1399,7 @@ class LayoutMixin:
         h.setWordWrap(True)
         more.body.addWidget(h)
         l1.addWidget(more)
-        tabs.addTab(t1, tr("Änderungen"))
+        self.tab_regs = t1
 
         t2 = QWidget()
         t2.setObjectName("panel")
@@ -1416,10 +1434,13 @@ class LayoutMixin:
         l2.addWidget(self.lbl_sums)
         l2.addWidget(self._build_thread_panel())
         l2.addWidget(ann_hint)
+        # Reihenfolge: Markierungen (gibt es immer, bleibt vorn), Aenderungen (nur im Vergleich), Ebenen
+        self.tab_anns, self.tab_layers = t2, self._build_layers_tab()
         tabs.addTab(t2, tr("Markierungen"))
-        tabs.addTab(self._build_layers_tab(), tr("Ebenen"))
+        tabs.addTab(t1, tr("Änderungen"))
+        tabs.addTab(self.tab_layers, tr("Ebenen"))
         on = self.settings.value("layers_tab", "true") == "true"      # Ebenen standardmaessig sichtbar
-        tabs.setTabVisible(2, on)
+        tabs.setTabVisible(tabs.indexOf(self.tab_layers), on)
         self.act_layers.blockSignals(True)
         self.act_layers.setChecked(on)
         self.act_layers.blockSignals(False)
@@ -1557,11 +1578,11 @@ class LayoutMixin:
 
     def _toggle_layers_tab(self, on):
         self.settings.setValue("layers_tab", "true" if on else "false")
-        self.tabs.setTabVisible(2, on)
+        self.tabs.setTabVisible(self.tabs.indexOf(self.tab_layers), on)
         if on:
             self.act_right.setChecked(True)
             self.right.setVisible(True)
-            self.tabs.setCurrentIndex(2)
+            self.tabs.setCurrentWidget(self.tab_layers)
 
     # ----------------------------------------------------------------- Statusleiste
     def _build_statusbar(self):
@@ -1814,7 +1835,7 @@ class LayoutMixin:
         QTimer.singleShot(0, self._fit_toolbar)
         self.canvas.show_legend = not on and self.act_legend.isChecked()
         self.act_legend.setEnabled(not on and self.canvas.mode in ("D", "O", "N", "R"))
-        self.tabs.setTabVisible(0, not on)
+        self.tabs.setTabVisible(self.tabs.indexOf(self.tab_regs), not on)
         if on:
             self.act_left.setChecked(False)
-            self.tabs.setCurrentIndex(1)
+            self.tabs.setCurrentWidget(self.tab_anns)

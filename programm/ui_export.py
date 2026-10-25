@@ -62,7 +62,8 @@ class ExportMixin:
             out = np.full_like(out, 255)
         if overlays:
             if pl["regs"] and self.canvas.show_regs and self.canvas.layer_on.get("aenderungen", True):
-                rep.draw_marks(out, pl["regs"], cloud=self.act_clouds.isChecked())
+                rep.draw_marks(out, getattr(self, "_regs_listed", pl["regs"]),     # wie in der Liste (auch im
+                               cloud=self.act_clouds.isChecked())                   # Hintergrund lesbar)
             rep.draw_annotations(out, self._export_anns(), mm=self.canvas.mm_px)
         rep.apply_redactions(out, self.anns)        # Schwaerzen/Verpixeln immer, auch ohne Markierungen
         out = self._apply_frame(out)                # Zuschnitt-Rahmen (nur Ausgaben)
@@ -135,11 +136,11 @@ class ExportMixin:
         path = self._save_dialog(tr("\u00c4nderungsliste speichern"), tr("CSV (*.csv)"), "diff_aenderungen.csv")
         if not path:
             return
-        pl, dpi, sn = self.payload, self.dpi_value(), self.scale_n()
+        pl, dpi, sn, spec = self.payload, self.dpi_value(), self.scale_n(), self._filter_spec()
 
         def work(log):
             self._ensure_regs(log)
-            rep.write_csv(path, pl["regs"], dpi, sn)
+            rep.write_csv(path, self.filter_regs(pl["regs"], spec), dpi, sn)   # wie die Liste: Filter, ohne Geloeschte
             return path
         self._run_job(work, tr("Speichere \u2026"), lambda p: (self._fill_table(), self._saved(p)))
 
@@ -150,7 +151,7 @@ class ExportMixin:
         if not path:
             return
         pl, info, dpi, idx = self.payload, self._info(), self.dpi_value(), self.index_info
-        sn, anns = self.scale_n(), self._export_anns()
+        sn, anns, spec = self.scale_n(), self._export_anns(), self._filter_spec()
         names = (os.path.basename(self.path_a), os.path.basename(self.path_b))
 
         def work(log):
@@ -158,7 +159,7 @@ class ExportMixin:
             boxes = rep.redaction_boxes(self.anns)        # geschwaerzte Bereiche: auch im Bericht unkenntlich
             regs = [dict(g, text_a="", text_b="", dim="") if any(
                 g["x"] < b[2] and g["x"] + g["w"] > b[0] and g["y"] < b[3] and g["y"] + g["h"] > b[1] for b in boxes)
-                else g for g in pl["regs"]]
+                else g for g in self.filter_regs(pl["regs"], spec)]   # nur was in der Liste steht
             rep.build_report(path, rep.redact_result(pl["res"], self.anns), regs, names[0], names[1], dpi, info, idx,
                              40, log, anns=anns, scale_n=sn)
             return path

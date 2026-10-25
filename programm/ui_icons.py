@@ -285,14 +285,15 @@ def _pixmap(name, color, size, dpr):
 
 
 def icon(name, color=None):
-    """QIcon im aktuellen Farbschema; Zustand 'an' (gedrueckt) in Weiss."""
+    """QIcon im aktuellen Farbschema; Zustand 'an' (gedrueckt) in der Akzentfarbe - passt auf hellblauem Knopf und
+    im Menue (dort war Weiss auf hellem Grund unsichtbar)."""
     col = color or THEME["text"]
-    key = (name, col, THEME["surface"])
+    key = (name, col, THEME["surface"], THEME["on_fg"])
     if key not in _cache:
         ic = QIcon()
         for size in (16, 20, 24, 32):
             ic.addPixmap(_pixmap(name, col, size, 2.0), QIcon.Mode.Normal, QIcon.State.Off)
-            ic.addPixmap(_pixmap(name, "#ffffff", size, 2.0), QIcon.Mode.Normal, QIcon.State.On)
+            ic.addPixmap(_pixmap(name, color or THEME["on_fg"], size, 2.0), QIcon.Mode.Normal, QIcon.State.On)
             ic.addPixmap(_pixmap(name, THEME["disabled"], size, 2.0), QIcon.Mode.Disabled, QIcon.State.Off)
         _cache[key] = ic
     return _cache[key]

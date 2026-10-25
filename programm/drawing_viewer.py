@@ -26,6 +26,19 @@ VERSION = "2.0"
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
+def hide_filtered(img, ink_all, ink_kept):
+    """Linien, die der Linienfilter weglaesst, auch im Original (Farbe/Graustufen) als Papier zeigen."""
+    if img is None or ink_kept is ink_all or img.shape[:2] != ink_all.shape[:2]:
+        return img
+    gone = (ink_all > 0) & (ink_kept == 0)
+    if not gone.any():
+        return img
+    gone = cv2.dilate(gone.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0   # Kantenglaettung mitnehmen
+    out = img.copy()
+    out[gone] = 255
+    return out
+
+
 class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
                  VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
@@ -597,7 +610,10 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             move=int(self.s_move.value()), obj_shift=int(self.s_obj.value()), obj_rotate=float(self.s_rot.value()),
             min_area=int(self.s_area.value()), ignore=self._local_zones(self._compute_origin()),
             ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked(),
-            flatten=self.chk_flatten.isChecked(), glyphs=self.chk_glyphs.isChecked())
+            flatten=self.chk_flatten.isChecked(), glyphs=self.chk_glyphs.isChecked(),
+            lines=self.cb_lines.currentData() if hasattr(self, "cb_lines") else "all",   # UI folgt (HANDOFF.md)
+            line_min=self.sp_wmin.value() if hasattr(self, "sp_wmin") else 0,
+            line_max=self.sp_wmax.value() if hasattr(self, "sp_wmax") else 0)
 
     def _param_changed(self):
         if not (self.path_a and self.path_b):
@@ -857,13 +873,15 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             k = min(1.0, 2400 / max(ga.shape))
             log.preview((cv2.resize(ga, None, fx=k, fy=k, interpolation=cv2.INTER_AREA), ga.shape))
         if snap.get("single"):                       # nur eine Datei: anzeigen, nicht vergleichen
-            a = dp.ink_from_gray(ga, p.thr, p.flatten)
+            a0 = dp.ink_from_gray(ga, p.thr, p.flatten)
+            a, _b = dp.apply_line_filter(a0, a0, p, log)
             z = np.zeros(a.shape, bool)              # calloc: kostet erst Speicher, wenn beschrieben
             res = dp.Result(a, a, z, z, a > 0, z, None)
             log.progress(0.6, tr("Erzeuge Ansicht"))
             pa, pb, pd, po = build_pyramids(res)
             ca = self._color(snap["pa"])
             ca = ca if ca is not None else ga                # Original: Farbe oder Graustufen
+            ca = hide_filtered(ca, a0, a)
             pc = build_color_pyramids(ca, len(pa))
             return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
         log.progress(0.12, tr("Lade ") + os.path.basename(snap["pb"]))
@@ -910,6 +928,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         log.progress(0.93, tr("Erzeuge Ansichten"))
         pa, pb, pd, po = build_pyramids(res)
         ca, cb = self.cache.get("color", (None, None))
+        if res.a is not self.cache["a"]:                       # Linienfilter: auch im Original ausblenden
+            ca, cb = hide_filtered(ca, self.cache["a"], res.a), hide_filtered(cb, self.cache["b"], res.b)
         return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, cb),
                     pc=(build_color_pyramids(ca, len(pa)), build_color_pyramids(cb, len(pa))))
 

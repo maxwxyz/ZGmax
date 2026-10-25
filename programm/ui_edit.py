@@ -431,7 +431,7 @@ class ClipboardMixin:
         if len(new) > 1:
             c._set_multi(set(range(start, len(self.anns))))
         self._commit()
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentWidget(self.tab_anns)
         self.statusBar().showMessage(tr("Eingefügt – mit der Maus verschieben, an den Ecken die Größe ändern"), 6000)
 
     def open_clipboard(self):
