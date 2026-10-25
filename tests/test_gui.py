@@ -210,7 +210,7 @@ def test_cancel(app, win, pair):
 def test_auto_params(app, win, pair):
     compare(app, win, *pair)
     win.auto_params()
-    wait(app, lambda: not win.running and "Automatisch" in win.banner.lbl.text())
+    wait(app, lambda: not win.running and win.banner.isVisible() and "Automatisch" in win.banner.lbl.text())
     wait(app, lambda: not win.running)
     assert 1 <= win.s_tol.value() <= 6
 

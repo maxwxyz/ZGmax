@@ -192,13 +192,15 @@ class FeaturesMixin:
 
         def done(r):
             p, why = r
+            self.chk_flatten.blockSignals(True)            # alle Werte setzen, dann genau einmal neu vergleichen
             self.chk_flatten.setChecked(p.flatten)
+            self.chk_flatten.blockSignals(False)
             for w, v in ((self.s_thr, p.thr), (self.s_tol, p.tol), (self.s_area, p.min_area), (self.s_cell, p.cell),
                          (self.s_maxs, p.max_shift), (self.s_move, p.move), (self.s_obj, p.obj_shift),
                          (self.s_hatch, p.hatch)):
                 w.set_silent(v)
+            self.start_compute()                           # blendet die Hinweisleiste aus: Meldung danach zeigen
             self.banner.show_msg(tr("<b>Automatisch eingestellt.</b> ") + " ".join(why), "info", timeout=30)
-            self.start_compute()
         self._run_job(work, tr("Stelle automatisch ein …"), done)
 
     # ----------------------------------------------------------------- Alle Seiten vergleichen
