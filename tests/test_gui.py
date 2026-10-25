@@ -1700,3 +1700,23 @@ def test_print_area_to_scale(app, win, pair, tmp_path):
         assert d.page_count == 1 and "100 %" in d[0].get_text()
         imgs = d[0].get_image_info()
         assert imgs and abs((imgs[0]["bbox"][2] - imgs[0]["bbox"][0]) * 25.4 / 72 - 400 * 25.4 / 200) < 1.0   # 50,8 mm
+
+
+def test_lost_mouse_release_does_not_stick(app, win, pair):
+    """Schluckt ein Dialog das Loslassen, darf keine angefangene Markierung am Mauszeiger kleben."""
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QMouseEvent
+    compare(app, win, *pair)
+    c = win.canvas
+    win._set_tool("rect")
+    pos = QPointF(200, 200)
+    press = QMouseEvent(QEvent.Type.MouseButtonPress, pos, c.mapToGlobal(pos), Qt.MouseButton.LeftButton,
+                        Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+    c.mousePressEvent(press)
+    assert c._drag is not None
+    n = len(win.anns)
+    pos2 = QPointF(260, 240)
+    move = QMouseEvent(QEvent.Type.MouseMove, pos2, c.mapToGlobal(pos2), Qt.MouseButton.NoButton,
+                       Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
+    c.mouseMoveEvent(move)
+    assert c._drag is None and c._ann_prev is None and len(win.anns) == n

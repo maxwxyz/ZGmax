@@ -20,7 +20,7 @@
 - Ausschnitte merken (Ansicht → Ausschnitte, Strg+D) und mit einem Klick wieder anspringen; Drucken im Maßstab auch für den sichtbaren Ausschnitt oder einen gewählten Bereich, mit Fußzeile.
 - Versionen mit Änderungshistorie (Hilfe → Was ist neu).
 - Lizenz AGPL-3.0.
-- Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen.
+- Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“.
 
 ## Version 2.0 vom 22.10.2026
 

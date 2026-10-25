@@ -18,6 +18,7 @@ from ui_annotations import AnnotationsMixin
 from ui_project import ProjectMixin
 from ui_export import ExportMixin
 from ui_layout import LayoutMixin
+from ui_panels import PanelsMixin
 from ui_features import FeaturesMixin
 from ui_search import SearchMixin
 from ui_edit import AreaMixin, ClipboardMixin, EditMixin, OcrPdfMixin, SheetEditMixin, VectorizeMixin
@@ -39,7 +40,7 @@ def hide_filtered(img, ink_all, ink_kept):
     return out
 
 
-class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
+class MainWindow(LayoutMixin, PanelsMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
                  VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()

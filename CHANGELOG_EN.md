@@ -20,7 +20,7 @@
 - Save views (View → Saved views, Ctrl+D) and jump back with one click; print to scale also for the visible area or a selected area, with footer.
 - Versions with change history (Help → What's new).
 - License AGPL-3.0.
-- Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing.
+- Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”.
 
 ## Version 2.0 of 2026-10-22
 

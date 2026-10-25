@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from PySide6.QtCore import QByteArray, QEvent, QItemSelectionModel, QLocale, QMimeData, QObject, QPoint, QPointF, QRect, QRectF, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QGuiApplication, QIcon,
-                           QImage, QKeySequence, QPainter, QPainterPath, QPalette, QPen, QPixmap, QPolygonF, QRegion, QShortcut, QTextCursor,
+                           QImage, QKeySequence, QMouseEvent, QPainter, QPainterPath, QPalette, QPen, QPixmap, QPolygonF, QRegion, QShortcut, QTextCursor,
                            QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QButtonGroup, QCheckBox,
                                QColorDialog, QComboBox, QDialog, QDialogButtonBox,

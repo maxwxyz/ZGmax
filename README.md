@@ -27,7 +27,7 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 * Searchable PDF (invisible OCR text), vectorizing to SVG/PDF/DXF (centre lines or outlines)
 * Text search (PDF text or OCR, German and English), comment import from XFDF and PDF, XFDF export
 * Manual 3-point alignment, regions, matched areas, zones, multi-page, batch and revision comparison
-* Projects (`.zgmax`), autosave, several windows, dark mode, adjustable interface size
+* Projects (`.zgmax`, with embedded drawings to send along), saved views, autosave, several windows, dark mode, adjustable interface size
 
 ## Code layout
 
@@ -41,7 +41,8 @@ system, otherwise English); it can be changed under View → Sprache / Language.
 | `programm/diffxfdf.py` | Comments: read XFDF and PDF annotations, write XFDF |
 | `programm/drawing_diff.py` | Command line |
 | `programm/drawing_viewer.py` | Program window (entry point), main window workflow, self-test |
-| `programm/ui_*.py` | UI: layout (`ui_layout`), canvas (`ui_canvas`), features (`ui_features`), search (`ui_search`), editing, region tool, clipboard, layers export, vectorizing (`ui_edit`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
+| `programm/ui_*.py` | UI: layout (`ui_layout`), side panels (`ui_panels`), canvas (`ui_canvas`; drawing in `ui_canvas_paint`, snapping/measuring in `ui_canvas_snap`, helpers in `ui_canvas_geom`), features (`ui_features`), search (`ui_search`), editing, region tool, clipboard, layers export, vectorizing (`ui_edit`), list (`ui_regions`), markups (`ui_annotations`), project (`ui_project`), export (`ui_export`), theme (`ui_theme`), icons (`ui_icons`), start page (`ui_start`) |
+| `programm/version.py`, `programm/CHANGELOG.json` | Version and change history (DE/EN); `packaging/release.py` makes a release and writes `CHANGELOG.md` / `CHANGELOG_EN.md` |
 | `programm/i18n.py`, `programm/i18n_en.json` | Translation: German source strings → English |
 | `programm/ocr/` | Latin text recognition model (PP-OCRv5, Apache-2.0) for German and English |
 
