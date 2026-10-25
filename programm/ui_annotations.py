@@ -398,11 +398,79 @@ class AnnotationsMixin:
         lines = old.split("\n") if old else []
         name = lines[1] if len(lines) > 1 else self.settings.value("approval_name", "")
         date = lines[2] if len(lines) > 2 else dt.date.today().strftime("%d.%m.%Y")
-        dlg = ApprovalDialog(self, lines[0] if lines else tr("FREIGEGEBEN"), name, date)
+        try:
+            custom = json.loads(self.settings.value("stamps", "[]") or "[]")
+        except ValueError:
+            custom = []
+        dlg = ApprovalDialog(self, lines[0] if lines else tr("FREIGEGEBEN"), name, date, custom)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return None
         self.settings.setValue("approval_name", dlg.ed_name.text().strip())
+        self.settings.setValue("stamps", json.dumps(dlg.stamps(), ensure_ascii=False))
         return dlg.text()
+
+    # --- Werkzeugkasten: gespeicherte Werkzeuge mit Farbe und Groesse (z. B. "Wolke rot dick", "Marker gruen")
+    def _presets(self):
+        try:
+            return json.loads(self.settings.value("toolchest", "[]") or "[]")
+        except ValueError:
+            return []
+
+    def _fill_toolchest(self, menu):
+        menu.clear()
+        presets = self._presets()
+        for p in presets:
+            act = menu.addAction(self._swatch(p.get("color", "#000000")), p["name"], lambda p=p: self.apply_preset(p))
+            act.setToolTip(tr("Werkzeug {}, Größe {:.1f}").format(p.get("tool"), p.get("size", 2.0)))
+        if presets:
+            menu.addSeparator()
+        menu.addAction(tr("Aktuelles Werkzeug als Vorlage speichern …"), self.save_preset)
+        if presets:
+            rm = menu.addMenu(tr("Vorlage entfernen"))
+            for i, p in enumerate(presets):
+                rm.addAction(p["name"], lambda i=i: self._remove_preset(i))
+
+    def save_preset(self):
+        c = self.canvas
+        t = c.tool if c.tool not in ("hand", "zoom", "area") else None
+        if t is None:
+            QMessageBox.information(self, APP, tr("Zuerst ein Zeichen-, Mess- oder Markierwerkzeug wählen und Farbe "
+                                                  "und Größe einstellen."))
+            return
+        label = next((lbl for k, lbl, *_ in TOOLS_LIST() if k == t), t)
+        name, ok = QInputDialog.getText(self, tr("Vorlage speichern"), tr("Name der Vorlage:"),
+                                        text=f"{label} {c.ann_size:g}")
+        if not ok or not name.strip():
+            return
+        p = dict(name=name.strip(), tool=t, color=c.ann_color, size=c.ann_size)
+        if t == "measure":
+            p["kind"] = c.measure_kind
+        if t == "redact":
+            p["fill"] = "paper" if self.chk_redact_paper.isChecked() else "black"
+        presets = [q for q in self._presets() if q["name"] != p["name"]] + [p]
+        self.settings.setValue("toolchest", json.dumps(presets, ensure_ascii=False))
+        self.statusBar().showMessage(tr("Vorlage „{}“ gespeichert (Werkzeuge → Werkzeugkasten)").format(p["name"]), 5000)
+
+    def _remove_preset(self, i):
+        presets = self._presets()
+        if 0 <= i < len(presets):
+            del presets[i]
+            self.settings.setValue("toolchest", json.dumps(presets, ensure_ascii=False))
+
+    def apply_preset(self, p):
+        if self.payload is None or p.get("tool") not in self.tool_actions:
+            return
+        self._set_tool(p["tool"])
+        c = self.canvas
+        c.ann_size = float(p.get("size", c.ann_size))
+        self.s_asize.set_silent(c.ann_size)
+        if p.get("color"):
+            self._set_color_btn(p["color"])
+        if p.get("kind") and self.cb_mkind.findData(p["kind"]) >= 0:
+            self.cb_mkind.setCurrentIndex(self.cb_mkind.findData(p["kind"]))
+        if "fill" in p:
+            self.chk_redact_paper.setChecked(p["fill"] == "paper")
+        self.statusBar().showMessage(tr("Vorlage „{}“").format(p["name"]), 3000)
 
     def _ann_selected(self, i):
         self._ann_refresh(i if i >= 0 else None)

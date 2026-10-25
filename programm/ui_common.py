@@ -72,6 +72,12 @@ TOOL_HINTS = {
 PROJECT_EXT = ".zgmax"
 
 
+def TOOLS_LIST():
+    """Werkzeuge (Schluessel, Name, ...) - spaet importiert, damit ui_common keine Oberflaeche braucht."""
+    from ui_layout import TOOLS
+    return TOOLS
+
+
 def shift_ann(a, dx, dy):
     """Verschiebt eine Anmerkung (inkl. Messpunkte) um dx, dy."""
     for k, d in (("x", dx), ("x2", dx), ("y", dy), ("y2", dy)):

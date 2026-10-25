@@ -865,6 +865,33 @@ def test_report_all_pages(app, win, tmp_path):
         assert r.page_count >= 2
 
 
+def test_toolchest_and_custom_stamps(app, win, pair, monkeypatch):
+    from PySide6.QtWidgets import QInputDialog, QMenu
+    import ui_widgets
+    compare(app, win, *pair)
+    win._set_tool("cloud")
+    win._set_color_btn("#16a34a")
+    win.s_asize.setValue(4.0)
+    monkeypatch.setattr(QInputDialog, "getText", staticmethod(lambda *a, **k: ("Wolke grün dick", True)))
+    win.save_preset()
+    win._set_tool("hand")
+    win._set_color_btn("#e11d48")
+    win.canvas.ann_size = 2.0
+    m = QMenu()
+    win._fill_toolchest(m)
+    act = next(a for a in m.actions() if a.text() == "Wolke grün dick")
+    act.trigger()
+    assert win.canvas.tool == "cloud" and win.canvas.ann_color == "#16a34a" and win.canvas.ann_size == 4.0
+    def fake_exec(dlg):                                       # eigener Stempeltext wird gemerkt
+        dlg.cb.setCurrentText("ZUR KENNTNIS")
+        dlg.chk_keep.setChecked(True)
+        return 1
+    monkeypatch.setattr(ui_widgets.ApprovalDialog, "exec", fake_exec)
+    assert win._approval_text("").startswith("ZUR KENNTNIS")
+    import json
+    assert "ZUR KENNTNIS" in json.loads(win.settings.value("stamps"))
+
+
 def test_multipage_tiff(app, win, tmp_path):
     from PIL import Image
     from conftest import draw_sheet

@@ -416,18 +416,30 @@ class Collapsible(Section):
 
 
 class ApprovalDialog(QDialog):
-    def __init__(self, parent, status, name, date):
+    """Stempel: Status (Vorgaben und eigene Stempel), Name, Datum. Eigener Text kann gemerkt werden."""
+
+    def __init__(self, parent, status, name, date, custom=()):
         super().__init__(parent)
         self.setWindowTitle(tr("Stempel"))
+        self.custom = list(custom)
         lay = QFormLayout(self)
         self.cb = QComboBox()
-        self.cb.addItems(rep.APPROVAL_TITLES)
-        if status in rep.APPROVAL_TITLES:
-            self.cb.setCurrentText(status)
+        self.cb.setEditable(True)                   # beliebiger Text, z. B. "ZUR KENNTNIS", "MUSTER"
+        self.cb.addItems(list(rep.APPROVAL_TITLES) + [c for c in self.custom if c not in rep.APPROVAL_TITLES])
+        self.cb.setCurrentText(status or rep.APPROVAL_TITLES[0])
+        self.chk_keep = QCheckBox(tr("Als eigenen Stempel merken"))
+        self.chk_keep.setToolTip(tr("Der Text steht dann immer in der Liste (auf diesem Rechner)"))
+        self.btn_forget = QPushButton(tr("Aus der Liste entfernen"))
+        self.btn_forget.clicked.connect(self._forget)
+        self.cb.currentTextChanged.connect(self._sync)
         self.ed_name = QLineEdit(name)
         self.ed_name.setPlaceholderText(tr("Name oder K\u00fcrzel"))
         self.ed_date = QLineEdit(date)
         lay.addRow(tr("Status"), self.cb)
+        row0 = QHBoxLayout()
+        row0.addWidget(self.chk_keep)
+        row0.addWidget(self.btn_forget)
+        lay.addRow("", row0)
         lay.addRow(tr("Name"), self.ed_name)
         lay.addRow(tr("Datum"), self.ed_date)
         row = QHBoxLayout()
@@ -440,6 +452,28 @@ class ApprovalDialog(QDialog):
         row.addWidget(ok)
         lay.addRow(row)
 
+        self._sync(self.cb.currentText())
+
+    def _sync(self, txt):
+        txt = txt.strip()
+        builtin = txt in rep.APPROVAL_TITLES
+        self.chk_keep.setVisible(bool(txt) and not builtin and txt not in self.custom)
+        self.btn_forget.setVisible(txt in self.custom)
+
+    def _forget(self):
+        txt = self.cb.currentText().strip()
+        if txt in self.custom:
+            self.custom.remove(txt)
+            self.cb.removeItem(self.cb.findText(txt))
+        self._sync(self.cb.currentText())
+
+    def stamps(self):
+        """Eigene Stempel nach dem Dialog (ggf. um den neuen Text ergaenzt)."""
+        txt = self.cb.currentText().strip()
+        if not self.chk_keep.isHidden() and self.chk_keep.isChecked() and txt:
+            return self.custom + [txt]
+        return self.custom
+
     def text(self):
-        return "\n".join(s for s in (self.cb.currentText(), self.ed_name.text().strip(),
+        return "\n".join(s for s in (self.cb.currentText().strip(), self.ed_name.text().strip(),
                                      self.ed_date.text().strip()) if s)

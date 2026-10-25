@@ -389,6 +389,8 @@ class LayoutMixin:
         m = mb.addMenu(tr("&Werkzeuge"))
         for key, *_ in TOOLS:
             m.addAction(self.tool_actions[key])
+        chest = m.addMenu(tr("Werkzeugkasten"))
+        chest.aboutToShow.connect(lambda c=chest: self._fill_toolchest(c))
         m.addSeparator()
         m.addAction(self.act_auto)
         m.addAction(self.act_align)
@@ -683,6 +685,15 @@ class LayoutMixin:
         self.chk_keep_tool.setChecked(self.settings.value("keep_tool", "false") == "true")
         self.chk_keep_tool.toggled.connect(lambda on: self.settings.setValue("keep_tool", "true" if on else "false"))
         l.addWidget(self.chk_keep_tool)
+        self.btn_presets = QToolButton()                # Werkzeugkasten: gespeicherte Werkzeuge
+        self.btn_presets.setText(tr("Vorlagen"))
+        self.btn_presets.setToolTip(tr("Werkzeugkasten: Werkzeug mit Farbe und Größe als Vorlage speichern und "
+                                    "mit einem Klick wieder wählen"))
+        self.btn_presets.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        pm = QMenu(self.btn_presets)
+        pm.aboutToShow.connect(lambda m=pm: self._fill_toolchest(m))
+        self.btn_presets.setMenu(pm)
+        l.addWidget(self.btn_presets)
         self.lbl_stamp = QLabel(tr("Nächste Nummer"))
         self.sp_stamp = QSpinBox()
         self.sp_stamp.setRange(1, 9999)
