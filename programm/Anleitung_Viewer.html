@@ -348,7 +348,9 @@ die erste offene Änderung und blendet oben die Tasten ein. Jede Änderung bekom
 als Revisionswolke: <i>Ansicht → Änderungen als Revisionswolken</i>). Nur suchen ohne Rundgang:
 <i>Vergleichen → Änderungen suchen</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>F</kbd>).</li>
 <li><b>Nächste</b> (<kbd>N</kbd>) springt zur nächsten noch offenen Änderung und zoomt hin; <b>Vorige</b> (<kbd>P</kbd>) zurück.</li>
-<li><b>Geprüft</b> (<kbd>G</kbd>, springt weiter), <b>Abgelehnt</b> (<kbd>X</kbd>), <b>Kommentar</b> (<kbd>C</kbd>).
+<li><b>Geprüft</b> (<kbd>G</kbd>, springt weiter), <b>Abgelehnt</b> (<kbd>X</kbd>), <b>Kommentar</b> (<kbd>C</kbd>),
+<b>Löschen</b> (<kbd>Entf</kbd> oder <kbd>Rücktaste</kbd> – ein Fehlfund fliegt raus, es geht mit der nächsten weiter;
+<kbd>Strg</kbd>+<kbd>Z</kbd> holt ihn zurück). Das gilt auch, wenn eine Änderung im Bild oder in der Liste gewählt ist.
 Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style="color:#16a34a">● geprüft</span>,
 <span style="color:#7c3aed">● abgelehnt</span> – in der Liste und an den Rahmen im Bild.</li>
 </ol>
@@ -366,7 +368,12 @@ Status oder Kommentar; Liste, Bild und Ausgaben zeigen dann nur die Treffer. <kb
 Ebenso hat der Reiter <i>Markierungen</i> ein Suchfeld (Art, Text, Kommentar, Name).</p>
 <p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „nur geänderter Text“,
 „nur geänderte Maße“, „Konturen und Maße“ (nur Änderungen an dicken Linien, also Körperkanten, oder an Maßen – feine
-Linien und Schraffur fallen weg) oder „offen“ filterbar. Der Filter gilt für Liste, Bild, PDF-Bericht, CSV und Bildexport:
+Linien und Schraffur fallen weg) oder „offen“ filterbar. <b>Feine oder dicke Linien ausklammern</b> (unter dem
+Suchfeld): Regler <i>Feiner als</i> blendet Änderungen an dünneren Linien aus (z. B. ab 3 px: Maß- und Hinweislinien,
+Schraffur, Text), <i>Dicker als</i> solche an dickeren (z. B. nur Maße und Text sehen); 0 = aus. Gemessen wird die
+Strichbreite der ganzen betroffenen Linie. Die Zeichnung selbst bleibt vollständig – anders als <i>Optionen → Linien
+filtern</i>, das Linien auch aus Anzeige und Vergleich nimmt. Kleine Änderungen nach Fläche blendet
+<i>Optionen → Mindestgröße einer Änderung</i> aus. Der Filter gilt für Liste, Bild, PDF-Bericht, CSV und Bildexport:
 ausgegeben wird nur, was in der Liste steht, gelöschte Einträge nie. Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
 Doppelklick bearbeitet Text A/B und Beschreibung. <i>Selbst markieren</i> nimmt einen aufgezogenen Bereich als eigene
 Änderung auf; <i>Löschen</i> (oder <kbd>Entf</kbd>/<kbd>Rücktaste</kbd>) entfernt unerwünschte Funde; die übrigen behalten ihre Nummer,
@@ -650,8 +657,8 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 </table>
 <h3>Datei → Exportieren</h3>
 <table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
-<tr><td>In die Zwischenablage (wie angezeigt)</td><td>Strg+Umschalt+E</td><td>Den sichtbaren Ausschnitt genau so, wie er am Bildschirm zu sehen ist, als Bild in die Zwischenablage legen (ohne Legende) – z. B. zum Einfügen in E-Mail oder Präsentation</td></tr>
 <tr><td>Als Bild speichern (wie angezeigt) …</td><td>Strg+E</td><td>Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF</td></tr>
+<tr><td>In die Zwischenablage (wie angezeigt)</td><td>Strg+Umschalt+E</td><td>Den sichtbaren Ausschnitt genau so, wie er am Bildschirm zu sehen ist, als Bild in die Zwischenablage legen (ohne Legende) – z. B. zum Einfügen in E-Mail oder Präsentation</td></tr>
 <tr><td>PDF mit Anmerkungen (Acrobat) …</td><td></td><td></td></tr>
 <tr><td>PDF mit Anmerkungen – alle Seiten …</td><td></td><td>Jede Seite mit ihren Markierungen (im Vergleich: Ergebnis mit Änderungen) in einer PDF</td></tr>
 <tr><td>Als SVG mit Ebenen …</td><td></td><td>Zeichnung, Änderungen und Markierungen als getrennte Ebenen; Markierungen als Vektoren (in Inkscape, Illustrator &amp; Co. bearbeitbar)</td></tr>
@@ -678,7 +685,7 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <tr><td>Weitersuchen</td><td>F3</td><td>Nächster Treffer (F3, Enter)</td></tr>
 <tr><td>Rückwärts suchen</td><td>Umschalt+F3</td><td>Voriger Treffer (Umschalt+F3)</td></tr>
 <tr><td>Schriftfeld lesen</td><td></td><td></td></tr>
-<tr><td>Markierung löschen</td><td>Entf</td><td></td></tr>
+<tr><td>Löschen</td><td>Entf</td><td>Gewählte Markierung, Änderung, Zone oder Bereichsauswahl löschen (Entf)</td></tr>
 <tr><td>Alle Markierungen löschen …</td><td></td><td></td></tr>
 <tr><td>Ausschneiden</td><td>Strg+X</td><td>Bereichsauswahl ausschneiden (Markierungen; beim Ansehen auch die Zeichnung)</td></tr>
 <tr><td>Kopieren</td><td>Strg+C</td><td>Bereichsauswahl, gewählte Markierungen oder sonst die ganze Ansicht (wie angezeigt) kopieren</td></tr>

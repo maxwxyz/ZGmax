@@ -25,17 +25,25 @@ class RegionsMixin:
         return len(pl["regs"])
 
     def _reg_delete(self):
+        """Gewaehlte Aenderung(en) loeschen: Zeilen der Liste, sonst die im Bild gewaehlte (auch im Pruefrundgang).
+        Im Rundgang geht es danach mit der naechsten offenen weiter."""
         pl = self.payload
         rows = self.table.selectionModel().selectedRows() if pl else []
-        if not rows:
+        nrs = {int(self.table.item(r.row(), 1).text()) for r in rows}
+        if not nrs and pl and self.canvas.selected is not None:
+            nrs = {self.canvas.selected}
+        if not nrs:
             self._log(tr("Keine Zeile in der \u00c4nderungsliste gew\u00e4hlt."))
             return
-        nrs = {int(self.table.item(r.row(), 1).text()) for r in rows}
         pl["regs"][:] = [r for r in pl["regs"] if r["nr"] not in nrs]
         self.canvas.selected = None
         self._fill_table()
         self._commit()
         self._log(tr("{} Einträge gelöscht").format(len(nrs)))
+        self.statusBar().showMessage(tr("{} Änderung(en) gelöscht – Rückgängig: Strg+Z").format(len(nrs)), 5000)
+        if getattr(self, "_reviewing", False) and any(r["typ"] != "verschoben" for r in pl["regs"]):
+            self.review_step(1)
+            self._review_progress()
 
     def _reg_clear(self):
         pl = self.payload
@@ -207,7 +215,18 @@ class RegionsMixin:
         """Aktueller Listenfilter (fuer Hintergrundarbeiten, die keine Widgets lesen duerfen): Auswahl unter „Zeigen“,
         Typen und Suchtext."""
         q = self.ed_reg_search.text().strip().lower() if hasattr(self, "ed_reg_search") else ""
-        return self.cb_filter.currentData(), self._filter_types(), q
+        wmin = self.s_regw_min.value() if hasattr(self, "s_regw_min") else 0
+        wmax = self.s_regw_max.value() if hasattr(self, "s_regw_max") else 0
+        return self.cb_filter.currentData(), self._filter_types(), q, wmin, wmax
+
+    @staticmethod
+    def width_ok(r, wmin, wmax):
+        """Strichbreiten-Filter: Aenderungen an feineren als wmin / dickeren als wmax Linien ausklammern (0 = aus).
+        Selbst markierte und nicht messbare Aenderungen bleiben."""
+        sw = r.get("sw")
+        if sw is None or r.get("manuell"):
+            return True
+        return (not wmin or sw >= wmin) and (not wmax or sw <= wmax)
 
     @staticmethod
     def reg_matches(r, q):
@@ -221,8 +240,9 @@ class RegionsMixin:
 
     @classmethod
     def filter_regs(cls, regs, spec):
-        f, types, q = (tuple(spec) + ("",))[:3]
-        return [r for r in regs if cls.reg_matches(r, q) and (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
+        f, types, q, wmin, wmax = (tuple(spec) + ("", 0, 0))[:5]
+        return [r for r in regs if cls.reg_matches(r, q) and cls.width_ok(r, wmin, wmax)
+                and (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
                 and (f != "geo" or r.get("contour", True) or r.get("dim"))
                 and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
@@ -241,8 +261,15 @@ class RegionsMixin:
         self.canvas.visible_types = self._filter_types()
         f = self.cb_filter.currentData()                   # Masse/offen: auch im Bild nur diese Rahmen
         searching = bool(self.ed_reg_search.text().strip()) if hasattr(self, "ed_reg_search") else False
+        spec = self._filter_spec()
+        widths = bool(spec[3] or spec[4])
+        if widths and pl and pl.get("res") is not None:      # aeltere Projekte: Strichbreite nachtraeglich messen
+            for r in regs:
+                if "sw" not in r and r["typ"] != "verschoben" and not r.get("manuell"):
+                    r["sw"] = rep.change_stroke_width(r, pl["res"])
+            self._regs_listed = self._shown_regs()
         self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text", "geo") \
-            or searching else None
+            or searching or widths else None
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)

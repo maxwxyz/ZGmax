@@ -1236,6 +1236,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if self.view_only:
             m.addAction(self.act_move_sel)
         m.addAction(self.act_export_img)
+        if not self.canvas.sel_rects and not self.canvas.selected_anns():   # nichts gewaehlt: ganze Ansicht
+            m.addAction(self.act_copy_view)
         m.exec(gpos)
 
     def _zoom_box_done(self):

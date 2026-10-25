@@ -2,11 +2,21 @@
  "unreleased": {
   "de": [
    "Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.",
-   "Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert."
+   "Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert.",
+   "Änderungen: Regler „Feine oder dicke Linien ausklammern“ blendet Änderungen nach der Strichbreite der Linie aus; die Zeichnung bleibt vollständig.",
+   "Entf/Rücktaste löscht die gewählte Änderung auch im Bild und im Prüfrundgang (weiter mit der nächsten, Strg+Z holt sie zurück).",
+   "Eingefügtes Bild: keine Farb- und Werkzeugleiste mehr; „Werkzeug behalten“ nur beim Zeichnen.",
+   "Kontextmenü im Bild: „In die Zwischenablage (wie angezeigt)“; im Speichern-Menü direkt nach „Als Bild speichern“.",
+   "„Prüfen starten“ ist ein normaler Knopf (nicht mehr hervorgehoben)."
   ],
   "en": [
    "Dark theme: the folder icons on the start page (\"Choose file\") are clearly visible again after switching.",
-   "Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed."
+   "Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed.",
+   "Changes: the slider “Leave out fine or thick lines” hides changes by the stroke width of the line; the drawing stays complete.",
+   "Del/Backspace deletes the selected change in the drawing and during the review too (the next one is shown, Ctrl+Z brings it back).",
+   "Pasted image: no color and tool bar any more; “Keep tool” only while drawing.",
+   "Context menu in the drawing: “Copy to clipboard (as shown)”; in the Save menu right after “Save as image”.",
+   "“Start review” is a normal button (no longer highlighted)."
   ]
  },
  "releases": [

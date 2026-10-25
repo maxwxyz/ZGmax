@@ -335,7 +335,9 @@ change and shows the keys at the top. Each change gets a number and a frame (as 
 <i>View → Changes as revision clouds</i>). Only find, without the walk-through: <i>Compare → Find changes</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>).</li>
 <li><b>Next</b> (<kbd>N</kbd>) jumps to the next open change and zooms to it; <b>Previous</b> (<kbd>P</kbd>) goes back.</li>
-<li><b>Checked</b> (<kbd>G</kbd>, moves on), <b>Rejected</b> (<kbd>X</kbd>), <b>Comment</b> (<kbd>C</kbd>).
+<li><b>Checked</b> (<kbd>G</kbd>, moves on), <b>Rejected</b> (<kbd>X</kbd>), <b>Comment</b> (<kbd>C</kbd>),
+<b>Delete</b> (<kbd>Del</kbd> or <kbd>Backspace</kbd> – a false hit is removed and the next one is shown;
+<kbd>Ctrl</kbd>+<kbd>Z</kbd> brings it back). This also works when a change is selected in the drawing or in the list.
 The status is shown in color: <span style="color:#f97316">● open</span>, <span style="color:#16a34a">● checked</span>,
 <span style="color:#7c3aed">● rejected</span> – in the list and on the frames in the drawing.</li>
 </ol>
@@ -352,7 +354,12 @@ description, status or comment; list, drawing and outputs then show only the hit
 The <i>Markups</i> tab has a search field as well (type, text, comment, name).</p>
 <p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “changed text
 only”, “changed dimensions only”, “Contours and dimensions” (only changes to thick lines, i.e. object outlines, or to
-dimensions – fine lines and hatching are left out) or “open”. The filter applies to the list, the drawing, the PDF report,
+dimensions – fine lines and hatching are left out) or “open”. <b>Leave out fine or thick lines</b> (below the search
+field): the slider <i>Finer than</i> hides changes on thinner lines (e.g. from 3 px: dimension and leader lines,
+hatching, text), <i>Thicker than</i> those on thicker lines (e.g. to see only dimensions and text); 0 = off. The stroke
+width of the whole affected line is measured. The drawing itself stays complete – unlike <i>Options → Filter lines</i>,
+which also removes lines from the display and the comparison. Small changes by area are hidden with <i>Options →
+Minimum size of a change</i>. The filter applies to the list, the drawing, the PDF report,
 the CSV and the image export: only what is in the list is written, deleted entries never. Clicking a row jumps into the drawing, clicking a frame selects the row;
 double-click edits text A/B and the description. <i>Mark manually</i> adds a dragged area as your own change;
 <i>Delete</i> (or <kbd>Del</kbd>/<kbd>Backspace</kbd>) removes unwanted hits; the others keep their number,
@@ -620,8 +627,8 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 </table>
 <h3>File → Export</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
-<tr><td>Copy to clipboard (as shown)</td><td>Ctrl+Shift+E</td><td>Put the visible area exactly as shown on screen into the clipboard as an image (without legend) – e.g. to paste into an e-mail or presentation</td></tr>
 <tr><td>Save as image (as displayed) …</td><td>Ctrl+E</td><td>Image with markups as displayed, as PNG, JPG, TIFF or PDF</td></tr>
+<tr><td>Copy to clipboard (as shown)</td><td>Ctrl+Shift+E</td><td>Put the visible area exactly as shown on screen into the clipboard as an image (without legend) – e.g. to paste into an e-mail or presentation</td></tr>
 <tr><td>PDF with annotations (Acrobat) …</td><td></td><td></td></tr>
 <tr><td>PDF with annotations – all pages …</td><td></td><td>Every page with its markups (in a comparison: result with changes) in one PDF</td></tr>
 <tr><td>As SVG with layers …</td><td></td><td>Drawing, changes and markups as separate layers; markups as vectors (editable in Inkscape, Illustrator &amp; co.)</td></tr>
@@ -648,7 +655,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Find next</td><td>F3</td><td>Next match (F3, Enter)</td></tr>
 <tr><td>Find previous</td><td>Shift+F3</td><td>Previous match (Shift+F3)</td></tr>
 <tr><td>Read title block</td><td></td><td></td></tr>
-<tr><td>Delete markup</td><td>Del</td><td></td></tr>
+<tr><td>Delete</td><td>Del</td><td>Delete the selected markup, change, zone or area selection (Del)</td></tr>
 <tr><td>Delete all markups …</td><td></td><td></td></tr>
 <tr><td>Cut</td><td>Ctrl+X</td><td>Cut the region selection (markups; when viewing also the drawing)</td></tr>
 <tr><td>Copy</td><td>Ctrl+C</td><td>Copy the region selection, the selected markups or else the whole view (as displayed)</td></tr>

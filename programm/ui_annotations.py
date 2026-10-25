@@ -653,6 +653,9 @@ class AnnotationsMixin:
         if self.canvas.zone_sel is not None:                      # Entf bei gewaehlter Zone
             self._zone_delete()
             return
+        if not self.canvas.selected_anns() and self.canvas.selected is not None and self.payload:
+            self._reg_delete()                                    # Entf bei gewaehlter Aenderung (Bild/Rundgang)
+            return
         idx = sorted(self.canvas.selected_anns(), reverse=True)
         if idx:
             for i in idx:

@@ -1864,3 +1864,78 @@ def test_start_icons_follow_theme(app, win):
     dark = brightness()
     win.set_theme("light")
     assert dark > light + 80
+
+
+def test_change_width_filter_and_delete_key(app, win, tmp_path):
+    """Aenderungen nach Strichbreite ausklammern (Zeichnung bleibt) und Entf/Backspace loescht die gewaehlte Aenderung
+    auch aus dem Bild bzw. im Pruefrundgang; danach geht es mit der naechsten weiter."""
+    import cv2
+    import numpy as np
+    from PySide6.QtTest import QTest
+    a = np.full((600, 900), 255, np.uint8)
+    cv2.rectangle(a, (100, 100), (400, 400), 0, 6)               # dicke Kontur
+    cv2.line(a, (500, 150), (850, 150), 0, 1)                    # duenne Masslinie
+    b = a.copy()
+    cv2.circle(b, (250, 250), 60, 0, 6)                          # neu: dicke Bohrung
+    cv2.line(b, (500, 300), (850, 300), 0, 1)                    # neu: duenne Linie
+    pa, pb = str(tmp_path / "a.png"), str(tmp_path / "b.png")
+    cv2.imwrite(pa, a)
+    cv2.imwrite(pb, b)
+    compare(app, win, pa, pb)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    shown = lambda: [r for r in win._shown_regs()]               # noqa: E731
+    sws = sorted(r["sw"] for r in shown())
+    assert len(sws) == 2 and sws[0] < 3 < sws[1]
+    win.s_regw_min.spin.setValue(4)
+    assert len(shown()) == 1 and shown()[0]["sw"] > 4 and win.canvas.visible_nrs == {shown()[0]["nr"]}
+    win.s_regw_min.spin.setValue(0)
+    win.s_regw_max.spin.setValue(3)
+    assert len(shown()) == 1 and shown()[0]["sw"] < 3
+    win.s_regw_max.spin.setValue(0)
+    assert win.payload["res"].ob.any()                            # Zeichnung/Vergleich unveraendert
+    win.review_start()
+    wait(app, lambda: not win.running)
+    first = win.canvas.selected
+    assert first is not None
+    win.canvas.setFocus()
+    QTest.keyClick(win.canvas, Qt.Key.Key_Backspace)              # Mac-Taste "delete"
+    app.processEvents()
+    nrs = [r["nr"] for r in win.payload["regs"]]
+    assert first not in nrs and win.canvas.selected in nrs        # geloescht, naechste gewaehlt
+    win.undo()
+    assert first in [r["nr"] for r in win.payload["regs"]]
+
+
+def test_pasted_image_options_and_copy_view_menu(app, win, pair):
+    """Eingefuegtes Bild: keine Farb-/Werkzeugleiste. Kontextmenue ohne Auswahl bietet "In die Zwischenablage (wie
+    angezeigt)"; im Speichern-Menue steht es direkt nach "Als Bild speichern"."""
+    from PySide6.QtGui import QImage, QColor
+    from PySide6.QtWidgets import QMenu
+    compare(app, win, *pair)
+    img = QImage(40, 30, QImage.Format.Format_RGB32)
+    img.fill(QColor("red"))
+    QApplication.clipboard().setImage(img)
+    try:
+        win.paste()
+        app.processEvents()
+        assert win.anns[-1]["type"] == "image" and win.canvas.ann_selected == len(win.anns) - 1
+        assert win.opt_ann.isHidden() and win.chk_keep_tool.isHidden()
+    finally:
+        QApplication.clipboard().clear()
+    win._set_tool("hand")
+    win.canvas.ann_selected = None
+    import drawing_viewer as vw
+    seen = []
+
+    class Menu(QMenu):                                            # zeigt nichts an, merkt sich die Eintraege
+        def exec(self, *a):
+            seen.extend(self.actions())
+    orig, vw.QMenu = vw.QMenu, Menu
+    try:
+        win._canvas_menu(win.mapToGlobal(win.rect().center()))
+    finally:
+        vw.QMenu = orig
+    assert win.act_copy_view in seen
+    menu = [a for a in win.findChildren(QMenu) if win.act_export_img in a.actions()][0].actions()
+    assert menu.index(win.act_copy_view) == menu.index(win.act_export_img) + 1

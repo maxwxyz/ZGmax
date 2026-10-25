@@ -143,7 +143,9 @@ class LayoutMixin:
         self.act_undo = A(tr("Rückgängig"), self.undo, "Ctrl+Z", tr("Rückgängig (Markierungen, Maße, Zonen)"), "undo")
         self.act_redo = A(tr("Wiederholen"), self.redo, "Ctrl+Shift+Z", tr("Wiederholen"), "redo")
         self.act_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self, activated=self.redo)
-        self.act_delete = A(tr("Markierung löschen"), self._ann_delete, "Delete", canvas_key=True)
+        self.act_delete = A(tr("Löschen"), self._ann_delete, "Delete", canvas_key=True)
+        self.act_delete.setShortcuts([QKeySequence("Delete"), QKeySequence("Backspace")])   # Mac: "delete" = Backspace
+        self.act_delete.setToolTip(tr("Gewählte Markierung, Änderung, Zone oder Bereichsauswahl löschen (Entf)"))
         self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
         self.act_copy = A(tr("Kopieren"), self.copy_result, "Ctrl+C",
                           tr("Bereichsauswahl, gewählte Markierungen oder sonst die ganze Ansicht (wie angezeigt) "
@@ -353,7 +355,7 @@ class LayoutMixin:
             m.addAction(a)
         m.addSeparator()
         ex = m.addMenu(tr("Exportieren"))                  # alles, was eine Datei erzeugt
-        for a in (self.act_copy_view, self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+        for a in (self.act_export_img, self.act_copy_view, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
                   self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
                   self.act_export_all_report, self.act_export_csv):
             ex.addSeparator() if a is None else ex.addAction(a)   # Bild/PDF | Zeichnung umwandeln | Bericht
@@ -653,7 +655,7 @@ class LayoutMixin:
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
         save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren
-        for a in (self.act_copy_view, self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+        for a in (self.act_export_img, self.act_copy_view, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
                   self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
                   self.act_export_all_report, self.act_export_csv, self.act_dim_report, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
@@ -975,6 +977,9 @@ class LayoutMixin:
         sel = self.canvas.anns[self.canvas.ann_selected] if (
             self.canvas.ann_selected is not None and self.canvas.ann_selected < len(self.canvas.anns)) else None
         sel_t = sel["type"] if sel else None
+        if t == "hand" and sel_t == "image":                  # eingefuegtes Bild: Farbe/Groesse ohne Bedeutung
+            self.opt_ann.setVisible(False)
+        self.chk_keep_tool.setVisible(t != "hand")             # gilt nur beim Zeichnen, nicht fuer eine Auswahl
         redact_ctx = t in ("redact", "pixelate") or (t == "hand" and sel_t in ("redact", "pixelate"))
         self.btn_color.setVisible(not redact_ctx)             # Schwaerzen ist schwarz, Verpixeln hat keine Farbe
         self.chk_redact_paper.setVisible(t == "redact" or (t == "hand" and sel_t == "redact"))
@@ -996,7 +1001,7 @@ class LayoutMixin:
             b.setEnabled(self.canvas.float is not None)
             b.setVisible(t != "area")
         self.lbl_tool_hint.setText(TOOL_HINTS.get(t, "") if t != "hand" else "")
-        self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or self.canvas.ann_selected is not None
+        self.options_bar.setVisible(t != "hand" or self.act_loupe.isChecked() or not self.opt_ann.isHidden()
                                     or (view_opts and self.payload is not None))
 
     # ----------------------------------------------------------------- Mitte: Startseite / Bild

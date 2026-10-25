@@ -382,8 +382,7 @@ class PanelsMixin:
         t1.setObjectName("panel")
         l1 = QVBoxLayout(t1)
         l1.setContentsMargins(0, 6, 0, 0)
-        self.btn_regs = QPushButton(tr("Prüfen starten"))
-        self.btn_regs.setObjectName("primary")
+        self.btn_regs = QPushButton(tr("Prüfen starten"))       # bewusst kein Hauptknopf: Liste und Bild stehen im
         self.btn_regs.setToolTip(self.act_review_start.toolTip())
         self.btn_regs.clicked.connect(self.review_start)
         l1.addWidget(self.btn_regs)
@@ -434,6 +433,25 @@ class PanelsMixin:
         l1.addLayout(row)
         self.ed_reg_search = self._search_field(tr("Suchen: Nr., Text, Maß, Kommentar"), self._fill_table)
         l1.addWidget(self.ed_reg_search)
+        # Aenderungen nach Strichbreite ausklammern (die Zeichnung selbst bleibt vollstaendig, anders als "Linien filtern")
+        sw = Collapsible(tr("Feine oder dicke Linien ausklammern"),
+                         tr("Änderungen nach der Strichbreite der betroffenen Linie ausblenden"))
+        self.s_regw_min = SliderRow(tr("Feiner als (px)"), 0, 12, 0, 1, 0,
+                                    tr("Änderungen an Linien, die dünner sind, ausblenden – z. B. Maß- und Hinweislinien, "
+                                       "Schraffur, Text. 0 = aus."))
+        self.s_regw_max = SliderRow(tr("Dicker als (px)"), 0, 20, 0, 1, 0,
+                                    tr("Änderungen an Linien, die dicker sind, ausblenden – z. B. nur Maße und Text "
+                                       "sehen. 0 = aus."))
+        for w in (self.s_regw_min, self.s_regw_max):
+            w.changed.connect(self._fill_table)
+            sw.body.addWidget(w)
+        h = QLabel(tr("Die Zeichnung bleibt vollständig; nur Liste, Rahmen im Bild und Berichte werden gefiltert. "
+                      "Kleine Änderungen nach Fläche: Optionen → Mindestgröße einer Änderung."))
+        h.setObjectName("hint")
+        h.setWordWrap(True)
+        sw.body.addWidget(h)
+        l1.addWidget(sw)
+        self.sec_regw = sw
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Inhalt")])
         self.table.verticalHeader().hide()

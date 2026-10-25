@@ -80,7 +80,31 @@ def mark_contours(regs, res, min_px=20):
         sl = (slice(r["y"], r["y"] + r["h"]), slice(r["x"], r["x"] + r["w"]))
         crop = (res.oa[sl] > 0) | (res.ob[sl] > 0)
         r["contour"] = bool(de.open_lines(crop, gw).sum() >= min_px)
+    for r in regs:
+        if r["typ"] != "verschoben":
+            r["sw"] = change_stroke_width(r, res)
     return regs
+
+
+def change_stroke_width(r, res, pad=8):
+    """Strichbreite (px) der Linien, an denen sich etwas geaendert hat: Median der Linienbreite von A an den Pixeln
+    "nur in A" und von B an "nur in B". Gemessen an der ganzen Linie, nicht am geaenderten Rest - eine leicht
+    verschobene Koerperkante zaehlt also als dick, auch wenn nur ein schmaler Saum abweicht. None = nicht messbar."""
+    import cv2
+    h, w = res.a.shape[:2]
+    y0, x0 = max(0, r["y"] - pad), max(0, r["x"] - pad)
+    y1, x1 = min(h, r["y"] + r["h"] + pad), min(w, r["x"] + r["w"] + pad)
+    vals = []
+    for ink, only in ((res.a, res.oa), (res.b, res.ob)):
+        m = (ink[y0:y1, x0:x1] > 0).astype(np.uint8)
+        sel = only[y0:y1, x0:x1] > 0
+        if not sel.any() or not m.any():
+            continue
+        d = cv2.distanceTransform(m, cv2.DIST_L2, 3)
+        width = 2 * cv2.dilate(d, np.ones((5, 5), np.uint8)) - 1       # Breite der Linie, auch am Linienrand
+        vals.append(width[sel & (m > 0)])
+    vals = np.concatenate(vals) if vals else np.empty(0)
+    return float(np.median(vals)) if vals.size else None
 
 
 # Pruefstatus je Aenderung (Pruefprotokoll). Aeltere Dateien kennen nur "checked" (geprueft ja/nein).
