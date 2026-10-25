@@ -15,6 +15,8 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   (schreibt auch `CHANGELOG.md`/`CHANGELOG_EN.md`, setzt Tag `v<version>`), danach Apps bauen.
 - Commits enden mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nach jedem Commit pushen**
   (`origin` = github.com/maxwxyz/ZGmax, privat).
+- **Sind Features fertig:** nach `main` mergen (möglichst Fast-Forward), pushen, Feature-/`wip/...`-Branches lokal und auf
+  GitHub löschen. Vorher mit `git log main..origin/<branch>` prüfen, ob dort noch Commits fehlen.
 - Hilfsskripte dürfen nie die echten Nutzereinstellungen berühren: `QSettings.setDefaultFormat(IniFormat)` +
   `QSettings.setPath(IniFormat, UserScope, <tmp>)` und `ZV_DATA_DIR=<tmp>` setzen. Nie `QSettings.clear()` (macOS).
 - Tests: `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` (ca. 20 min; `tests/test_stress.py` klickt alle
