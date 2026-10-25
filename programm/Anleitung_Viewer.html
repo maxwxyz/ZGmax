@@ -47,7 +47,7 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
 <a href="#kommentare">Kommentare einlesen (XFDF, PDF)</a><a href="#ausrichten">Von Hand ausrichten</a>
 <a href="#seiten">Mehrseitige Dateien</a><a href="#bereiche">Ausschnitt, Zuordnen, Zonen</a>
 <a href="#formate">PDF-Vektordaten, DXF</a><a href="#speichern">Speichern und Drucken</a>
-<a href="#stapel">Stapel und Revisionen</a><a href="#oberflaeche">Sprache und Größe</a><a href="#erweitert">Alle Einstellungen</a><a href="#tasten">Tastenkürzel</a><a href="#faq">Fragen</a>
+<a href="#stapel">Stapel und Revisionen</a><a href="#oberflaeche">Sprache und Größe</a><a href="#erweitert">Alle Einstellungen</a><a href="#menues">Alle Menübefehle</a><a href="#tasten">Tastenkürzel</a><a href="#faq">Fragen</a>
 </nav>
 
 <div class="quick">
@@ -136,6 +136,10 @@ die ganze Zeichnung mit dem sichtbaren Ausschnitt. Klicken oder ziehen springt d
 <tr><td><i>Lupe</i> (<kbd>L</kbd>)</td><td>Vergrößert den Bereich unter dem Mauszeiger (2× bis 8×, Optionszeile).</td></tr>
 <tr><td><kbd>R</kbd></td><td>Ansicht um 90° drehen (nur Anzeige; Messen und Markieren funktionieren weiter)</td></tr>
 </table>
+<p><b>Ausschnitte merken:</b> <i>Ansicht → Ausschnitte → Ausschnitt merken …</i> (<kbd>Strg</kbd>+<kbd>D</kbd>) speichert den
+sichtbaren Ausschnitt unter einem Namen, z. B. „Schnitt A-A“ oder „Schriftfeld“. Im selben Menü springt ein Klick wieder
+genau dorthin, auch bei anderer Fenstergröße. Ausschnitte gelten je Seite und werden im Projekt gespeichert;
+<i>Ausschnitt löschen</i> entfernt einen.</p>
 
 <h2 id="ansichten">Ansichten</h2>
 <table>
@@ -160,11 +164,11 @@ für die Anzeige; gespeicherte Bilder und Ausdrucke bleiben normal. Unabhängig 
 
 <h2 id="ansehen">Nur ansehen, mehrere Fenster, Schließen</h2>
 <ul>
-<li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Zeichnung
-ansehen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
+<li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Einzelne
+Zeichnung öffnen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
 Markieren, Drucken und Speichern. Das Schild oben zeigt <i>Ansehen: datei</i>; Vergleichsansichten und -einstellungen
 sind ausgeblendet. <i>Vergleichen mit …</i> (oben oder in der Seitenleiste) öffnet eine zweite Zeichnung und vergleicht.</li>
-<li><b>Jedes Dokument in seinem Fenster:</b> Ist schon etwas offen, öffnen <i>Zeichnung ansehen</i>, <i>Zuletzt
+<li><b>Jedes Dokument in seinem Fenster:</b> Ist schon etwas offen, öffnen <i>Einzelne Zeichnung öffnen</i>, <i>Zuletzt
 verwendet</i>, <i>Projekt öffnen</i> und hineingezogene Dateien ein <b>neues Fenster</b> – Markierungen und Prüfstand
 eines Dokuments vermischen sich so nie. Nur <i>Alte/Neue Zeichnung öffnen</i> tauscht bewusst eine Seite des aktuellen
 Vergleichs. Das Menü <i>Fenster</i> listet alle offenen Fenster zum Wechseln.</li>
@@ -300,6 +304,8 @@ gewählte(n). Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den E
 bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> = rückgängig.
 Beim Verschieben oder Ziehen an einer Ecke hält <kbd>Umschalt</kbd> die Bewegung waagerecht oder senkrecht. Kanten und
 Mitten rasten an anderen Markierungen ein (gestrichelte Hilfslinie); <kbd>Alt</kbd> gedrückt = ohne Einrasten.
+Beim <b>Zeichnen</b> mit gedrückter <kbd>Umschalt</kbd>-Taste rasten Linie und Pfeil in 45°-Schritten ein, Ellipse wird
+ein Kreis, Rechteck und Wolke werden quadratisch.
 <b>Mehrere auswählen:</b> <kbd>Strg</kbd> oder <kbd>Umschalt</kbd> gedrückt halten und anklicken, oder mit
 <kbd>Umschalt</kbd> einen Rahmen über leeres Papier ziehen; dann gemeinsam verschieben, Farbe/Größe ändern, kopieren
 (<kbd>Strg</kbd>+<kbd>C</kbd>) oder löschen. Alle Markierungen stehen im Reiter <i>Markierungen</i> rechts (dort ebenfalls
@@ -465,12 +471,17 @@ auseinanderliegende Ecken oder Kreuzungen). Das Programm verschiebt, dreht und s
 vergleicht neu. <i>Manuelle Ausrichtung zurücksetzen</i> hebt das auf. Die Ausrichtung wird im Projekt gespeichert.</p>
 
 <h2 id="seiten">Mehrseitige Dateien</h2>
-<p>Bei mehrseitigen PDF/TIFF erscheint links der Bereich <i>Seiten</i> (bei PDF mit Vorschaubildern). Seite anklicken oder
-<i>Seite A / Seite B</i> einstellen; <i>A und B gemeinsam blättern</i> ist Standard. <b>Alle Seiten vergleichen</b>
+<p><b>Blättern:</b> Bei mehrseitigen PDF/TIFF steht oben in der Leiste die Seitenwahl <b>◀ Seite / Anzahl ▶</b>: Pfeile
+klicken oder die Seitenzahl eintippen. <kbd>Bild ↑</kbd> / <kbd>Bild ↓</kbd> (Mac: <kbd>Fn</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>)
+blättern zur vorigen bzw. nächsten Seite, ebenso <i>Ansicht → Vorige Seite / Nächste Seite</i>. Links erscheint
+zusätzlich der Bereich <i>Seiten</i> (bei PDF mit Vorschaubildern): Seite anklicken oder <i>Seite A / Seite B</i>
+einzeln einstellen; <i>A und B gemeinsam blättern</i> ist Standard. <b>Alle Seiten vergleichen</b>
 vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (rot = geändert, grün = gleich).</p>
 <p><b>Markierungen gehören zur Seite:</b> Jede Seite (im Vergleich jedes Seitenpaar) hat ihre eigenen Markierungen; beim
 Blättern bleiben sie erhalten, die Seitenliste zeigt ihre Anzahl, das Projekt speichert alle. Auch der Maßstab und die
-Kalibrierung gelten je Seite. <i>Speichern → PDF mit Anmerkungen – alle Seiten</i> legt jede Seite mit ihren Markierungen
+Kalibrierung gelten je Seite. Ebenso die <b>Änderungsliste mit Prüfstand</b>: Wer
+auf Seite 1 prüft, auf Seite 2 weiterblättert und zurückkommt, findet Status und Kommentare wieder; die Seitenliste zeigt
+je Seite „n Änderungen, m offen“. <i>Speichern → PDF mit Anmerkungen – alle Seiten</i> legt jede Seite mit ihren Markierungen
 (im Vergleich: Ergebnis mit Änderungen) in eine PDF; <i>PDF-Änderungsbericht – alle Seiten</i> berichtet über alle
 Seitenpaare. Beide erscheinen nur bei mehrseitigen Dateien.</p>
 
@@ -500,6 +511,9 @@ was verglichen wird (z. B. alles außer Bemaßung).</p>
 <h2 id="speichern">Speichern und Drucken</h2>
 <table>
 <tr><th>Speichern ▾</th><th>Ergebnis</th></tr>
+<tr><td>In die Zwischenablage (wie angezeigt)</td><td>Der sichtbare Ausschnitt genau so wie am Bildschirm, ohne Legende,
+als Bild in die Zwischenablage (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>E</kbd>) – zum Einfügen in E-Mail, Word oder
+PowerPoint</td></tr>
 <tr><td>Als Bild speichern (wie angezeigt)</td><td>Ansicht mit eingebrannten Markierungen (und Legende) als PNG, JPG,
 TIFF oder PDF – auch für kommentierte Fotos und Bildschirmfotos</td></tr>
 <tr><td>Als SVG mit Ebenen</td><td>Zeichnung, Änderungen und Markierungen als Ebenen; Markierungen als Vektoren</td></tr>
@@ -514,9 +528,14 @@ oder nur der gewählte Bereich; DXF in mm (mit Maßstab). Text wird als Linien g
 <tr><td>PDF-Änderungsbericht</td><td>Übersicht, Liste und Detailbilder je Änderung, mit Prüfstatus und Kommentaren</td></tr>
 <tr><td>… – alle Seiten</td><td>Bei mehrseitigen Dateien: PDF mit Anmerkungen bzw. Änderungsbericht über alle Seiten</td></tr>
 <tr><td>Änderungsliste (CSV)</td><td>Für Excel: Nummer, Art, Position, Texte, Maß, Beschreibung, Status, Kommentar</td></tr>
-<tr><td>Drucken im Maßstab</td><td>100 % = Originalgröße des Blatts, auf mehrere Seiten verteilt, oder eingepasst</td></tr>
-<tr><td>Projekt (.zgmax)</td><td>Dateien, Einstellungen, Markierungen, Zonen und Prüfstand. Zieht man Projekt und Zeichnungen
-gemeinsam um, findet das Projekt sie wieder.</td></tr>
+<tr><td>Drucken im Maßstab</td><td>Ganzes Blatt, sichtbarer Ausschnitt oder gewählter Bereich (Werkzeug <i>Bereich</i>);
+100 % = Originalgröße (10 mm auf dem Blatt = 10 mm auf Papier), bei Bedarf auf mehrere Seiten verteilt, oder eingepasst.
+Unten auf jeder Seite stehen Datei, Größe und Zeichnungsmaßstab.</td></tr>
+<tr><td>Projekt (.zgmax)</td><td>Dateien, Einstellungen, Markierungen, Zonen, gemerkte Ausschnitte und Prüfstand (je Seite).
+Mit <i>Zeichnungen ins Projekt einbetten</i> (Standard an) stecken auch die Zeichnungen in der Datei: Das Projekt lässt
+sich verschicken und anderswo ohne die Originaldateien öffnen. Fehlt beim Öffnen das Original oder wurde es seitdem
+geändert, nimmt das Programm die eingebettete Fassung. Ohne Einbetten speichert das Projekt nur Verweise; zieht man
+Projekt und Zeichnungen gemeinsam um, findet es sie wieder.</td></tr>
 </table>
 <p><b>Automatische Sicherung:</b> Ungespeicherte Markierungen und Prüfergebnisse werden jede Minute gesichert. Stürzt das
 Programm ab, bietet es beim nächsten Start die Wiederherstellung an.</p>
@@ -537,6 +556,10 @@ Bildschirmen oder für ältere Augen.</li>
 <p><b>Alle Einstellungen zurücksetzen</b> (<i>Hilfe</i>): Darstellung, Sprache, Größe, Werte des Vergleichs,
 Werkzeugoptionen und Fensterlage zurück auf Standard; auf Wunsch bleibt die Liste <i>Zuletzt verwendet</i>. Dateien,
 Projekte und Markierungen bleiben unverändert.</p>
+<p><b>Version und Neuerungen:</b> <i>Hilfe → Was ist neu …</i> zeigt die Änderungshistorie in der Sprache der
+Oberfläche. Nach einem Update weist das Programm beim ersten Start darauf hin. Die Versionsnummer steht unter
+<i>Über ZGmax</i> (Mac: Programmmenü <i>ZGmax → Über ZGmax</i>) und wird in jedem Projekt mitgespeichert; ein Projekt aus
+einer neueren Version öffnet mit Hinweis.</p>
 
 <h2 id="erweitert">Alle Einstellungen (Expertenmodus)</h2>
 <table>
@@ -550,6 +573,186 @@ Projekte und Markierungen bleiben unverändert.</p>
 <tr><td>Zeichen genau prüfen / Ungleichmäßiges Papier ausgleichen</td><td>Siehe <a href="#empfindlich">Weitere Prüfungen</a></td></tr>
 </table>
 <p><b>Automatisch neu berechnen</b> (unten in der linken Leiste, Standard an): Jede Änderung einer Einstellung vergleicht kurz danach neu. Aus: erst mit <i>Vergleichen</i> – sinnvoll bei sehr großen Zeichnungen. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausrichtung in Kacheln und Objekt-Drehung stellt <i>Automatisch einstellen</i> ein; sie sind nur noch in der Kommandozeile einstellbar.</p>
+
+<h2 id="menues">Alle Menübefehle</h2>
+<p class="muted">Automatisch aus den Menüs des Programms erzeugt (<code>packaging/menu_reference.py</code>); Menüs mit wechselndem Inhalt (zuletzt verwendet, Fenster, gemerkte Ausschnitte, Werkzeugkasten) fehlen hier.</p>
+<!-- MENUS:BEGIN -->
+<h3>Datei</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Neues Fenster</td><td>Strg+N</td><td>Weiteres Fenster für einen anderen Vergleich</td></tr>
+<tr><td>Startseite</td><td></td><td></td></tr>
+<tr><td>Alte Zeichnung (A) öffnen …</td><td>Strg+Umschalt+A</td><td></td></tr>
+<tr><td>Neue Zeichnung (B) öffnen …</td><td>Strg+Umschalt+B</td><td></td></tr>
+<tr><td>Einzelne Zeichnung öffnen …</td><td>Strg+Umschalt+O</td><td></td></tr>
+<tr><td>Bild aus Zwischenablage öffnen</td><td></td><td>Z. B. ein Bildschirmfoto als Zeichnung öffnen</td></tr>
+<tr><td>Projekt öffnen …</td><td>Strg+O</td><td></td></tr>
+<tr><td>Projekt speichern</td><td>Strg+S</td><td></td></tr>
+<tr><td>Projekt speichern unter …</td><td>Strg+Umschalt+S</td><td></td></tr>
+<tr><td>Zeichnungen ins Projekt einbetten</td><td></td><td>An (Standard): Die .zgmax-Datei enthält auch die Zeichnungen und kann so verschickt und anderswo geöffnet werden. Aus: nur Verweise auf die Dateien (kleiner).</td></tr>
+<tr><td>Schließen</td><td>Strg+W</td><td>Vergleich bzw. Projekt schließen und zur Startseite (das Programm bleibt offen)</td></tr>
+<tr><td>Drucken im Maßstab …</td><td>Strg+P</td><td></td></tr>
+<tr><td>Beenden</td><td>Strg+Q</td><td></td></tr>
+</table>
+<h3>Datei → Exportieren</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>In die Zwischenablage (wie angezeigt)</td><td>Strg+Umschalt+E</td><td>Den sichtbaren Ausschnitt genau so, wie er am Bildschirm zu sehen ist, als Bild in die Zwischenablage legen (ohne Legende) – z. B. zum Einfügen in E-Mail oder Präsentation</td></tr>
+<tr><td>Als Bild speichern (wie angezeigt) …</td><td>Strg+E</td><td>Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF</td></tr>
+<tr><td>PDF mit Anmerkungen (Acrobat) …</td><td></td><td></td></tr>
+<tr><td>PDF mit Anmerkungen – alle Seiten …</td><td></td><td>Jede Seite mit ihren Markierungen (im Vergleich: Ergebnis mit Änderungen) in einer PDF</td></tr>
+<tr><td>Als SVG mit Ebenen …</td><td></td><td>Zeichnung, Änderungen und Markierungen als getrennte Ebenen; Markierungen als Vektoren (in Inkscape, Illustrator &amp; Co. bearbeitbar)</td></tr>
+<tr><td>Durchsuchbares PDF (Texterkennung) …</td><td></td><td>Zeichnung als PDF mit unsichtbarem Text: in jedem PDF-Programm durchsuchbar und kopierbar (Scans per Texterkennung)</td></tr>
+<tr><td>Vektorisieren (SVG, PDF, DXF) …</td><td></td><td>Pixelzeichnung in Linien umwandeln, z. B. für CAD (DXF) oder verlustfreies Vergrößern</td></tr>
+<tr><td>Bearbeitete Zeichnung speichern …</td><td></td><td>Die Zeichnung mit verschobenen Ausschnitten als Bild oder PDF speichern (ohne Markierungen)</td></tr>
+<tr><td>PDF-Änderungsbericht …</td><td></td><td></td></tr>
+<tr><td>PDF-Änderungsbericht – alle Seiten …</td><td></td><td>Änderungsbericht über alle Seiten in einer PDF</td></tr>
+<tr><td>Änderungsliste (CSV) …</td><td></td><td></td></tr>
+</table>
+<h3>Datei → Markierungen</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Markierungen speichern …</td><td></td><td></td></tr>
+<tr><td>Markierungen laden …</td><td></td><td></td></tr>
+<tr><td>Kommentare einlesen (XFDF, PDF) …</td><td></td><td>Kommentare aus Acrobat &amp; Co. übernehmen: XFDF-Datei oder kommentierte PDF</td></tr>
+<tr><td>Markierungen als XFDF speichern …</td><td></td><td>Für Acrobat &amp; Co.: Kommentare → Importieren</td></tr>
+<tr><td>Messungen und Zählung als CSV (Excel) …</td><td></td><td>Alle Maße mit Wert, Einheit und Seite sowie die Anzahl je Markierungsart</td></tr>
+</table>
+<h3>Bearbeiten</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Rückgängig</td><td>Strg+Z</td><td>Rückgängig (Markierungen, Maße, Zonen)</td></tr>
+<tr><td>Wiederholen</td><td>Strg+Umschalt+Z</td><td></td></tr>
+<tr><td>Text suchen …</td><td>Strg+F</td><td>Text in der Zeichnung suchen (PDF-Text, bei Bildern Texterkennung)</td></tr>
+<tr><td>Weitersuchen</td><td>F3</td><td>Nächster Treffer (F3, Enter)</td></tr>
+<tr><td>Rückwärts suchen</td><td>Umschalt+F3</td><td>Voriger Treffer (Umschalt+F3)</td></tr>
+<tr><td>Schriftfeld lesen</td><td></td><td></td></tr>
+<tr><td>Markierung löschen</td><td>Entf</td><td></td></tr>
+<tr><td>Alle Markierungen löschen …</td><td></td><td></td></tr>
+<tr><td>Ausschneiden</td><td>Strg+X</td><td>Bereichsauswahl ausschneiden (Markierungen; beim Ansehen auch die Zeichnung)</td></tr>
+<tr><td>Kopieren</td><td>Strg+C</td><td>Bereichsauswahl, gewählte Markierungen oder sonst die ganze Ansicht (wie angezeigt) kopieren</td></tr>
+<tr><td>Nur Linien/Geometrie kopieren …</td><td>Strg+Umschalt+C</td><td>Bereich aufziehen und kopieren: alles, nur Linien oder nur die Geometrie (ohne Maße, Text und dünne Linien)</td></tr>
+<tr><td>Einfügen</td><td>Strg+V</td><td>Aus der Zwischenablage einfügen: Markierungen, Bild (verschiebbar) oder Text. Ist nichts geöffnet, wird ein Bild als Zeichnung geöffnet.</td></tr>
+<tr><td>Zuschnitt aufheben</td><td></td><td>Den Zuschnitt-Rahmen entfernen; Ausgaben zeigen wieder das ganze Blatt</td></tr>
+<tr><td>Zuschnitt endgültig anwenden</td><td></td><td>Die Zeichnung selbst auf den Zuschnitt-Rahmen zuschneiden (rückgängig mit Strg+Z)</td></tr>
+</table>
+<h3>Bearbeiten → Zeichnung bearbeiten</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Ausschnitt verschieben</td><td></td><td>Teil der Zeichnung ausschneiden und an anderer Stelle einsetzen (beim Ansehen einer einzelnen Zeichnung)</td></tr>
+<tr><td>Auf Bereich zuschneiden (endgültig)</td><td></td><td>Die Zeichnung selbst auf den mit „Bereich“ gewählten Teil zuschneiden</td></tr>
+<tr><td>90° nach rechts drehen</td><td></td><td></td></tr>
+<tr><td>90° nach links drehen</td><td></td><td></td></tr>
+<tr><td>180° drehen</td><td></td><td></td></tr>
+<tr><td>Gerade ausrichten …</td><td></td><td>Schräg eingescannte Zeichnung gerade drehen: Winkel automatisch erkennen oder von Hand</td></tr>
+<tr><td>Gerade ausrichten an Linie</td><td></td><td>Eine Kante nachziehen, die waagerecht oder senkrecht sein soll</td></tr>
+<tr><td>Entzerren (4 Ecken) …</td><td></td><td>Foto eines Blatts rechteckig rechnen: Ecken werden erkannt und lassen sich verschieben; Papierformat wählbar, damit die mm stimmen</td></tr>
+<tr><td>Hintergrund ausgleichen …</td><td></td><td>Schatten, Falten und vergilbtes Papier eines Scans herausrechnen; Papier weiß oder in eigener Farbe</td></tr>
+<tr><td>Helligkeit und Kontrast …</td><td></td><td></td></tr>
+<tr><td>Bildgröße und Auflösung …</td><td></td><td></td></tr>
+<tr><td>Bearbeitete Zeichnung speichern …</td><td></td><td>Die Zeichnung mit verschobenen Ausschnitten als Bild oder PDF speichern (ohne Markierungen)</td></tr>
+</table>
+<h3>Ansicht</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Alt</td><td>1</td><td>Nur die alte Zeichnung A (Taste 1)</td></tr>
+<tr><td>Neu</td><td>2</td><td>Nur die neue Zeichnung B (Taste 2)</td></tr>
+<tr><td>Vergleich</td><td>3</td><td>Rot = nur alt, Blau = nur neu, Grün = nur verschoben (Taste 3)</td></tr>
+<tr><td>Überlagern</td><td>4</td><td>Beide Zeichnungen ohne Toleranz übereinander (Taste 4)</td></tr>
+<tr><td>Nebeneinander</td><td>9</td><td>Alt und neu nebeneinander, gemeinsam zoomen und verschieben (Taste 9)</td></tr>
+<tr><td>Schieber</td><td>5</td><td>Links alt, rechts neu; Trennlinie ziehen (Taste 5)</td></tr>
+<tr><td>Blinken</td><td>6</td><td>Wechselt zwischen alt und neu (Leertaste = von Hand) (Taste 6)</td></tr>
+<tr><td>Neu mit Änderungen</td><td>7</td><td>Neue Zeichnung, neue und geänderte Stellen blau (Taste 7)</td></tr>
+<tr><td>Alt mit Änderungen</td><td>8</td><td>Alte Zeichnung, entfernte und geänderte Stellen rot (Taste 8)</td></tr>
+<tr><td>Ganze Zeichnung</td><td>F</td><td>Ganze Zeichnung zeigen (F oder Doppelklick)</td></tr>
+<tr><td>Originalgröße (100 %)</td><td>Strg+0</td><td></td></tr>
+<tr><td>Vergrößern</td><td>Strg++</td><td>Vergrößern (Mausrad, +)</td></tr>
+<tr><td>Verkleinern</td><td>Strg+-</td><td>Verkleinern (Mausrad, −)</td></tr>
+<tr><td>Zoom-Rahmen</td><td></td><td>Bereich aufziehen und hineinzoomen (geht auch jederzeit mit der rechten Maustaste)</td></tr>
+<tr><td>Ansicht drehen (90°)</td><td>R</td><td>Nur die Anzeige drehen (Taste R)</td></tr>
+<tr><td>Vorige Seite</td><td>Bild ↑</td><td>Vorige Seite (Bild auf)</td></tr>
+<tr><td>Nächste Seite</td><td>Bild ↓</td><td>Nächste Seite (Bild ab)</td></tr>
+<tr><td>Übersicht</td><td></td><td>Kleine Übersicht unten rechts, wenn hineingezoomt ist. Klicken oder ziehen springt dorthin.</td></tr>
+<tr><td>Lupe</td><td>L</td><td>Vergrößert den Bereich unter dem Mauszeiger (L)</td></tr>
+<tr><td>Markierungen anzeigen</td><td>H</td><td>Nummern, Zonen, Markierungen und Maße ein-/ausblenden (H). Ausgeblendetes wird auch nicht gespeichert.</td></tr>
+<tr><td>Legende anzeigen</td><td></td><td>Farblegende im Vergleich – auch beim Speichern als Bild, Kopieren und Drucken</td></tr>
+<tr><td>Ebenen</td><td></td><td>Ebenen ein-/ausblenden und sperren</td></tr>
+<tr><td>Änderungen als Revisionswolken</td><td></td><td>Nummerierte Änderungen als Wolke statt als Rahmen zeigen und speichern</td></tr>
+<tr><td>Original anzeigen (Farbe, Graustufen)</td><td></td><td>Alt, Neu, Nebeneinander, Schieber und Blinken zeigen die Datei, wie sie ist (Farbe oder Graustufen). Aus = Schwarz-Weiß-Fassung, mit der verglichen wird.</td></tr>
+<tr><td>Farben umkehren</td><td>I</td><td>Helle Linien auf dunklem Grund (nur Anzeige; gespeicherte Bilder bleiben normal). Taste I</td></tr>
+<tr><td>Optionen</td><td></td><td>Seitenleiste mit den Einstellungen des Vergleichs ein-/ausblenden</td></tr>
+<tr><td>Elemente</td><td></td><td>Seitenleiste mit allem, was auf der Zeichnung liegt: Änderungen, Markierungen und (über Ansicht → Ebenen) Ebenen</td></tr>
+<tr><td>Alle Einstellungen zeigen</td><td></td><td>Auch selten gebrauchte Einstellungen, Vektordaten, Zonen und das Protokoll zeigen</td></tr>
+</table>
+<h3>Ansicht → Darstellung</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Automatisch (wie System)</td><td></td><td></td></tr>
+<tr><td>Hell</td><td></td><td></td></tr>
+<tr><td>Dunkel</td><td></td><td></td></tr>
+</table>
+<h3>Ansicht → Größe der Oberfläche</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>90 %</td><td></td><td></td></tr>
+<tr><td>100 %  (Standard)</td><td></td><td></td></tr>
+<tr><td>115 %</td><td></td><td></td></tr>
+<tr><td>130 %</td><td></td><td></td></tr>
+<tr><td>150 %</td><td></td><td></td></tr>
+</table>
+<h3>Werkzeuge</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Auswahl</td><td>V</td><td>Anklicken und verschieben. Leeres Papier ziehen = Ansicht verschieben. (V)</td></tr>
+<tr><td>Bereich</td><td>B</td><td>Bereich aufziehen (mit Umschalt/Strg weitere dazu). Wählt Zeichnung, Markierungen und Änderungen darin: kopieren, ausschneiden, verschieben, löschen, exportieren. (B)</td></tr>
+<tr><td>Zoom</td><td>Z</td><td>Zoom-Rahmen mit Fadenkreuz: Bereich aufziehen. Einfacher Klick = ganze Zeichnung. Geht auch jederzeit mit der rechten Maustaste. (Z)</td></tr>
+<tr><td>Messen</td><td>M</td><td>Länge, Winkel, Radius, Fläche messen; rastet an Linien ein (M)</td></tr>
+<tr><td>Text</td><td>T</td><td>Ins Bild klicken und Text eingeben (T)</td></tr>
+<tr><td>Wolke</td><td>W</td><td>Revisionswolke aufziehen (W)</td></tr>
+<tr><td>Rahmen</td><td></td><td>Rahmen aufziehen</td></tr>
+<tr><td>Ellipse</td><td></td><td>Ellipse oder Kreis aufziehen</td></tr>
+<tr><td>Linie</td><td></td><td>Linie vom Anfang zum Ende ziehen</td></tr>
+<tr><td>Linienzug</td><td></td><td>Punkte anklicken; Doppelklick, Enter oder Rechtsklick beendet</td></tr>
+<tr><td>Polygon</td><td></td><td>Eckpunkte anklicken; Doppelklick, Enter oder Rechtsklick schließt</td></tr>
+<tr><td>Pfeil</td><td></td><td>Pfeil vom Anfang zur Spitze ziehen</td></tr>
+<tr><td>Stift</td><td></td><td>Freihand zeichnen; bleibt eine verschiebbare, änderbare Linie</td></tr>
+<tr><td>Marker</td><td></td><td>Textmarker: Fläche farbig hinterlegen</td></tr>
+<tr><td>Schwärzen</td><td></td><td>Bereich schwärzen: in jeder Ausgabe (Bild, PDF, Druck, Kopie) unwiderruflich eingebrannt</td></tr>
+<tr><td>Verpixeln</td><td></td><td>Bereich verpixeln (Mosaik); Größe = Blockgröße. In jeder Ausgabe eingebrannt</td></tr>
+<tr><td>Nummer</td><td></td><td>Fortlaufend nummerierte Kreise setzen</td></tr>
+<tr><td>Stempel</td><td></td><td>Stempel mit Status, Name und Datum</td></tr>
+</table>
+<h3>Vergleichen</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Vergleichen</td><td>Strg+Enter</td><td>Vergleich (neu) berechnen</td></tr>
+<tr><td>Änderungen suchen</td><td>Strg+Umschalt+F</td><td></td></tr>
+<tr><td>Änderungen neu nummerieren</td><td></td><td>Liste fortlaufend ab 1 nummerieren (sonst behalten die Einträge ihre Nummer auch nach dem Löschen)</td></tr>
+<tr><td>Nächste Änderung</td><td>N</td><td>Zur nächsten offenen Änderung (N)</td></tr>
+<tr><td>Vorige Änderung</td><td>P</td><td>Zur vorigen Änderung (P)</td></tr>
+<tr><td>Als geprüft markieren</td><td>G</td><td>Gewählte Änderung ist geprüft (G), weiter zur nächsten</td></tr>
+<tr><td>Als abgelehnt markieren</td><td>X</td><td>Gewählte Änderung ist nicht in Ordnung (X)</td></tr>
+<tr><td>Kommentar …</td><td>C</td><td>Kommentar zur gewählten Änderung (C)</td></tr>
+<tr><td>Abgelehnte als Zonen übernehmen</td><td></td><td>Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen</td></tr>
+<tr><td>Geänderten Text finden</td><td></td><td>Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich geändert hat; „Zeigen: Änderungen“ holt alles zurück.</td></tr>
+<tr><td>Geänderte Maße finden</td><td></td><td>Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden ausgeblendet; „Zeigen: Änderungen“ holt sie zurück.</td></tr>
+<tr><td>Schriftfeld-Index prüfen</td><td></td><td>Liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</td></tr>
+<tr><td>Alle Seiten vergleichen</td><td></td><td></td></tr>
+<tr><td>Stapelvergleich (viele Dateien) …</td><td></td><td></td></tr>
+<tr><td>Revisionen vergleichen (A → B → C) …</td><td></td><td></td></tr>
+</table>
+<h3>Vergleichen → Vergleich einstellen</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Automatisch einstellen</td><td></td><td>Toleranz, Schwelle und Suchbereiche aus diesem Zeichnungspaar bestimmen</td></tr>
+<tr><td>Manuell ausrichten (3 Punkte)</td><td></td><td>Wenn die automatische Ausrichtung danebenliegt: drei gleiche Punkte in Alt und Neu anklicken</td></tr>
+<tr><td>Manuelle Ausrichtung zurücksetzen</td><td></td><td></td></tr>
+<tr><td>Ausschnitt wählen</td><td></td><td></td></tr>
+<tr><td>Ganzes Blatt vergleichen</td><td></td><td></td></tr>
+<tr><td>Bereiche zuordnen (A ↔ B) …</td><td></td><td></td></tr>
+<tr><td>Zone zeichnen (nicht vergleichen)</td><td></td><td></td></tr>
+</table>
+<h3>Hilfe</h3>
+<table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
+<tr><td>Anleitung</td><td>F1</td><td></td></tr>
+<tr><td>Anleitung Kommandozeile</td><td></td><td></td></tr>
+<tr><td>Tastenkürzel</td><td></td><td></td></tr>
+<tr><td>Was ist neu …</td><td></td><td>Änderungshistorie: was sich in welcher Version geändert hat</td></tr>
+<tr><td>Logdatei öffnen</td><td></td><td></td></tr>
+<tr><td>Befehl für Kommandozeile kopieren</td><td></td><td></td></tr>
+<tr><td>Alle Einstellungen zurücksetzen …</td><td></td><td>Darstellung, Sprache, Größe, Werte des Vergleichs und Werkzeugoptionen auf Standard; Dateien und Projekte bleiben unverändert</td></tr>
+<tr><td>Über ZGmax</td><td></td><td></td></tr>
+</table>
+<!-- MENUS:END -->
 
 <h2 id="tasten">Tastenkürzel</h2>
 <table>

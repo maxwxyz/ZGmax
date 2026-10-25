@@ -1720,3 +1720,13 @@ def test_lost_mouse_release_does_not_stick(app, win, pair):
                        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
     c.mouseMoveEvent(move)
     assert c._drag is None and c._ann_prev is None and len(win.anns) == n
+
+
+def test_manual_menu_reference_up_to_date():
+    """Jeder Menuebefehl steht in beiden Anleitungen (Abschnitt wird mit packaging/menu_reference.py erzeugt)."""
+    import subprocess
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    r = subprocess.run([sys.executable, os.path.join(root, "packaging", "menu_reference.py"), "--check"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr

@@ -18,6 +18,7 @@
 - Bedienung: Doppelklick auf ein Werkzeug = Werkzeug behalten; Umschalt = waagerecht/senkrecht verschieben, Linie in 45°-Schritten, Kreis, Quadrat; Einrasten an anderen Markierungen; Ansicht wie angezeigt in die Zwischenablage; von der Startseite zurück zur Zeichnung.
 - Projekt als Container: Die Zeichnungen werden in die .zgmax-Datei eingebettet und lassen sich mit ihr verschicken; Programmversion im Projekt.
 - Ausschnitte merken (Ansicht → Ausschnitte, Strg+D) und mit einem Klick wieder anspringen; Drucken im Maßstab auch für den sichtbaren Ausschnitt oder einen gewählten Bereich, mit Fußzeile.
+- Anleitungen: neuer Abschnitt „Alle Menübefehle“, automatisch aus den Menüs erzeugt; Menüpunkt „Zeichnung ansehen“ heißt jetzt „Einzelne Zeichnung öffnen“.
 - Versionen mit Änderungshistorie (Hilfe → Was ist neu).
 - Lizenz AGPL-3.0.
 - Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“.

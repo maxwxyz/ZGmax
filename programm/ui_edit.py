@@ -198,7 +198,7 @@ class EditMixin:
         imgs, _ = self._edit_images()
         if imgs is None:
             self.banner.show_msg(tr("Ausschnitt verschieben geht beim Ansehen einer einzelnen Zeichnung "
-                                    "(Datei → Zeichnung ansehen)."), "info", timeout=8)
+                                    "(Datei → Einzelne Zeichnung öffnen)."), "info", timeout=8)
             return
         self._set_tool("cutmove")
 
@@ -826,7 +826,7 @@ class SheetEditMixin:
         path = self.path_a or self.path_b
         g = self.cache.get("g_" + path) if path else None
         if not self.view_only or g is None or self.canvas.layer_lock.get("zeichnung"):
-            self.banner.show_msg(tr("Das geht beim Ansehen einer einzelnen Zeichnung (Datei → Zeichnung ansehen) "
+            self.banner.show_msg(tr("Das geht beim Ansehen einer einzelnen Zeichnung (Datei → Einzelne Zeichnung öffnen) "
                                     "und wenn die Ebene Zeichnung nicht gesperrt ist."), "info", timeout=8)
             return None, path
         c = self.cache.get("c_" + path)

@@ -109,7 +109,7 @@ class FeaturesMixin:
 
     def open_view_only(self):
         d = self.settings.value("dir", "")
-        path, _ = QFileDialog.getOpenFileName(self, tr("Zeichnung ansehen"), d, FILE_FILTER)
+        path, _ = QFileDialog.getOpenFileName(self, tr("Einzelne Zeichnung öffnen"), d, FILE_FILTER)
         if not path:
             return
         win = self.new_window() if self.payload is not None else self   # offener Vergleich bleibt erhalten

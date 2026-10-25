@@ -47,7 +47,7 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <a href="#comments">Importing comments (XFDF, PDF)</a><a href="#align">Aligning manually</a>
 <a href="#pages">Multi-page files</a><a href="#regions">Region, matching areas, zones</a>
 <a href="#formats">PDF vector data, DXF</a><a href="#save">Saving and printing</a>
-<a href="#batch">Batch and revisions</a><a href="#ui">Language and size</a><a href="#advanced">All settings</a><a href="#keys">Shortcuts</a><a href="#faq">Questions</a>
+<a href="#batch">Batch and revisions</a><a href="#ui">Language and size</a><a href="#advanced">All settings</a><a href="#menus">All menu commands</a><a href="#keys">Shortcuts</a><a href="#faq">Questions</a>
 </nav>
 
 <div class="quick">
@@ -132,6 +132,9 @@ drawing with the visible area. Click or drag to jump there.</td></tr>
 <tr><td><i>Magnifier</i> (<kbd>L</kbd>)</td><td>Magnifies the area under the mouse pointer (2× to 8×, options bar).</td></tr>
 <tr><td><kbd>R</kbd></td><td>Rotate the view by 90° (display only; measuring and markups keep working)</td></tr>
 </table>
+<p><b>Saved views:</b> <i>View → Saved views → Save view …</i> (<kbd>Ctrl</kbd>+<kbd>D</kbd>) stores the visible area under a
+name, e.g. “Section A-A” or “Title block”. In the same menu one click jumps back exactly there, even with a different window
+size. Views apply per page and are saved in the project; <i>Delete view</i> removes one.</p>
 
 <h2 id="views">Views</h2>
 <table>
@@ -156,11 +159,11 @@ prints stay normal. Separately, <i>View → Appearance</i> (Automatic, Light, Da
 
 <h2 id="viewing">Viewing only, several windows, closing</h2>
 <ul>
-<li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → View drawing …</i>
+<li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → Open single drawing …</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
 saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. <i>Compare with …</i> (top
 bar or side panel) opens a second drawing and compares.</li>
-<li><b>Each document in its own window:</b> if something is already open, <i>View drawing</i>, <i>Recently used</i>,
+<li><b>Each document in its own window:</b> if something is already open, <i>Open single drawing</i>, <i>Recently used</i>,
 <i>Open project</i> and dropped files open a <b>new window</b> – markups and review state of different documents never
 mix. Only <i>Open old/new drawing</i> deliberately replaces one side of the current comparison. The <i>Window</i> menu
 lists all open windows for switching.</li>
@@ -289,7 +292,8 @@ back when read in. The list shows 💬 number of replies and the statuses set.</
 selected one(s). With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize;
 double-click = edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo.
 While moving or dragging a corner, <kbd>Shift</kbd> keeps the movement horizontal or vertical. Edges and centers snap to
-other markups (dashed guide line); hold <kbd>Alt</kbd> to move without snapping.
+other markups (dashed guide line); hold <kbd>Alt</kbd> to move without snapping. While <b>drawing</b> with
+<kbd>Shift</kbd> held, line and arrow snap to 45° steps, an ellipse becomes a circle, rectangle and cloud become square.
 <b>Selecting several:</b> hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with
 <kbd>Shift</kbd>; then move, recolor, resize, copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>) or delete them together. All markups are
 listed in the <i>Markups</i> tab on the right (select several there as well, <kbd>Del</kbd> deletes them; <i>Delete all …</i>
@@ -443,12 +447,16 @@ The program then moves, rotates and scales the new drawing and compares again. <
 The alignment is saved in the project.</p>
 
 <h2 id="pages">Multi-page files</h2>
-<p>For multi-page PDF/TIFF files the section <i>Pages</i> appears on the left (with thumbnails for PDFs). Click a page or
-set <i>Page A / Page B</i>; <i>Turn pages of A and B together</i> is the default. <b>Compare all pages</b> compares every page
+<p><b>Turning pages:</b> for multi-page PDF/TIFF files the top bar shows the page selector <b>◀ page / count ▶</b>: click the
+arrows or type the page number. <kbd>Page Up</kbd> / <kbd>Page Down</kbd> (Mac: <kbd>Fn</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>)
+go to the previous or next page, as do <i>View → Previous page / Next page</i>. In addition the section <i>Pages</i>
+appears on the left (with thumbnails for PDFs): click a page or set <i>Page A / Page B</i> separately; <i>Turn pages of A
+and B together</i> is the default. <b>Compare all pages</b> compares every page
 and writes the number of changes per page into the list (red = changed, green = identical).</p>
 <p><b>Markups belong to the page:</b> each page (in a comparison each page pair) has its own markups; they are kept while
 turning pages, the page list shows their count and the project saves all of them. Scale and calibration also apply per
-page. <i>Save → PDF with annotations – all pages</i> puts every page with its markups (in a comparison: the result with
+page, and so does the <b>change list with its review state</b>: if you review page 1, move on to page 2 and come back,
+status and comments are still there; the page list shows “n changes, m open” per page. <i>Save → PDF with annotations – all pages</i> puts every page with its markups (in a comparison: the result with
 changes) into one PDF; <i>PDF change report – all pages</i> reports on all page pairs. Both appear only for multi-page
 files.</p>
 
@@ -478,6 +486,8 @@ what is compared (e.g. everything except dimensions).</p>
 <h2 id="save">Saving and printing</h2>
 <table>
 <tr><th>Save ▾</th><th>Result</th></tr>
+<tr><td>Copy to clipboard (as shown)</td><td>The visible area exactly as on screen, without legend, as an image in the
+clipboard (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>) – to paste into e-mail, Word or PowerPoint</td></tr>
 <tr><td>Save as image (as displayed)</td><td>View with burnt-in markups (and legend) as PNG, JPG, TIFF or PDF – also for
 annotated photos and screenshots</td></tr>
 <tr><td>As SVG with layers</td><td>Drawing, changes and markups as layers; markups as vectors</td></tr>
@@ -492,9 +502,14 @@ added as revision clouds; it does not search by itself.</td></tr>
 <tr><td>PDF change report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
 <tr><td>… – all pages</td><td>For multi-page files: PDF with annotations or change report over all pages</td></tr>
 <tr><td>List of changes (CSV)</td><td>For Excel: number, type, position, texts, dimension, description, status, comment</td></tr>
-<tr><td>Print to scale</td><td>100 % = actual sheet size, spread over several pages, or fitted</td></tr>
-<tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones and review state. If you move the project together with the
-drawings, it finds them again.</td></tr>
+<tr><td>Print to scale</td><td>Whole sheet, visible area or selected area (<i>Area</i> tool); 100 % = actual size (10 mm on
+the sheet = 10 mm on paper), spread over several pages if needed, or fitted. A footer on every page shows file, size and
+drawing scale.</td></tr>
+<tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones, saved views and review state (per page). With <i>Embed
+drawings in the project</i> (on by default) the drawings are stored in the file as well: the project can be sent and
+opened elsewhere without the original files. If the original is missing or has changed since, the embedded copy is used.
+Without embedding the project only stores references; if you move it together with the drawings, it finds them
+again.</td></tr>
 </table>
 <p>Markups alone: <i>File → Markups → Save markups as XFDF …</i> (see <a href="#comments">Comments</a>).</p>
 <p><b>Autosave:</b> unsaved markups and review results are backed up every minute. If the program crashes, it offers to
@@ -514,6 +529,9 @@ English), Deutsch or English. This manual also opens in the chosen language.</li
 <p>Both take effect after a restart, which the program offers right away (open work is saved first).</p>
 <p><b>Reset all settings</b> (<i>Help</i>): appearance, language, size, comparison values, tool options and window position
 back to defaults; optionally the <i>Recently used</i> list is kept. Files, projects and markups stay unchanged.</p>
+<p><b>Version and what's new:</b> <i>Help → What's new …</i> shows the change history in the interface language. After an
+update the program points this out at the first start. The version number is shown under <i>About ZGmax</i> (Mac: program
+menu <i>ZGmax → About ZGmax</i>) and is stored in every project; a project from a newer version opens with a notice.</p>
 
 <h2 id="advanced">All settings (expert mode)</h2>
 <table>
@@ -527,6 +545,186 @@ back to defaults; optionally the <i>Recently used</i> list is kept. Files, proje
 <tr><td>Check characters exactly / Even out uneven paper</td><td>See <a href="#sensitivity">More checks</a></td></tr>
 </table>
 <p><b>Recompute automatically</b> (bottom of the left panel, on by default): every change of a setting compares again shortly afterwards. Off: only with <i>Compare</i> – useful for very large drawings. When viewing a single drawing everything takes effect at once. Fine alignment in tiles and object rotation are set by <i>Auto-adjust</i>; they can only be changed on the command line now.</p>
+
+<h2 id="menus">All menu commands</h2>
+<p class="muted">Generated automatically from the program menus (<code>packaging/menu_reference.py</code>); menus with changing content (recently used, windows, saved views, tool chest) are not listed here.</p>
+<!-- MENUS:BEGIN -->
+<h3>File</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>New window</td><td>Ctrl+N</td><td>Another window for a different comparison</td></tr>
+<tr><td>Start page</td><td></td><td></td></tr>
+<tr><td>Open old drawing (A) …</td><td>Ctrl+Shift+A</td><td></td></tr>
+<tr><td>Open new drawing (B) …</td><td>Ctrl+Shift+B</td><td></td></tr>
+<tr><td>Open single drawing …</td><td>Ctrl+Shift+O</td><td></td></tr>
+<tr><td>Open image from clipboard</td><td></td><td>E.g. open a screenshot as a drawing</td></tr>
+<tr><td>Open project …</td><td>Ctrl+O</td><td></td></tr>
+<tr><td>Save project</td><td>Ctrl+S</td><td></td></tr>
+<tr><td>Save project as …</td><td>Ctrl+Shift+S</td><td></td></tr>
+<tr><td>Embed drawings in the project</td><td></td><td>On (default): the .zgmax file also contains the drawings and can be sent and opened elsewhere. Off: only references to the files (smaller).</td></tr>
+<tr><td>Close</td><td>Ctrl+W</td><td>Close the comparison or project and return to the start page (the program stays open)</td></tr>
+<tr><td>Print to scale …</td><td>Ctrl+P</td><td></td></tr>
+<tr><td>Quit</td><td>Ctrl+Q</td><td></td></tr>
+</table>
+<h3>File → Export</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Copy to clipboard (as shown)</td><td>Ctrl+Shift+E</td><td>Put the visible area exactly as shown on screen into the clipboard as an image (without legend) – e.g. to paste into an e-mail or presentation</td></tr>
+<tr><td>Save as image (as displayed) …</td><td>Ctrl+E</td><td>Image with markups as displayed, as PNG, JPG, TIFF or PDF</td></tr>
+<tr><td>PDF with annotations (Acrobat) …</td><td></td><td></td></tr>
+<tr><td>PDF with annotations – all pages …</td><td></td><td>Every page with its markups (in a comparison: result with changes) in one PDF</td></tr>
+<tr><td>As SVG with layers …</td><td></td><td>Drawing, changes and markups as separate layers; markups as vectors (editable in Inkscape, Illustrator &amp; co.)</td></tr>
+<tr><td>Searchable PDF (text recognition) …</td><td></td><td>Drawing as PDF with invisible text: searchable and copyable in any PDF program (scans via text recognition)</td></tr>
+<tr><td>Vectorize (SVG, PDF, DXF) …</td><td></td><td>Convert a pixel drawing into lines, e.g. for CAD (DXF) or lossless enlarging</td></tr>
+<tr><td>Save edited drawing …</td><td></td><td>Save the drawing with moved regions as an image or PDF (without markups)</td></tr>
+<tr><td>PDF change report …</td><td></td><td></td></tr>
+<tr><td>PDF change report – all pages …</td><td></td><td>Change report over all pages in one PDF</td></tr>
+<tr><td>List of changes (CSV) …</td><td></td><td></td></tr>
+</table>
+<h3>File → Markups</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Save markups …</td><td></td><td></td></tr>
+<tr><td>Load markups …</td><td></td><td></td></tr>
+<tr><td>Import comments (XFDF, PDF) …</td><td></td><td>Import comments from Acrobat &amp; co.: XFDF file or commented PDF</td></tr>
+<tr><td>Save markups as XFDF …</td><td></td><td>For Acrobat &amp; co.: Comments → Import</td></tr>
+<tr><td>Measurements and counts as CSV (Excel) …</td><td></td><td>All measurements with value, unit and page, plus the number of each markup type</td></tr>
+</table>
+<h3>Edit</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Undo</td><td>Ctrl+Z</td><td>Undo (markups, measurements, zones)</td></tr>
+<tr><td>Redo</td><td>Ctrl+Shift+Z</td><td></td></tr>
+<tr><td>Find text …</td><td>Ctrl+F</td><td>Find text in the drawing (PDF text, text recognition for images)</td></tr>
+<tr><td>Find next</td><td>F3</td><td>Next match (F3, Enter)</td></tr>
+<tr><td>Find previous</td><td>Shift+F3</td><td>Previous match (Shift+F3)</td></tr>
+<tr><td>Read title block</td><td></td><td></td></tr>
+<tr><td>Delete markup</td><td>Del</td><td></td></tr>
+<tr><td>Delete all markups …</td><td></td><td></td></tr>
+<tr><td>Cut</td><td>Ctrl+X</td><td>Cut the region selection (markups; when viewing also the drawing)</td></tr>
+<tr><td>Copy</td><td>Ctrl+C</td><td>Copy the region selection, the selected markups or else the whole view (as displayed)</td></tr>
+<tr><td>Copy lines/geometry only …</td><td>Ctrl+Shift+C</td><td>Drag an area and copy it: everything, lines only or geometry only (without dimensions, text and thin lines)</td></tr>
+<tr><td>Paste</td><td>Ctrl+V</td><td>Paste from the clipboard: markups, image (movable) or text. If nothing is open, an image is opened as a drawing.</td></tr>
+<tr><td>Remove crop frame</td><td></td><td>Remove the crop frame; outputs show the whole sheet again</td></tr>
+<tr><td>Apply crop permanently</td><td></td><td>Crop the drawing itself to the crop frame (undo with Ctrl+Z)</td></tr>
+</table>
+<h3>Edit → Edit drawing</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Move region</td><td></td><td>Cut part of the drawing and place it elsewhere (when viewing a single drawing)</td></tr>
+<tr><td>Crop to region (permanently)</td><td></td><td>Crop the drawing itself to the part selected with “Region”</td></tr>
+<tr><td>Rotate 90° right</td><td></td><td></td></tr>
+<tr><td>Rotate 90° left</td><td></td><td></td></tr>
+<tr><td>Rotate 180°</td><td></td><td></td></tr>
+<tr><td>Straighten …</td><td></td><td>Rotate a skewed scan straight: detect the angle automatically or enter it by hand</td></tr>
+<tr><td>Straighten along a line</td><td></td><td>Trace an edge that should be horizontal or vertical</td></tr>
+<tr><td>Correct perspective (4 corners) …</td><td></td><td>Make the photo of a sheet rectangular: corners are detected and can be moved; choose a paper size so that the mm are correct</td></tr>
+<tr><td>Even out background …</td><td></td><td>Remove shadows, creases and yellowed paper from a scan; paper white or in a custom color</td></tr>
+<tr><td>Brightness and contrast …</td><td></td><td></td></tr>
+<tr><td>Image size and resolution …</td><td></td><td></td></tr>
+<tr><td>Save edited drawing …</td><td></td><td>Save the drawing with moved regions as an image or PDF (without markups)</td></tr>
+</table>
+<h3>View</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Old</td><td>1</td><td>Only the old drawing A (key 1)</td></tr>
+<tr><td>New</td><td>2</td><td>Only the new drawing B (key 2)</td></tr>
+<tr><td>Compare</td><td>3</td><td>Red = only old, blue = only new, green = only moved (key 3)</td></tr>
+<tr><td>Overlay</td><td>4</td><td>Both drawings on top of each other, without tolerance (key 4)</td></tr>
+<tr><td>Side by side</td><td>9</td><td>Old and new side by side, zoom and pan together (key 9)</td></tr>
+<tr><td>Slider</td><td>5</td><td>Old on the left, new on the right; drag the divider (key 5)</td></tr>
+<tr><td>Blink</td><td>6</td><td>Switches between old and new (Space = manually) (key 6)</td></tr>
+<tr><td>New with changes</td><td>7</td><td>New drawing, new and changed parts in blue (key 7)</td></tr>
+<tr><td>Old with changes</td><td>8</td><td>Old drawing, removed and changed parts in red (key 8)</td></tr>
+<tr><td>Whole drawing</td><td>F</td><td>Show the whole drawing (F or double-click)</td></tr>
+<tr><td>Actual size (100 %)</td><td>Ctrl+0</td><td></td></tr>
+<tr><td>Zoom in</td><td>Ctrl++</td><td>Zoom in (mouse wheel, +)</td></tr>
+<tr><td>Zoom out</td><td>Ctrl+-</td><td>Zoom out (mouse wheel, −)</td></tr>
+<tr><td>Zoom box</td><td></td><td>Drag a box and zoom in (also possible any time with the right mouse button)</td></tr>
+<tr><td>Rotate view (90°)</td><td>R</td><td>Rotate the display only (key R)</td></tr>
+<tr><td>Previous page</td><td>PgUp</td><td>Previous page (Page Up)</td></tr>
+<tr><td>Next page</td><td>PgDown</td><td>Next page (Page Down)</td></tr>
+<tr><td>Overview</td><td></td><td>Small overview at the bottom right when zoomed in. Click or drag to jump there.</td></tr>
+<tr><td>Magnifier</td><td>L</td><td>Magnifies the area under the mouse pointer (L)</td></tr>
+<tr><td>Show markups</td><td>H</td><td>Show/hide numbers, zones, markups and measurements (H). Hidden items are not saved either.</td></tr>
+<tr><td>Show legend</td><td></td><td>Color legend in the comparison – also when saving as image, copying and printing</td></tr>
+<tr><td>Layers</td><td></td><td>Show/hide and lock layers</td></tr>
+<tr><td>Changes as revision clouds</td><td></td><td>Show and save numbered changes as clouds instead of boxes</td></tr>
+<tr><td>Show original (color, grayscale)</td><td></td><td>Old, New, Side by side, Slider and Blink show the file as it is (color or grayscale). Off = the black-and-white version used for comparing.</td></tr>
+<tr><td>Invert colors</td><td>I</td><td>Light lines on a dark background (display only; saved images stay normal). Key I</td></tr>
+<tr><td>Options</td><td></td><td>Show/hide the side panel with the comparison settings</td></tr>
+<tr><td>Items</td><td></td><td>Side panel with everything that lies on the drawing: changes, markups and (via View → Layers) layers</td></tr>
+<tr><td>Show all settings</td><td></td><td>Also show rarely used settings, vector data, zones and the log</td></tr>
+</table>
+<h3>View → Appearance</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Automatic (like system)</td><td></td><td></td></tr>
+<tr><td>Light</td><td></td><td></td></tr>
+<tr><td>Dark</td><td></td><td></td></tr>
+</table>
+<h3>View → Interface size</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>90 %</td><td></td><td></td></tr>
+<tr><td>100 %  (default)</td><td></td><td></td></tr>
+<tr><td>115 %</td><td></td><td></td></tr>
+<tr><td>130 %</td><td></td><td></td></tr>
+<tr><td>150 %</td><td></td><td></td></tr>
+</table>
+<h3>Tools</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Select</td><td>V</td><td>Click and move. Drag on empty paper = pan the view. (V)</td></tr>
+<tr><td>Region</td><td>B</td><td>Drag a region (more with Shift/Ctrl). Selects drawing, markups and changes inside: copy, cut, move, delete, export. (B)</td></tr>
+<tr><td>Zoom</td><td>Z</td><td>Zoom box with crosshair: drag an area. Single click = whole drawing. Also possible any time with the right mouse button. (Z)</td></tr>
+<tr><td>Measure</td><td>M</td><td>Measure length, angle, radius, area; snaps to lines (M)</td></tr>
+<tr><td>Text</td><td>T</td><td>Click into the drawing and enter text (T)</td></tr>
+<tr><td>Cloud</td><td>W</td><td>Drag a revision cloud (W)</td></tr>
+<tr><td>Box</td><td></td><td>Drag a box</td></tr>
+<tr><td>Ellipse</td><td></td><td>Drag an ellipse or circle</td></tr>
+<tr><td>Line</td><td></td><td>Drag a line from start to end</td></tr>
+<tr><td>Polyline</td><td></td><td>Click points; double-click, Enter or right-click finishes</td></tr>
+<tr><td>Polygon</td><td></td><td>Click the corners; double-click, Enter or right-click closes</td></tr>
+<tr><td>Arrow</td><td></td><td>Drag the arrow from start to tip</td></tr>
+<tr><td>Pen</td><td></td><td>Draw freehand; stays a movable, editable line</td></tr>
+<tr><td>Marker</td><td></td><td>Marker: highlight an area in color</td></tr>
+<tr><td>Redact</td><td></td><td>Redact an area: burnt irreversibly into every output (image, PDF, print, copy)</td></tr>
+<tr><td>Pixelate</td><td></td><td>Pixelate an area (mosaic); size = block size. Burnt into every output</td></tr>
+<tr><td>Number</td><td></td><td>Place consecutively numbered circles</td></tr>
+<tr><td>Stamp</td><td></td><td>Stamp with status, name and date</td></tr>
+</table>
+<h3>Compare</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Compare</td><td>Ctrl+Return</td><td>Compute the comparison (again)</td></tr>
+<tr><td>Find changes</td><td>Ctrl+Shift+F</td><td></td></tr>
+<tr><td>Renumber changes</td><td></td><td>Number the list consecutively from 1 (otherwise entries keep their number after deleting)</td></tr>
+<tr><td>Next change</td><td>N</td><td>To the next open change (N)</td></tr>
+<tr><td>Previous change</td><td>P</td><td>To the previous change (P)</td></tr>
+<tr><td>Mark as checked</td><td>G</td><td>Selected change is checked (G), go to the next one</td></tr>
+<tr><td>Mark as rejected</td><td>X</td><td>Selected change is not OK (X)</td></tr>
+<tr><td>Comment …</td><td>C</td><td>Comment on the selected change (C)</td></tr>
+<tr><td>Turn rejected into zones</td><td></td><td>Stop comparing changes marked as rejected</td></tr>
+<tr><td>Find changed text</td><td></td><td>Reads the text in each change (Old → New, also dimensions) – from the PDF if it contains real text, otherwise by text recognition in any orientation (horizontal and vertical), German and English. Afterwards list and drawing only show changes whose text changed; “Show: Changes” brings everything back.</td></tr>
+<tr><td>Find changed dimensions</td><td></td><td>Reads the numbers of each change and then shows only the changes in which a dimension value changed (e.g. 12.5 → 12.8). Purely graphical changes are hidden; “Show: Changes” brings them back.</td></tr>
+<tr><td>Check title block revision</td><td></td><td>Reads the revision index in the title block of Old and New and warns if the drawing changed but the index stayed the same – or the other way round.</td></tr>
+<tr><td>Compare all pages</td><td></td><td></td></tr>
+<tr><td>Batch comparison (many files) …</td><td></td><td></td></tr>
+<tr><td>Compare revisions (A → B → C) …</td><td></td><td></td></tr>
+</table>
+<h3>Compare → Comparison settings</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Auto-adjust</td><td></td><td>Determine tolerance, threshold and search ranges from this pair of drawings</td></tr>
+<tr><td>Align manually (3 points)</td><td></td><td>If the automatic alignment is off: click three matching points in Old and New</td></tr>
+<tr><td>Reset manual alignment</td><td></td><td></td></tr>
+<tr><td>Choose region</td><td></td><td></td></tr>
+<tr><td>Compare whole sheet</td><td></td><td></td></tr>
+<tr><td>Match areas (A ↔ B) …</td><td></td><td></td></tr>
+<tr><td>Draw zone (do not compare)</td><td></td><td></td></tr>
+</table>
+<h3>Help</h3>
+<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
+<tr><td>Manual</td><td>F1</td><td></td></tr>
+<tr><td>Command-line manual</td><td></td><td></td></tr>
+<tr><td>Keyboard shortcuts</td><td></td><td></td></tr>
+<tr><td>What&#x27;s new …</td><td></td><td>Change history: what changed in which version</td></tr>
+<tr><td>Open log file</td><td></td><td></td></tr>
+<tr><td>Copy command-line command</td><td></td><td></td></tr>
+<tr><td>Reset all settings …</td><td></td><td>Appearance, language, size, comparison values and tool options back to defaults; files and projects stay unchanged</td></tr>
+<tr><td>About ZGmax</td><td></td><td></td></tr>
+</table>
+<!-- MENUS:END -->
 
 <h2 id="keys">Keyboard shortcuts</h2>
 <table>

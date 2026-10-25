@@ -80,7 +80,7 @@ class LayoutMixin:
         self.act_start = A(tr("Startseite"), self.show_start)
         self.act_open_a = A(tr("Alte Zeichnung (A) öffnen …"), lambda: self.open_file("A"), "Ctrl+Shift+A", ico="open")
         self.act_open_b = A(tr("Neue Zeichnung (B) öffnen …"), lambda: self.open_file("B"), "Ctrl+Shift+B")
-        self.act_open_view = A(tr("Zeichnung ansehen …"), self.open_view_only, "Ctrl+Shift+O")
+        self.act_open_view = A(tr("Einzelne Zeichnung öffnen …"), self.open_view_only, "Ctrl+Shift+O")
         self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O")
         self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S")
         self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
