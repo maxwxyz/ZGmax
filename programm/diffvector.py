@@ -104,7 +104,8 @@ def page_items(path, page=1):
                         continue
                     x0, y0, x1, y1 = sp["bbox"]
                     items.append(dict(kind="t", pts=np.array([[x0, y0], [x1, y1]]), w=sp.get("size", 8),
-                                      color=_hex(sp.get("color", 0)), layer=None, text=t))
+                                      color=_hex(sp.get("color", 0)), layer=None, text=t,
+                                      dir=tuple(ln.get("dir") or (1.0, 0.0))))   # Schreibrichtung (cos, sin)
     return items, size
 
 
@@ -292,9 +293,38 @@ def title_block_words(path, page=1, box=(0.5, 0.62)):
 
 
 def pdf_words(path, page=1):
-    """Eingebettete Textteile: Liste (x0, y0, x1, y1, text) in pt. Leer, wenn die Seite kein Text enthaelt."""
+    """Eingebettete Textteile: Liste (x0, y0, x1, y1, text, (cos, sin) der Schreibrichtung) in pt. Leer, wenn die
+    Seite kein Text enthaelt."""
     items, _ = page_items(path, page)
-    return [(*i["pts"][0], *i["pts"][1], i["text"]) for i in items if i["kind"] == "t"]
+    return [(*i["pts"][0], *i["pts"][1], i["text"], i.get("dir", (1.0, 0.0))) for i in items if i["kind"] == "t"]
+
+
+def reading_order(parts):
+    """Textteile [(cx, cy, hoehe, text, (cos, sin))] in Lesereihenfolge: entlang ihrer Schreibrichtung. Bei senkrecht
+    (von unten nach oben) geschriebenen Massen steht so die Masszahl vor der Toleranz - nach Bildzeilen sortiert
+    stuende die weiter oben liegende Toleranz vorn. Teile verschiedener Richtung bleiben je Richtung zusammen."""
+    groups = {}
+    for cx, cy, h, t, d in parts:
+        c, s_ = d
+        key = (round(c, 1), round(s_, 1))
+        along = cx * c + cy * s_                        # Position entlang der Zeile
+        across = -cx * s_ + cy * c                      # Abstand quer dazu (Zeile)
+        groups.setdefault(key, []).append((across, along, max(h, 1.0), t))
+    out = []
+    for key in sorted(groups, key=lambda k: min(a for a, *_ in groups[k])):
+        g = sorted(groups[key])
+        h = max(x[2] for x in g)
+        lines, cur = [], [g[0]]
+        for x in g[1:]:                                 # hoch-/tiefgestellte Toleranz bleibt in derselben Zeile
+            if x[0] - cur[0][0] > 0.9 * h:
+                lines.append(cur)
+                cur = [x]
+            else:
+                cur.append(x)
+        lines.append(cur)
+        for ln in lines:
+            out += [t for *_, t in sorted(ln, key=lambda x: x[1])]
+    return out
 
 
 def fill_text(regs, words_a, words_b, dpi, log=print):
@@ -303,11 +333,14 @@ def fill_text(regs, words_a, words_b, dpi, log=print):
 
     def inside(words, r):
         out = []
-        for x0, y0, x1, y1, t in words:
+        for w_ in words:
+            x0, y0, x1, y1, t = w_[:5]
+            d = w_[5] if len(w_) > 5 else (1.0, 0.0)
             cx, cy = (x0 + x1) / 2 * z, (y0 + y1) / 2 * z
             if r["x"] - 5 <= cx <= r["x"] + r["w"] + 5 and r["y"] - 5 <= cy <= r["y"] + r["h"] + 5:
-                out.append((round(y0), x0, t))
-        return " ".join(t for _, _, t in sorted(out))
+                h = abs((y1 - y0) * d[0]) + abs((x1 - x0) * d[1])   # Schrifthoehe quer zur Schreibrichtung
+                out.append((cx, cy, h * z, t, d))
+        return " ".join(reading_order(out))
     n = 0
     for r in regs:
         r["text_a"], r["text_b"] = inside(words_a, r), inside(words_b, r)

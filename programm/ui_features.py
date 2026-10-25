@@ -368,7 +368,8 @@ class FeaturesMixin:
         if da.exec() != QDialog.DialogCode.Accepted:
             return
         db = RegionPickDialog(self, gb, tr("Bereich in B (neu)"), tr("Schritt 2 von 2: In der neuen Zeichnung den "
-                              "passenden Bereich aufziehen. Größenunterschiede gleicht das Programm aus."))
+                              "passenden Bereich aufziehen. Die Größe muss nicht genau passen: verglichen wird ein gleich großer "
+                              "Ausschnitt um die Mitte, ohne zu verzerren."))
         if db.exec() != QDialog.DialogCode.Accepted:
             return
         self.crop, self.crop_b = da.box(), db.box()
@@ -381,8 +382,7 @@ class FeaturesMixin:
         pl = self.payload
         if not pl or not pl["regs_done"]:
             return []
-        types = self._filter_types()
-        return [r for r in pl["regs"] if not types or r["typ"] in types]
+        return self._shown_regs()             # genau die Liste: Zeigen, Suche, Strichbreite, Konturen und Masse
 
     def review_step(self, d):
         """Zur naechsten (d=1) bzw. vorigen (d=-1) Aenderung; vorwaerts bevorzugt noch offene."""

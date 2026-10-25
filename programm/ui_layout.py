@@ -44,11 +44,14 @@ TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. L
          ("pixelate", tr("Verpixeln"), "pixelate", "", tr("Bereich verpixeln (Mosaik); Größe = Blockgröße. In jeder "
                                                          "Ausgabe eingebrannt")),
          ("number", tr("Nummer"), "number", "", tr("Fortlaufend nummerierte Kreise setzen")),
+         ("check", tr("Haken"), "check", "", tr("Grünen Haken setzen, z. B. zum Abhaken geprüfter Maße (jeder Klick ein Haken)")),
          ("approval", tr("Stempel"), "stamp", "", tr("Stempel mit Status, Name und Datum")))
 
 
-SHAPES = ("rect", "ellipse", "line", "polyline", "polygon")   # in der Palette unter "Formen" (Pfeil eigener Knopf)
-PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"), ("number", "approval"))   # je ein Knopf, Auswahl ueber das Dreieck
+SHAPES = ("rect", "ellipse", "line", "polyline", "polygon")
+FILL_TYPES = ("rect", "ellipse", "polygon")                   # koennen gefuellt werden
+CHECK_COLOR = "#16a34a"                                       # Haken: gruen, solange keine eigene Farbe gewaehlt ist   # in der Palette unter "Formen" (Pfeil eigener Knopf)
+PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"), ("number", "check", "approval"))   # je ein Knopf, Auswahl ueber das Dreieck
 NAV_TOOLS = ("hand", "area", "zoom", "measure")              # Doppelklick hier: "Werkzeug behalten" aus
 
 
@@ -531,6 +534,26 @@ class LayoutMixin:
         finally:
             self._fitting = False
 
+    def _fill_save_menu(self, m):
+        """Speichern-Knopf oben: nur, was im aktuellen Modus geht. Beim Ansehen fehlen Bericht, Änderungsliste und
+        Maßtabelle (nur im Vergleich); im Vergleich fehlt "Bearbeitete Zeichnung speichern" (nur beim Ansehen)."""
+        m.clear()
+        single = getattr(self, "view_only", False)
+        groups = ((self.act_export_img, self.act_copy_view, self.act_export_annpdf, self.act_export_all_ann,
+                   self.act_export_svg),
+                  (self.act_export_ocrpdf, self.act_vectorize) + ((self.act_save_drawing,) if single else ()),
+                  () if single else (self.act_export_pdf, self.act_export_all_report, self.act_export_csv,
+                                     self.act_dim_report),
+                  (self.act_print,),
+                  (self.act_proj_save, self.act_proj_save_as, self.act_embed))
+        for g in groups:
+            items = [a for a in g if a.isVisible()]
+            if items:
+                if m.actions():
+                    m.addSeparator()
+                for a in items:
+                    m.addAction(a)
+
     def _tb_proxy(self, src, ico):
         """Eigene Aktion fuer die Leiste oben: laesst sich je Modus ausblenden, ohne dass der Menuepunkt
         verschwindet (dort bleibt er ausgegraut sichtbar)."""
@@ -654,14 +677,9 @@ class LayoutMixin:
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
-        save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren
-        for a in (self.act_export_img, self.act_copy_view, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
-                  self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
-                  self.act_export_all_report, self.act_export_csv, self.act_dim_report, None, self.act_print):
-            save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
-        save.addSeparator()
-        for a in (self.act_proj_save, self.act_proj_save_as, self.act_embed):
-            save.addAction(a)
+        save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren, aber je Modus
+        save.aboutToShow.connect(lambda m=save: self._fill_save_menu(m))
+        self._fill_save_menu(save)
         b = QToolButton()
         b.setText(tr("Speichern"))
         b.setIcon(icon("save"))
@@ -805,12 +823,17 @@ class LayoutMixin:
         self.btn_color = QPushButton(tr("Farbe"))
         self.btn_color.clicked.connect(self._pick_color)
         l.addWidget(self.btn_color)
-        self.chk_redact_paper = QCheckBox(tr("Mit Papierfarbe (weiß ausmalen)"))
-        self.chk_redact_paper.setToolTip(tr("Statt schwarz in der Farbe des Papiers ringsum füllen – der Inhalt "
+        self.chk_redact_paper = QCheckBox(tr("Mit Hintergrundfarbe"))
+        self.chk_redact_paper.setToolTip(tr("Statt schwarz in der Farbe des Hintergrunds ringsum füllen – der Inhalt "
                                          "verschwindet unauffällig"))
         self.chk_redact_paper.toggled.connect(self._redact_fill_changed)
         l.addWidget(self.chk_redact_paper)
-        l.addWidget(QLabel(tr("Größe")))
+        self.chk_fill = QCheckBox(tr("Gefüllt"))            # Rahmen, Ellipse, Polygon: Flaeche in derselben Farbe
+        self.chk_fill.setToolTip(tr("Fläche in derselben Farbe füllen (Rahmen, Ellipse, Polygon)"))
+        self.chk_fill.toggled.connect(self._fill_changed)
+        l.addWidget(self.chk_fill)
+        self.lbl_asize = QLabel(tr("Größe"))
+        l.addWidget(self.lbl_asize)
         self.s_asize = QDoubleSpinBox()
         self.s_asize.setRange(0.5, 12)
         self.s_asize.setSingleStep(0.5)
@@ -923,7 +946,7 @@ class LayoutMixin:
         self.opt_float = QWidget()                    # Ausschnitt verschieben
         l = FlowLayout(self.opt_float)
         l.setContentsMargins(0, 0, 0, 0)
-        self.chk_float_lines = QCheckBox(tr("Nur Linien (ohne Papier)"))
+        self.chk_float_lines = QCheckBox(tr("Nur Linien (ohne Hintergrund)"))
         self.chk_float_lines.setToolTip(tr("Verschieben: nur die Linien wandern, Papier und Hintergrund am Ziel bleiben; "
                                         "die frei gewordene Stelle bekommt die Papierfarbe. Kopieren und Exportieren: "
                                         "das Papier wird durchsichtig, nur Linien und Markierungen bleiben."))
@@ -971,7 +994,7 @@ class LayoutMixin:
         view_opts = blink or single or m == "S"
         self.opt_view.setVisible(view_opts)
         self.opt_measure.setVisible(t == "measure")
-        self.opt_ann.setVisible(t in ("text", "number", "approval", "cloud", "highlight", "pen", "arrow", "redact",
+        self.opt_ann.setVisible(t in ("text", "number", "check", "approval", "cloud", "highlight", "pen", "arrow", "redact",
                                       "pixelate") + SHAPES
                                 or (t == "hand" and self.canvas.ann_selected is not None))
         sel = self.canvas.anns[self.canvas.ann_selected] if (
@@ -982,6 +1005,19 @@ class LayoutMixin:
         self.chk_keep_tool.setVisible(t != "hand")             # gilt nur beim Zeichnen, nicht fuer eine Auswahl
         redact_ctx = t in ("redact", "pixelate") or (t == "hand" and sel_t in ("redact", "pixelate"))
         self.btn_color.setVisible(not redact_ctx)             # Schwaerzen ist schwarz, Verpixeln hat keine Farbe
+        no_size = t == "redact" or (t == "hand" and sel_t == "redact")   # Schwaerzen: Groesse ohne Wirkung
+        self.lbl_asize.setVisible(not no_size)
+        self.s_asize.setVisible(not no_size)
+        fill_ctx = t in FILL_TYPES or (t == "hand" and sel_t in FILL_TYPES)
+        self.chk_fill.setVisible(fill_ctx)
+        if t == "hand" and sel_t in FILL_TYPES:
+            self.chk_fill.blockSignals(True)
+            self.chk_fill.setChecked(bool(sel.get("filled")))
+            self.chk_fill.blockSignals(False)
+        if sel is None and t in ("highlight", "check") and self.canvas.ann_color == "#e11d48":
+            self._set_color_btn(CHECK_COLOR if t == "check" else "#facc15", default=False)   # Marker gelb, Haken gruen
+        elif sel is None:
+            self._set_color_btn(self.canvas.ann_color, default=False)
         self.chk_redact_paper.setVisible(t == "redact" or (t == "hand" and sel_t == "redact"))
         if sel_t == "redact":
             self.chk_redact_paper.blockSignals(True)
@@ -1071,6 +1107,20 @@ class LayoutMixin:
         self.settings.setValue("meas_unit", rep.MEASURE_FMT["unit"])
         self.settings.setValue("meas_dec", rep.MEASURE_FMT["dec"])
         self._update_units()                       # Liste und Bild neu beschriften
+
+    def _fill_changed(self, on):
+        """Haken "Gefuellt": gilt fuer gewaehlte Rahmen/Ellipsen/Polygone, sonst fuer die naechsten."""
+        c = self.canvas
+        changed = False
+        for k in c.selected_anns():
+            if c.anns[k]["type"] in FILL_TYPES and bool(c.anns[k].get("filled")) != on:
+                c.anns[k]["filled"] = on
+                if not on:
+                    del c.anns[k]["filled"]
+                changed = True
+        if changed:
+            self._commit()
+        c.update()
 
     def _redact_fill_changed(self, on):
         c = self.canvas
@@ -1349,6 +1399,7 @@ class LayoutMixin:
         """Nur eine Datei: Vergleichsfunktionen ausblenden (reines Ansehen)."""
         self.view_only = on
         self.act_compare_with_tb.setVisible(on)
+        self.act_save_drawing.setVisible(on)                    # Zeichnung bearbeiten gibt es nur beim Ansehen
         for key, *_ in VIEWS + MORE_VIEWS:                       # Vergleichsansichten auch im Menue weg
             self.mode_actions[key].setVisible(not on)
         self._apply_mode_panels()

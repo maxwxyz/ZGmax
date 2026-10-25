@@ -169,6 +169,8 @@ class AnnotationsMixin:
             return tr("Stempel: ") + " / ".join(a["text"].split("\n")[:2])
         if t == "measure":
             return f"{rep.MEASURE_KINDS.get(a.get('kind'), 'Ma\u00df')}: {rep.measure_text(a, self.canvas.mm_px)}"
+        if a.get("kind") == "check":
+            return tr("Haken")
         lbl = {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Marker"), "arrow": tr("Pfeil"),
                "line": tr("Linie"), "ellipse": tr("Ellipse"), "pen": tr("Freihand"), "polyline": tr("Linienzug"),
                "polygon": tr("Polygon"), "image": tr("Bild"), "redact": tr("Schwärzung"),
@@ -348,7 +350,8 @@ class AnnotationsMixin:
         if a["type"] == "measure" and a.get("kind") == "dist" and getattr(self, "_calib_pending", False):
             QTimer.singleShot(0, lambda: self._calibrate(math.hypot(a["x2"] - a["x"], a["y2"] - a["y"])))
         self.tabs.setCurrentWidget(self.tab_anns)
-        if a["type"] not in ("number", "measure", "pen") and not self.chk_keep_tool.isChecked():
+        if a["type"] not in ("number", "measure", "pen") and a.get("kind") != "check" and \
+                not self.chk_keep_tool.isChecked():
             self._set_tool("hand")                        # Zaehlen, Messen, Freihand oder "Werkzeug behalten": bleibt
 
     def _place(self, tool, x, y, w=None):

@@ -1939,3 +1939,12 @@ def test_pasted_image_options_and_copy_view_menu(app, win, pair):
     assert win.act_copy_view in seen
     menu = [a for a in win.findChildren(QMenu) if win.act_export_img in a.actions()][0].actions()
     assert menu.index(win.act_copy_view) == menu.index(win.act_export_img) + 1
+
+
+def test_no_banner_after_compare(app, win, pair):
+    """Nach dem Vergleich kein blauer Hinweisbalken (nur Statusleiste); "Pruefen starten" bleibt in Liste und Menue."""
+    compare(app, win, *pair)
+    for _ in range(20):
+        app.processEvents()
+    assert not win.banner.isVisible()
+    assert "Prüfen starten" in win.statusBar().currentMessage() or win.act_review_start.isEnabled()

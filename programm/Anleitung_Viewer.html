@@ -121,7 +121,7 @@ Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter fü
 die Knöpfe nach und nach ihren Text (Name im Tooltip); noch schmaler stehen <i>Überlagern</i>, <i>Schieber</i> und
 <i>Blinken</i> nur noch im Menü <i>Ansicht</i> (Tasten <kbd>4</kbd>, <kbd>5</kbd>, <kbd>6</kbd>). Auf der Startseite ist die Leiste fast leer.</td></tr>
 <tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
-Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer, Stempel; bei wenig
+Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer (▾ Nummer, Haken, Stempel); bei wenig
 Platz nur Symbole;
 unten Lupe und Übersicht. Das gewählte Werkzeug ist blau.</td></tr>
 <tr><td>Seitenleiste <i>Optionen</i></td><td>Im Vergleich: Zeichnungen A und B, Empfindlichkeit, Seiten, Maßstab und
@@ -297,18 +297,20 @@ daneben = fertig, <kbd>Esc</kbd> = verwerfen. Doppelklick auf einen Text ändert
 <tr><td>Formen ▾</td><td>Ein Knopf für <i>Rahmen, Ellipse, Linie, Linienzug, Polygon</i>; das kleine Dreieck wählt die
 Form, der Knopf zeigt die zuletzt benutzte. Rahmen/Ellipse aufziehen, Linie vom Anfang zum Ende ziehen.
 Linienzug und Polygon: Punkte anklicken, Doppelklick, <kbd>Enter</kbd> oder Rechtsklick beendet; die Eckpunkte lassen
-sich danach einzeln verschieben.</td></tr>
+sich danach einzeln verschieben. Rahmen, Ellipse und Polygon lassen sich mit dem Haken <i>Gefüllt</i> in derselben Farbe
+füllen (Standard aus; auch nachträglich für eine gewählte Form).</td></tr>
 <tr><td>Pfeil</td><td>Vom Anfang zur Spitze ziehen</td></tr>
 <tr><td>Stift</td><td>Freihand zeichnen. Jede Linie bleibt eine eigene Markierung; an den Ecken skalieren.</td></tr>
 <tr><td>Marker</td><td>Fläche farbig hinterlegen (Textmarker, Standard gelb)</td></tr>
-<tr><td>Schwärzen ▾</td><td><i>Schwärzen</i> (schwarze Fläche; mit dem Haken <i>Mit Papierfarbe</i> stattdessen in der Farbe
-des Papiers ringsum, meist weiß „ausgemalt“) oder <i>Verpixeln</i> (grobes Mosaik mit Rauschen und wenigen Stufen, nicht
+<tr><td>Schwärzen ▾</td><td><i>Schwärzen</i> (schwarze Fläche; mit dem Haken <i>Mit Hintergrundfarbe</i> stattdessen in der Farbe
+des Hintergrunds ringsum, meist weiß „ausgemalt“) oder <i>Verpixeln</i> (grobes Mosaik mit Rauschen und wenigen Stufen, nicht
 zurückrechenbar; <i>Größe</i> = Blockgröße)
 aufziehen – um Namen, Preise, Kundendaten unkenntlich zu machen. Im Programm bleibt es eine verschiebbare Markierung;
 in <b>jeder Ausgabe</b> (Bild, PDF, SVG, Bericht, Druck, Kopie, durchsuchbares PDF, Vektorisieren, bearbeitete Zeichnung)
 wird es unwiderruflich eingebrannt – auch wenn Markierungen ausgeblendet sind. Darunter liegender Text wird nicht als
 durchsuchbarer Text mitgespeichert. Die Originaldatei bleibt unverändert.</td></tr>
-<tr><td>Nummer</td><td>Jeder Klick setzt den nächsten nummerierten Kreis; Startnummer in der Optionszeile</td></tr>
+<tr><td>Nummer ▾</td><td><i>Nummer</i>: jeder Klick setzt den nächsten nummerierten Kreis; Startnummer in der Optionszeile.
+<i>Haken</i>: jeder Klick setzt einen grünen Haken, z. B. zum Abhaken geprüfter Maße (Farbe und Größe änderbar).</td></tr>
 <tr><td>Stempel</td><td>Klick, dann Status (FREIGEGEBEN, GEPRÜFT …), Name und Datum</td></tr>
 </table>
 <p><b>Werkzeug behalten</b> (Haken in der Optionszeile): Nach dem Zeichnen bleibt das Werkzeug aktiv, z. B. für mehrere
@@ -397,10 +399,10 @@ Markierungen, Maße und Änderungsrahmen. Die Optionszeile zeigt Größe und Anz
 <table>
 <tr><th>Befehl</th><th>Wirkung</th></tr>
 <tr><td>Kopieren (<kbd>Strg</kbd>+<kbd>C</kbd>)</td><td>Wie angezeigt, mit Markierungen, als Bild in die Zwischenablage
-(außerhalb der Rechtecke durchsichtig; mit <i>Nur Linien (ohne Papier)</i> auch das Papier). In ZGmax eingefügt, kommen Zeichnungsteil (als Bild) und Markierungen getrennt
+(außerhalb der Rechtecke durchsichtig; mit <i>Nur Linien (ohne Hintergrund)</i> auch das Papier). In ZGmax eingefügt, kommen Zeichnungsteil (als Bild) und Markierungen getrennt
 und einzeln bearbeitbar zurück.</td></tr>
 <tr><td>Verschieben</td><td>In die Auswahl klicken und ziehen. Markierungen wandern immer mit; beim Ansehen einer einzelnen
-Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (ohne Papier)</i> nur die Linien. Die frei gewordene
+Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (ohne Hintergrund)</i> nur die Linien. Die frei gewordene
 Fläche bekommt die Papierfarbe.</td></tr>
 <tr><td>Zuschneiden</td><td>Setzt einen <b>Zuschnitt-Rahmen</b> – es wird nichts gelöscht. Außerhalb ist die Zeichnung
 abgedunkelt; der Rahmen lässt sich mit <i>Auswahl</i> an den Anfassern (Ecken und Kanten) anpassen. Speichern, Drucken und
@@ -489,7 +491,8 @@ Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Be
 <li><b>Geänderte Maße finden</b>: liest die Zahlen jeder Änderung und vergleicht sie (auch R- und M-Angaben). Danach
 stehen in Liste, Bild und PDF <b>nur noch Änderungen, bei denen sich eine Maßzahl geändert hat</b> („12,5 → 12,8“);
 feine Strichänderungen an der Geometrie werden ausgeblendet (Filter <i>Zeigen: nur geänderte Maße</i>).
-<i>Zeigen: Änderungen</i> holt alles zurück.</li>
+<i>Zeigen: Änderungen</i> holt alles zurück. Senkrecht geschriebene Maße werden in Leserichtung gelesen: erst die
+Maßzahl, dann die Toleranz.</li>
 <li><b>Maßänderungen als Tabelle</b> (<i>Vergleichen</i> oder <i>Speichern</i>): alle geänderten Maße als PDF oder CSV
 mit Nummer, Art, <i>Maß alt → neu</i>, <i>Toleranz alt</i> und <i>neu</i> (ISO-Passung wie H7/g6, ±0,1 oder Abmaße
 +0,2/−0,1; geänderte Toleranz rot), Position in mm, Prüfstatus und Kommentar – zum Weitergeben an Lieferanten und
@@ -544,7 +547,9 @@ Seitenpaare. Beide erscheinen nur bei mehrseitigen Dateien.</p>
 <ul>
 <li><b>Ausschnitt</b>: nur einen Teil vergleichen (schneller). Rahmen in A aufziehen; der passende Bereich in B wird automatisch gesucht.</li>
 <li><b>Bereiche zuordnen (A ↔ B)</b>: Bereich in A und passenden Bereich in B selbst wählen – z. B. wenn eine Ansicht auf dem
-Blatt verschoben oder anders skaliert wurde. Größenunterschiede gleicht das Programm aus.</li>
+Blatt verschoben oder anders skaliert wurde. Die beiden Rahmen müssen nicht gleich groß sein: verglichen wird ein gleich
+großer Ausschnitt um die Mitte des Rahmens in B – nichts wird gestreckt oder gestaucht; Lage und Maßstab gleicht die
+normale Ausrichtung aus.</li>
 <li><b>Zonen</b>: Bereiche, die nicht verglichen werden (Schriftfeld, Stempel). Im Bild mit <i>Auswahl</i> anklicken:
 ziehen = verschieben, Ecken = Größe ändern, <kbd>Entf</kbd> oder Rechtsklick = löschen (auch in der Liste der Zonen).
 <b>Randstreifen</b>: Blattrand ausnehmen.</li>
@@ -773,6 +778,7 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <tr><td>Schwärzen</td><td></td><td>Bereich schwärzen: in jeder Ausgabe (Bild, PDF, Druck, Kopie) unwiderruflich eingebrannt</td></tr>
 <tr><td>Verpixeln</td><td></td><td>Bereich verpixeln (Mosaik); Größe = Blockgröße. In jeder Ausgabe eingebrannt</td></tr>
 <tr><td>Nummer</td><td></td><td>Fortlaufend nummerierte Kreise setzen</td></tr>
+<tr><td>Haken</td><td></td><td>Grünen Haken setzen, z. B. zum Abhaken geprüfter Maße (jeder Klick ein Haken)</td></tr>
 <tr><td>Stempel</td><td></td><td>Stempel mit Status, Name und Datum</td></tr>
 </table>
 <h3>Vergleichen</h3>

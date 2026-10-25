@@ -84,6 +84,7 @@ def parse_xfdf(path, page_h_pt, page=0):
             m = re.search(r"color:\s*(#[0-9a-fA-F]{6})", e.get("defaultstyle", "") or "")
             color = _color(m.group(1) if m else e.get("color"), "#e11d48")
         out.append(dict(kind=_KIND[tag], rect=rect, pts=pts, text=(text or "").strip(), color=color,
+                        filled=bool(e.get("interior-color")) and tag in ("square", "circle", "polygon"),
                         author=e.get("title", ""), date=e.get("date", ""), subject=e.get("subject", ""),
                         cloudy=(e.get("style", "") or "").lower() == "cloudy", name=e.get("name"),
                         irt=e.get("inreplyto"), state=e.get("state"), statemodel=e.get("statemodel")))
@@ -120,6 +121,7 @@ def pdf_comments(path, page=1):
             st = doc.xref_get_key(a.xref, "State")
             sm = doc.xref_get_key(a.xref, "StateModel")
             out.append(dict(kind=names[t], rect=(r.x0, r.y0, r.x1, r.y1), pts=pts,
+                            filled=bool((a.colors or {}).get("fill")) and t in ("Square", "Circle", "Polygon"),
                             text=(info.get("content") or "").strip(), color=color, author=info.get("title", ""),
                             date=info.get("modDate", "") or info.get("creationDate", ""),
                             subject=info.get("subject", ""), cloudy=bool(border.get("clouds", 0) and border["clouds"] > 0),
@@ -146,6 +148,8 @@ def to_annotations(items, k, size=2.0, map_point=None):
         note = it.get("text", "")
         meta = dict(author=it.get("author", ""), date=it.get("date", ""), comment=note)
         base = dict(text="", nr=0, color=it.get("color") or "#e11d48", size=size, **meta)
+        if it.get("filled") and it["kind"] in ("rect", "ellipse", "polygon"):
+            base["filled"] = True
         r = it.get("rect")
         box = None
         if r:
@@ -232,7 +236,8 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
         body = f"<contents>{escape(contents)}</contents>" if contents else ""
         if t in ("rect", "cloud"):
             style = ' style="cloudy" intensity="1"' if t == "cloud" else ""
-            rows.append(f"<square {common} {rect}{style}>{body}</square>")
+            ic = f' interior-color="{col}"' if a.get("filled") and t == "rect" else ""
+            rows.append(f"<square {common} {rect}{style}{ic}>{body}</square>")
         elif t == "highlight":
             rows.append(f'<square {common} {rect} opacity="0.35" interior-color="{col}">{body}</square>')
         elif t in ("arrow", "line"):
@@ -248,13 +253,15 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
             rows.append(f'<freetext {common} {r2} defaultstyle="font: Helvetica 10pt; color:{col}">'
                         f"<contents>{escape(txt)}</contents></freetext>")
         elif t == "ellipse":
-            rows.append(f"<circle {common} {rect}>{body}</circle>")
+            ic = f' interior-color="{col}"' if a.get("filled") else ""
+            rows.append(f"<circle {common} {rect}{ic}>{body}</circle>")
         elif t in ("pen", "polyline", "polygon") and a.get("pts"):
             verts = ";".join(f"{X(p[0])},{Y(p[1])}" for p in a["pts"])
             if t == "pen":
                 rows.append(f"<ink {common} {rect}><inklist><gesture>{verts}</gesture></inklist>{body}</ink>")
             else:
-                rows.append(f"<{t} {common} {rect}><vertices>{verts}</vertices>{body}</{t}>")
+                ic = f' interior-color="{col}"' if a.get("filled") and t == "polygon" else ""
+                rows.append(f"<{t} {common} {rect}{ic}><vertices>{verts}</vertices>{body}</{t}>")
         elif t == "measure":
             pts = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
             verts = ";".join(f"{X(p[0])},{Y(p[1])}" for p in pts)

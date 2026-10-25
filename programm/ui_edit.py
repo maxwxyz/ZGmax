@@ -408,8 +408,8 @@ class ClipboardMixin:
                 for a in anns:
                     shift_ann(a, dx, dy)
                     new.append(a)
-        elif md.hasImage():
-            bgra = qimage_to_bgra(QImage(md.imageData()))
+        elif md.hasImage() and not QApplication.clipboard().image().isNull():
+            bgra = qimage_to_bgra(QApplication.clipboard().image())
             h, w = bgra.shape[:2]
             if w < 1 or h < 1:
                 return
@@ -437,10 +437,11 @@ class ClipboardMixin:
     def open_clipboard(self):
         """Bild aus der Zwischenablage (z. B. Bildschirmfoto) als Zeichnung oeffnen."""
         md = QApplication.clipboard().mimeData()
-        if md is None or not md.hasImage():
+        img = QApplication.clipboard().image() if md is not None and md.hasImage() else QImage()
+        if img.isNull():                                   # kein (lesbares) Bild, z. B. nur Text kopiert
             self.banner.show_msg(tr("In der Zwischenablage ist kein Bild."), "info", timeout=6)
             return
-        bgra = qimage_to_bgra(QImage(md.imageData()))
+        bgra = qimage_to_bgra(img)
         d = os.path.join(app_data_dir(), "zwischenablage")
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, dt.datetime.now().strftime("eingefuegt-%Y%m%d-%H%M%S.png"))

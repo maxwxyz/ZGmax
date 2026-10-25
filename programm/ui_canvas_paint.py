@@ -452,7 +452,7 @@ class CanvasPaintMixin:
         elif t == "rect":
             x2, y2 = self.to_wid(a["x2"], a["y2"])
             p.setPen(QPen(col, lw))
-            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
             p.drawRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
         elif t == "cloud":
             pts = rep.cloud_points(a["x"], a["y"], a["x2"], a["y2"], rep.cloud_radius(shape, a["size"]))
@@ -476,7 +476,7 @@ class CanvasPaintMixin:
         elif t == "ellipse":
             x2, y2 = self.to_wid(a["x2"], a["y2"])
             p.setPen(QPen(col, lw))
-            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
             p.drawEllipse(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
         elif t in rep.PTS_TYPES and a.get("pts"):
             pen = QPen(col, lw)
@@ -486,6 +486,8 @@ class CanvasPaintMixin:
             p.setBrush(Qt.BrushStyle.NoBrush)
             pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in a["pts"]])
             if t == "polygon":
+                if a.get("filled"):
+                    p.setBrush(QColor(col))
                 p.drawPolygon(pg)
             elif len(a["pts"]) == 1:
                 p.drawPoint(pg[0])

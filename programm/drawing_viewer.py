@@ -957,9 +957,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.cache["key"] = None
             log.progress(0.22, tr("Richte aus"))
             a_full, b_full = dp.ink_from_gray(ga, p.thr, p.flatten), dp.ink_from_gray(gb, p.thr, p.flatten)
-            if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet
-                a, b0 = dc.crop(a_full, snap["crop"]), dc.crop(b_full, snap["crop_b"])
-                box_b = snap["crop_b"]
+            if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet: gleich grosses Fenster in B,
+                box_b = dp.same_size_box(snap["crop"], snap["crop_b"])   # nichts verzerren
+                a, b0 = dc.crop(a_full, snap["crop"]), dp.crop_padded(b_full, box_b, 0)
                 log(tr("Zugeordnete Bereiche: A {}  B {}").format(snap['crop'], snap['crop_b']))
             else:
                 a, b0, box_b = dp.crop_pair(a_full, b_full, snap["crop"], log)
@@ -976,7 +976,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             ca = ca if ca is not None else ga
             cb = cb if cb is not None else gb
             ca = dc.crop(ca, snap["crop"])
-            cb = dp.apply_tf(dc.crop(cb, box_b), tf)
+            cb = dp.apply_tf(dp.crop_padded(cb, box_b, 255) if snap.get("crop_b") and snap["crop"] else dc.crop(cb, box_b), tf)
             if snap.get("manual") is not None:           # manuelle Ausrichtung zusaetzlich anwenden
                 M = np.float32(snap["manual"])
                 h_, w_ = self.cache["a"].shape
@@ -1059,9 +1059,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.canvas.labels = ("A  " + os.path.basename(self.path_a), "B  " + os.path.basename(self.path_b))
             if was_view_only or self.canvas.mode not in self.mode_actions:
                 self._set_mode("D")
-            if not self.act_left.isChecked() and not getattr(self, "_left_auto_done", False):
-                self.act_left.setChecked(True)     # beim ersten Vergleich Einstellungen zeigen
-                self._left_auto_done = True
+            # Optionen-Leiste bleibt zu; sie oeffnet nur, wenn man selbst auf "Optionen" klickt
         if self.restore_regs is not None and not snap.get("single"):
             r["regs"][:] = self.restore_regs   # Pruefstand aus dem Projekt
             r["regs_done"] = True
@@ -1086,10 +1084,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if snap.get("single"):
             self._busy(False, tr("Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen."))
         else:
+            # nur in der Statusleiste: ein Hinweisbalken nach jedem Vergleich stoert (Farben erklaert die Legende)
             self._busy(False, tr("Fertig. „Prüfen starten“ (rechte Leiste, Strg+Umschalt+R) führt durch alle Änderungen."))
-            if not self.banner.isVisible() and not (self.payload or {}).get("regs_done"):
-                self.banner.show_msg(tr("Vergleich fertig. Rot = nur in A, blau = nur in B, grün = nur verschoben."),
-                                     "info", action=(tr("Prüfen starten"), self.review_start), timeout=15)
         if self.pending or (self.chk_live.isChecked() and getattr(self, "_params_dirty", False)):
             self.start_compute()
 
@@ -1283,7 +1279,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
                     a.actionGroup().setExclusive(False)
                     a.setChecked(False)
                     a.actionGroup().setExclusive(True)
-        if t in ("text", "number", "rect", "arrow", "approval", "zone", "crop", "measure", "region", "cloud",
+        if t in ("text", "number", "check", "rect", "arrow", "approval", "zone", "crop", "measure", "region", "cloud",
                  "highlight", "ellipse", "line", "polyline", "polygon", "pen", "area", "redact", "pixelate"):
             self.act_overlays.setChecked(True)
         self._update_options()

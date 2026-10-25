@@ -51,6 +51,7 @@ TOOL_HINTS = {
     "highlight": tr("Fl\u00e4che aufziehen, die farbig hinterlegt wird (Textmarker)."),
     "arrow": tr("Vom Pfeilanfang zur Spitze ziehen."),
     "approval": tr("Ins Bild klicken, Status und Name w\u00e4hlen."),
+    "check": tr("Ins Bild klicken: jeder Klick setzt einen grünen Haken. Esc = fertig."),
     "copysel": tr("Bereich aufziehen, der kopiert werden soll."),
     "area": tr("Bereich aufziehen; mit Umschalt oder Strg weitere dazu. In die Auswahl klicken und ziehen = "
                "verschieben. Strg+C kopieren, Strg+X ausschneiden, Entf löschen, Esc aufheben."),

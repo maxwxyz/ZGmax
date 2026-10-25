@@ -390,9 +390,15 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
         self.poly, self._poly_hover = [], None
         if len(pts) >= (3 if self.tool == "polygon" else 2):
             x0, y0, x1, y1 = rep.pts_bbox(pts)
+            extra = {"filled": True} if self.tool == "polygon" and self._fill_on() else {}
             self.annCreated.emit(dict(type=self.tool, pts=pts, x=x0, y=y0, x2=x1, y2=y1, text="", nr=0,
-                                      color=self.ann_color, size=self.ann_size))
+                                      color=self.ann_color, size=self.ann_size, **extra))
         self.update()
+
+    def _fill_on(self):
+        """Haken "Gefuellt" in der Optionszeile (Rahmen, Ellipse, Polygon)."""
+        chk = getattr(self.window(), "chk_fill", None)
+        return bool(chk is not None and chk.isChecked())
 
     def _finish_pen(self):
         pts = self._pen or []
@@ -515,6 +521,13 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
             self._drag = ("textbox",)
         elif left and self.tool in ("number", "approval"):
             self.placeRequested.emit(self.tool, ix, iy)
+        elif left and self.tool == "check":                  # Haken: kurzer Linienzug, Spitze unten am Klickpunkt
+            s_ = rep.ann_text_h(self.shape, self.ann_size) * 1.1
+            pts = [[ix - 0.45 * s_, iy - 0.45 * s_], [float(ix), float(iy)], [ix + 0.9 * s_, iy - 1.05 * s_]]
+            x0, y0, x1, y1 = rep.pts_bbox(pts)
+            col = "#16a34a" if self.ann_color == "#e11d48" else self.ann_color
+            self.annCreated.emit(dict(type="polyline", kind="check", pts=pts, x=x0, y=y0, x2=x1, y2=y1, text="",
+                                      nr=0, color=col, size=self.ann_size))
         elif left and self.tool == "align":
             sx, sy, _k = self.snap_point(ix, iy)
             self.alignPoint.emit(self._side if self.mode == "Y" else "A", sx, sy)
@@ -854,6 +867,8 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
                     win = self.window()
                     extra["fill"] = "paper" if getattr(win, "chk_redact_paper", None) and \
                         win.chk_redact_paper.isChecked() else "black"
+                elif self.tool in ("rect", "ellipse") and self._fill_on():
+                    extra["filled"] = True
                 self.annCreated.emit(dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
                                           color=color, size=self.ann_size, **extra))
         elif kind == "pen":

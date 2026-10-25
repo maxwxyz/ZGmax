@@ -119,7 +119,7 @@ side, Slider, Blink); then zoom (−, zoom level, +, Whole drawing), <i>Save</i>
 their text step by step (name in the tooltip); narrower still, <i>Overlay</i>, <i>Slider</i> and <i>Blink</i> are only in
 the <i>View</i> menu (keys <kbd>4</kbd>, <kbd>5</kbd>, <kbd>6</kbd>). On the start page the bar is almost empty.</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
-polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number, Stamp; icons only when space is short;
+polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number (▾ number, tick, stamp); icons only when space is short;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
 <tr><td><i>Options</i> panel</td><td>In a comparison: drawings A and B, sensitivity, pages, scale and <i>Compare</i>. When
 viewing only the drawing, <i>Compare with another drawing …</i>, pages and scale.</td></tr>
@@ -290,17 +290,20 @@ elsewhere = done, <kbd>Esc</kbd> = discard. Double-click a text to edit it in pl
 <tr><td>Cloud (<kbd>W</kbd>)</td><td>Drag a revision cloud</td></tr>
 <tr><td>Shapes ▾</td><td>One button for <i>box, ellipse, line, polyline, polygon</i>; the small triangle picks the shape,
 the button shows the last one used. Drag a box/ellipse, drag a line from start to end. Polyline and polygon: click
-points, double-click, <kbd>Enter</kbd> or right-click finishes; the corner points can be moved individually later.</td></tr>
+points, double-click, <kbd>Enter</kbd> or right-click finishes; the corner points can be moved individually later. Box,
+ellipse and polygon can be filled in the same color with the checkbox <i>Filled</i> (off by default; also later for a
+selected shape).</td></tr>
 <tr><td>Arrow</td><td>Drag from the start to the tip</td></tr>
 <tr><td>Pen</td><td>Draw freehand. Each stroke stays its own markup; scale it at the corners.</td></tr>
 <tr><td>Marker</td><td>Highlight an area in color (highlighter, yellow by default)</td></tr>
-<tr><td>Redact ▾</td><td>Drag <i>Redact</i> (black area; with the checkbox <i>With paper color</i> filled with the color of the
-surrounding paper instead, usually “painted” white) or <i>Pixelate</i> (coarse mosaic with noise and few levels, cannot be
+<tr><td>Redact ▾</td><td>Drag <i>Redact</i> (black area; with the checkbox <i>With background color</i> filled with the color of the
+surrounding background instead, usually “painted” white) or <i>Pixelate</i> (coarse mosaic with noise and few levels, cannot be
 reversed; <i>Size</i> = block size) – to make names,
 prices or customer data unrecognizable. In the program it stays a movable markup; in <b>every output</b> (image, PDF, SVG,
 report, print, copy, searchable PDF, vectorizing, edited drawing) it is burnt in irreversibly – even when markups are
 hidden. Text underneath is not saved as searchable text. The original file stays unchanged.</td></tr>
-<tr><td>Number</td><td>Each click places the next numbered circle; start number in the options bar</td></tr>
+<tr><td>Number ▾</td><td><i>Number</i>: each click places the next numbered circle; start number in the options bar.
+<i>Tick</i>: each click places a green tick, e.g. to tick off checked dimensions (color and size can be changed).</td></tr>
 <tr><td>Stamp</td><td>Click, then status (APPROVED, CHECKED …), name and date</td></tr>
 </table>
 <p><b>Keep tool</b> (checkbox in the options bar): the tool stays active after drawing, e.g. for several arrows in a row.
@@ -382,9 +385,9 @@ The options bar shows its size and counts and offers:</p>
 <table>
 <tr><th>Command</th><th>Effect</th></tr>
 <tr><td>Copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>)</td><td>As displayed, with markups, as an image on the clipboard (transparent outside the
-rectangles; with <i>Lines only (without paper)</i> the paper too). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
+rectangles; with <i>Lines only (without background)</i> the paper too). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
 <tr><td>Move</td><td>Click into the selection and drag. Markups always move along; when viewing a single drawing the drawing
-content too – with <i>Lines only (without paper)</i> only the lines. The vacated area gets the paper color.</td></tr>
+content too – with <i>Lines only (without background)</i> only the lines. The vacated area gets the paper color.</td></tr>
 <tr><td>Crop</td><td>Sets a <b>crop frame</b> – nothing is deleted. Outside it the drawing is dimmed; adjust the frame with
 <i>Select</i> at its handles (corners and edges). Save, print and copy output only the frame; if it extends beyond the
 sheet, the output gets a margin. Works in a comparison too. <i>Edit → Remove crop frame</i> removes it; when viewing a single
@@ -465,7 +468,8 @@ otherwise text recognition (German and English, also Ø, ±, °). Afterwards lis
 changed text</b> (filter <i>Show: changed text only</i>).</li>
 <li><b>Find changed dimensions</b>: reads the numbers of each change and compares them (also R and M values). Afterwards
 list, drawing and PDF show <b>only changes in which a dimension value changed</b> (“12.5 → 12.8”); small line changes in
-the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.</li>
+the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.
+Vertically written dimensions are read in reading direction: first the value, then the tolerance.</li>
 <li><b>Dimension changes as table</b> (<i>Compare</i> or <i>Save</i>): all changed dimensions as PDF or CSV with number,
 type, <i>dimension old → new</i>, <i>tolerance old</i> and <i>new</i> (ISO fits such as H7/g6, ±0.1 or deviations
 +0.2/−0.1; a changed tolerance in red), position in mm, review status and comment – to pass on to suppliers and
@@ -518,7 +522,8 @@ files.</p>
 <ul>
 <li><b>Region</b>: compare only part of the sheet (faster). Drag a frame in A; the matching area in B is found automatically.</li>
 <li><b>Match areas (A ↔ B)</b>: choose an area in A and the matching area in B yourself – e.g. when a view was moved or
-scaled on the sheet. The program compensates for size differences.</li>
+scaled on the sheet. The two frames do not have to be the same size: an equally sized section around the center of the
+frame in B is compared – nothing is stretched or squeezed; position and scale are matched by the normal alignment.</li>
 <li><b>Zones</b>: areas that are not compared (title block, stamps). Click them in the drawing with <i>Select</i>: drag =
 move, corners = resize, <kbd>Del</kbd> or right-click = delete (also in the zone list). <b>Border strip</b>: exclude the
 sheet border.</li>
@@ -743,6 +748,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Redact</td><td></td><td>Redact an area: burnt irreversibly into every output (image, PDF, print, copy)</td></tr>
 <tr><td>Pixelate</td><td></td><td>Pixelate an area (mosaic); size = block size. Burnt into every output</td></tr>
 <tr><td>Number</td><td></td><td>Place consecutively numbered circles</td></tr>
+<tr><td>Tick</td><td></td><td>Place a green tick, e.g. to tick off checked dimensions (one tick per click)</td></tr>
 <tr><td>Stamp</td><td></td><td>Stamp with status, name and date</td></tr>
 </table>
 <h3>Compare</h3>

@@ -296,7 +296,7 @@ def ocr_any_orientation(gray, min_score=0.55):
                     px, py = py, H - 1 - px
                 pts.append((px, py))
             xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-            found.append((min(xs), min(ys), max(xs), max(ys), text, float(score) * len(text)))
+            found.append((min(xs), min(ys), max(xs), max(ys), text, float(score) * len(text), rot))
     found.sort(key=lambda t: -t[5])                # sicherste zuerst; Ueberschneidungen nur einmal
     keep = []
     for f in found:
@@ -305,8 +305,13 @@ def ocr_any_orientation(gray, min_score=0.55):
                (min(f[2], k[2]) - max(f[0], k[0])) * (min(f[3], k[3]) - max(f[1], k[1])) > 0.3 * area for k in keep):
             continue
         keep.append(f)
-    keep.sort(key=lambda t: (round(t[1] / max(10, t[3] - t[1])), t[0]))
-    return keep
+    # Lesereihenfolge je Schreibrichtung (senkrechte Masse: Masszahl vor Toleranz), nicht nach Bildzeilen
+    import diffvector as dv
+    dirs = {0: (1.0, 0.0), 1: (0.0, -1.0), 3: (0.0, 1.0)}     # von unten nach oben = -y, von oben nach unten = +y
+    parts = [((k[0] + k[2]) / 2, (k[1] + k[3]) / 2,
+              (k[3] - k[1]) if k[6] == 0 else (k[2] - k[0]), i, dirs[k[6]]) for i, k in enumerate(keep)]
+    order = dv.reading_order(parts)
+    return [keep[i][:6] for i in order]
 
 
 def ocr_box(ink, box, pad=15, max_area=6_000_000):
@@ -950,7 +955,8 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
                 im.paste(lab, (int(round(cx - lab.width / 2)), int(round(cy - lab.height / 2))), lab)
                 d = ImageDraw.Draw(im)
         elif t == "rect":
-            d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw))
+            d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
+                        fill=col if a.get("filled") else None)
         elif t == "cloud":
             pl = cloud_points(x, y, x2, y2, cloud_radius(shape, a["size"]))
             if pl:
@@ -964,10 +970,13 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
         elif t == "line":
             d.line([(x, y), (x2, y2)], fill=col, width=int(lw))
         elif t == "ellipse":
-            d.ellipse([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw))
+            d.ellipse([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
+                      fill=col if a.get("filled") else None)
         elif t in PTS_TYPES and a.get("pts"):
             pl = [(q[0] - ox, q[1] - oy) for q in a["pts"]]
             if t == "polygon" and len(pl) > 2:
+                if a.get("filled"):
+                    d.polygon(pl, fill=col)
                 pl = pl + [pl[0]]
             if len(pl) == 1:
                 pl = pl * 2
@@ -1489,7 +1498,7 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
                 an.set_opacity(0.35)
                 an.set_border(width=0)
             else:
-                an.set_colors(stroke=col)
+                an.set_colors(stroke=col, fill=col if (t == "rect" and a.get("filled")) else None)
                 an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
             info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung")}[t], a.get("text", ""))
         elif t in ("arrow", "line"):
@@ -1501,7 +1510,7 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             info(an, tr("Pfeil") if t == "arrow" else tr("Linie"), a.get("comment", ""))
         elif t == "ellipse":
             an = page.add_circle_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
-            an.set_colors(stroke=col)
+            an.set_colors(stroke=col, fill=col if a.get("filled") else None)
             an.set_border(width=lw)
             info(an, tr("Ellipse"), a.get("comment", ""))
         elif t in PTS_TYPES and a.get("pts"):
@@ -1512,7 +1521,7 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
                 an = page.add_polygon_annot(pts)
             else:
                 an = page.add_polyline_annot(pts)
-            an.set_colors(stroke=col)
+            an.set_colors(stroke=col, fill=col if (t == "polygon" and a.get("filled")) else None)
             an.set_border(width=lw)
             info(an, {"pen": tr("Freihand"), "polygon": tr("Polygon"), "polyline": tr("Linienzug")}[t],
                  a.get("comment", ""))
@@ -1620,7 +1629,8 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
             continue
         th, lw = ann_text_h(shape, a["size"]), ann_line_w(shape, a["size"])
         x, y, x2, y2 = a["x"], a["y"], a["x2"], a["y2"]
-        stroke = f'fill="none" stroke="{col}" stroke-width="{lw:.1f}" stroke-linecap="round" stroke-linejoin="round"'
+        fill = col if a.get("filled") and t in ("rect", "ellipse", "polygon") else "none"
+        stroke = f'fill="{fill}" stroke="{col}" stroke-width="{lw:.1f}" stroke-linecap="round" stroke-linejoin="round"'
         g = groups[ann_layer(a)]
         x0, y0, x1, y1 = min(x, x2), min(y, y2), max(x, x2), max(y, y2)
         if t == "rect":

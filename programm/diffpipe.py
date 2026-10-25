@@ -159,6 +159,27 @@ def crop_pair(a_full, b_full, box_a, log=print):
 
 
 # ----------------------------------------------------------------- Stufe 2
+def same_size_box(box_a, box_b):
+    """Zugeordnete Bereiche: Fenster in B mit genau der Groesse des Bereichs in A, um die Mitte des in B gewaehlten
+    Bereichs. So wird nichts gestreckt oder gestaucht, wenn die beiden Rahmen nicht gleich gross gezogen wurden;
+    Lage und Massstab gleicht danach die normale Ausrichtung aus. Kann ueber den Blattrand hinausragen."""
+    _xa, _ya, wa, ha = box_a
+    xb, yb, wb, hb = box_b
+    cx, cy = xb + wb / 2, yb + hb / 2
+    return int(round(cx - wa / 2)), int(round(cy - ha / 2)), int(wa), int(ha)
+
+
+def crop_padded(img, box, fill=0):
+    """Ausschnitt (x, y, w, h); ausserhalb des Bilds mit fill aufgefuellt (Tinte: 0, Papier: 255)."""
+    x, y, w, h = box
+    H, W = img.shape[:2]
+    out = np.full((h, w) + img.shape[2:], fill, img.dtype)
+    sx0, sy0, sx1, sy1 = max(0, x), max(0, y), min(W, x + w), min(H, y + h)
+    if sx1 > sx0 and sy1 > sy0:
+        out[sy0 - y:sy1 - y, sx0 - x:sx1 - x] = img[sy0:sy1, sx0:sx1]
+    return out
+
+
 def match_size(a, b):
     """B auf die Groesse von A bringen (ohne Skalierung, wenn der Massstab gleich ist)."""
     sx, sy = a.shape[1] / b.shape[1], a.shape[0] / b.shape[0]
