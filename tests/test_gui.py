@@ -892,6 +892,38 @@ def test_toolchest_and_custom_stamps(app, win, pair, monkeypatch):
     assert "ZUR KENNTNIS" in json.loads(win.settings.value("stamps"))
 
 
+def test_cad_snaps_and_coordinate_input(app, win, tmp_path):
+    import cv2
+    import numpy as np
+    img = np.full((800, 1200), 255, np.uint8)
+    cv2.rectangle(img, (200, 200), (800, 600), 0, 4)
+    cv2.circle(img, (500, 400), 120, 0, 4)
+    p = tmp_path / "cad.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    c = win.canvas
+    x, y, k = c.snap_point(506, 404)                       # Kreismittelpunkt
+    assert k == "c" and abs(x - 500) < 1.5 and abs(y - 400) < 1.5
+    x, y, k = c.snap_point(803, 597)                       # Ecke / Schnittpunkt
+    assert k == "x" and abs(x - 800) <= 2 and abs(y - 600) <= 2
+    c.coord_origin = (200.0, 600.0)                         # Nullpunkt links unten am Rahmen
+    u = c.unit_factor()
+    assert c.to_coords(200 + 10 * u, 600 - 5 * u) == pytest.approx((10, 5))
+    win._set_tool("measure")
+    c.measure_kind = "dist"
+    c.measure = [(200.0, 600.0, None)]
+    pt = c.parse_coord_input("50<0")                       # 50 mm nach rechts
+    assert pt == pytest.approx((200 + 50 * u, 600))
+    assert c.parse_coord_input("@10;20") == pytest.approx((200 + 10 * u, 600 - 20 * u))
+    assert c.parse_coord_input("30;40") == pytest.approx((200 + 30 * u, 600 - 40 * u))
+    c._open_coord_input("4")
+    c.coord_editor.setText("40<90")
+    c._coord_entered()
+    m = win.anns[-1]
+    assert m["type"] == "measure" and m["pts"][1] == pytest.approx([200, 600 - 40 * u])
+
+
 def test_multipage_tiff(app, win, tmp_path):
     from PIL import Image
     from conftest import draw_sheet

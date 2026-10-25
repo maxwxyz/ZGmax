@@ -1060,6 +1060,14 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if self.canvas.zone_sel is not None:
             m.addAction(tr("Zone löschen"), self._zone_delete)
             m.addSeparator()
+        if self.payload is not None and self.canvas._mouse is not None:   # Nullpunkt fuer Koordinaten
+            c = self.canvas
+            ix, iy = c.to_img(c._vp(c._mouse))
+            sx, sy, _k = c.snap_point(ix, iy) if c.snap else (ix, iy, None)
+            m.addAction(tr("Nullpunkt hier setzen"), lambda: (setattr(c, "coord_origin", (sx, sy)), c.update()))
+            if c.coord_origin is not None:
+                m.addAction(tr("Nullpunkt zurücksetzen"), lambda: (setattr(c, "coord_origin", None), c.update()))
+            m.addSeparator()
         if self.canvas.sel_rects:                        # Bereichsauswahl: ihre Befehle zuerst
             for k, b in self.area_buttons.items():
                 if b.isVisible():
@@ -1152,7 +1160,13 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             c.zoom_to(1.0, c.ox + c.width() / 2 / c.scale, c.oy + c.height() / 2 / c.scale)
 
     def _on_cursor(self, ix, iy, s):
-        mm = self.canvas.mm_px
+        c = self.canvas
+        if c.coord_origin is not None:                 # Koordinaten ab Nullpunkt (y nach oben, wie im CAD)
+            x, y = c.to_coords(ix, iy)
+            u = rep.MEASURE_FMT.get("unit", "mm")
+            self.lbl_pos.setText(tr("x {:.2f}  y {:.2f} {}  (ab Nullpunkt)").format(x, y, u))
+            return
+        mm = c.mm_px
         self.lbl_pos.setText(tr("x {}  y {} px   |   {:.1f} / {:.1f} mm").format(ix, iy, ix * mm, iy * mm))
 
     def _on_view_changed(self, s):
