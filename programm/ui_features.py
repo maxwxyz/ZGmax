@@ -632,7 +632,7 @@ class FeaturesMixin:
         self.crop_frame = None
         self.page_scales = {}
         self.page_anns, self._anns_key = {}, None
-        self.page_regs = {}
+        self.page_regs, self.page_views = {}, {}
         self.project_path = None
         self.restore_regs = None
         self.index_info = None
@@ -680,6 +680,61 @@ class FeaturesMixin:
         html = (tr("<table cellspacing=6>") + "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in rows) +
                 tr("</table><p>Auf dem Mac steht Strg für {}. Einzeltasten wirken, wenn das Bild den Fokus hat (einmal hineinklicken).</p>").format(mod))
         QMessageBox.information(self, tr("Tastenkürzel"), html)
+
+    # ----------------------------------------------------------------- Gemerkte Ausschnitte (Lesezeichen)
+    def _views_key(self):
+        return str(self.sp_pa.value() if self.path_a else self.sp_pb.value())
+
+    def view_bookmark_add(self):
+        """Sichtbaren Ausschnitt unter einem Namen merken (je Seite, im Projekt gespeichert)."""
+        c = self.canvas
+        if c.res is None:
+            return
+        views = self.__dict__.setdefault("page_views", {}).setdefault(self._views_key(), [])
+        name, ok = QInputDialog.getText(self, tr("Ausschnitt merken"), tr("Name (z. B. Schnitt A-A, Schriftfeld):"),
+                                        text=tr("Ausschnitt {}").format(len(views) + 1))
+        if not ok or not name.strip():
+            return
+        ox, oy = self.origin
+        x0, y0 = c.to_img(QPointF(0, 0))
+        x1, y1 = c.to_img(QPointF(c.width(), c.height()))
+        views.append({"name": name.strip(), "rect": [x0 + ox, y0 + oy, x1 + ox, y1 + oy]})   # Blattkoordinaten
+        self._dirty = True
+        self._update_title()
+        self._log(tr("Ausschnitt gemerkt: {}").format(name.strip()))
+
+    def view_goto(self, i):
+        views = getattr(self, "page_views", {}).get(self._views_key(), [])
+        if not (0 <= i < len(views)) or self.canvas.res is None:
+            return
+        ox, oy = self.origin
+        x0, y0, x1, y1 = views[i]["rect"]
+        c = self.canvas
+        s = min(c.width() / max(1.0, x1 - x0), c.height() / max(1.0, y1 - y0))
+        c.zoom_to(s, (x0 + x1) / 2 - ox, (y0 + y1) / 2 - oy)
+
+    def view_delete(self, i):
+        views = getattr(self, "page_views", {}).get(self._views_key(), [])
+        if 0 <= i < len(views):
+            del views[i]
+            self._dirty = True
+            self._update_title()
+
+    def _fill_views_menu(self, m):
+        m.clear()
+        m.addAction(self.act_view_add)
+        views = getattr(self, "page_views", {}).get(self._views_key(), [])
+        if views:
+            m.addSeparator()
+            for i, v in enumerate(views):
+                m.addAction(v["name"], lambda i=i: self.view_goto(i))
+            m.addSeparator()
+            dm = m.addMenu(tr("Ausschnitt löschen"))
+            for i, v in enumerate(views):
+                dm.addAction(v["name"], lambda i=i: self.view_delete(i))
+        else:
+            a = m.addAction(tr("(noch keine Ausschnitte auf dieser Seite)"))
+            a.setEnabled(False)
 
     def show_whats_new(self, since=None):
         """Aenderungshistorie in der Sprache der Oberflaeche (Hilfe -> Was ist neu)."""

@@ -188,6 +188,7 @@ class ProjectMixin:
             "annotations_page": getattr(self, "_anns_key", None),
             "page_annotations": getattr(self, "page_anns", {}),           # Markierungen der anderen Seiten
             "page_regions": getattr(self, "page_regs", {}),               # Pruefstand der anderen Seiten
+            "page_views": getattr(self, "page_views", {}),                # gemerkte Ausschnitte je Seite
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -304,6 +305,7 @@ class ProjectMixin:
         self.page_scales = dict(data.get("page_scales") or {})
         self.page_anns = copy.deepcopy(data.get("page_annotations") or {})
         self.page_regs = copy.deepcopy(data.get("page_regions") or {})
+        self.page_views = copy.deepcopy(data.get("page_views") or {})
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)

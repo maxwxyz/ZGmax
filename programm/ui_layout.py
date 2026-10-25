@@ -91,6 +91,9 @@ class LayoutMixin:
         self.act_embed.toggled.connect(lambda on: self.settings.setValue("embed", "true" if on else "false"))
         self.act_export_img = A(tr("Als Bild speichern (wie angezeigt) …"), self.export_image, "Ctrl+E",
                                 tr("Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF"), ico="save")
+        self.act_view_add = A(tr("Ausschnitt merken …"), self.view_bookmark_add, "Ctrl+D",
+                              tr("Sichtbaren Ausschnitt unter einem Namen merken, z. B. „Schnitt A-A“; später mit einem "
+                                 "Klick wieder hinspringen (je Seite, im Projekt gespeichert)"))
         self.act_page_prev = A(tr("Vorige Seite"), lambda: self.page_step(-1), "PgUp",
                                tr("Vorige Seite (Bild auf)"), canvas_key=True)
         self.act_page_next = A(tr("Nächste Seite"), lambda: self.page_step(1), "PgDown",
@@ -380,6 +383,8 @@ class LayoutMixin:
         m.addSeparator()
         for a in (self.act_page_prev, self.act_page_next):
             m.addAction(a)
+        self.menu_views = m.addMenu(tr("Ausschnitte"))
+        self.menu_views.aboutToShow.connect(lambda: self._fill_views_menu(self.menu_views))
         m.addSeparator()
         for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_legend, self.act_layers,
                   self.act_clouds):
@@ -1823,7 +1828,7 @@ class LayoutMixin:
                   self.act_export_img, self.act_export_annpdf, self.act_export_pdf, self.act_export_csv,
                   self.act_print, self.act_copy, self.act_copy_sel, self.act_find, self.act_proj_save,
                   self.act_export_svg, self.act_export_ocrpdf, self.act_vectorize,
-                  self.act_proj_save_as):
+                  self.act_proj_save_as, self.act_copy_view, self.act_view_add):
             a.setEnabled(has)
         for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_ann_save, self.act_ann_load,
                   self.act_export_measures,

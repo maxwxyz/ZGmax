@@ -6,7 +6,7 @@ import time
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QSettings, Qt  # noqa: E402
+from PySide6.QtCore import QPointF, QSettings, Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 
@@ -1654,3 +1654,49 @@ def test_whats_new_after_update(app, win, monkeypatch):
     win.banner.btn_action.click()
     assert shown and "2." in shown[0]
     assert win.settings.value("last_version") != "1.0"
+
+
+def test_view_bookmarks(app, win, pair, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QInputDialog
+    compare(app, win, *pair)
+    c = win.canvas
+    c.zoom_to(2.0, 500, 520)
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Kreis", True))
+    win.view_bookmark_add()
+    win.act_fit.trigger()
+    assert abs(c.scale - 2.0) > 0.5
+    win.view_goto(0)
+    cx, cy = c.to_img(QPointF(c.width() / 2, c.height() / 2))
+    assert abs(c.scale - 2.0) < 0.05 and abs(cx - 500) < 3 and abs(cy - 520) < 3
+    win._fill_views_menu(win.menu_views)
+    assert "Kreis" in [a.text() for a in win.menu_views.actions()]
+    path = str(tmp_path / "v.zgmax")
+    win._save_dialog = lambda *a: path
+    win.project_save(True)
+    assert load_project(path)["page_views"]["1"][0]["name"] == "Kreis"
+    win.view_delete(0)
+    assert win.page_views["1"] == []
+
+
+def test_print_area_to_scale(app, win, pair, tmp_path):
+    import numpy as np
+    from PySide6.QtGui import QImage
+    from PySide6.QtPrintSupport import QPrinter
+    import pymupdf
+    compare(app, win, *pair)
+    win.canvas.sel_rects = [(100, 100, 500, 400)]                  # Bereich 400 x 300 px bei 200 dpi
+    assert win._print_box("area") == (100, 100, 500, 400)
+    win.canvas.zoom_to(2.0, 800, 550)
+    vb = win._print_box("view")
+    assert vb[2] - vb[0] <= win.canvas.width() / 2 + 2
+    out = win.export_render("D", True, False)[100:400, 100:500]
+    img = QImage(np.ascontiguousarray(out).data, 400, 300, out.strides[0], QImage.Format.Format_BGR888).copy()
+    pdf = str(tmp_path / "druck.pdf")
+    pr = QPrinter(QPrinter.PrinterMode.HighResolution)
+    pr.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+    pr.setOutputFileName(pdf)
+    win._print_to(pr, img, 1.0, "100 %")
+    with pymupdf.open(pdf) as d:
+        assert d.page_count == 1 and "100 %" in d[0].get_text()
+        imgs = d[0].get_image_info()
+        assert imgs and abs((imgs[0]["bbox"][2] - imgs[0]["bbox"][0]) * 25.4 / 72 - 400 * 25.4 / 200) < 1.0   # 50,8 mm

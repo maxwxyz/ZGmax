@@ -72,48 +72,104 @@ class ExportMixin:
                                 bool(res.moved.any()) and mode in ("D", "S"), self._info())
         return out
 
+    def _print_options(self):
+        """Druckdialog: was (ganzes Blatt, sichtbarer Ausschnitt, gewaehlter Bereich) und wie gross.
+        Rueckgabe (was, faktor) mit faktor None = einpassen, sonst 1.0 = Originalgroesse; None = abgebrochen."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Drucken im Maßstab"))
+        form = QFormLayout(dlg)
+        cb_what, cb_size = QComboBox(), QComboBox()
+        cb_what.addItem(tr("Ganzes Blatt"), "sheet")
+        cb_what.addItem(tr("Sichtbarer Ausschnitt"), "view")
+        if self._area_bbox() is not None:
+            cb_what.addItem(tr("Gewählter Bereich (Werkzeug Bereich)"), "area")
+            cb_what.setCurrentIndex(2)
+        for txt, f in ((tr("Auf Papier einpassen"), None), (tr("100 % (Originalgröße des Blatts)"), 1.0),
+                       ("50 %", 0.5), ("25 %", 0.25), ("200 %", 2.0)):
+            cb_size.addItem(txt, f)
+        cb_size.setCurrentIndex(1)
+        cb_size.setToolTip(tr("100 % druckt maßstäblich: 10 mm auf dem Blatt sind 10 mm auf dem Papier. Passt es nicht "
+                              "auf eine Seite, wird auf mehrere Seiten verteilt."))
+        form.addRow(tr("Drucken:"), cb_what)
+        form.addRow(tr("Größe auf dem Papier:"), cb_size)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(dlg.accept)
+        bb.rejected.connect(dlg.reject)
+        form.addRow(bb)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return None
+        return cb_what.currentData(), cb_size.currentData(), cb_size.currentText()
+
+    def _print_box(self, what):
+        """Druckbereich in Bildpixeln (x0, y0, x1, y1) oder None = ganzes Blatt."""
+        h, w = self.canvas.shape
+        if what == "area":
+            return self._area_bbox()
+        if what == "view":
+            c = self.canvas
+            x0, y0 = c.to_img(QPointF(0, 0))
+            x1, y1 = c.to_img(QPointF(c.width(), c.height()))
+            b = (max(0, int(x0)), max(0, int(y0)), min(w, int(np.ceil(x1))), min(h, int(np.ceil(y1))))
+            return b if b[2] > b[0] and b[3] > b[1] else None
+        return None
+
     def print_scaled(self):
-        """Drucken im Massstab: 100 % = Originalgroesse des Blatts (aus dpi), sonst Einpassen oder Prozent.
-        Ist das Papier kleiner als das Bild, wird auf mehrere Seiten verteilt."""
+        """Drucken im Massstab: 100 % = Originalgroesse des Blatts (aus dpi), sonst Einpassen oder Prozent; ganzes Blatt,
+        sichtbarer Ausschnitt oder gewaehlter Bereich. Ist das Papier zu klein, wird auf mehrere Seiten verteilt.
+        Unten auf jeder Seite steht, was und in welcher Groesse gedruckt wurde."""
         if not self._need_result():
             return
         from PySide6.QtGui import QPageLayout
         from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-        opts = [tr("Auf Papier einpassen"), tr("100 % (Originalgr\u00f6\u00dfe des Blatts)"), "50 %", "25 %", "200 %"]
-        item, ok = QInputDialog.getItem(self, tr("Drucken im Ma\u00dfstab"), tr("Gr\u00f6\u00dfe auf dem Papier:"), opts, 1, False)
-        if not ok:
+        opt = self._print_options()
+        if opt is None:
             return
+        what, factor, size_txt = opt
         mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
-        out = np.ascontiguousarray(self.export_render(mode, True, False))
+        out = self.export_render(mode, True, False)
+        box = self._print_box(what)
+        if box is not None:
+            out = out[box[1]:box[3], box[0]:box[2]]
+        out = np.ascontiguousarray(out)
         h, w = out.shape[:2]
         img = QImage(out.data, w, h, out.strides[0], QImage.Format.Format_BGR888).copy()
         pr = QPrinter(QPrinter.PrinterMode.HighResolution)
         pr.setPageOrientation(QPageLayout.Orientation.Landscape if w >= h else QPageLayout.Orientation.Portrait)
         if QPrintDialog(pr, self).exec() != QDialog.DialogCode.Accepted:
             return
+        self._print_to(pr, img, factor, size_txt)
+
+    def _print_to(self, pr, img, factor, size_txt):
+        from PySide6.QtPrintSupport import QPrinter
+        w, h = img.width(), img.height()
         pg = pr.pageRect(QPrinter.Unit.DevicePixel)
         dev_mm = pr.resolution() / 25.4
-        if item.startswith("Auf"):
-            f = min(pg.width() / w, pg.height() / h)
+        foot_h = 5 * dev_mm                                 # Fusszeile: Datei, Groesse, Massstab
+        avail_h = max(1.0, pg.height() - foot_h)
+        if factor is None:
+            f = min(pg.width() / w, avail_h / h)
         else:
-            pct = 100.0 if item.startswith("100") else float(item.split(" ")[0])
-            f = 25.4 / max(1, self.dpi_value()) * pct / 100.0 * dev_mm
-        tw, th = pg.width() / f, pg.height() / f
+            f = 25.4 / max(1, self.dpi_value()) * factor * dev_mm
+        tw, th = pg.width() / f, avail_h / f
+        name = os.path.basename(self.path_a or self.path_b or "")
+        foot = f"{APP} · {name} · {size_txt}"
+        if self.scale_n() != 1.0:
+            foot += " · " + tr("Zeichnungsmaßstab 1 : {}").format(QLocale().toString(self.scale_n(), "g", 6))
         p = QPainter(pr)
-        first = True
-        y = 0.0
-        while y < h:
-            x = 0.0
-            while x < w:
-                if not first:
+        p.setFont(QFont(UI_FONT, 7))
+        nx, ny = max(1, int(np.ceil(w / tw - 1e-9))), max(1, int(np.ceil(h / th - 1e-9)))
+        for j in range(ny):
+            for i in range(nx):
+                if i or j:
                     pr.newPage()
-                first = False
+                x, y = i * tw, j * th
                 sw, sh = min(tw, w - x), min(th, h - y)
                 p.drawImage(QRectF(0, 0, sw * f, sh * f), img, QRectF(x, y, sw, sh))
-                x += tw
-            y += th
+                part = tr("  ·  Seite {} von {}").format(j * nx + i + 1, nx * ny) if nx * ny > 1 else ""
+                p.drawText(QRectF(0, pg.height() - foot_h, pg.width(), foot_h),
+                           Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, foot + part)
         p.end()
-        self._log(tr("Gedruckt: {}").format(item))
+        self._log(tr("Gedruckt: {}").format(size_txt))
 
     def copy_view(self):
         """Sichtbaren Ausschnitt wie angezeigt (ohne Legende) in die Zwischenablage."""

@@ -17,6 +17,7 @@
 - Änderungsliste: Filter „Konturen und Maße“, Rückgängig auch für Löschen, Status und Kommentare, Neu nummerieren, Rücktaste löscht; Bericht, CSV und Bild enthalten nur die Einträge der Liste.
 - Bedienung: Doppelklick auf ein Werkzeug = Werkzeug behalten; Umschalt = waagerecht/senkrecht verschieben, Linie in 45°-Schritten, Kreis, Quadrat; Einrasten an anderen Markierungen; Ansicht wie angezeigt in die Zwischenablage; von der Startseite zurück zur Zeichnung.
 - Projekt als Container: Die Zeichnungen werden in die .zgmax-Datei eingebettet und lassen sich mit ihr verschicken; Programmversion im Projekt.
+- Ausschnitte merken (Ansicht → Ausschnitte, Strg+D) und mit einem Klick wieder anspringen; Drucken im Maßstab auch für den sichtbaren Ausschnitt oder einen gewählten Bereich, mit Fußzeile.
 - Versionen mit Änderungshistorie (Hilfe → Was ist neu).
 - Lizenz AGPL-3.0.
 - Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen.

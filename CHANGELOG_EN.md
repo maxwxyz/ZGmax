@@ -17,6 +17,7 @@
 - Change list: “Contours and dimensions” filter, undo also for delete, status and comments, renumber, Backspace deletes; report, CSV and image contain only the entries of the list.
 - Handling: double-click a tool = keep tool; Shift = move horizontally/vertically, line in 45° steps, circle, square; snapping to other markups; copy the view as shown to the clipboard; back to the drawing from the start page.
 - Project as a container: the drawings are embedded in the .zgmax file and can be sent along with it; program version stored in the project.
+- Save views (View → Saved views, Ctrl+D) and jump back with one click; print to scale also for the visible area or a selected area, with footer.
 - Versions with change history (Help → What's new).
 - License AGPL-3.0.
 - Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing.
