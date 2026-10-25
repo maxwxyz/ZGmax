@@ -1,7 +1,13 @@
 {
  "unreleased": {
-  "de": [],
-  "en": []
+  "de": [
+   "Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.",
+   "Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert."
+  ],
+  "en": [
+   "Dark theme: the folder icons on the start page (\"Choose file\") are clearly visible again after switching.",
+   "Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed."
+  ]
  },
  "releases": [
   {

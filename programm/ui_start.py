@@ -184,6 +184,11 @@ class StartPage(QWidget):
             return
         super().keyPressEvent(e)
 
+    def refresh_icons(self):
+        """Nach einem Wechsel des Farbschemas: Symbole neu zeichnen (sonst dunkel auf dunkel)."""
+        for c in (self.card_a, self.card_b):
+            c.btn.setIcon(icon("open"))
+
     def set_files(self, a, b):
         self.card_a.set_file(a)
         self.card_b.set_file(b)

@@ -1849,3 +1849,18 @@ def test_batch_folder_compare(app, win, tmp_path, monkeypatch):
     assert (out / "uebersicht.pdf").is_file() and (out / "uebersicht.csv").is_file()
     assert (out / "1000_A_diff.png").is_file() and not (out / "2000_diff.png").exists()
     dlg.close()
+
+
+def test_start_icons_follow_theme(app, win):
+    """Dunkles Farbschema: Symbole der Startseite werden hell neu gezeichnet (vorher dunkel auf dunkel)."""
+    def brightness():
+        img = win.start.card_a.btn.icon().pixmap(32, 32).toImage()
+        px = [img.pixelColor(x, y) for x in range(img.width()) for y in range(img.height())]
+        ink = [c.lightness() for c in px if c.alpha() > 128]
+        return sum(ink) / max(1, len(ink))
+    win.set_theme("light")
+    light = brightness()
+    win.set_theme("dark")
+    dark = brightness()
+    win.set_theme("light")
+    assert dark > light + 80

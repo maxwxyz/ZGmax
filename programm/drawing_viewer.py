@@ -194,6 +194,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
     def _theme_applied(self):
         self._set_color_btn(self.canvas.ann_color)
         self._refresh_icons()
+        self.start.refresh_icons()
         self.canvas.update()
 
     def make_shortcut(self):
