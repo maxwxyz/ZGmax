@@ -102,6 +102,12 @@ class LayoutMixin:
         self.act_ann_load = A(tr("Markierungen laden …"), self.ann_load)
         self.act_import_comments = A(tr("Kommentare einlesen (XFDF, PDF) …"), self.import_comments,
                                      tip=tr("Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF"))
+        self.act_export_all_ann = A(tr("PDF mit Anmerkungen – alle Seiten …"), lambda: self.export_all_pages("annpdf"),
+                                    tip=tr("Jede Seite mit ihren Markierungen (im Vergleich: Ergebnis mit Änderungen) "
+                                           "in einer PDF"))
+        self.act_export_all_report = A(tr("PDF-Änderungsbericht – alle Seiten …"),
+                                       lambda: self.export_all_pages("report"),
+                                       tip=tr("Änderungsbericht über alle Seiten in einer PDF"))
         self.act_export_measures = A(tr("Messungen und Zählung als CSV (Excel) …"), lambda: self.export_measures(),
                                      tip=tr("Alle Maße mit Wert, Einheit und Seite sowie die Anzahl je Markierungsart"))
         self.act_export_xfdf = A(tr("Markierungen als XFDF speichern …"), self.export_xfdf,
@@ -297,7 +303,8 @@ class LayoutMixin:
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
-                  self.act_vectorize, None, self.act_export_pdf, self.act_export_csv, None, self.act_print):
+                  self.act_vectorize, self.act_export_all_ann, None, self.act_export_pdf, self.act_export_all_report,
+                  self.act_export_csv, None, self.act_print):
             m.addSeparator() if a is None else m.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         m.addSeparator()
         for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf,
@@ -519,7 +526,8 @@ class LayoutMixin:
         tb.addWidget(spacer)
         save = QMenu(self)
         for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
-                  self.act_vectorize, None, self.act_export_pdf, self.act_export_csv, None, self.act_print):
+                  self.act_vectorize, self.act_export_all_ann, None, self.act_export_pdf, self.act_export_all_report,
+                  self.act_export_csv, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         save.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as):
@@ -1633,6 +1641,9 @@ class LayoutMixin:
                   self.act_crop, self.act_crop_off, self.act_clouds):
             a.setEnabled(has and not self.view_only)                  # nur im Vergleich
         self.act_align_reset.setEnabled(has and not self.view_only and getattr(self, "manual_tf", None) is not None)
+        multi = has and max(getattr(self, "n_pages_a", 1), getattr(self, "n_pages_b", 1)) > 1
+        self.act_export_all_ann.setVisible(multi)                    # nur bei mehrseitigen Dateien
+        self.act_export_all_report.setVisible(multi and not self.view_only)
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
         for b in self.seg_buttons.values():

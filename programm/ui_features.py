@@ -221,10 +221,10 @@ class FeaturesMixin:
 
         def done(out):
             self.page_summary = out
+            self._update_page_labels()
             for i, cnt in out.items():
                 it = self.list_pages.item(i - 1)
                 if it is not None:
-                    it.setText(tr("Seite {}  –  ").format(i) + (tr("{} Änderungen").format(cnt) if cnt else tr("keine Änderung")))
                     it.setForeground(QColor("#c2410c" if cnt else "#16a34a"))
             changed = [str(i) for i, c in out.items() if c]
             self.sec_pages.set_open(True)
@@ -232,6 +232,68 @@ class FeaturesMixin:
             self.banner.show_msg((tr("Geänderte Seiten: ") + ", ".join(changed)) if changed else
                                  tr("Alle Seiten sind gleich."), "info", timeout=30)
         self._run_job(work, tr("Vergleiche alle Seiten …"), done)
+
+    def _anns_of_page(self, n, single):
+        """Markierungen (Blattkoordinaten) der Seite n bzw. des Seitenpaars n:n."""
+        key = f"{n}" if single else f"{n}:{n}"
+        if key == getattr(self, "_anns_key", None):
+            st = self._state()
+            return st["anns"]
+        return copy.deepcopy(getattr(self, "page_anns", {}).get(key, []))
+
+    def export_all_pages(self, kind="annpdf"):
+        """Alle Seiten in einer PDF: 'annpdf' = Zeichnung (bzw. Vergleich) mit Markierungen als echte Kommentare,
+        'report' = Aenderungsbericht ueber alle Seiten (nur im Vergleich)."""
+        single = not (self.path_a and self.path_b) or self.view_only
+        n = self.n_pages_a if single else min(self.n_pages_a, self.n_pages_b)
+        if not self.payload:
+            return
+        if kind == "report" and single:
+            QMessageBox.information(self, APP, tr("Der Änderungsbericht braucht zwei Zeichnungen."))
+            return
+        name = "alle_seiten_bericht.pdf" if kind == "report" else "alle_seiten_anmerkungen.pdf"
+        path = self._save_dialog(tr("Alle Seiten speichern"), tr("PDF (*.pdf)"), name)
+        if not path:
+            return
+        pa, pb, dpi, mm = self.path_a or self.path_b, self.path_b, self.dpi_value(), self.canvas.mm_px
+        params = self.params().copy(ignore=[])
+        hidden = tuple(sorted(getattr(self, "pdf_off", set())))
+        anns = {i: [a for a in self._anns_of_page(i, single) if not a.get("hidden")] for i in range(1, n + 1)}
+        names = (os.path.basename(pa or ""), os.path.basename(pb or ""))
+        info = self._info()
+
+        def work(ctx):
+            import tempfile
+            import pymupdf
+            out = pymupdf.open()
+            quiet = lambda *_: None                              # noqa: E731
+            with tempfile.TemporaryDirectory() as tmp:
+                for i in range(1, n + 1):
+                    ctx.check()
+                    ctx.progress((i - 1) / n, tr("Seite {} von {}").format(i, n))
+                    if single:
+                        img = dc.read_image(pa, i, dpi, hidden)
+                        regs, res = [], None
+                    else:
+                        a = dp.ink_from_gray(dp.load_gray(pa, i, dpi), params.thr, params.flatten)
+                        b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb, i, dpi), params.thr, params.flatten),
+                                            params.align, quiet)
+                        res = dp.run_compare(a, b, params, quiet, cancel=ctx.cancelled)
+                        regs = [r for r in rep.find_regions(res) if r["typ"] != "verschoben"]
+                        img = dp.render_result(res)
+                    rep.apply_redactions(img, anns[i])
+                    f = os.path.join(tmp, f"p{i}.pdf")
+                    if kind == "report":
+                        rep.build_report(f, rep.redact_result(res, anns[i]), regs, names[0], names[1], dpi, info,
+                                         None, 40, quiet, anns=anns[i], scale_n=self.scale_n())
+                    else:
+                        rep.build_annotated_pdf(f, img, regs, anns[i], dpi, mm, names)
+                    with pymupdf.open(f) as part:
+                        out.insert_pdf(part, annots=True)
+                out.save(path, deflate=True)
+            out.close()
+            return path
+        self._run_job(work, tr("Speichere alle Seiten …"), self._saved)
 
     # ----------------------------------------------------------------- Schriftfeld
     def read_title_block(self):
@@ -561,6 +623,7 @@ class FeaturesMixin:
         self.pdf_off, self._comments_done = set(), set()
         self.crop_frame = None
         self.page_scales = {}
+        self.page_anns, self._anns_key = {}, None
         self.project_path = None
         self.restore_regs = None
         self.index_info = None

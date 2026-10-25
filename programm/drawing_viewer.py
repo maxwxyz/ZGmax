@@ -440,8 +440,61 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self.list_pages.blockSignals(True)
             self.list_pages.setCurrentRow(v - 1)
             self.list_pages.blockSignals(False)
-        if self.path_a and self.path_b:
+        if self.path_a or self.path_b:                 # auch beim Ansehen einer einzelnen mehrseitigen Datei
             self.page_timer.start(450)
+
+    # --- Markierungen je Seite
+    def _page_key(self):
+        single = not (self.path_a and self.path_b)
+        return f"{self.sp_pa.value()}" if single else f"{self.sp_pa.value()}:{self.sp_pb.value()}"
+
+    def _swap_page_anns(self):
+        """Seite gewechselt: Markierungen der bisherigen Seite beiseitelegen, die der neuen holen (Blattkoordinaten)."""
+        key = self._page_key()
+        old = getattr(self, "_anns_key", None)
+        same_page = old is not None and old.split(":")[0] == key.split(":")[0] and (":" in old) != (":" in key)
+        if old is None or old == key or same_page:     # gleiche Seite (Ansehen <-> Vergleich): Markierungen behalten
+            self._anns_key = key
+            return
+        self.canvas.reset_interaction()
+        pages = self.__dict__.setdefault("page_anns", {})
+        ox, oy = self.origin
+        cur = copy.deepcopy(self.anns)
+        for a in cur:
+            shift_ann(a, ox, oy)                           # global ablegen
+        if cur:
+            pages[old] = cur
+        else:
+            pages.pop(old, None)
+        new = copy.deepcopy(pages.pop(key, []))
+        for a in new:
+            shift_ann(a, -ox, -oy)
+        self.anns[:] = new
+        self._anns_key = key
+        self.undo_stack, self.redo_stack = [], []          # Rueckgaengig gilt je Seite; Ungespeichertes bleibt markiert
+        self._cur_state = self._state()
+        self._update_history_buttons()
+        self._ann_refresh(None)
+
+    def _update_page_labels(self):
+        """Seitenliste: Anzahl Markierungen je Seite (und Aenderungen, wenn alle Seiten verglichen wurden)."""
+        if not hasattr(self, "list_pages") or self.list_pages.count() == 0:
+            return
+        pages = getattr(self, "page_anns", {})
+        single = not (self.path_a and self.path_b)
+        for i in range(self.list_pages.count()):
+            n = i + 1
+            key = f"{n}" if single else f"{n}:{n}"
+            cnt = len(self.anns) if key == getattr(self, "_anns_key", None) else len(pages.get(key, []))
+            base = tr("Seite {}").format(n)
+            chg = getattr(self, "page_summary", {}).get(n)
+            if chg is not None:
+                base += tr("  –  ") + (tr("{} Änderungen").format(chg) if chg else tr("keine Änderung"))
+            if cnt:
+                base += tr("  ·  {} Markierungen").format(cnt)
+            it = self.list_pages.item(i)
+            if it.text() != base:
+                it.setText(base)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -717,6 +770,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
                     pdf_off=tuple(sorted(getattr(self, "pdf_off", set()))),
                     vec=(not single) and self.chk_vec.isChecked() and self.chk_vec.isEnabled(),
                     vtol=self.sp_vtol.value())
+        self._swap_page_anns()                           # Markierungen gehoeren zur Seite
         self.pending = False
         self._params_dirty = False
         self.btn_run.setText(tr("Vergleichen"))

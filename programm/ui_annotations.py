@@ -191,6 +191,8 @@ class AnnotationsMixin:
         self.next_nr = self.sp_stamp.value()
         self._sync_ann_controls()
         self._update_sums()
+        if hasattr(self, "list_pages"):
+            self._update_page_labels()
         if hasattr(self, "options_bar"):
             self._update_options()
         self.canvas.update()

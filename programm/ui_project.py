@@ -110,6 +110,8 @@ class ProjectMixin:
                            align_on=self.chk_align.isChecked()),
             "pdf_layers_off": sorted(getattr(self, "pdf_off", set())),
             "page_scales": getattr(self, "page_scales", {}),
+            "annotations_page": getattr(self, "_anns_key", None),
+            "page_annotations": getattr(self, "page_anns", {}),           # Markierungen der anderen Seiten
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -221,6 +223,7 @@ class ProjectMixin:
             quiet(self.cb_align, lambda: self.cb_align.setCurrentText(pr["align"]))
         self.pdf_off = set(data.get("pdf_layers_off") or [])
         self.page_scales = dict(data.get("page_scales") or {})
+        self.page_anns = copy.deepcopy(data.get("page_annotations") or {})
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)
@@ -241,6 +244,7 @@ class ProjectMixin:
         self.manual_tf = ma if (isinstance(ma, list) and len(ma) == 2) else None
         self.act_align_reset.setEnabled(self.manual_tf is not None)
         self.anns[:] = rep.upgrade_annotations(copy.deepcopy(data.get("annotations", [])))   # global; origin = (0, 0)
+        self._anns_key = data.get("annotations_page") or self._page_key()       # diese Markierungen: aktuelle Seite
         self.crop_frame = tuple(data["crop_frame"]) if data.get("crop_frame") else None
         self._refresh_frame()
         if data.get("approval_name"):

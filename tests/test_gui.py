@@ -804,6 +804,67 @@ def test_measure_chain_sums_export_and_page_scale(app, win, pair, tmp_path):
     assert win.scale_n() == 5.0
 
 
+def test_markups_per_page_and_all_pages_pdf(app, win, tmp_path):
+    import pymupdf
+    p = str(tmp_path / "zwei.pdf")
+    d = pymupdf.open()
+    for i in range(2):
+        pg = d.new_page(width=595, height=420)
+        pg.draw_rect(pymupdf.Rect(50 + 40 * i, 50, 300, 200), width=2)
+    d.save(p)
+    win._set_file("A", p)
+    wait(app, lambda: win.payload is not None and not win.running)
+    win._ann_created(dict(type="rect", x=100, y=100, x2=300, y2=200, text="", nr=0, color="#e11d48", size=2.0))
+    win.sp_pa.setValue(2)                                     # Seite 2: eigene (noch leere) Markierungen
+    win.page_timer.stop()
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert win.anns == [] and "1 Markierungen" in win.list_pages.item(0).text()
+    win._ann_created(dict(type="ellipse", x=50, y=50, x2=150, y2=120, text="", nr=0, color="#2563eb", size=2.0))
+    win._ann_created(dict(type="ellipse", x=250, y=50, x2=350, y2=120, text="", nr=0, color="#2563eb", size=2.0))
+    win.sp_pa.setValue(1)
+    win.page_timer.stop()
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert [a["type"] for a in win.anns] == ["rect"]
+    out = str(tmp_path / "alle.pdf")
+    win._save_dialog = lambda *a: out
+    assert win.act_export_all_ann.isVisible()
+    win.export_all_pages("annpdf")
+    wait(app, lambda: not win.running)
+    with pymupdf.open(out) as r:
+        assert r.page_count == 2
+        p0, p1 = r[0], r[1]
+        assert [a.type[1] for a in p0.annots()] == ["Square"] and len(list(p1.annots())) == 2
+    proj = str(tmp_path / "s.zgmax")                          # Projekt: Markierungen aller Seiten
+    win._save_dialog = lambda *a: proj
+    assert win.project_save(True)
+    data = json.load(open(proj))
+    assert len(data["page_annotations"]["2"]) == 2 and len(data["annotations"]) == 1
+
+
+def test_report_all_pages(app, win, tmp_path):
+    import pymupdf
+    paths = []
+    for name, dx in (("a.pdf", 0), ("b.pdf", 30)):
+        d = pymupdf.open()
+        for i in range(2):
+            pg = d.new_page(width=595, height=420)
+            pg.draw_rect(pymupdf.Rect(50, 50, 300, 200), width=2)
+            pg.draw_line((350 + dx * i, 100), (500, 300), width=2)
+        p = str(tmp_path / name)
+        d.save(p)
+        paths.append(p)
+    compare(app, win, *paths)
+    out = str(tmp_path / "bericht.pdf")
+    win._save_dialog = lambda *a: out
+    assert win.act_export_all_report.isVisible()
+    win.export_all_pages("report")
+    wait(app, lambda: not win.running, timeout=120)
+    with pymupdf.open(out) as r:
+        assert r.page_count >= 2
+
+
 def test_multipage_tiff(app, win, tmp_path):
     from PIL import Image
     from conftest import draw_sheet
