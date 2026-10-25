@@ -71,6 +71,8 @@ fingerprints of the results. If the comparison is changed on purpose: `UPDATE_GO
 * Windows (on a Windows PC with Python 3.12+ on the PATH): `packaging\build_windows.bat` → `dist\ZGmax\ZGmax.exe` and a ZIP.
 * Linux: `packaging/build_linux.sh` → `dist/ZGmax/ZGmax` and a `.tar.gz`. Runs on systems with the same processor type and
   the same or a newer glibc as the build system.
+* Quick build without the test run: `packaging/build_mac.sh --ohne-tests` (same for `build_linux.sh`;
+  Windows: `packaging\build_windows.bat ohne-tests`), or set `ZGMAX_OHNE_TESTS=1`.
 * On GitHub for all platforms: Actions → "Apps bauen" → "Run workflow" (`.github/workflows/build.yml`) builds and
   self-tests Windows x64, macOS arm64 and Linux x64 on the latest runner systems; the archives are attached to the run as
   artifacts.

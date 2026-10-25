@@ -10,6 +10,10 @@ on:
         type: choice
         default: alle
         options: [alle, Windows-x64, macOS-arm64, Linux-x64]
+      tests:
+        description: "Tests vor dem Bauen ausführen (aus = deutlich schneller; Selbsttest der App läuft immer)"
+        type: boolean
+        default: true
 jobs:
   build:
     strategy:
@@ -26,6 +30,7 @@ jobs:
     env:
       QT_QPA_PLATFORM: offscreen
       AKTIV: ${{ inputs.plattform == 'alle' || inputs.plattform == matrix.name }}
+      ZGMAX_OHNE_TESTS: ${{ inputs.tests && '0' || '1' }}
     steps:
       - uses: actions/checkout@v4
         if: env.AKTIV == 'true'

@@ -3,6 +3,7 @@
 # Voraussetzung: Python 3 mit venv. Fuer die Tests ohne Bildschirm: QT_QPA_PLATFORM=offscreen und die Qt-Grundpakete
 # (z. B. Ubuntu: libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3). Die App laeuft auf Linux-Systemen mit
 # derselben Prozessorart und einer gleich alten oder neueren glibc wie das Bau-System.
+# Aufruf mit --ohne-tests (oder ZGMAX_OHNE_TESTS=1): ohne Testlauf bauen, z. B. fuer einen schnellen Probebau.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ARCH=$(uname -m)
@@ -11,7 +12,11 @@ if [ ! -x .venv/bin/python ]; then
 fi
 .venv/bin/python -m pip install -q --upgrade pip
 .venv/bin/python -m pip install -q -r requirements-dev.txt -r requirements-ocr.txt
-QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-offscreen} .venv/bin/python -m pytest -q
+if [ "${1:-}" = "--ohne-tests" ] || [ "${ZGMAX_OHNE_TESTS:-0}" = "1" ]; then
+  echo "Tests uebersprungen (--ohne-tests)"
+else
+  QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-offscreen} .venv/bin/python -m pytest -q
+fi
 rm -rf build/pyinstaller dist/ZGmax
 .venv/bin/pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath dist packaging/zgmax.spec
 VER=$(.venv/bin/python -c "import sys; sys.path.insert(0,'programm'); import drawing_viewer as v; print(v.VERSION)")
