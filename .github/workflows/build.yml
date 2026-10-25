@@ -4,6 +4,12 @@
 name: Apps bauen
 on:
   workflow_dispatch:
+    inputs:
+      plattform:
+        description: "Welche Plattform bauen (macOS-Minuten zählen bei privaten Repos zehnfach)"
+        type: choice
+        default: alle
+        options: [alle, Windows-x64, macOS-arm64, Linux-x64]
 jobs:
   build:
     strategy:
@@ -19,18 +25,22 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen
+      AKTIV: ${{ inputs.plattform == 'alle' || inputs.plattform == matrix.name }}
     steps:
       - uses: actions/checkout@v4
+        if: env.AKTIV == 'true'
       - uses: actions/setup-python@v5
+        if: env.AKTIV == 'true'
         with:
           python-version: "3.14"    # wie beim Entwickeln getestet
       - name: Qt-Grundpakete (Linux)
-        if: runner.os == 'Linux'
+        if: env.AKTIV == 'true' && runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 \
             fonts-dejavu-core
       - name: Bauen und testen
+        if: env.AKTIV == 'true'
         shell: bash
         run: |
           case "$RUNNER_OS" in
@@ -39,6 +49,7 @@ jobs:
             Linux)   bash packaging/build_linux.sh ;;
           esac
       - name: Selbsttest der fertigen App
+        if: env.AKTIV == 'true'
         shell: bash
         run: |
           case "$RUNNER_OS" in
@@ -47,6 +58,7 @@ jobs:
             Linux)   dist/ZGmax/ZGmax --selbsttest ;;
           esac
       - uses: actions/upload-artifact@v4
+        if: env.AKTIV == 'true'
         with:
           name: ZGmax-${{ matrix.name }}
           path: |

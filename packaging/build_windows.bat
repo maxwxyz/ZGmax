@@ -4,8 +4,11 @@ rem Voraussetzung: Python 3 (python.org, "Add python.exe to PATH"). Auf einem Wi
 setlocal
 cd /d "%~dp0\.."
 if not exist .venv\Scripts\python.exe (
-  py -3 -m venv .venv || python -m venv .venv || goto :fehler
+  rem Zuerst das Python im PATH (in GitHub Actions das von setup-python); "py -3" waehlt sonst das neueste
+  rem installierte Python, fuer das es evtl. noch nicht alle Pakete gibt (z. B. onnxruntime)
+  python -m venv .venv || py -3 -m venv .venv || goto :fehler
 )
+.venv\Scripts\python --version
 .venv\Scripts\python -m pip install -q --upgrade pip || goto :fehler
 .venv\Scripts\python -m pip install -q -r requirements-dev.txt -r requirements-ocr.txt || goto :fehler
 .venv\Scripts\python -m pytest -q || goto :fehler
