@@ -86,6 +86,9 @@ class LayoutMixin:
         self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
         self.act_export_img = A(tr("Als Bild speichern (wie angezeigt) …"), self.export_image, "Ctrl+E",
                                 tr("Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF"), ico="save")
+        self.act_copy_view = A(tr("In die Zwischenablage (wie angezeigt)"), self.copy_view, "Ctrl+Shift+E",
+                               tr("Den sichtbaren Ausschnitt genau so, wie er am Bildschirm zu sehen ist, als Bild in die "
+                                  "Zwischenablage legen (ohne Legende) – z. B. zum Einfügen in E-Mail oder Präsentation"))
         self.act_export_ocrpdf = A(tr("Durchsuchbares PDF (Texterkennung) …"), lambda: self.export_searchable_pdf(),
                                    tip=tr("Zeichnung als PDF mit unsichtbarem Text: in jedem PDF-Programm durchsuchbar "
                                           "und kopierbar (Scans per Texterkennung)"))
@@ -320,7 +323,7 @@ class LayoutMixin:
             m.addAction(a)
         m.addSeparator()
         ex = m.addMenu(tr("Exportieren"))                  # alles, was eine Datei erzeugt
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+        for a in (self.act_copy_view, self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
                   self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
                   self.act_export_all_report, self.act_export_csv):
             ex.addSeparator() if a is None else ex.addAction(a)   # Bild/PDF | Zeichnung umwandeln | Bericht
@@ -583,7 +586,7 @@ class LayoutMixin:
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
         save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+        for a in (self.act_copy_view, self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
                   self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
                   self.act_export_all_report, self.act_export_csv, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
@@ -1261,8 +1264,13 @@ class LayoutMixin:
         row.addWidget(QLabel(tr("Ausrichtung")))
         row.addWidget(self.cb_align, 1)
         adv.body.addLayout(row)
-        for w in (self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_cell, self.s_maxs):
+        for w in (self.s_hatch, self.s_move, self.s_obj):
             adv.body.addWidget(w)
+        # Feinausrichtung (Kacheln) und Objekt-Drehung stellt "Automatisch einstellen" ein; im Alltag braucht sie
+        # niemand - nur noch Kommandozeile und Projektdatei. Die Regler bleiben unsichtbar als Wertespeicher.
+        for w in (self.s_rot, self.s_cell, self.s_maxs):
+            w.setParent(adv)
+            w.hide()
         self.chk_edges = QCheckBox(tr("Kantens\u00e4ume an Linien ignorieren"))
         self.chk_edges.setChecked(True)
         self.chk_edges.setToolTip(tr("1 Pixel d\u00fcnne S\u00e4ume direkt an Linien, die in beiden Zeichnungen vorkommen, "
@@ -1302,9 +1310,11 @@ class LayoutMixin:
         bl = QVBoxLayout(bottom)
         bl.setContentsMargins(12, 6, 12, 12)
         self.chk_live = QCheckBox(tr("Automatisch neu berechnen"))
-        self.chk_live.setChecked(False)
-        self.chk_live.setToolTip(tr("Nach jeder Änderung eines Reglers sofort neu vergleichen"))
-        self.expert_widgets.append(self.chk_live)
+        self.chk_live.setChecked(self.settings.value("live", "true") == "true")
+        self.chk_live.setToolTip(tr("An (Standard): jede Änderung einer Einstellung vergleicht kurz danach neu. "
+                                 "Aus: erst mit „Vergleichen“ (für sehr große Zeichnungen). Beim Ansehen einer "
+                                 "Zeichnung wirkt alles sofort."))
+        self.chk_live.toggled.connect(lambda on: self.settings.setValue("live", "true" if on else "false"))
         self.btn_run = QPushButton(tr("Vergleichen"))
         self.btn_run.setObjectName("primary")
         self.btn_run.clicked.connect(self.start_compute)
@@ -1685,7 +1695,7 @@ class LayoutMixin:
         st.setFallbacksEnabled(True)
         st.sync()
         self._reset_params()
-        for chk, on in ((self.chk_keep_tool, False), (self.chk_float_lines, True), (self.chk_live, False)):
+        for chk, on in ((self.chk_keep_tool, False), (self.chk_float_lines, True), (self.chk_live, True)):
             chk.setChecked(on)
         for act, on in ((self.act_legend, True), (self.act_clouds, False), (self.act_expert, False),
                         (self.act_layers, False)):
@@ -1748,7 +1758,7 @@ class LayoutMixin:
         self.btn_swap.setVisible(not single)
         self.btn_add_b.setVisible(single)
         self.btn_run.setVisible(not single)
-        self.chk_live.setVisible(not single and expert)
+        self.chk_live.setVisible(not single)
 
     def _update_vec_visibility(self):
         both_vec = all(self.vinfo.get(w) and self.vinfo[w]["vector"] for w in "AB")

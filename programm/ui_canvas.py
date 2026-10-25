@@ -313,6 +313,8 @@ class Canvas(QWidget):
         self.align_pts = {"A": [], "B": []}       # manuelles Ausrichten: gesetzte Punkte je Seite
         self.search_hits, self.search_cur, self.search_side = [], -1, "A"   # Textsuche
         self.preview = None                  # (QImage, (h, w)) waehrend der ersten Berechnung
+        self.preview_text = tr("Vergleich läuft …")
+        self._snapshot = False               # view_image(): nur die Zeichnung mit Markierungen malen
         self.labels = (tr("A (alt)"), tr("B (neu)"))
         self._side = "A"                     # Nebeneinander: Haelfte unter der Maus
         self._pinch = None
@@ -383,7 +385,7 @@ class Canvas(QWidget):
         self.update()
 
     def set_preview(self, img_gray, full_shape):
-        """Vorschau (verkleinerte Zeichnung A) waehrend der ersten Berechnung."""
+        """Vorschau (verkleinerte Zeichnung A) waehrend der ersten Berechnung; Text darueber: preview_text."""
         if img_gray is None:
             self.preview = None
         else:
@@ -808,7 +810,11 @@ class Canvas(QWidget):
             self._paint_float(p)
             self._paint_overlays(p, w, h)
             p.restore()
-            self._paint_legend(p)
+            if not self._snapshot:
+                self._paint_legend(p)
+        if self._snapshot:                             # Bild "wie angezeigt": ohne Legende, Uebersicht, Fadenkreuz
+            p.end()
+            return
         if self.show_overview:
             self._paint_overview(p)
         if self.tool == "zoom" and self._mouse is not None:      # blaues Fadenkreuz zum Ausrichten
@@ -822,6 +828,19 @@ class Canvas(QWidget):
         if self.loupe and self._mouse is not None and self.tool != "zone":
             self._paint_loupe(p)
         p.end()
+
+    def view_image(self):
+        """Der sichtbare Ausschnitt 1:1 wie am Bildschirm (Zoom, Ansicht, Markierungen), ohne Legende, Uebersicht,
+        Lupe und ohne die Leisten ueber dem Bild."""
+        dpr = self.devicePixelRatioF()
+        pm = QPixmap(int(QWidget.width(self) * dpr), int(QWidget.height(self) * dpr))
+        pm.setDevicePixelRatio(dpr)
+        self._snapshot = True
+        try:
+            self.render(pm, QPoint(0, 0), QRegion(), QWidget.RenderFlag.DrawWindowBackground)
+        finally:
+            self._snapshot = False
+        return pm.toImage()
 
     def _paint_float(self, p):
         """Verschobener Ausschnitt: Quelle mit Papierfarbe abgedeckt, Stueck an der neuen Stelle, gestrichelt umrandet."""
@@ -883,7 +902,7 @@ class Canvas(QWidget):
         f = QFont(UI_FONT, 13)
         f.setBold(True)
         p.setFont(f)
-        p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, tr("Vergleich l\u00e4uft \u2026"))
+        p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.preview_text)
 
     def overview_rect(self):
         """Rechteck des Uebersichtsfensters in Widget-Koordinaten oder None (nicht sichtbar)."""
@@ -1721,6 +1740,19 @@ class Canvas(QWidget):
             self._drag = ("ann",)
         self.update()
 
+    def _shift_constrain(self, start, ix, iy):
+        """Umschalt beim Zeichnen: Linie/Pfeil in 45-Grad-Schritten, Ellipse = Kreis, Rechteck/Rahmen = Quadrat."""
+        ax, ay = start
+        dx, dy = ix - ax, iy - ay
+        if self.tool in ("line", "arrow"):
+            r = math.hypot(dx, dy)
+            ang = round(math.atan2(dy, dx) / (math.pi / 4)) * (math.pi / 4)
+            return ax + r * math.cos(ang), ay + r * math.sin(ang)
+        if self.tool in ("ellipse", "rect", "cloud"):
+            m = max(abs(dx), abs(dy))
+            return ax + math.copysign(m, dx or 1), ay + math.copysign(m, dy or 1)
+        return ix, iy
+
     def mouseMoveEvent(self, e):
         pos = self._vp(e.position())
         self._mouse = e.position()
@@ -1794,6 +1826,8 @@ class Canvas(QWidget):
             self.window().statusBar().showMessage(
                 tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
         elif kind == "ann":
+            if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                ix, iy = self._shift_constrain(self._ann_prev[0], ix, iy)
             self._ann_prev = (self._ann_prev[0], (ix, iy))
         elif kind == "fhandle" and self.crop_frame is not None:
             _, name, (x0, y0, x1, y1) = self._drag

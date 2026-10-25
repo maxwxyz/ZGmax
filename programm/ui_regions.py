@@ -34,6 +34,7 @@ class RegionsMixin:
         pl["regs"][:] = [r for r in pl["regs"] if r["nr"] not in nrs]
         self.canvas.selected = None
         self._fill_table()
+        self._commit()
         self._log(tr("{} Einträge gelöscht").format(len(nrs)))
 
     def _reg_clear(self):
@@ -47,6 +48,7 @@ class RegionsMixin:
         pl["regs_done"] = True                     # leer lassen, nicht automatisch neu f\u00fcllen
         self.canvas.selected = None
         self._fill_table()
+        self._commit()
         self.canvas.update()
 
     def renumber_regs(self):
@@ -61,8 +63,7 @@ class RegionsMixin:
         self.canvas.selected = None
         self._fill_table()
         self.canvas.update()
-        self._dirty = True
-        self._update_title()
+        self._commit()
         self._log(tr("Änderungen neu nummeriert (1 bis {})").format(len(pl["regs"])))
 
     def _region_drawn(self, x, y, w, h):
@@ -87,6 +88,7 @@ class RegionsMixin:
         self.cb_filter.setCurrentIndex(0)
         self._reg_edit_dialog(regs[-1], tr("\u00c4nderung beschreiben"))
         self._fill_table()
+        self._commit()
         self._select_region_nr(nr)
 
     def _reg_edit_dialog(self, r, title=tr("\u00c4nderung bearbeiten")):
@@ -121,6 +123,7 @@ class RegionsMixin:
             if r["nr"] == nr:
                 if self._reg_edit_dialog(r):
                     self._fill_table()
+                    self._commit()
                     self._select_region_nr(nr)
                 break
 
@@ -165,7 +168,8 @@ class RegionsMixin:
 
         def done(n):
             self._fill_table()
-            self._busy(False, tr("{} Maßanderungen gefunden").format(n))
+            self._commit()
+            self._busy(False, tr("{} Maßänderungen gefunden").format(n))
             if n:
                 self.cb_filter.setCurrentIndex(self.cb_filter.findData("dims"))
         self._run_job(work, tr("Vergleiche Ma\u00dfzahlen \u2026"), done)
@@ -185,6 +189,7 @@ class RegionsMixin:
             self.act_right.setChecked(True)            # beim ersten Mal die Liste zeigen: dort geht es weiter
             self._right_auto_done = True
         self._fill_table()
+        self._commit()
         self._busy(False, tr("{} Änderungen gefunden").format(len(self.payload['regs'])))
 
     def _filter_types(self):
@@ -285,6 +290,7 @@ class RegionsMixin:
         if r:
             r["checked"] = item.checkState() == Qt.CheckState.Checked
             self.canvas.update()
+            self._commit()
             regs = self.payload["regs"]
             txt = self.lbl_summary.text().split("Gepr\u00fcft:")[0]
             self.lbl_summary.setText(txt + tr("Geprüft: {}").format(sum(1 for x in regs if x['checked'])))

@@ -109,23 +109,23 @@ def open_lines(ink, width):
     return cv2.morphologyEx((ink > 0).astype(np.uint8), cv2.MORPH_OPEN, se) > 0
 
 
-def suggest_geometry_width(ink, max_width=16, share=0.5):
-    """Linienbreite (px), ab der eine Linie als Koerperkante gilt. Koerperkanten sind die dicksten Linien der
-    Zeichnung (nach Norm etwa doppelt so breit wie Mass- und Hinweislinien, dicker als Schrift) und tragen meist den
-    groessten Teil der Linienpixel. Gesucht wird die groesste Breite, die noch die Haelfte der Linienpixel haelt;
-    die Grenze liegt knapp darunter.
-    None = keine deutlich dickeren Linien vorhanden."""
-    m = ink > 0
-    total = int(m.sum())
-    if total < 50:
-        return None
-    thick = 1
-    for k in range(2, max_width + 1):
-        if open_lines(m, k).sum() >= share * total:
-            thick = k
-        else:
-            break
-    return thick - 1 if thick >= 3 else None
+def stroke_width_hist(ink):
+    """Strichbreiten einer Rasterzeichnung: {breite_px: laenge * breite}. Gemessen auf der Mittellinie jedes Strichs
+    (Maxima der Abstandstransformation: Abstand zum Papier d, Breite etwa 2 d - 1)."""
+    m = (ink > 0).astype(np.uint8)
+    if m.sum() < 50:
+        return {}
+    d = cv2.distanceTransform(m, cv2.DIST_L2, 3)
+    ridge = (d > 0) & (d >= cv2.dilate(d, np.ones((3, 3), np.uint8)))
+    w = np.maximum(1, np.round(2 * d[ridge] - 1)).astype(np.int64)
+    return {k: float(v) * k for k, v in enumerate(np.bincount(w)) if v}
+
+
+def suggest_geometry_width(ink):
+    """Linienbreite (px), ab der eine Linie als Koerperkante gilt (Koerperkanten sind nach Norm etwa doppelt so breit
+    wie Mass- und Hinweislinien). Funktioniert auch, wenn duenne Linien und Text den groessten Teil der Zeichnung
+    ausmachen. None = keine deutlich dickeren Linien vorhanden."""
+    return geometry_width_from_strokes(stroke_width_hist(ink))
 
 
 def width_band(ink, lo=0, hi=0):
@@ -142,11 +142,31 @@ def width_band(ink, lo=0, hi=0):
     return keep.astype(np.uint8) * 255
 
 
-def resolve_band(ink, mode, lo=0, hi=0):
+def geometry_width_from_strokes(hist, min_share=0.05, ratio=1.4):
+    """Grenze zwischen duennen Linien und Koerperkanten aus einer Strichbreiten-Verteilung ({breite_px: gewicht}),
+    gemessen (stroke_width_hist) oder aus einem Vektor-PDF (diffvector.stroke_hist).
+    Koerperkanten = dickste Breite mit nennenswertem Anteil; die Grenze liegt zwischen ihr und der naechsten mindestens
+    ratio-mal duenneren. None = nur eine Strichbreite."""
+    total = sum(hist.values())
+    if total <= 0:
+        return None
+    widths = sorted(k for k, v in hist.items() if v >= min_share * total)
+    if not widths:
+        return None
+    thick = widths[-1]
+    thin = [k for k in widths if k * ratio <= thick]       # benachbarte Breiten (Rundung, Scan) sind eine Klasse
+    if not thin:
+        return None
+    return max(thin[-1] + 1, int(np.ceil((thin[-1] + thick) / 2)))
+
+
+def resolve_band(ink, mode, lo=0, hi=0, gw=None):
     """Linienfilter als (lo, hi) in Pixeln: 'contours' = ab der Breite der Koerperkanten, 'thin' = darunter
-    (beides aus der Zeichnung bestimmt), 'custom' = lo/hi, sonst (0, 0) = alle Linien."""
+    (beides aus der Zeichnung bestimmt; gw = schon bekannte Grenze, z. B. aus dem PDF), 'custom' = lo/hi,
+    sonst (0, 0) = alle Linien."""
     if mode in ("contours", "thin"):
-        gw = suggest_geometry_width(ink)
+        if gw is None:
+            gw = suggest_geometry_width(ink)
         if gw is None:                                 # keine deutlich dickeren Linien: Filter wirkt nicht
             return 0, 0
         return (gw, 0) if mode == "contours" else (0, gw - 1)

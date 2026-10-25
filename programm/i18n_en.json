@@ -1106,7 +1106,7 @@
 "{} Markierungen gelöscht (Rückgängig: Strg+Z)": "{} markups deleted (Undo: Ctrl+Z)",
 "{} Markierungen gespeichert: {}. In Acrobat: Kommentare → Importieren (zur PDF der alten Zeichnung).": "{} markups saved: {}. In Acrobat: Comments → Import (into the PDF of the old drawing).",
 "{} Markierungen und {} Änderungen gelöscht": "{} markups and {} changes deleted",
-"{} Maßanderungen gefunden": "{} dimension changes found",
+"{} Maßänderungen gefunden": "{} dimension changes found",
 "{} Treffer": "{} matches",
 "{} abgelehnte Änderungen als Zonen übernommen; sie werden nicht mehr verglichen.": "{} rejected changes turned into zones; they are no longer compared.",
 "{} geprüft, {} abgelehnt, {} offen": "{} checked, {} rejected, {} open",

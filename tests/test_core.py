@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 
+import cv2
 import numpy as np
 import pytest
 
@@ -172,7 +173,7 @@ def test_geometry_only_keeps_thick_lines():
     cv2.line(img, (500, 250), (500, 550), 0, 1)
     ink = ((img < 128) * 255).astype(np.uint8)
     m, w = de.geometry_mask(ink)
-    assert w == 4
+    assert 3 <= w <= 5
     assert m[200, 300] and m[400, 380]                     # Rahmen und Kreis
     assert not m[640:700, 180:820].any()                   # Mass, Pfeile, Zahl
     assert not m[300, 500] and not m[480, 500]             # Mittellinie im Kreis
@@ -201,3 +202,45 @@ def test_umlaut_paths(tmp_path):
     assert dc.imwrite_any(p, img)
     back = dc.read_image(p)
     assert back.shape == (50, 80, 3) and back[15, 30].max() == 0
+
+
+def _pdf_two_weights(path, thick=1.4, thin=0.35):
+    import pymupdf
+    doc = pymupdf.open()
+    pg = doc.new_page(width=420, height=300)
+    for i in range(6):                                        # Koerperkanten
+        pg.draw_line((40, 40 + i * 40), (380, 40 + i * 40), width=thick)
+    for i in range(12):                                       # Mass- und Hinweislinien
+        pg.draw_line((60 + i * 25, 30), (60 + i * 25, 270), width=thin)
+    doc.save(path)
+
+
+def test_vector_stroke_widths(tmp_path):
+    import diffedit as de
+    import diffvector as dv
+    p = str(tmp_path / "w.pdf")
+    _pdf_two_weights(p)
+    hist = dv.stroke_hist(p, 1, 200)
+    assert sorted(hist) == [1, 4]                             # 0,35 pt -> 1 px, 1,4 pt -> 4 px bei 200 dpi
+    gw = de.geometry_width_from_strokes(hist)
+    assert 2 <= gw <= 4
+    assert de.geometry_width_from_strokes({3: 100.0}) is None  # nur eine Strichbreite
+
+
+@pytest.mark.parametrize("thick,thin", [(3, 1), (5, 2), (9, 4), (25, 10)])
+def test_contour_width_dense_thin_lines(thick, thin):
+    """Auch wenn duenne Linien ueberwiegen (dicht bemasste Zeichnung), bleiben nur die Koerperkanten."""
+    import diffedit as de
+    a = np.zeros((1400, 2000), np.uint8)
+    b = a.copy()
+    for i in range(8):
+        cv2.line(a, (100, 100 + i * 150), (1800, 100 + i * 150), 255, thick)
+    for i in range(40):
+        cv2.line(b, (120 + i * 40, 80), (120 + i * 40, 1300), 255, thin)
+    ink = a | b
+    gw = de.suggest_geometry_width(ink)
+    keep = de.width_band(ink, gw, 0) > 0
+    only_a, only_b = (a > 0) & (b == 0), (b > 0) & (a == 0)
+    assert (keep & only_a).sum() > 0.98 * only_a.sum()
+    assert (keep & only_b).sum() < 0.1 * only_b.sum()
+    assert de.suggest_geometry_width(a) is None                # nur eine Strichbreite

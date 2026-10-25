@@ -313,6 +313,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         def done(how):
             n = sum(1 for r in pl["regs"] if rep.text_changed(r))
             self._fill_table()
+            self._commit()
             self._busy(False, tr("Text gelesen ({}): {} Änderungen mit geändertem Text").format(how, n))
             if n:
                 self.cb_filter.setCurrentIndex(self.cb_filter.findData("text"))
@@ -629,10 +630,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         return key in ("contours", "thin") or (key == "custom" and (self.sp_wmin.value() or self.sp_wmax.value()))
 
     def _lines_changed(self, *_):
-        """Linienfilter geaendert: Anzeige (und Vergleich) entprellt neu berechnen - auch beim Ansehen."""
+        """Linienfilter geaendert: beim Ansehen sofort neu zeichnen, im Vergleich wie jede andere Einstellung."""
         self.row_lines.setVisible(self.cb_lines.currentData() == "custom")
         self._update_mode_chip()
-        if self.path_a or self.path_b:
+        if self.path_a and self.path_b and not self.view_only:
+            self._param_changed()
+        elif self.path_a or self.path_b:
             self.debounce.start(500)
 
     def _reset_params(self):
@@ -826,6 +829,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self.banner.hide()
         if self.payload is None:
             self.stack.setCurrentWidget(self.work)
+        self.canvas.preview_text = tr("Zeichnung wird geladen …") if single else tr("Vergleich läuft …")
         self._run_job(lambda ctx: self._compute(snap, ctx),
                       tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap))
 
@@ -884,6 +888,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             log.preview((cv2.resize(ga, None, fx=k, fy=k, interpolation=cv2.INTER_AREA), ga.shape))
         if snap.get("single"):                       # nur eine Datei: anzeigen, nicht vergleichen
             a0 = dp.ink_from_gray(ga, p.thr, p.flatten)
+            p, band = dp.resolve_lines(a0, p, self._vector_gw(snap["pa"], snap["page_a"], snap["dpi"], p))
             a, _b = dp.apply_line_filter(a0, a0, p, log)
             z = np.zeros(a.shape, bool)              # calloc: kostet erst Speicher, wenn beschrieben
             res = dp.Result(a, a, z, z, a > 0, z, None)
@@ -893,7 +898,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             ca = ca if ca is not None else ga                # Original: Farbe oder Graustufen
             ca = hide_filtered(ca, a0, a)
             pc = build_color_pyramids(ca, len(pa))
-            return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc))
+            return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, ca), pc=(pc, pc),
+                        band=band)
         log.progress(0.12, tr("Lade ") + os.path.basename(snap["pb"]))
         gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"], snap.get("pdf_off", ()))
         log.check()
@@ -933,6 +939,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self.cache["color"] = (ca, cb)
             self.cache["key"] = key
         log.check()
+        p, band = dp.resolve_lines(self.cache["a"], p, self._vector_gw(snap["pa"], snap["page_a"], snap["dpi"], p))
         res = dp.run_compare(self.cache["a"], self.cache["b"], p, log, cancel=log.cancelled,
                              progress=lambda f, t: log.progress(0.3 + 0.62 * f, t))
         log.progress(0.93, tr("Erzeuge Ansichten"))
@@ -941,7 +948,23 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if res.a is not self.cache["a"]:                       # Linienfilter: auch im Original ausblenden
             ca, cb = hide_filtered(ca, self.cache["a"], res.a), hide_filtered(cb, self.cache["b"], res.b)
         return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, cb),
-                    pc=(build_color_pyramids(ca, len(pa)), build_color_pyramids(cb, len(pa))))
+                    pc=(build_color_pyramids(ca, len(pa)), build_color_pyramids(cb, len(pa))), band=band)
+
+    def _vector_gw(self, path, page, dpi, p):
+        """Koerperkantenbreite (px) aus den echten Strichbreiten eines Vektor-PDF; None = aus den Pixeln schaetzen."""
+        if p.lines not in ("contours", "thin") or not path.lower().endswith(".pdf") or not dv.available():
+            return None
+        key = ("strokes", path, page, dpi, self.cache.get("gk_" + path))
+        if self.cache.get("sk_" + path) != key:
+            try:
+                hist = dv.stroke_hist(path, page, dpi)
+            except Exception:                                   # noqa: BLE001
+                hist = {}
+            self.cache["sh_" + path], self.cache["sk_" + path] = hist, key
+        hist = self.cache["sh_" + path]
+        if sum(hist.values()) < 1000:                          # kaum Vektorlinien (z. B. eingebetteter Scan)
+            return None
+        return de.geometry_width_from_strokes(hist)
 
     def _scan_hint(self):
         """Einmal je Datei beim Ansehen einer Rasterzeichnung: schiefer Scan oder Foto eines Blatts? Dann Hinweis mit
@@ -995,6 +1018,12 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             r["regs"][:] = self.restore_regs   # Pruefstand aus dem Projekt
             r["regs_done"] = True
             self.restore_regs = None
+        if snap["params"].lines in ("contours", "thin") and r.get("band") == (0, 0):
+            self.banner.show_msg(tr("Linienfilter wirkt hier nicht: Die Zeichnung hat keine deutlich "
+                                    "unterschiedlichen Strichstärken. Es werden alle Linien gezeigt."), "info",
+                                 timeout=12)
+        self._regs_ver = getattr(self, "_regs_ver", 0) + 1    # neue Liste: Rueckgaengig beginnt fuer sie neu
+        self._cur_state = self._state()
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
         self._update_enabled()
         self._refresh_pdf_layers()

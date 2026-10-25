@@ -1496,3 +1496,76 @@ def test_deselect_region(app, win, pair):
     win.canvas.show_regs = False                                  # Rahmen ausgeblendet: Klick ins Leere hebt auf
     win.canvas._click(5, 5)
     assert win.canvas.selected is None and not win.table.selectionModel().selectedRows()
+
+
+def test_undo_change_list(app, win, pair):
+    compare(app, win, *pair)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    n = len(win.payload["regs"])
+    assert n >= 2
+    win.table.selectRow(0)
+    win._reg_delete()
+    assert len(win.payload["regs"]) == n - 1
+    win.renumber_regs()
+    win.undo()
+    win.undo()
+    assert len(win.payload["regs"]) == n and win.table.rowCount() > 0
+    win.redo()
+    assert len(win.payload["regs"]) == n - 1
+    win._select_region_nr(win.payload["regs"][0]["nr"])
+    win.review_set("abgelehnt")
+    assert win.payload["regs"][0]["status"] == "abgelehnt"
+    win.undo()
+    assert win.payload["regs"][0].get("status") != "abgelehnt"
+    win.start_compute()                                           # neu verglichen: alte Liste kommt nicht zurück
+    wait(app, lambda: not win.running)
+    win.undo()
+    assert win.payload["regs"] == [] or win.payload["regs_done"] is False
+
+
+def test_line_filter_vector_pdf_and_hint(app, win, tmp_path):
+    from test_core import _pdf_two_weights
+    p = str(tmp_path / "w.pdf")
+    _pdf_two_weights(p)
+    win._set_file("A", p)
+    wait(app, lambda: win.payload is not None and not win.running)
+    a0 = win.payload["res"].a > 0
+    win.cb_lines.setCurrentIndex(win.cb_lines.findData("contours"))
+    wait(app, lambda: not win.debounce.isActive() and not win.running)
+    a = win.payload["res"].a > 0
+    assert win.payload["band"][0] >= 2
+    col = a0[:, int(60 * 200 / 72)]                           # duenne senkrechte Linie: weg, dicke bleiben
+    assert col.sum() > 0 and a[:, int(60 * 200 / 72) - 3: int(60 * 200 / 72) + 4].sum() < col.sum()
+    assert a.sum() > 0.3 * a0.sum()
+
+
+def test_line_filter_hint_single_weight(app, win, tmp_path):
+    from PIL import Image
+    import numpy as np
+    img = np.full((400, 600), 255, np.uint8)
+    img[100:102, 50:550] = 0
+    img[200:202, 50:550] = 0
+    p = str(tmp_path / "eins.png")
+    Image.fromarray(img).save(p)
+    win._set_file("A", p)
+    wait(app, lambda: win.payload is not None and not win.running)
+    win.cb_lines.setCurrentIndex(win.cb_lines.findData("contours"))
+    wait(app, lambda: not win.debounce.isActive() and not win.running)
+    assert win.banner.isVisible() and "Strichstärken" in win.banner.lbl.text()
+
+
+def test_shift_constrain_and_copy_view(app, win, pair):
+    compare(app, win, *pair)
+    c = win.canvas
+    c.tool = "line"
+    x, y = c._shift_constrain((100, 100), 200, 110)               # fast waagerecht -> waagerecht
+    assert abs(y - 100) < 1e-6 and x > 190
+    x, y = c._shift_constrain((100, 100), 190, 180)               # fast diagonal -> 45 Grad
+    assert abs((x - 100) - (y - 100)) < 1e-6
+    c.tool = "ellipse"
+    assert c._shift_constrain((0, 0), 50, -20) == (50, -50)       # Kreis
+    win.act_legend.setChecked(True)
+    win.copy_view()
+    img = QApplication.clipboard().image()
+    assert not img.isNull() and img.width() >= c.width() and img.height() >= c.height()

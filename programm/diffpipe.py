@@ -309,6 +309,19 @@ def stage(progress, cancel, lo, hi, text):
     return tick
 
 
+def resolve_lines(a, p, gw=None):
+    """Linienfilter auf feste Grenzen festlegen (Grenze aus Zeichnung A, gw = schon bekannte Koerperkantenbreite, z. B.
+    aus dem Vektor-PDF). Rueckgabe (Params, (lo, hi)); (0, 0) = Filter wirkt nicht (keine unterschiedlichen
+    Strichstaerken) - dann laeuft alles ungefiltert."""
+    if p.lines == "all":
+        return p, (0, 0)
+    import diffedit as de
+    lo, hi = de.resolve_band(a, p.lines, p.line_min, p.line_max, gw)
+    if not lo and not hi:
+        return replace(p, lines="all"), (0, 0)
+    return replace(p, lines="custom", line_min=lo, line_max=hi), (lo, hi)
+
+
 def apply_line_filter(a, b, p, log=print):
     """Linienfilter (Params.lines) auf beide Tinten anwenden; die Breiten bestimmt Zeichnung A, damit beide Seiten
     gleich behandelt werden."""

@@ -162,6 +162,22 @@ def _shape(size_a, size_b, dpi):
     return int(round(max(size_a[1], size_b[1]) * z)), int(round(max(size_a[0], size_b[0]) * z))
 
 
+def stroke_hist(path, page, dpi):
+    """Strichbreiten der Seite in Pixeln (wie gezeichnet) mit Anteil: {breite_px: laenge_px * breite_px}.
+    Grundlage fuer den Linienfilter bei Vektor-PDF (exakt statt aus den Pixeln geschaetzt). Text und Flaechen zaehlen
+    nicht mit."""
+    z = dpi / 72.0
+    hist = {}
+    items, _size = page_items(path, page)
+    for it in items:
+        if it["kind"] not in ("l", "c"):
+            continue
+        k = max(1, int(round(it["w"] * z)))
+        length = float(np.hypot(*np.diff(it["pts"], axis=0).T).sum()) * z
+        hist[k] = hist.get(k, 0.0) + length * k
+    return hist
+
+
 def render_gray(path, page, dpi, layers=None, colors=None, shape=None):
     """Gefiltertes Graubild (255 = Papier) fuer die Rasterpipeline."""
     items, size = page_items(path, page)

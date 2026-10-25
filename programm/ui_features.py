@@ -417,8 +417,7 @@ class FeaturesMixin:
         rep.set_status(r, status)
         nr = r["nr"]
         self._fill_table()
-        self._dirty = True
-        self._update_title()
+        self._commit()
         if status == "ok":
             self.review_step(1)
         else:
@@ -437,9 +436,8 @@ class FeaturesMixin:
             if r.get("status") is None and r.get("comment"):
                 rep.set_status(r, "abgelehnt" if rep.reg_status(r) == "abgelehnt" else rep.reg_status(r))
             self._fill_table()
+            self._commit()
             self._select_region_nr(r["nr"])
-            self._dirty = True
-            self._update_title()
 
     def zones_from_rejected(self):
         """Abgelehnte Aenderungen (z. B. wiederkehrender Stempel, Datum im Schriftfeld) werden Zonen, die beim

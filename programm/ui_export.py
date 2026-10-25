@@ -115,6 +115,15 @@ class ExportMixin:
         p.end()
         self._log(tr("Gedruckt: {}").format(item))
 
+    def copy_view(self):
+        """Sichtbaren Ausschnitt wie angezeigt (ohne Legende) in die Zwischenablage."""
+        if not self._need_result():
+            return
+        img = self.canvas.view_image()
+        QGuiApplication.clipboard().setImage(img)
+        self._log(tr("Ansicht in die Zwischenablage kopiert ({} × {} px)").format(img.width(), img.height()))
+        self.statusBar().showMessage(tr("Ansicht in die Zwischenablage kopiert"), 4000)
+
     def export_image(self):
         if not self._need_result():
             return

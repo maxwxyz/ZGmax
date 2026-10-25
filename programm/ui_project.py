@@ -8,15 +8,17 @@ from ui_widgets import ApprovalDialog
 class ProjectMixin:
     """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
 
-    # --- Rueckgaengig / Wiederholen (Anmerkungen und Zonen)
+    # --- Rueckgaengig / Wiederholen (Anmerkungen, Zonen, Aenderungsliste)
     def _state(self):
         ox, oy = self.origin
         anns = copy.deepcopy(self.anns)
         for a in anns:
             shift_ann(a, ox, oy)                   # global speichern
         f = getattr(self, "crop_frame", None)
+        pl = getattr(self, "payload", None)
+        regs = copy.deepcopy(pl["regs"]) if pl and pl.get("regs_done") else None
         return {"anns": anns, "zones": [list(z) for z in self.zones], "edit": getattr(self, "_edit_ver", 0),
-                "frame": list(f) if f else None}
+                "frame": list(f) if f else None, "regs": regs, "regs_ver": getattr(self, "_regs_ver", 0)}
 
     def _reset_history(self):
         self._edits, self._edit_ver, self._edit_saved = [], 0, True      # Bildaenderungen (Ausschnitt verschieben)
@@ -61,6 +63,15 @@ class ProjectMixin:
             self._edit_goto(st.get("edit", 0))
         self._ann_refresh(None)
         self._refresh_zones()
+        pl = self.payload
+        # Aenderungsliste nur innerhalb desselben Vergleichsergebnisses zurueckholen (neu verglichen = neue Liste)
+        if pl and st.get("regs_ver") == getattr(self, "_regs_ver", 0) and st.get("regs") != (
+                pl["regs"] if pl.get("regs_done") else None):
+            pl["regs"][:] = copy.deepcopy(st["regs"] or [])
+            pl["regs_done"] = st.get("regs") is not None
+            self.canvas.selected = None
+            self._fill_table()
+            self.canvas.update()
         if zones_changed:
             self._param_changed()
         self._cur_state = copy.deepcopy(st)
