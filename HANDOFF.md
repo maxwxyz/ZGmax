@@ -1,34 +1,37 @@
 # Übergabe (Stand 2026-10-25, Cloud → lokal)
 
-Branch: `wip/ui-runde-8d9lrn` (Cloud). Basis: lokaler Branch `wip/ui-runde` (0dc3923); auf `main` liegt der letzte
-fertige Stand 786153d. Lokal weitermachen: `git fetch origin && git checkout wip/ui-runde-8d9lrn`.
+Branch: `wip/ui-runde-8d9lrn` (Cloud). Basis: lokaler Branch `wip/ui-runde`; auf `main` liegt 786153d (ZGmax vor dieser
+Runde). Lokal weitermachen: `git fetch origin && git checkout wip/ui-runde-8d9lrn`.
 
-**In dieser Cloud-Runde erledigt** (mit Tests in `tests/test_gui.py`):
-- Linienfilter-UI: Collapsible „Linien filtern“ in der linken Leiste (beide Modi), `cb_lines` (all/contours/thin/custom),
-  `sp_wmin`/`sp_wmax` (nur bei custom, `row_lines`), Änderung → `_lines_changed` → `debounce` → `start_compute()`.
-  Modus-Schild zeigt „· Linienfilter“ (`lines_active()`). Im Projekt gespeichert (`params.lines/line_min/line_max`).
-- Listenfilter „Konturen und Maße“ (`cb_filter` Schlüssel `geo`): `diffreport.mark_contours` setzt `r["contour"]`
-  in `_ensure_regs`; ohne deutlich dickere Linien gilt alles als Kontur; manuelle/alte Einträge ohne Schlüssel = Kontur.
-- „Änderungen neu nummerieren“ (Menü Vergleichen, `act_renumber`, `renumber_regs`).
-- Abwählen einer Änderung: Esc jetzt bei jedem Werkzeug, Klick ins Leere auch bei ausgeblendeten Rahmen und im
-  Werkzeug Bereich (`ui_canvas._click`, Bereich-Freigabe).
-- Bestätigungsfrage „Liste leeren“ übersetzt; fehlende Übersetzungen ergänzt (`english_check` = ENGLISH-OK).
-- Legende im Bildexport: nutzt `tr` beim Aufruf, alle Texte in `i18n_en.json` → bei englischer Oberfläche englisch.
-- Anleitungen DE/EN: Reiterreihenfolge, Zurück zur Zeichnung, Linienfilter, Doppelklick, Umschalt/Einrasten,
-  Konturen und Maße, Backspace, neu nummerieren, Abwählen, Berichte nur Liste.
+## Erledigt in der Cloud-Runde (alles mit Tests in `tests/test_gui.py` / `tests/test_core.py`)
+- Linienfilter (linke Leiste, beide Modi); Grenze aus echter Strichbreite (Vektor-PDF: `dv.stroke_hist`, Raster:
+  `de.stroke_width_hist` über Abstandstransformation, robust auch bei vielen dünnen Linien); Hinweis, wenn wirkungslos.
+- Listenfilter „Konturen und Maße“ (`r["contour"]`, `rep.mark_contours`), Änderungen neu nummerieren.
+- Rückgängig für die Änderungsliste (`_state` enthält `regs` + `regs_ver`; neuer Vergleich = neue Liste).
+- „Automatisch neu berechnen“ Standard an, einheitlich; Kachel-/Drehungsregler ausgeblendet (nur CLI/Automatik).
+- Seitennavigation: Seitenwahl oben (◀ n / N ▶), Bild auf/ab; Prüfstand je Seite (`page_regs`, im Projekt).
+- Gemerkte Ausschnitte (Strg+D, Ansicht → Ausschnitte, `page_views`, im Projekt).
+- Drucken im Maßstab: ganzes Blatt / sichtbarer Ausschnitt / Bereich, Fußzeile (`_print_options`, `_print_to`).
+- Ansicht in die Zwischenablage (wie angezeigt, ohne Legende; Strg+Umschalt+E; `Canvas.view_image`).
+- Umschalt beim Zeichnen: Linie/Pfeil 45°, Ellipse = Kreis, Rechteck/Wolke = Quadrat (`_shift_constrain`).
+- `.zgmax` als Container (ZIP mit `projekt.json` + `dateien/`, Standard an, `act_embed`); alte JSON-Projekte lesbar;
+  eingebettete Fassung, wenn Original fehlt oder anders ist (SHA-256).
+- Versionen: `programm/version.py`, `programm/CHANGELOG.json` (DE/EN), `packaging/release.py`, Hilfe → Was ist neu,
+  Hinweis nach Update, `app_version` im Projekt. Aktuelle Version 2.1 (noch nicht gebaut/getaggt).
+- Anleitungen: alle neuen Funktionen; Abschnitt „Alle Menübefehle“ automatisch (`packaging/menu_reference.py`,
+  Test `test_manual_menu_reference_up_to_date`).
+- Aufgeteilt: `ui_canvas.py` → `ui_canvas_geom.py`, `ui_canvas_snap.py`, `ui_canvas_paint.py`; `ui_layout.py` →
+  `ui_panels.py` (Seitenleisten).
+- Fixes: „Vergleich läuft“ beim Ansehen, verlorenes Loslassen (Dialog) ließ Markierung am Cursor kleben
+  (`_lost_release`), Einpassen beim Drucken in EN, Abwählen der Änderung, Texte „Markierungen entfernen“,
+  „Einzelne Zeichnung öffnen“.
+- `docs/Entstehungsgeschichte.md`: Vorlage für eine Präsentation (Daten vor 22.10. noch ergänzen).
 
-**Offen / nächste Schritte:**
-- Volle Testsuite lief in der Cloud (Ergebnis siehe Commit-Nachricht bzw. unten). Danach Merge nach `main`.
-- Lokal: `packaging/build_mac.sh`, `ZGmax --selbsttest`, Sichtprüfung (Linienfilter-Leiste, Modus-Schild, Dark Mode).
-- Antwort an den Nutzer offen: Über-Fenster auf dem Mac im Programmmenü „ZGmax → Über ZGmax“.
-- Letzte Nutzerfrage kam abgeschnitten an („gibts ein modus um farben zu …“) – nachfragen.
-- Vorschläge an den Nutzer (noch nicht beauftragt), Reihenfolge = Priorität:
-  1. Änderungsliste ins Rückgängig aufnehmen (`ui_project._state` kennt nur anns/zones/frame/edit: Löschen, Status,
-     Neu nummerieren, Liste leeren sind nicht rückgängig zu machen).
-  2. Linienfilter: Hinweis, wenn `suggest_geometry_width` None liefert (Filter wirkt nicht); bei Vektor-PDF die echte
-     Strichbreite aus dem PDF statt der Pixelheuristik; Konturen-Heuristik an echten Zeichnungen (Scans, 400 dpi) prüfen.
-  3. Neuberechnen vereinheitlichen: Linienfilter rechnet sofort, Regler nur mit „Automatisch neu berechnen“.
-  4. Expertenregler ausdünnen (Kachelgröße, Max. Kachelverschiebung, Objekt-Drehung nur CLI/Automatik).
-  5. Gespeicherte Ausschnitte (Ansichten merken), Druck eines Ausschnitts im Maßstab.
-  6. `ui_canvas.py` (2200 Z.) und `ui_layout.py` (1880 Z.) aufteilen (Werkzeuge als eigene Klassen).
-  7. Golden-Tests mit echten, anonymisierten Zeichnungen (Scan, PDF-Vektor, DXF).
+## Offen / nächste Schritte
+- Volle Testsuite: Ergebnis siehe letzte Antwort / Commit. Danach Merge nach `main`, Release:
+  `.venv/bin/python packaging/release.py` ist für 2.1 nicht nötig (2.1 steht schon in `releases`); nur Tag `v2.1` setzen
+  und bauen. Ab jetzt neue Einträge unter `unreleased`.
+- Lokal: `packaging/build_mac.sh`, `ZGmax --selbsttest`, Sichtprüfung (Seitenwahl oben, Linienfilter, Druckdialog,
+  Was ist neu, Dark Mode).
+- Ideen (nicht beauftragt): Revisionstabelle/Schriftfeld-Index gegen Änderungsliste prüfen, geführte Erst-Tour,
+  Golden-Tests mit echten anonymisierten Zeichnungen, 3D-PMI (STEP AP242/JT) als eigenes Werkzeug bewerten.
