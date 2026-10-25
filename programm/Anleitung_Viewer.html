@@ -205,6 +205,7 @@ echten Linien, bietet die Hinweisleiste zusätzlich den genaueren <a href="#form
 <tr><td>Winkel</td><td>3 Punkte: Schenkel – Scheitel – Schenkel</td><td>Grad</td></tr>
 <tr><td>Radius</td><td>3 Punkte auf dem Kreis/Bogen</td><td>Radius und Durchmesser</td></tr>
 <tr><td>Fläche</td><td>Eckpunkte, Ende wie Linienzug</td><td>mm²</td></tr>
+<tr><td>Maßkette</td><td>Punkte nacheinander anklicken, Ende wie Linienzug</td><td>je Abschnitt ein Maß, Summe in der Liste</td></tr>
 </table>
 <p><b>Einrasten:</b> Der Zeiger rastet an Linien ein (grünes Quadrat); an zwei parallelen Linien wird automatisch der
 senkrechte Abstand gemessen. <kbd>Umschalt</kbd> gedrückt = frei messen. Messungen bleiben als Maß im Bild, lassen sich mit
@@ -213,6 +214,16 @@ der Wert mittig über der Maßlinie und parallel zu ihr; bei kurzen Maßen steht
 man an seinem Punkt beliebig verschieben (dann führt eine Hinweislinie zur Messung). <i>Größe</i> ändert Zahl und Pfeile
 gemeinsam; die Zahl wächst mit dem Zoom wie auf dem Papier und wird nie unlesbar klein. <b>Einheit</b> (mm, cm, m, in)
 und <b>Stellen</b> (Nachkommastellen) stehen in der Messen-Zeile und gelten für alle Maße, die Liste und alle Exporte.</p>
+<p><b>Fangpunkte wie im CAD:</b> Neben Linien rastet der Zeiger an <b>Ecken, Schnitt- und Endpunkten</b> (Kreuz) und an
+<b>Kreismittelpunkten</b> (Kreis mit Kreuz) ein – einfach in die Nähe zeigen.</p>
+<p><b>Längen und Koordinaten eintippen:</b> Beim Messen (und bei Linienzug/Polygon) einfach lostippen; es öffnet sich ein
+Eingabefeld am Zeiger: <code>25</code> = 25 in Richtung des Mauszeigers vom letzten Punkt, <code>25&lt;30</code> = 25 unter
+30° (gegen den Uhrzeigersinn), <code>@10;5</code> = relativ zum letzten Punkt, <code>100;50</code> = absolut ab Nullpunkt.
+Einheit wie in der Messen-Zeile. <b>Nullpunkt:</b> Rechtsklick → <i>Nullpunkt hier setzen</i> (rastet ebenfalls ein); die
+Statusleiste zeigt dann x/y ab dort (y nach oben wie im CAD).</p>
+<p><b>Summen und Zählung:</b> Unter der Markierungsliste stehen Summe der Längen und Flächen sowie die Anzahl je Art – für
+die Auswahl (mehrere gewählt) oder für alle. <i>Datei → Messungen und Zählung als CSV (Excel)</i> speichert alle Maße mit
+Wert, Einheit und Seite.</p>
 <p><b>Stimmen die mm?</b> Umgerechnet wird mit <i>mm = Pixel × 25,4 ÷ dpi × Maßstab</i>. Die Auflösung liest das Programm
 aus der Datei (sonst 200 dpi).</p>
 <ul>
@@ -253,6 +264,16 @@ durchsuchbarer Text mitgespeichert. Die Originaldatei bleibt unverändert.</td><
 <p><b>Werkzeug behalten</b> (Haken in der Optionszeile): Nach dem Zeichnen bleibt das Werkzeug aktiv, z. B. für mehrere
 Pfeile nacheinander. Ohne Haken geht es zurück zur <i>Auswahl</i>, damit man das Gezeichnete gleich verschieben kann.
 Stift, Nummer und Messen bleiben immer aktiv; <kbd>Esc</kbd> beendet das Werkzeug.</p>
+<p><b>Werkzeugkasten:</b> <i>Vorlagen</i> in der Optionszeile (oder <i>Werkzeuge → Werkzeugkasten</i>) speichert das
+aktuelle Werkzeug mit Farbe und Größe als Vorlage, z. B. „Wolke rot dick“ oder „Marker grün“, und wählt es später mit
+einem Klick. <b>Eigene Stempel:</b> Im Stempel-Fenster beliebigen Text eintippen (z. B. „ZUR KENNTNIS“) und <i>Als eigenen
+Stempel merken</i>.</p>
+<p><b>Kommentare und Unterhaltung:</b> Ist genau eine Markierung gewählt, zeigt der Reiter <i>Markierungen</i> darunter
+Kommentar, Antworten und Status. <i>Antworten</i> fügt eine Antwort mit Name und Zeit hinzu; <i>Mein Status</i> setzt den
+eigenen Prüfstatus (Akzeptiert, Abgelehnt, Abgebrochen, Abgeschlossen – wie in Acrobat). Beim ersten Mal fragt das
+Programm nach dem Namen. Antworten und Status gehen in PDF mit Anmerkungen und XFDF als echte Unterhaltung mit
+(in Acrobat und Bluebeam sichtbar) und kommen beim Einlesen wieder zurück. Die Liste zeigt 💬 Anzahl der Antworten und
+die gesetzten Status.</p>
 <p>Farbe und Größe stehen in der Optionszeile; ohne Auswahl gelten sie für die nächste Markierung, mit Auswahl für die
 gewählte(n). Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die Größe ändern; Doppelklick =
 bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> = rückgängig.
@@ -300,8 +321,11 @@ und einzeln bearbeitbar zurück.</td></tr>
 <tr><td>Verschieben</td><td>In die Auswahl klicken und ziehen. Markierungen wandern immer mit; beim Ansehen einer einzelnen
 Zeichnung auch der Zeichnungsinhalt – mit <i>Nur Linien (ohne Papier)</i> nur die Linien. Die frei gewordene
 Fläche bekommt die Papierfarbe.</td></tr>
-<tr><td>Zuschneiden</td><td>Beim Ansehen: nur den Bereich behalten. Ragt der Bereich über das Blatt hinaus, wird das Blatt
-<b>vergrößert</b> (neuer Rand in Papierfarbe). Im Vergleich: nur diesen Teil vergleichen.</td></tr>
+<tr><td>Zuschneiden</td><td>Setzt einen <b>Zuschnitt-Rahmen</b> – es wird nichts gelöscht. Außerhalb ist die Zeichnung
+abgedunkelt; der Rahmen lässt sich mit <i>Auswahl</i> an den Anfassern (Ecken und Kanten) anpassen. Speichern, Drucken und
+Kopieren zeigen nur den Rahmen; ragt er über das Blatt, bekommt die Ausgabe einen Rand. Gilt auch im Vergleich.
+<i>Bearbeiten → Zuschnitt aufheben</i> entfernt ihn; beim Ansehen einer Zeichnung schneidet <i>Zuschnitt endgültig
+anwenden</i> die Zeichnung selbst zu.</td></tr>
 <tr><td>Löschen (<kbd>Entf</kbd>)</td><td>Markierungen und Änderungen in der Auswahl löschen; die Zeichnung bleibt.</td></tr>
 <tr><td>Exportieren …</td><td>Auswahl als PNG, TIFF, JPG, PDF oder SVG mit Ebenen speichern.</td></tr>
 <tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>)
@@ -329,7 +353,8 @@ fragt das Programm nach, wenn die Bearbeitung noch nicht gespeichert ist. Markie
 <tr><th>Befehl</th><th>Wirkung</th></tr>
 <tr><td>Ausschnitt verschieben</td><td>Bereich aufziehen, an die neue Stelle ziehen oder mit den Pfeiltasten schieben
 (<kbd>Umschalt</kbd> = 10 px), <kbd>Enter</kbd> = übernehmen. Gleiches geht mit dem Werkzeug <i>Bereich</i>.</td></tr>
-<tr><td>Auf Bereich zuschneiden</td><td>Nur den mit <i>Bereich</i> gewählten Teil behalten.</td></tr>
+<tr><td>Auf Bereich zuschneiden (endgültig)</td><td>Die Zeichnung selbst auf den mit <i>Bereich</i> gewählten Teil
+zuschneiden (sonst lieber den verstellbaren Zuschnitt-Rahmen nutzen).</td></tr>
 <tr><td>90° nach rechts / links, 180° drehen</td><td>Die Zeichnung selbst drehen (<kbd>R</kbd> dreht dagegen nur die Ansicht).</td></tr>
 <tr><td>Helligkeit und Kontrast …</td><td>Mit Vorschau; <i>Automatisch</i> macht graues Papier weiß und blasse Linien kräftig.</td></tr>
 <tr><td>Bildgröße und Auflösung …</td><td><i>Pixel neu berechnen</i> (Größe auf dem Papier bleibt, z. B. 600 dpi → 200 dpi
@@ -339,7 +364,9 @@ für kleinere Dateien) oder <i>Nur Auflösung ändern</i> (falsche dpi-Angabe ko
 <h2 id="ebenen">Ebenen</h2>
 <p><i>Ansicht → Ebenen</i> blendet rechts den Reiter <i>Ebenen</i> ein (sonst verborgen). Feste Ebenen, von oben nach
 unten wie sie übereinanderliegen: <i>Schwärzungen, Maße, Markierungen, Eingefügte Bilder, Änderungen, Zonen,
-Zeichnung</i>. Je Ebene ein Haken (sichtbar) und ein Schloss (gesperrt):</p>
+Zeichnung</i>. Je Ebene ein Haken (sichtbar) und ein Schloss (gesperrt). Der Reiter ist anfangs sichtbar und lässt sich
+über <i>Ansicht → Ebenen</i> ausblenden. Einzelne Markierungen blendet der Haken vor ihrem Eintrag im Reiter
+<i>Markierungen</i> aus (oder Rechtsklick → <i>Ausblenden</i>).</p>
 <ul>
 <li><b>Sichtbar</b> – ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren (z. B. die
 Zeichnung ausblenden, um nur die Markierungen zu exportieren). Ausnahme: Schwärzungen werden immer eingebrannt.</li>
@@ -399,6 +426,11 @@ vergleicht neu. <i>Manuelle Ausrichtung zurücksetzen</i> hebt das auf. Die Ausr
 <p>Bei mehrseitigen PDF/TIFF erscheint links der Bereich <i>Seiten</i> (bei PDF mit Vorschaubildern). Seite anklicken oder
 <i>Seite A / Seite B</i> einstellen; <i>A und B gemeinsam blättern</i> ist Standard. <b>Alle Seiten vergleichen</b>
 vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (rot = geändert, grün = gleich).</p>
+<p><b>Markierungen gehören zur Seite:</b> Jede Seite (im Vergleich jedes Seitenpaar) hat ihre eigenen Markierungen; beim
+Blättern bleiben sie erhalten, die Seitenliste zeigt ihre Anzahl, das Projekt speichert alle. Auch der Maßstab und die
+Kalibrierung gelten je Seite. <i>Speichern → PDF mit Anmerkungen – alle Seiten</i> legt jede Seite mit ihren Markierungen
+(im Vergleich: Ergebnis mit Änderungen) in eine PDF; <i>PDF-Änderungsbericht – alle Seiten</i> berichtet über alle
+Seitenpaare. Beide erscheinen nur bei mehrseitigen Dateien.</p>
 
 <h2 id="bereiche">Ausschnitt, Bereiche zuordnen, Zonen</h2>
 <p class="muted">Sichtbar mit <i>Ansicht → Alle Einstellungen zeigen</i>.</p>
@@ -436,6 +468,7 @@ oder nur der gewählte Bereich; DXF in mm (mit Maßstab). Text wird als Linien g
 (in Acrobat &amp; Co. anklicken, beantworten, abhaken). Wurden Änderungen gesucht, kommen die in der Liste angezeigten
 (nach dem Filter <i>Zeigen</i>) als Revisionswolken dazu; gesucht wird dafür nicht automatisch.</td></tr>
 <tr><td>PDF-Änderungsbericht</td><td>Übersicht, Liste und Detailbilder je Änderung, mit Prüfstatus und Kommentaren</td></tr>
+<tr><td>… – alle Seiten</td><td>Bei mehrseitigen Dateien: PDF mit Anmerkungen bzw. Änderungsbericht über alle Seiten</td></tr>
 <tr><td>Änderungsliste (CSV)</td><td>Für Excel: Nummer, Art, Position, Texte, Maß, Beschreibung, Status, Kommentar</td></tr>
 <tr><td>Drucken im Maßstab</td><td>100 % = Originalgröße des Blatts, auf mehrere Seiten verteilt, oder eingepasst</td></tr>
 <tr><td>Projekt (.zgmax)</td><td>Dateien, Einstellungen, Markierungen, Zonen und Prüfstand. Zieht man Projekt und Zeichnungen

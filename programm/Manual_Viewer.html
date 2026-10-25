@@ -202,6 +202,7 @@ and <i>Calibrate</i>.</p>
 <tr><td>Angle</td><td>3 points: leg – vertex – leg</td><td>degrees</td></tr>
 <tr><td>Radius</td><td>3 points on the circle/arc</td><td>radius and diameter</td></tr>
 <tr><td>Area</td><td>corner points, finish as with polyline</td><td>mm²</td></tr>
+<tr><td>Chain dimension</td><td>click points one after another, finish as with polyline</td><td>one dimension per segment, total in the list</td></tr>
 </table>
 <p><b>Snap to lines:</b> the pointer snaps to lines (green square); between two parallel lines the perpendicular distance
 is measured automatically. Hold <kbd>Shift</kbd> = measure freely. Measurements stay in the drawing as dimensions, can be
@@ -210,6 +211,16 @@ value centred above the dimension line and parallel to it; on short dimensions i
 can be dragged at its own handle (a leader line then points to the measurement). <i>Size</i> changes number and arrows
 together; the number grows with the zoom like on paper and never becomes unreadably small. <b>Unit</b> (mm, cm, m, in) and
 <b>decimals</b> are in the measure bar and apply to all measurements, the list and all exports.</p>
+<p><b>CAD snap points:</b> besides lines the pointer snaps to <b>corners, intersections and end points</b> (cross) and to
+<b>circle centres</b> (circle with cross) – just point near them.</p>
+<p><b>Typing lengths and coordinates:</b> while measuring (and for polyline/polygon) just start typing; an input field opens at
+the pointer: <code>25</code> = 25 from the last point towards the mouse pointer, <code>25&lt;30</code> = 25 at 30°
+(counter-clockwise), <code>@10;5</code> = relative to the last point, <code>100;50</code> = absolute from the origin. The unit
+is the one in the measure bar. <b>Origin:</b> right-click → <i>Set origin here</i> (snaps as well); the status bar then shows
+x/y from there (y upwards as in CAD).</p>
+<p><b>Totals and counts:</b> below the markup list are the totals of lengths and areas and the count per type – for the
+selection (several selected) or for all. <i>File → Measurements and counts as CSV (Excel)</i> saves all measurements with
+value, unit and page.</p>
 <p><b>Are the mm correct?</b> The conversion is <i>mm = pixels × 25.4 ÷ dpi × scale</i>. The program reads the
 resolution from the file (otherwise 200 dpi).</p>
 <ul>
@@ -248,6 +259,14 @@ hidden. Text underneath is not saved as searchable text. The original file stays
 <p><b>Keep tool</b> (checkbox in the options bar): the tool stays active after drawing, e.g. for several arrows in a row.
 Without it you are back in <i>Select</i>, so you can move what you just drew. Pen, Number and Measure always stay active;
 <kbd>Esc</kbd> ends the tool.</p>
+<p><b>Tool chest:</b> <i>Templates</i> in the options bar (or <i>Tools → Tool chest</i>) saves the current tool with color and
+size as a preset, e.g. "Cloud red thick" or "Highlighter green", and selects it later with one click. <b>Custom stamps:</b>
+type any text in the stamp window (e.g. "FOR INFORMATION") and choose <i>Remember as custom stamp</i>.</p>
+<p><b>Comments and discussion:</b> when exactly one markup is selected, the <i>Markups</i> tab shows its comment, replies and
+status below the list. <i>Reply</i> adds a reply with name and time; <i>My status</i> sets your own review status
+(Accepted, Rejected, Cancelled, Completed – as in Acrobat). The first time, the program asks for your name. Replies and
+status are written to PDF with annotations and XFDF as a real discussion thread (visible in Acrobat and Bluebeam) and come
+back when read in. The list shows 💬 number of replies and the statuses set.</p>
 <p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
 selected one(s). With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize;
 double-click = edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo.
@@ -291,8 +310,10 @@ The options bar shows its size and counts and offers:</p>
 rectangles; with <i>Lines only (without paper)</i> the paper too). Pasted into ZGmax, the drawing part (as an image) and the markups come back separately and editable.</td></tr>
 <tr><td>Move</td><td>Click into the selection and drag. Markups always move along; when viewing a single drawing the drawing
 content too – with <i>Lines only (without paper)</i> only the lines. The vacated area gets the paper color.</td></tr>
-<tr><td>Crop</td><td>When viewing: keep only the region. If the region extends beyond the sheet, the sheet is <b>enlarged</b>
-(new margin in paper color). In a comparison: compare only this part.</td></tr>
+<tr><td>Crop</td><td>Sets a <b>crop frame</b> – nothing is deleted. Outside it the drawing is dimmed; adjust the frame with
+<i>Select</i> at its handles (corners and edges). Save, print and copy output only the frame; if it extends beyond the
+sheet, the output gets a margin. Works in a comparison too. <i>Edit → Remove crop frame</i> removes it; when viewing a single
+drawing, <i>Apply crop permanently</i> crops the drawing itself.</td></tr>
 <tr><td>Delete (<kbd>Del</kbd>)</td><td>Delete markups and changes in the selection; the drawing stays.</td></tr>
 <tr><td>Export …</td><td>Save the selection as PNG, TIFF, JPG, PDF or SVG with layers.</td></tr>
 <tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>) and <i>Clear drawing
@@ -318,7 +339,8 @@ Markups move along with every change.</p>
 <tr><th>Command</th><th>Effect</th></tr>
 <tr><td>Move region</td><td>Drag an area, drag it to the new place or nudge it with the arrow keys (<kbd>Shift</kbd> = 10 px),
 <kbd>Enter</kbd> = apply. The <i>Region</i> tool does the same.</td></tr>
-<tr><td>Crop to region</td><td>Keep only the part selected with <i>Region</i>.</td></tr>
+<tr><td>Crop to region (permanent)</td><td>Crop the drawing itself to the part selected with <i>Region</i> (otherwise
+prefer the adjustable crop frame).</td></tr>
 <tr><td>Rotate 90° right / left, 180°</td><td>Rotate the drawing itself (<kbd>R</kbd> only rotates the view).</td></tr>
 <tr><td>Brightness and contrast …</td><td>With preview; <i>Automatic</i> makes gray paper white and faint lines strong.</td></tr>
 <tr><td>Image size and resolution …</td><td><i>Resample pixels</i> (size on paper stays, e.g. 600 dpi → 200 dpi for smaller
@@ -326,7 +348,8 @@ files) or <i>Change resolution only</i> (correct a wrong dpi value; the mm value
 </table>
 
 <h2 id="layers">Layers</h2>
-<p><i>View → Layers</i> shows the <i>Layers</i> tab on the right (hidden otherwise). Fixed layers, from top to bottom as
+<p>The <i>Layers</i> tab on the right is shown by default (<i>View → Layers</i> hides it). Single markups are hidden with the
+checkbox in front of their entry in the <i>Markups</i> tab (or right-click → <i>Hide</i>). Fixed layers, from top to bottom as
 they lie on each other: <i>Redactions, Dimensions, Markups, Pasted images, Changes, Zones, Drawing</i>. Each has a checkbox
 (visible) and a lock:</p>
 <ul>
@@ -385,6 +408,11 @@ The alignment is saved in the project.</p>
 <p>For multi-page PDF/TIFF files the section <i>Pages</i> appears on the left (with thumbnails for PDFs). Click a page or
 set <i>Page A / Page B</i>; <i>Turn pages of A and B together</i> is the default. <b>Compare all pages</b> compares every page
 and writes the number of changes per page into the list (red = changed, green = identical).</p>
+<p><b>Markups belong to the page:</b> each page (in a comparison each page pair) has its own markups; they are kept while
+turning pages, the page list shows their count and the project saves all of them. Scale and calibration also apply per
+page. <i>Save → PDF with annotations – all pages</i> puts every page with its markups (in a comparison: the result with
+changes) into one PDF; <i>PDF change report – all pages</i> reports on all page pairs. Both appear only for multi-page
+files.</p>
 
 <h2 id="regions">Region, matching areas, zones</h2>
 <p class="muted">Visible with <i>View → Show all settings</i>.</p>
@@ -422,6 +450,7 @@ region; DXF in mm (with scale). Text is drawn as lines, not recognized as text.<
 tick them off in Acrobat &amp; co.). If changes were searched, those shown in the list (after the <i>Show</i> filter) are
 added as revision clouds; it does not search by itself.</td></tr>
 <tr><td>PDF change report</td><td>Overview, list and detail images for each change, with review status and comments</td></tr>
+<tr><td>… – all pages</td><td>For multi-page files: PDF with annotations or change report over all pages</td></tr>
 <tr><td>List of changes (CSV)</td><td>For Excel: number, type, position, texts, dimension, description, status, comment</td></tr>
 <tr><td>Print to scale</td><td>100 % = actual sheet size, spread over several pages, or fitted</td></tr>
 <tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones and review state. If you move the project together with the
