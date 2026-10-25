@@ -166,6 +166,9 @@ class RegionsMixin:
         self.act_overlays.setChecked(True)
         self.chk_regs.setChecked(True)
         self.tabs.setCurrentIndex(0)
+        if self.payload["regs"] and not self.act_right.isChecked() and not getattr(self, "_right_auto_done", False):
+            self.act_right.setChecked(True)            # beim ersten Mal die Liste zeigen: dort geht es weiter
+            self._right_auto_done = True
         self._fill_table()
         self._busy(False, tr("{} Änderungen gefunden").format(len(self.payload['regs'])))
 
@@ -187,6 +190,7 @@ class RegionsMixin:
                 and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
     def _fill_table(self):
+        self._update_review_enabled()
         pl = self.payload
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()

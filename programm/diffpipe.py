@@ -106,8 +106,8 @@ def page_count(path):
     ext = os.path.splitext(path)[1].lower()
     try:
         if ext in dc.VECTOR_EXT:
-            import pymupdf
-            with pymupdf.open(path) as d:
+            from pdfopen import open_doc
+            with open_doc(path) as d:
                 return max(1, d.page_count)
         if ext in {".tif", ".tiff", ".gif"}:
             from PIL import Image

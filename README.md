@@ -66,7 +66,11 @@ fingerprints of the results. If the comparison is changed on purpose: `UPDATE_GO
 * macOS (on a Mac): `packaging/build_mac.sh` → `dist/ZGmax.app` and a ZIP. Runs on Macs with the same processor type
   as the build Mac (Apple silicon or Intel).
 * Windows (on a Windows PC with Python 3.12+ on the PATH): `packaging\build_windows.bat` → `dist\ZGmax\ZGmax.exe` and a ZIP.
-* Automatically for all platforms: push to GitHub; `.github/workflows/build.yml` builds on every tag `v*` or manually.
+* Linux: `packaging/build_linux.sh` → `dist/ZGmax/ZGmax` and a `.tar.gz`. Runs on systems with the same processor type and
+  the same or a newer glibc as the build system.
+* On GitHub for all platforms: Actions → "Apps bauen" → "Run workflow" (`.github/workflows/build.yml`) builds and
+  self-tests Windows x64, macOS arm64 and Linux x64 on the latest runner systems; the archives are attached to the run as
+  artifacts.
 
 The app is self-contained (Python, manuals, OCR model, translations). Check a build with `ZGmax --selbsttest`.
 Package versions are pinned in `requirements*.txt`; change them only together and after a test run.

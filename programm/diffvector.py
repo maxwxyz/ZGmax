@@ -6,13 +6,14 @@ Alle Bilder entstehen im Format der Rasterpipeline: uint8, 255 = Papier, 0 = Tin
 bzw. uint8 0/255 Tinte (vector_diff).
 """
 from i18n import tr
+from pdfopen import open_doc
 import numpy as np
 import cv2
 
-try:
-    import pymupdf
-except ImportError:                                  # pragma: no cover
-    pymupdf = None
+import importlib.util
+
+# PyMuPDF wird erst beim ersten Oeffnen geladen (schnellerer Programmstart); hier nur pruefen, ob es da ist
+pymupdf = True if importlib.util.find_spec("pymupdf") else None
 
 
 def available():
@@ -54,7 +55,7 @@ def page_items(path, page=1):
     if pymupdf is None:
         raise RuntimeError(tr("PyMuPDF fehlt: pip install pymupdf"))
     items = []
-    with pymupdf.open(path) as doc:
+    with open_doc(path) as doc:
         pg = doc[max(0, min(page, doc.page_count) - 1)]
         size = (pg.rect.width, pg.rect.height)
         try:
@@ -248,7 +249,7 @@ def text_lines(path, page=1, dpi=200):
         return []
     k = dpi / 72.0
     lines = {}
-    with pymupdf.open(path) as doc:
+    with open_doc(path) as doc:
         pg = doc[max(0, min(page, doc.page_count) - 1)]
         for x0, y0, x1, y1, w, blk, ln, _wn in pg.get_text("words"):
             lines.setdefault((blk, ln), []).append((x0, y0, x1, y1, w))
@@ -266,7 +267,7 @@ def title_block_words(path, page=1, box=(0.5, 0.62)):
     """Woerter im Schriftfeld (rechts unten): Liste (x, y, text) in pt, in Lesereihenfolge."""
     if pymupdf is None:
         return []
-    with pymupdf.open(path) as doc:
+    with open_doc(path) as doc:
         pg = doc[max(0, min(page, doc.page_count) - 1)]
         W, H = pg.rect.width, pg.rect.height
         words = pg.get_text("words")

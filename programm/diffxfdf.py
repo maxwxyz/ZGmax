@@ -8,7 +8,13 @@ to_annotations() macht daraus Markierungen des Programms (Bildpixel bei 'dpi').
 import datetime as _dt
 import re
 import xml.etree.ElementTree as ET
-from xml.sax.saxutils import escape
+
+
+def escape(text):
+    """Fuer XML-Text und Attributwerte in "...": auch Anfuehrungszeichen (sonst bricht ein Name mit " die Datei)."""
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;").replace("'", "&apos;"))
+
 
 XFDF_NS = "http://ns.adobe.com/xfdf/"
 _KIND = {"square": "rect", "circle": "ellipse", "line": "line", "polygon": "polygon", "polyline": "polyline",
@@ -91,7 +97,8 @@ def pdf_comments(path, page=1):
              "FreeText": "text", "Text": "note", "Highlight": "highlight", "Underline": "highlight",
              "StrikeOut": "highlight", "Squiggly": "highlight", "Ink": "ink", "Stamp": "stamp"}
     out, skipped = [], 0
-    with pymupdf.open(path) as doc:
+    from pdfopen import open_doc
+    with open_doc(path) as doc:
         pg = doc[max(0, min(page, doc.page_count) - 1)]
         for a in pg.annots() or []:
             t = a.type[1]

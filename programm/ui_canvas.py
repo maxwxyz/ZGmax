@@ -247,6 +247,7 @@ class Canvas(QWidget):
     viewChanged = Signal(float)              # Zoom geaendert (Massstab Bild -> Bildschirm)
     zoomBoxDone = Signal()                   # einmaliger Zoom-Rahmen fertig -> voriges Werkzeug
     filesDropped = Signal(list)
+    straightenLine = Signal(float, float, float, float)   # Kante nachgezeichnet (gerade ausrichten)
     alignPoint = Signal(str, float, float)   # manuelles Ausrichten: Seite ("A"/"B") und Bildpunkt
 
     def __init__(self):
@@ -1385,8 +1386,12 @@ class Canvas(QWidget):
                 self._paint_ann(p, a, i in chosen)
         if self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
-            self._paint_ann(p, dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
-                                    color=self.ann_color, size=self.ann_size))
+            if self.tool == "straighten":                 # nachgezeichnete Kante: duenne blaue Linie
+                p.setPen(QPen(QColor(ACCENT), 2))
+                p.drawLine(QPointF(*self.to_wid(ax, ay)), QPointF(*self.to_wid(bx, by)))
+            else:
+                self._paint_ann(p, dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
+                                        color=self.ann_color, size=self.ann_size))
         if self._pen:
             self._paint_ann(p, dict(type="pen", pts=self._pen, x=0, y=0, x2=0, y2=0, text="", nr=0,
                                     color=self.ann_color, size=self.ann_size))
@@ -1708,7 +1713,8 @@ class Canvas(QWidget):
             self._drag = ("pen",)
         elif left and self.tool in ("polyline", "polygon"):
             self.poly.append([ix, iy])
-        elif left and self.tool in ("rect", "arrow", "cloud", "highlight", "ellipse", "line", "redact", "pixelate"):
+        elif left and self.tool in ("rect", "arrow", "cloud", "highlight", "ellipse", "line", "redact", "pixelate",
+                                    "straighten"):
             self._ann_prev = ((ix, iy), (ix, iy))
             self._drag = ("ann",)
         self.update()
@@ -1928,7 +1934,10 @@ class Canvas(QWidget):
         elif kind == "ann" and self._ann_prev:
             (ax, ay), (bx, by) = self._ann_prev
             self._ann_prev = None
-            if abs(bx - ax) + abs(by - ay) > 8 / self.scale:
+            if self.tool == "straighten":
+                if abs(bx - ax) + abs(by - ay) > 8 / self.scale:
+                    self.straightenLine.emit(ax, ay, bx, by)
+            elif abs(bx - ax) + abs(by - ay) > 8 / self.scale:
                 if self.tool in rep.RECT_TYPES:
                     ax, bx, ay, by = min(ax, bx), max(ax, bx), min(ay, by), max(ay, by)
                 color = "#facc15" if self.tool == "highlight" and self.ann_color == "#e11d48" else self.ann_color

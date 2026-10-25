@@ -511,6 +511,187 @@ def test_sheet_crop_rotate_adjust_size(app, win, tmp_path, monkeypatch):
     assert win.payload["res"].a.shape == (400, 600) and win.anns[0]["x"] == 110 and win.dpi_value() == dpi0
 
 
+
+def _scan_drawing():
+    import cv2
+    import numpy as np
+    W, H = 1200, 850
+    img = np.full((H, W), 255, np.uint8)
+    cv2.rectangle(img, (40, 40), (W - 40, H - 40), 0, 3)
+    cv2.rectangle(img, (W - 400, H - 180), (W - 40, H - 40), 0, 2)
+    for i in range(6):
+        cv2.line(img, (90, 110 + 90 * i), (760, 110 + 90 * i), 0, 2)
+    cv2.circle(img, (950, 330), 110, 0, 2)
+    return img
+
+
+def test_scan_functions():
+    """Hintergrund ausgleichen, Schraeglage erkennen, Blatt im Foto finden und entzerren."""
+    import cv2
+    import numpy as np
+    import diffedit as de
+    img = _scan_drawing()
+    H, W = img.shape
+    rot, fn = de.rotate_angle_images([img], -2.5)
+    assert abs(de.skew_angle(rot[0]) - 2.5) < 0.2
+    assert abs(de.line_angle(0, 0, 100, 5.24) - 3.0) < 0.01         # waagerecht nachgezeichnet
+    assert abs(de.line_angle(0, 0, 5.24, -100) - 3.0) < 0.01        # senkrecht nachgezeichnet
+    back, _ = de.rotate_angle_images(rot, 2.5)
+    assert de.skew_angle(back[0]) is None or abs(de.skew_angle(back[0])) < 0.2
+    yy, xx = np.mgrid[0:H, 0:W]
+    shade = 190 + 40 * np.sin(xx / 140.0) * np.cos(yy / 210.0) - 50 * (xx / W)
+    scan = np.clip(img / 255.0 * shade * np.where(np.abs(xx - yy - 150) < 3, 0.8, 1.0), 0, 255).astype(np.uint8)
+    flat = de.flatten_background([scan], 50)[0]
+    paper = img == 255
+    assert (flat[paper] < 230).mean() < 0.01 and flat[~paper].mean() < 60   # Papier weiss, Linien bleiben
+    tinted = de.flatten_background([cv2.cvtColor(scan, cv2.COLOR_GRAY2BGR)], 50, (200, 230, 255))[0]
+    assert np.abs(np.median(tinted[paper], axis=0) - (200, 230, 255)).max() <= 2
+    dst = np.float32([(160, 110), (1420, 60), (1480, 1050), (110, 1000)])
+    m = cv2.getPerspectiveTransform(np.float32([(0, 0), (W, 0), (W, H), (0, H)]), dst)
+    photo = cv2.warpPerspective(img, m, (1600, 1150), dst=np.full((1150, 1600), 70, np.uint8),
+                                borderMode=cv2.BORDER_TRANSPARENT)
+    assert de.scan_hint(photo)[0] == "photo" and de.scan_hint(img) is None
+    assert de.scan_hint(rot[0])[0] == "skew"
+    q = de.find_sheet_quad(photo)
+    assert np.abs(q - dst).max() < 8
+    size, mm_px = de.warp_size(q, "A4")
+    assert size[0] > size[1] and abs(size[0] / size[1] - 297 / 210) < 0.01 and mm_px
+    out, f = de.warp_quad([photo], q, de.warp_size(q)[0])
+    assert (np.abs(cv2.resize(out[0], (W, H)).astype(int) - img) > 128).mean() < 0.05
+    x, y = f(*q[2])
+    assert abs(x - out[0].shape[1]) < 2 and abs(y - out[0].shape[0]) < 2
+
+
+def test_sheet_scan_cleanup(app, win, tmp_path, monkeypatch):
+    """Scan aufbereiten im Programm: gerade (Dialog und Linie), entzerren mit Format, Hintergrund; alles rueckgaengig."""
+    import cv2
+    import numpy as np
+    import diffedit as de
+    import ui_edit
+    img = de.rotate_angle_images([_scan_drawing()], -2.0)[0][0]
+    p = tmp_path / "schief.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.act_straighten.isEnabled() and win.act_perspective.isEnabled() and win.act_background.isEnabled()
+    wait(app, lambda: win.banner.isVisible(), 5)              # Hinweis "liegt schief" mit Knopf
+    assert win.banner.btn_action.isVisible() and "schief" in win.banner.lbl.text()
+    win._ann_created(dict(type="rect", x=300, y=300, x2=400, y2=380, text="", nr=0, color="#e11d48", size=2.0))
+    shape0, dpi0 = win.payload["res"].a.shape, win.dpi_value()
+    seen = {}
+    monkeypatch.setattr(ui_edit.StraightenDialog, "exec", lambda d: (seen.setdefault("auto", d.auto), 1)[-1])
+    win.sheet_straighten()
+    wait(app, lambda: not win.running)
+    assert abs(seen["auto"] - 2.0) < 0.2
+    assert win.payload["res"].a.shape != shape0 and win.anns[0]["x"] != 300   # Markierung wandert mit
+    assert abs(de.skew_angle(win.cache["g_" + str(p)]) or 0) < 0.2
+    win.undo()
+    wait(app, lambda: not win.running)
+    monkeypatch.setattr(ui_edit.StraightenDialog, "exec", lambda d: ui_edit.StraightenDialog.LINE)
+    win.sheet_straighten()                                    # "An Linie nachzeichnen" -> Werkzeug
+    assert win.canvas.tool == "straighten"
+    win.canvas.straightenLine.emit(0.0, 0.0, 1000.0, 34.9)    # Kante, 2 Grad im Uhrzeigersinn geneigt
+    wait(app, lambda: not win.running)
+    assert win.canvas.tool == "hand" and abs(de.skew_angle(win.cache["g_" + str(p)]) or 0) < 0.3
+    win.undo()
+    wait(app, lambda: not win.running)
+
+    def persp(d):
+        d.cb_fmt.setCurrentIndex(d.cb_fmt.findData("A4"))
+        h, w = d.small.shape[:2]
+        d._set_quad(np.float32([(0, 0), (w, 0), (w, h), (0, h)]))
+        return 1
+    monkeypatch.setattr(ui_edit.PerspectiveDialog, "exec", persp)
+    win.sheet_perspective()
+    wait(app, lambda: not win.running)
+    h, w = win.payload["res"].a.shape
+    assert abs(w * 25.4 / win.dpi_value() - 297) < 1 and abs(h * 25.4 / win.dpi_value() - 210) < 1   # A4 quer
+    monkeypatch.setattr(ui_edit.BackgroundDialog, "exec", lambda d: (d.s_str.setValue(60), 1)[-1])
+    win.sheet_background()
+    wait(app, lambda: not win.running)
+    for _ in range(2):
+        win.undo()
+        wait(app, lambda: not win.running)
+    assert win.payload["res"].a.shape == shape0 and win.dpi_value() == dpi0 and win.anns[0]["x"] == 300
+
+
+def test_mode_ui(app, win, pair, tmp_path):
+    """Modus erkennbar und nur Passendes aktiv: Startseite, Ansehen, Vergleich (vor/nach Aenderungen suchen)."""
+    import cv2
+    assert not win.act_mode_chip.isVisible() and not win.act_legend.isEnabled()
+    assert not any(a.isVisible() for a in win.tb_zoom_actions)            # Startseite: keine toten Knoepfe
+    img = cv2.imread(pair[0])
+    p = tmp_path / "Sehr_langer_Dateiname_einer_Zeichnung_mit_Revision_C_final.png"
+    cv2.imwrite(str(p), img)
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.act_mode_chip.isVisible() and win.mode_chip.text().startswith("Ansehen:")
+    assert win.act_compare_with_tb.isVisible() and not win.mode_actions["D"].isVisible()
+    assert win.sec_sens.isHidden() and win.btn_swap.isHidden() and not win.btn_add_b.isHidden()
+    assert win.act_straighten.isEnabled() and not win.act_find.isEnabled()
+    win._set_file("B", pair[1])
+    wait(app, lambda: not win.view_only and win.payload is not None and not win.running)
+    t = win.mode_chip.text()
+    assert t.startswith("Vergleich:") and "…" in t                       # langer Name gekuerzt, Modus lesbar
+    assert not win.act_compare_with_tb.isVisible() and win.mode_actions["D"].isVisible()
+    assert not win.sec_sens.isHidden() and win.btn_add_b.isHidden() and not win.act_straighten.isEnabled()
+    assert not win.act_next.isEnabled() and not win.act_pages.isEnabled()  # vor dem Suchen / nur eine Seite
+    win._param_changed()
+    assert win.mode_chip.text().startswith("●")
+    m = win.mode_chip.menu()
+    win._fill_chip_menu(m)
+    assert win.act_compare in m.actions()
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    assert win.act_next.isEnabled() and win.act_right.isChecked()         # Liste geht beim ersten Mal auf
+
+
+def test_awkward_inputs(tmp_path):
+    """Transparenz wird weisses Papier (nicht schwarz), 16 Bit/Graustufen werden 8-Bit-BGR; leere, kaputte und
+    passwortgeschuetzte Dateien geben verstaendliche Meldungen, ein Passwort entsperrt die PDF."""
+    import cv2
+    import numpy as np
+    import pymupdf
+    import diffcore as dc
+    import pdfopen
+    img = np.full((60, 80), 255, np.uint8)
+    cv2.line(img, (5, 30), (75, 30), 0, 3)
+    rgba = np.dstack([np.zeros_like(img)] * 3 + [np.where(img < 128, 255, 0).astype(np.uint8)])
+    cv2.imwrite(str(tmp_path / "t.png"), rgba)                 # schwarze Linie auf durchsichtigem Grund
+    t = dc.read_image(str(tmp_path / "t.png"))
+    assert t.shape == (60, 80, 3) and t[5, 5].tolist() == [255, 255, 255] and t[30, 40].max() < 30
+    cv2.imwrite(str(tmp_path / "w.tif"), img.astype(np.uint16) * 257)
+    w = dc.read_image(str(tmp_path / "w.tif"))
+    assert w.dtype == np.uint8 and w.shape == (60, 80, 3) and w[5, 5, 0] == 255
+    (tmp_path / "leer.png").write_bytes(b"")
+    (tmp_path / "kaputt.pdf").write_bytes(b"%PDF-1.4 kaputt")
+    for name, word in (("leer.png", "leer"), ("kaputt.pdf", "beschädigt")):
+        with pytest.raises(dc.DiffError) as e:
+            dc.read_image(str(tmp_path / name))
+        assert word in str(e.value) and "Error" not in str(e.value).split("(")[0]
+    d = pymupdf.open()
+    d.new_page().insert_text((72, 72), "Geheim")
+    pw = str(tmp_path / "pw.pdf")
+    d.save(pw, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="u", owner_pw="o")
+    d.close()
+    assert pdfopen.needs_password(pw)
+    with pytest.raises(dc.DiffError):
+        dc.read_image(pw)
+    assert not pdfopen.try_password(pw, "falsch") and pdfopen.try_password(pw, "u")
+    assert not pdfopen.needs_password(pw) and dc.read_image(pw).shape[2] == 3
+
+
+def test_xfdf_quotes(tmp_path):
+    """Anfuehrungszeichen und <&> in Name, Text und Antworten zerstoeren die XFDF-Datei nicht."""
+    import diffxfdf as dx
+    a = dict(type="rect", x=10, y=10, x2=60, y2=40, text='Bohrung "Ø12" <prüfen> & Co', nr=0, color="#e11d48",
+             size=2.0, author='Max "M." O\'Neil', id='id"1', replies=[dict(author='A "B"', date="", text='ok "so"')])
+    p = str(tmp_path / "q.xfdf")
+    dx.write_xfdf(p, [a], 200 / 72.0, 842)
+    items = dx.parse_xfdf(p, 842)[0]                        # wirft bei kaputtem XML
+    assert any('"Ø12"' in (i.get("text") or "") for i in items)
+    assert any(i.get("author") == 'Max "M." O\'Neil' for i in items)
+
 def test_searchable_pdf_and_vectorize(app, win, tmp_path, monkeypatch):
     import cv2
     import numpy as np

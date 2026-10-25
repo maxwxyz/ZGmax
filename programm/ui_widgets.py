@@ -151,6 +151,123 @@ class PanelScroll(QScrollArea):
         return QSize(max(self.min_width, w), 120)
 
 
+class ElideLabel(QLabel):
+    """Einzeiliger Text, der bei Platzmangel in der Mitte gekuerzt wird (lange Dateinamen); text() und der
+    Tooltip liefern den ganzen Text. Die Seitenleiste wird dadurch nicht breiter."""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(parent)
+        self._full = ""
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(40)
+        self.setText(text)
+
+    def setText(self, text):
+        self._full = text or ""
+        self.setToolTip(self._full)
+        self._elide()
+
+    def text(self):
+        return self._full
+
+    def _elide(self):
+        w = max(20, self.contentsRect().width() - 4)
+        QLabel.setText(self, self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideMiddle, w))
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._elide()
+
+
+class FlowLayout(QLayout):
+    """Reihe, die bei Platzmangel in die naechste Zeile umbricht (Optionsleiste ueber schmalem Bild), statt
+    Knoepfe abzuschneiden. Kinder mit eigener Umbruch-Hoehe (z. B. eine Gruppe mit FlowLayout) werden auf die
+    verfuegbare Breite begrenzt; ein Kind mit horizontaler Groesse 'Ignored' (Hinweistext) fuellt den Rest der
+    Zeile oder bekommt eine eigene."""
+
+    def __init__(self, parent=None, spacing=8):
+        super().__init__(parent)
+        self._items = []
+        self.setSpacing(spacing)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, i):
+        return self._items[i] if 0 <= i < len(self._items) else None
+
+    def takeAt(self, i):
+        return self._items.pop(i) if 0 <= i < len(self._items) else None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._do(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do(rect, False)
+
+    def sizeHint(self):
+        """Alles in einer Zeile."""
+        m = self.contentsMargins()
+        vis = [it for it in self._items if not it.isEmpty() and not self._filler(it)]
+        w = sum(it.sizeHint().width() for it in vis) + self.spacing() * max(0, len(vis) - 1)
+        h = max([it.sizeHint().height() for it in vis] or [0])
+        return QSize(w + m.left() + m.right(), h + m.top() + m.bottom())
+
+    def minimumSize(self):
+        m = self.contentsMargins()
+        w = max([it.minimumSize().width() for it in self._items if not it.isEmpty()] or [0])
+        h = max([it.minimumSize().height() for it in self._items if not it.isEmpty()] or [0])
+        return QSize(w + m.left() + m.right(), h + m.top() + m.bottom())
+
+    @staticmethod
+    def _filler(item):
+        w = item.widget()
+        return w is not None and w.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Ignored
+
+    def _do(self, rect, test):
+        m = self.contentsMargins()
+        r = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        sp = self.spacing()
+        avail = max(1, r.width())
+        lines, line, x = [], [], 0
+        for it in self._items:
+            if it.isEmpty():
+                continue
+            hint = it.sizeHint()
+            if self._filler(it):                          # Hinweis: Rest der Zeile, sonst eigene Zeile
+                rest = avail - x - (sp if line else 0)
+                wdt = rest if rest >= 160 else avail
+            else:
+                wdt = min(hint.width(), avail)
+            if line and x + sp + wdt > avail:
+                lines.append(line)
+                line, x = [], 0
+            h = it.heightForWidth(wdt) if it.hasHeightForWidth() else hint.height()
+            line.append((it, x + (sp if line else 0), wdt, max(h, 0)))
+            x += (sp if len(line) > 1 else 0) + wdt
+        if line:
+            lines.append(line)
+        y = r.y()
+        for ln in lines:
+            lh = max(h for *_r, h in ln)
+            if not test:
+                for it, lx, wdt, h in ln:
+                    it.setGeometry(QRect(r.x() + lx, y + (lh - h) // 2, wdt, h))
+            y += lh + sp
+        return (y - sp - r.y() if lines else 0) + m.top() + m.bottom()
+
+
 class OverlayHost(QWidget):
     """Legt Leisten oben ueber ein Widget, statt es nach unten zu schieben: Ein- und Ausblenden
     der Leisten aendert die Groesse des Bilds nicht, die Zeichnung bleibt stehen."""

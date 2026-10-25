@@ -1,5 +1,5 @@
 """Zeichnung bearbeiten: Ausschnitt verschieben, Auswahl kopieren (auch nur Linien oder nur Geometrie), zuschneiden,
-drehen, Helligkeit, Bildgroesse und Vektorisieren (Pixel -> Linien fuer SVG, PDF, DXF).
+drehen, Helligkeit, Bildgroesse, Scans aufbereiten (Hintergrund, gerade, entzerren) und Vektorisieren (Pixel -> Linien fuer SVG, PDF, DXF).
 
 Alle Funktionen arbeiten auf Bild-Arrays (Graustufen HxW oder BGR HxWx3) und der Linienmaske (uint8, >0 = Linie)
 derselben Groesse. Rechtecke sind (x0, y0, x1, y1) in Pixeln, x1/y1 exklusiv.
@@ -253,6 +253,207 @@ def rotate_point_fn(shape, quarter):
     if q == 3:
         return lambda x, y: (y, w - x)
     return lambda x, y: (x, y)
+
+
+# ----------------------------------------------------------------- Scan aufbereiten: Hintergrund, gerade, entzerren
+def background_estimate(img, size=None):
+    """Verlauf des Papiers (Schatten, Falten, Vergilbung) ohne die Linien: verkleinern, Linien zuschliessen
+    (dunkle Striche verschwinden im hellen Umfeld), glaetten, wieder vergroessern."""
+    h, w = img.shape[:2]
+    k = min(1.0, 900 / max(h, w))
+    small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA) if k < 1 else img.copy()
+    r = size or max(5, int(round(max(small.shape[:2]) / 90)) | 1)
+    bg = cv2.morphologyEx(small, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r)))
+    bg = cv2.medianBlur(bg, min(255, 2 * r + 1) if bg.dtype == np.uint8 else 5)
+    return cv2.resize(bg, (w, h), interpolation=cv2.INTER_LINEAR)
+
+
+def flatten_background(images, strength=50, color=None):
+    """Hintergrund ausgleichen: Bild durch den geschaetzten Papierverlauf teilen (Papier wird gleichmaessig weiss),
+    strength (0 ... 100) macht hellen Rest (Falten, Flecken) ganz weiss. color: neue Papierfarbe (B, G, R) oder None
+    = weiss. Linien behalten ihre Farbe."""
+    out = []
+    t = 255 - 1.6 * float(strength)                     # ab diesem Grauwert ist es Papier
+    for im in images:                                   # alles in 8 Bit: auch A0-Scans ohne grossen Speicher
+        bg = np.maximum(background_estimate(im), 1)
+        flat = cv2.divide(im, bg, scale=255)
+        if strength > 0:
+            flat = cv2.convertScaleAbs(flat, alpha=255.0 / max(t, 1.0))
+        if color is not None:                            # weisses Papier einfaerben, Schwarz bleibt schwarz
+            c = [v / 255.0 for v in color[:3]]
+            if im.ndim == 2:
+                flat = cv2.convertScaleAbs(flat, alpha=sum(c) / 3)
+            else:
+                flat = cv2.merge([cv2.convertScaleAbs(ch, alpha=k) for ch, k in zip(cv2.split(flat), c)])
+        out.append(flat)
+    return out
+
+
+def ink_of(img):
+    """Linienmaske eines Scans (Otsu auf dem ausgeglichenen Graubild)."""
+    g = img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    g = flatten_background([g], 0)[0]
+    _, ink = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    return ink
+
+
+def skew_angle(img, max_angle=15.0):
+    """Drehwinkel zum Geraderichten in Grad (positiv = gegen den Uhrzeigersinn drehen) aus den langen Linien
+    (Rahmen, Schriftfeld, Bemassung). None, wenn nichts Verlaessliches gefunden wurde."""
+    h, w = img.shape[:2]
+    k = min(1.0, 1600 / max(h, w))
+    small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA) if k < 1 else img
+    ink = ink_of(small)
+    lines = cv2.HoughLinesP(ink, 1, np.pi / 1800, threshold=80, minLineLength=max(40, max(small.shape[:2]) // 12),
+                            maxLineGap=4)
+    if lines is None:
+        return None
+    angles, weights = [], []
+    for x0, y0, x1, y1 in lines.reshape(-1, 4):
+        a = np.degrees(np.arctan2(y1 - y0, x1 - x0))       # y nach unten: positiv = im Uhrzeigersinn geneigt
+        a = (a + 45) % 90 - 45                             # senkrechte Linien zaehlen wie waagerechte
+        if abs(a) <= max_angle:
+            angles.append(a)
+            weights.append(np.hypot(x1 - x0, y1 - y0))
+    if len(angles) < 2:
+        return None
+    angles, weights = np.array(angles), np.array(weights)
+    order = np.argsort(angles)
+    cum = np.cumsum(weights[order])
+    med = angles[order][np.searchsorted(cum, cum[-1] / 2)]  # gewichteter Median: robust gegen Schraffuren
+    near = np.abs(angles - med) < 0.5
+    return float(np.average(angles[near], weights=weights[near]))
+
+
+def line_angle(x0, y0, x1, y1):
+    """Drehwinkel (Grad, gegen den Uhrzeigersinn), der eine nachgezeichnete Linie waagerecht bzw. senkrecht macht."""
+    a = np.degrees(np.arctan2(y1 - y0, x1 - x0))
+    return float((a + 45) % 90 - 45)
+
+
+def rotate_angle_images(images, angle, ink=None):
+    """Um angle Grad gegen den Uhrzeigersinn drehen (Bild waechst, damit nichts abgeschnitten wird; neue Ecken in
+    Papierfarbe). Rueckgabe (Bilder, Punktabbildung fn(x, y))."""
+    h, w = images[0].shape[:2]
+    m = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)    # OpenCV: positiv = gegen den Uhrzeigersinn
+    cos, sin = abs(m[0, 0]), abs(m[0, 1])
+    nw, nh = int(np.ceil(h * sin + w * cos)), int(np.ceil(h * cos + w * sin))
+    m[0, 2] += nw / 2 - w / 2
+    m[1, 2] += nh / 2 - h / 2
+    out = []
+    for im in images:
+        bg = paper_color(im, ink) if ink is not None else (255 if im.ndim == 2 else (255, 255, 255))
+        out.append(cv2.warpAffine(im, m, (nw, nh), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
+                                  borderValue=bg if im.ndim == 2 else tuple(int(v) for v in bg)))
+
+    def fn(x, y):
+        return float(m[0, 0] * x + m[0, 1] * y + m[0, 2]), float(m[1, 0] * x + m[1, 1] * y + m[1, 2])
+    return out, fn
+
+
+def order_quad(pts):
+    """Vier Punkte als oben links, oben rechts, unten rechts, unten links."""
+    p = np.asarray(pts, np.float32).reshape(4, 2)
+    s, d = p.sum(1), p[:, 1] - p[:, 0]
+    return np.array([p[np.argmin(s)], p[np.argmin(d)], p[np.argmax(s)], p[np.argmax(d)]], np.float32)
+
+
+def find_sheet_quad(img):
+    """Ecken des Blatts in einem Foto (helles Papier vor dunklerem Grund). Ohne klares Blatt: die Bildecken
+    (etwas eingerueckt), damit man sie von Hand setzen kann. Rueckgabe 4x2 (oben links, im Uhrzeigersinn)."""
+    q = sheet_in_photo(img)
+    if q is None:
+        h, w = img.shape[:2]
+        d = 0.03 * min(h, w)
+        return order_quad([(d, d), (w - d, d), (w - d, h - d), (d, h - d)])
+    return q
+
+
+def sheet_in_photo(img):
+    """Ecken eines Blatts, das sich deutlich vom dunkleren Grund abhebt (Foto), sonst None (normaler Scan)."""
+    h, w = img.shape[:2]
+    k = min(1.0, 800 / max(h, w))
+    small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA) if k < 1 else img
+    g = small if small.ndim == 2 else cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    g = cv2.GaussianBlur(g, (7, 7), 0)
+    _, m = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))   # Zeichnung im Papier zuschliessen
+    cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    area = small.shape[0] * small.shape[1]
+    best = None
+    for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:3]:
+        a = cv2.contourArea(c)
+        if a < 0.2 * area or a > 0.98 * area:            # zu klein, oder das ganze Bild (kein Rand zu sehen)
+            continue
+        hull = cv2.convexHull(c)
+        for eps in (0.02, 0.03, 0.05, 0.08):
+            ap = cv2.approxPolyDP(hull, eps * cv2.arcLength(hull, True), True)
+            if len(ap) == 4:
+                best = ap.reshape(4, 2)
+                break
+        if best is None:
+            best = cv2.boxPoints(cv2.minAreaRect(hull))
+        break
+    if best is None:
+        return None
+    paper = cv2.mean(g, mask=cv2.fillConvexPoly(np.zeros_like(g), order_quad(best).astype(np.int32), 255))[0]
+    outside = cv2.mean(g, mask=255 - cv2.fillConvexPoly(np.zeros_like(g), order_quad(best).astype(np.int32), 255))[0]
+    if paper - outside < 40:                             # kein klarer Unterschied: eher ein Scan mit Rand
+        return None
+    return order_quad(np.asarray(best, np.float32) / k)
+
+
+def scan_hint(img):
+    """Kurzer Blick auf eine frisch geoeffnete Rasterzeichnung: ('photo', None) wenn ein Blatt auf dunklerem Grund zu
+    sehen ist, ('skew', Winkel) wenn sie merklich schief liegt, sonst None."""
+    if sheet_in_photo(img) is not None:
+        return "photo", None
+    a = skew_angle(img)
+    if a is not None and 0.3 <= abs(a) <= 15:
+        return "skew", a
+    return None
+
+
+PAPER_MM = {"A4": (210, 297), "A3": (297, 420), "A2": (420, 594), "A1": (594, 841), "A0": (841, 1189)}
+
+
+def quad_size(quad):
+    """Breite und Hoehe (px) des entzerrten Blatts: laengere der gegenueberliegenden Kanten."""
+    tl, tr, br, bl = order_quad(quad)
+    w = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))
+    h = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))
+    return max(1, int(round(w))), max(1, int(round(h)))
+
+
+def warp_size(quad, paper=None):
+    """Zielgroesse (w, h) px und mm je px (oder None) fuer ein Papierformat ('A4' ... 'A0', Lage aus den Ecken) bzw.
+    das Seitenverhaeltnis der Ecken (paper None)."""
+    w, h = quad_size(quad)
+    if paper not in PAPER_MM:
+        return (w, h), None
+    a, b = PAPER_MM[paper]
+    mw, mh = (b, a) if w > h else (a, b)
+    px = max(w / mw, h / mh)                             # Aufloesung der Ecken halten (px je mm)
+    return (int(round(mw * px)), int(round(mh * px))), 1.0 / px
+
+
+def warp_quad(images, quad, size, ink=None):
+    """Blatt entzerren: die vier Ecken (oben links, im Uhrzeigersinn) werden auf ein Rechteck size = (w, h)
+    abgebildet. Rueckgabe (Bilder, Punktabbildung fn(x, y))."""
+    w, h = size
+    src = order_quad(quad)
+    dst = np.array([(0, 0), (w, 0), (w, h), (0, h)], np.float32)
+    m = cv2.getPerspectiveTransform(src, dst)
+    out = []
+    for im in images:
+        bg = paper_color(im, ink) if ink is not None else (255 if im.ndim == 2 else (255, 255, 255))
+        out.append(cv2.warpPerspective(im, m, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
+                                       borderValue=bg if im.ndim == 2 else tuple(int(v) for v in bg)))
+
+    def fn(x, y):
+        q = m @ np.array([x, y, 1.0])
+        return float(q[0] / q[2]), float(q[1] / q[2])
+    return out, fn
 
 
 # ----------------------------------------------------------------- Vektorisieren (Pixel -> Linien)

@@ -87,7 +87,7 @@ class ProjectMixin:
         if self.project_path:
             name = os.path.basename(self.project_path)
         elif self.path_a and self.path_b:
-            name = f"{os.path.basename(self.path_a)} \u2194 {os.path.basename(self.path_b)}"
+            name = f"{os.path.basename(self.path_a)} \u2192 {os.path.basename(self.path_b)}"   # alt -> neu
         elif self.path_a or self.path_b:
             name = os.path.basename(self.path_a or self.path_b)
         else:

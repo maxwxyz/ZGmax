@@ -84,17 +84,25 @@ The first time, the required packages are installed in tested versions (internet
 <h2 id="window">The window</h2>
 <table>
 <tr><th>Area</th><th>Contents</th></tr>
-<tr><td>Menu bar</td><td>All functions: <i>File</i>, <i>Edit</i>, <i>View</i>, <i>Tools</i>, <i>Review</i>, <i>Help</i>.</td></tr>
-<tr><td>Top bar</td><td><i>Open</i>, <i>Compare</i>, the view switch (Old, New, Compare, Side by side, Overlay, Slider, Blink),
-zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels <i>Options</i> (settings, left) and
-<i>Items</i> (changes, markups, layers – right). In a narrow window these buttons show only their icon (name in the
-tooltip).</td></tr>
+<tr><td>Menu bar</td><td>All functions: <i>File</i> (open, project, <i>Export</i>, print, <i>Markups</i>), <i>Edit</i>,
+<i>View</i>, <i>Tools</i> (drawing tools), <i>Compare</i> (everything about comparing: start, <i>Comparison settings</i>,
+review, text and dimensions, batch and revisions), <i>Window</i>, <i>Help</i>. What is not possible in the current mode
+is grayed out.</td></tr>
+<tr><td>Top bar</td><td><i>Open</i> and the <b>mode chip</b>: <i>Viewing: file</i> (gray, one drawing) or <i>Comparing:
+old → new</i> (blue). Clicking it shows what you can do – in a comparison <i>Compare</i> (recalculate), <i>Swap A and B</i>,
+choose another old or new drawing. If settings have changed, the chip shows ● and a blue border. When viewing, <i>Compare
+with …</i> next to it opens a second drawing. In a comparison the view switch follows (Old, New, Compare, Overlay, Side by
+side, Slider, Blink); then zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels
+<i>Options</i> (settings, left) and <i>Items</i> (changes, markups, layers – right). In a narrow window the buttons lose
+their text step by step (name in the tooltip). On the start page the bar is almost empty.</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
 polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number, Stamp; icons only when space is short;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
+<tr><td><i>Options</i> panel</td><td>In a comparison: drawings A and B, sensitivity, pages, scale and <i>Compare</i>. When
+viewing only the drawing, <i>Compare with another drawing …</i>, pages and scale.</td></tr>
 <tr><td>Options bar (above the drawing)</td><td>Appears only when needed and shows the settings of the current tool or view,
 e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for markups; speed and pause for Blink;
-<i>Highlight changes</i> for Old/New.</td></tr>
+<i>Highlight changes</i> for Old/New. If the drawing area is narrow, it wraps onto a second line.</td></tr>
 <tr><td>Search bar</td><td>Opens with <kbd>Ctrl</kbd>+<kbd>F</kbd> above the drawing, see <a href="#search">Finding text</a>.</td></tr>
 <tr><td>Message bar</td><td>Blue = information, yellow = warning, red = error (with <i>Details</i>). Used instead of many pop-ups.</td></tr>
 <tr><td>Status bar (bottom)</td><td>What is happening, progress in percent with <i>Cancel</i>, mouse position in px and mm.</td></tr>
@@ -150,7 +158,8 @@ prints stay normal. Separately, <i>View → Appearance</i> (Automatic, Light, Da
 <ul>
 <li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → View drawing …</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
-saving work.</li>
+saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. <i>Compare with …</i> (top
+bar or side panel) opens a second drawing and compares.</li>
 <li><b>Each document in its own window:</b> if something is already open, <i>View drawing</i>, <i>Recently used</i>,
 <i>Open project</i> and dropped files open a <b>new window</b> – markups and review state of different documents never
 mix. Only <i>Open old/new drawing</i> deliberately replaces one side of the current comparison. The <i>Window</i> menu
@@ -219,7 +228,7 @@ the pointer: <code>25</code> = 25 from the last point towards the mouse pointer,
 is the one in the measure bar. <b>Origin:</b> right-click → <i>Set origin here</i> (snaps as well); the status bar then shows
 x/y from there (y upwards as in CAD).</p>
 <p><b>Totals and counts:</b> below the markup list are the totals of lengths and areas and the count per type – for the
-selection (several selected) or for all. <i>File → Measurements and counts as CSV (Excel)</i> saves all measurements with
+selection (several selected) or for all. <i>File → Markups → Measurements and counts as CSV (Excel)</i> saves all measurements with
 value, unit and page.</p>
 <p><b>Are the mm correct?</b> The conversion is <i>mm = pixels × 25.4 ÷ dpi × scale</i>. The program reads the
 resolution from the file (otherwise 200 dpi).</p>
@@ -288,7 +297,7 @@ The status is shown in color: <span style="color:#f97316">● open</span>, <span
 <p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “changed text
 only”, “changed dimensions only” or “open” (applies to list, drawing and PDF). Clicking a row jumps into the drawing, clicking a frame selects the row;
 double-click edits text A/B and the description. <i>Mark manually</i> adds a dragged area as your own change;
-<i>Delete</i> removes unwanted hits. <i>Review → Turn rejected into zones</i> turns all rejected hits into zones that are no
+<i>Delete</i> removes unwanted hits. <i>Compare → Turn rejected into zones</i> turns all rejected hits into zones that are no
 longer reported in later comparisons (batch too). Status and comments are saved in the <b>project</b> and appear in the CSV,
 the PDF report and the PDF with annotations – that is your review record.</p>
 
@@ -332,7 +341,10 @@ time. Text is pasted as a text markup, copied markups as markups. If nothing is 
 image as a new drawing (as does <i>File → Open image from clipboard</i>).</p>
 
 <h2 id="edit">Editing the drawing</h2>
-<p><i>Edit → Edit drawing</i> (when viewing a single drawing). The original file stays unchanged; <i>Save edited drawing …</i>
+<p><i>Edit → Edit drawing</i> (when viewing a single drawing). <b>Cleaning up a scan or photo</b> (useful before a
+comparison: fewer false changes): first <i>Correct perspective</i> or <i>Straighten</i>, then <i>Even out
+background</i>. If an opened scan is noticeably skewed or looks like a photo of a sheet, the bar at the top shows a hint
+with a button for it (nothing happens automatically). The original file stays unchanged; <i>Save edited drawing …</i>
 saves the result (PNG, TIFF, PDF, JPG, without markups). When closing, the program asks if the edit has not been saved.
 Markups move along with every change.</p>
 <table>
@@ -342,6 +354,18 @@ Markups move along with every change.</p>
 <tr><td>Crop to region (permanent)</td><td>Crop the drawing itself to the part selected with <i>Region</i> (otherwise
 prefer the adjustable crop frame).</td></tr>
 <tr><td>Rotate 90° right / left, 180°</td><td>Rotate the drawing itself (<kbd>R</kbd> only rotates the view).</td></tr>
+<tr><td>Straighten …</td><td>For sheets scanned at a slant. The program detects the angle from the long lines (border,
+title block) and shows a preview with a grid; the angle can be changed by hand (positive = counter-clockwise). The sheet
+grows a little so that no corner is lost.</td></tr>
+<tr><td>Straighten along a line</td><td>Trace an edge that should be horizontal or vertical (sheet edge, border) – the
+drawing rotates to match. Also from the <i>Straighten</i> window via <i>Trace a line</i>.</td></tr>
+<tr><td>Correct perspective (4 corners) …</td><td>For a photo of the sheet (phone, taken at an angle). The sheet corners
+are detected and can be moved (with magnifier); <i>Detect sheet</i> and <i>Corners to image edge</i> reset them. The sheet
+is made rectangular. Choose A4 to A0 under <i>Format</i> and the mm are correct (the resolution is set to match);
+otherwise the aspect ratio of the corners is used. A curved sheet only becomes approximately straight.</td></tr>
+<tr><td>Even out background …</td><td>Removes shadows, creases, stains and yellowed paper: the paper becomes evenly white
+(or a custom color), the lines stay. <i>Strength</i> sets how strong stains still turn white; too high makes very light
+lines fade. Very sharp folds can remain as a thin line.</td></tr>
 <tr><td>Brightness and contrast …</td><td>With preview; <i>Automatic</i> makes gray paper white and faint lines strong.</td></tr>
 <tr><td>Image size and resolution …</td><td><i>Resample pixels</i> (size on paper stays, e.g. 600 dpi → 200 dpi for smaller
 files) or <i>Change resolution only</i> (correct a wrong dpi value; the mm values change).</td></tr>
@@ -366,7 +390,7 @@ in the section <i>Layers of the PDF file</i>. Unticked, a layer is not drawn and
 The choice is saved in the project.</p>
 
 <h2 id="texts">Text and dimensions</h2>
-<p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Review</i> menu):</p>
+<p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Compare</i> menu):</p>
 <ul>
 <li><b>Find changed text</b>: reads the text of each change – also dimensions and vertical text in both reading
 directions – and writes “old text → new text” into the list. For PDFs with real text that text is used (exact, instant),
@@ -386,7 +410,7 @@ changed but the index stayed the same – or the other way round.</li>
 <p><b>Opening a PDF with comments:</b> the comments are not drawn into the image but taken over automatically as
 <b>editable markups</b> (in a comparison those of Old and New, each at the right place) – move, change and delete them like
 your own. This does not happen for projects, which already contain their markups.</p>
-<p><i>File → Import comments (XFDF, PDF) …</i> takes over annotations from other programs as your own markups:</p>
+<p><i>File → Markups → Import comments (XFDF, PDF) …</i> takes over annotations from other programs as your own markups:</p>
 <ul>
 <li><b>XFDF</b> (comment export from Acrobat, Bluebeam, PDF-XChange …) and</li>
 <li><b>PDF with comments</b> (the annotations of the selected page).</li>
@@ -394,12 +418,12 @@ your own. This does not happen for projects, which already contain their markups
 <p>Text, box, cloud, highlight, arrow, line and stamp are imported with color, author, date and comment text (visible in
 the markup list). In a comparison the program asks whether the comments belong to the old or the new drawing; for the new
 one they are transformed onto the result. Unknown types (e.g. sound, attachment) are skipped and reported.</p>
-<p><i>File → Save markups as XFDF …</i> writes your own markups and measurements as XFDF, which you can import into the
+<p><i>File → Markups → Save markups as XFDF …</i> writes your own markups and measurements as XFDF, which you can import into the
 original PDF in Acrobat &amp; co. (<i>Comments → Import</i>).</p>
 
 <h2 id="align">Aligning manually (3 points)</h2>
 <p>If the drawings do not line up well after automatic alignment (e.g. a heavily distorted scan or a different sheet format),
-use <i>Tools → Align manually (3 points)</i> (also a button next to <i>Auto-adjust</i>): click a point in <b>Old</b> and the
+use <i>Compare → Comparison settings → Align manually (3 points)</i> (also a button next to <i>Auto-adjust</i>): click a point in <b>Old</b> and the
 same point in <b>New</b>, three times (the message bar says which one is next; corners or crossings far apart work best).
 The program then moves, rotates and scales the new drawing and compares again. <i>Reset manual alignment</i> undoes it.
 The alignment is saved in the project.</p>
@@ -429,7 +453,9 @@ sheet border.</li>
 <h2 id="formats">PDF vector data and DXF</h2>
 <p><b>File formats:</b> PNG, JPG, TIF (also multi-page), BMP, WEBP, JP2, GIF, PDF, SVG, XPS and <b>DXF</b>. DXF is drawn
 black on white from model space (unit mm; very large drawings are reduced to A0). DWG cannot be read directly – save it as
-DXF or PDF in your CAD program.</p>
+DXF or PDF in your CAD program. Transparent areas (PNG with transparency) count as white paper; 16-bit and CMYK images
+are converted. For a <b>password-protected PDF</b> the program asks for the password; it applies until you quit and is
+not saved.</p>
 <p><b>Vector data (PDF):</b> if both PDFs contain real lines and text (from the CAD system), the section <i>Vector data
 (PDF)</i> appears on the left: <b>Vector comparison</b> compares line against line and text against text without
 rasterizing (tolerance 0.05 mm by default; both drawings need the same sheet origin). <b>Layers and colors …</b> chooses
@@ -456,13 +482,13 @@ added as revision clouds; it does not search by itself.</td></tr>
 <tr><td>Project (.zgmax)</td><td>Files, settings, markups, zones and review state. If you move the project together with the
 drawings, it finds them again.</td></tr>
 </table>
-<p>Markups alone: <i>File → Save markups as XFDF …</i> (see <a href="#comments">Comments</a>).</p>
+<p>Markups alone: <i>File → Markups → Save markups as XFDF …</i> (see <a href="#comments">Comments</a>).</p>
 <p><b>Autosave:</b> unsaved markups and review results are backed up every minute. If the program crashes, it offers to
 restore them on the next start.</p>
 
 <h2 id="batch">Batch and revisions</h2>
-<p><i>File → Batch comparison</i>: compares all files with the same name in two folders pair by pair and saves a result image
-per pair (optionally CSV and PDF report). <i>File → Compare revisions</i>: several revisions of a drawing in order
+<p><i>Compare → Batch comparison</i>: compares all files with the same name in two folders pair by pair and saves a result image
+per pair (optionally CSV and PDF report). <i>Compare → Compare revisions</i>: several revisions of a drawing in order
 (A → B → C …) with a change history. Both use the current settings.</p>
 
 <h2 id="ui">Language and interface size</h2>

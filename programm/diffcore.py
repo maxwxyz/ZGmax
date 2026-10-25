@@ -70,7 +70,8 @@ def pdf_layers(path):
     """Namen der Ebenen (Optional Content) einer PDF-Datei, in Dateireihenfolge; [] ohne Ebenen."""
     try:
         import pymupdf as fitz
-        with fitz.open(path) as doc:
+        from pdfopen import open_doc
+        with open_doc(path) as doc:
             names = []
             for v in (doc.get_ocgs() or {}).values():
                 if v.get("name") and v["name"] not in names:
@@ -91,7 +92,11 @@ def _read_pdf_like(path, page, dpi, hidden_layers=()):
             import fitz
         except ImportError:
             raise DiffError(tr("Fuer PDF/SVG wird PyMuPDF benoetigt:  pip install pymupdf"))
-    doc = fitz.open(path)
+    from pdfopen import PdfOpenError, open_doc
+    try:
+        doc = open_doc(path)
+    except PdfOpenError as e:
+        raise DiffError(str(e)) from e
     if page < 1 or page > doc.page_count:
         raise DiffError(tr("{}: Seite {} existiert nicht (Seiten: 1-{})").format(os.path.basename(path), page, doc.page_count))
     if doc.page_count > 1:
@@ -158,6 +163,24 @@ def imread_any(path, flags=cv2.IMREAD_COLOR):
     return cv2.imdecode(data, flags) if data.size else None
 
 
+def to_bgr8(img):
+    """Beliebiges gelesenes Bild -> BGR, 8 Bit: Transparenz auf weissem Papier (sonst wird schwarz auf
+    durchsichtig zu ganz schwarz), 16 Bit auf 8 Bit, Graustufen auf drei Kanaele."""
+    if img is None:
+        return None
+    if img.dtype != np.uint8:                        # 16 Bit / Gleitkomma
+        if np.issubdtype(img.dtype, np.floating):
+            img = np.clip(img * (255.0 if img.max() <= 1.0 else 1.0), 0, 255).astype(np.uint8)
+        else:
+            img = (img / (np.iinfo(img.dtype).max / 255.0)).round().astype(np.uint8)
+    if img.ndim == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    if img.shape[2] == 4:
+        a = img[:, :, 3:4].astype(np.float32) / 255.0
+        return (img[:, :, :3].astype(np.float32) * a + 255.0 * (1.0 - a)).round().astype(np.uint8)
+    return img[:, :, :3]
+
+
 def imwrite_any(path, img, params=None):
     """cv2.imwrite fuer beliebige Pfade (Umlaute, Windows)."""
     ok, buf = cv2.imencode(os.path.splitext(path)[1] or ".png", img, params or [])
@@ -190,12 +213,17 @@ def read_image(path, page=1, dpi=200, hidden_layers=()):
             pass
     if ext in {".tif", ".tiff", ".gif"} and page != 1:
         return _read_with_pil(path, page)
-    img = imread_any(path)
+    if os.path.getsize(path) == 0:
+        raise DiffError(tr("Die Datei „{}“ ist leer (0 Byte).").format(os.path.basename(path)))
+    img = to_bgr8(imread_any(path, cv2.IMREAD_UNCHANGED))
     if img is None:                                  # unbekannte Endung oder exotische Kompression
         try:
             img = _read_with_pil(path, page)
         except Exception as e:
-            raise DiffError(tr("Kann '{}' nicht lesen ({}).\nUnterstuetzt: {}").format(path, e, ', '.join(sorted(RASTER_EXT | VECTOR_EXT))))
+            log.info("Pillow kann %s nicht lesen: %s", path, e)
+            raise DiffError(tr("„{}“ lässt sich nicht als Zeichnung öffnen – die Datei ist beschädigt oder kein "
+                               "unterstütztes Format.\nUnterstützt: {}, DXF").format(
+                os.path.basename(path), ", ".join(sorted(e[1:].upper() for e in RASTER_EXT | VECTOR_EXT))))
     return img
 
 
@@ -293,7 +321,11 @@ def select_roi(m, title, ratio=None):
             st["drag"] = False
 
     win = title if ratio is None else title + tr("  [Seitenverhaeltnis fix {:.3f}]").format(ratio)
-    cv2.namedWindow(win)
+    try:
+        cv2.namedWindow(win)
+    except cv2.error as e:                       # OpenCV ohne Fenster (headless, z. B. unter Linux)
+        raise DiffError(tr("Die interaktive Auswahl (--select) ist hier nicht verfügbar. Bitte den Ausschnitt mit "
+                           "--crop-a / --crop-b angeben oder das Programm mit Oberfläche nutzen.")) from e
     cv2.setMouseCallback(win, cb)
     while True:
         view = cv2.cvtColor(small, cv2.COLOR_GRAY2BGR)

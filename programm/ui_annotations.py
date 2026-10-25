@@ -699,7 +699,8 @@ class AnnotationsMixin:
         k = self.dpi_value() / 72.0
         if path and path.lower().endswith(".pdf") and dv.available():
             import pymupdf
-            with pymupdf.open(path) as d:
+            from pdfopen import open_doc
+            with open_doc(path) as d:
                 return k, d[max(0, min(page, d.page_count) - 1)].rect.height
         g = self.cache.get("g_" + path) if path else None
         h_px = g.shape[0] if g is not None else self.canvas.shape[0]

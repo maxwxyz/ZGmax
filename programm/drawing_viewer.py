@@ -10,6 +10,7 @@ from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_canvas import Canvas, build_color_pyramids, build_pyramids
+import diffedit as de
 from ui_dialogs import BatchDialog, RevisionDialog, VectorFilterDialog
 from ui_widgets import Job, SafeStream, WheelGuard
 from ui_regions import RegionsMixin
@@ -45,6 +46,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self.jobs = []
         self.current_job = None
         self.cache = {}
+        self._hinted = set()                        # Dateien, zu denen der Scan-Hinweis schon kam
         self.payload = None
         self.view_only = False
         self.page_summary = {}
@@ -92,6 +94,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         cv.frameEdited.connect(self._frame_edited)
         cv.zoneSelected.connect(self._zone_selected)
         cv.selMove.connect(self._sel_move)
+        cv.straightenLine.connect(self._straighten_line)
         cv.floatDone.connect(self._float_done)
         cv.areaChanged.connect(self._area_changed)
         cv.areaMoveStarted.connect(self._area_move_started)
@@ -309,6 +312,20 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if path:
             self._set_file(which, path)
 
+    def _unlock_pdf(self, path):
+        """Passwortgeschuetzte PDF: nach dem Passwort fragen (gilt bis zum Beenden). False = abgebrochen."""
+        import pdfopen
+        if not pdfopen.needs_password(path):
+            return True
+        msg = tr("„{}“ ist mit einem Passwort geschützt.\nPasswort:").format(os.path.basename(path))
+        while True:
+            pw, ok = QInputDialog.getText(self, APP, msg, QLineEdit.EchoMode.Password)
+            if not ok:
+                return False
+            if pdfopen.try_password(path, pw):
+                return True
+            msg = tr("Das Passwort stimmt nicht. Bitte noch einmal:")
+
     def _set_file(self, which, path, compute=True):
         self.settings.setValue("dir", os.path.dirname(path))
         lbl = self.lbl_a if which == "A" else self.lbl_b
@@ -319,6 +336,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if ext == ".dwg":
             self.banner.show_msg(tr("DWG-Dateien kann das Programm nicht direkt lesen. Bitte im CAD-Programm als DXF "
                                  "oder PDF speichern."), "warn")
+            return
+        if ext == ".pdf" and not self._unlock_pdf(path):
             return
         if which == "A":
             self.path_a = path
@@ -390,7 +409,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             out = []
             try:
                 import pymupdf
-                with pymupdf.open(path) as pm:
+                from pdfopen import open_doc
+                with open_doc(path) as pm:
                     for i in range(min(n, 60)):
                         pg = pm.load_page(i)
                         z = 120.0 / max(pg.rect.width, pg.rect.height)
@@ -587,6 +607,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self._params_dirty = True
         self.btn_run.setText(tr("Vergleichen \u25cf"))
         self.act_compare.setText(tr("Vergleichen \u25cf"))
+        self._update_mode_chip()
 
     def _reset_params(self):
         for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
@@ -775,6 +796,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self._params_dirty = False
         self.btn_run.setText(tr("Vergleichen"))
         self.act_compare.setText(tr("Vergleichen"))
+        self._update_mode_chip()
         self.banner.hide()
         if self.payload is None:
             self.stack.setCurrentWidget(self.work)
@@ -891,6 +913,29 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         return dict(res=res, regs=[], regs_done=False, pa=pa, pb=pb, pd=pd, po=po, color=(ca, cb),
                     pc=(build_color_pyramids(ca, len(pa)), build_color_pyramids(cb, len(pa))))
 
+    def _scan_hint(self):
+        """Einmal je Datei beim Ansehen einer Rasterzeichnung: schiefer Scan oder Foto eines Blatts? Dann Hinweis mit
+        Knopf zur passenden Aufbereitung (nichts geschieht von selbst)."""
+        path = self.path_a or self.path_b
+        if not (self.view_only and path) or path in self._hinted or dp.is_vector(path):
+            return
+        self._hinted.add(path)
+        g = self.cache.get("g_" + path)
+        if g is None:
+            return
+        try:
+            hint = de.scan_hint(g)
+        except Exception:                                  # noqa: BLE001 - nur ein Hinweis
+            log.exception("Scan-Hinweis")
+            return
+        if hint and hint[0] == "photo":
+            self.banner.show_msg(tr("Sieht aus wie ein Foto eines Blatts. Entzerren macht es rechteckig und "
+                                    "maßhaltig."), "info", action=(tr("Entzerren …"), self.sheet_perspective),
+                                 timeout=15)
+        elif hint:
+            self.banner.show_msg(tr("Die Zeichnung liegt um {}° schief.").format(QLocale().toString(hint[1], "f", 1)),
+                                 "info", action=(tr("Gerade ausrichten …"), self.sheet_straighten), timeout=15)
+
     def _computed(self, r, snap):
         keep = self.payload is not None and snap["crop"] == self._crop_seen
         self.payload = r
@@ -924,6 +969,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self._update_enabled()
         self._refresh_pdf_layers()
         QTimer.singleShot(0, self._auto_import_pdf_comments)
+        QTimer.singleShot(400, self._scan_hint)
         if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
             QTimer.singleShot(0, self.run_search)
         self._fill_table()

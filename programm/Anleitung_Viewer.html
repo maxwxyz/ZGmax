@@ -85,18 +85,28 @@ installiert (Internet nötig). Direkt: <code>python programm/drawing_viewer.py [
 <h2 id="fenster">Das Fenster</h2>
 <table>
 <tr><th>Bereich</th><th>Inhalt</th></tr>
-<tr><td>Menüleiste</td><td>Alle Funktionen: <i>Datei</i>, <i>Bearbeiten</i>, <i>Ansicht</i>, <i>Werkzeuge</i>, <i>Prüfen</i>, <i>Hilfe</i>.</td></tr>
-<tr><td>Leiste oben</td><td><i>Öffnen</i>, <i>Vergleichen</i>, die Ansichten als Umschalter (Alt, Neu, Vergleich, Nebeneinander, Überlagern,
-Schieber, Blinken), Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten
-<i>Optionen</i> (Einstellungen, links) und <i>Elemente</i> (Änderungen, Markierungen, Ebenen – rechts). Ist das Fenster
-schmal, zeigen diese Knöpfe nur ihr Symbol (Name im Tooltip).</td></tr>
+<tr><td>Menüleiste</td><td>Alle Funktionen: <i>Datei</i> (Öffnen, Projekt, <i>Exportieren</i>, Drucken, <i>Markierungen</i>),
+<i>Bearbeiten</i>, <i>Ansicht</i>, <i>Werkzeuge</i> (Zeichenwerkzeuge), <i>Vergleichen</i> (alles zum Vergleich: starten,
+<i>Vergleich einstellen</i>, prüfen, Text und Maße, Stapel und Revisionen), <i>Fenster</i>, <i>Hilfe</i>. Was im
+aktuellen Modus nicht geht, ist ausgegraut.</td></tr>
+<tr><td>Leiste oben</td><td><i>Öffnen</i> und das <b>Modus-Schild</b>: <i>Ansehen: datei</i> (grau, eine Zeichnung) oder
+<i>Vergleich: alt → neu</i> (blau). Ein Klick darauf zeigt, was man tun kann – im Vergleich <i>Vergleichen</i> (neu
+berechnen), <i>A und B tauschen</i>, eine andere alte oder neue Zeichnung wählen. Haben sich Einstellungen geändert, zeigt
+das Schild ● und einen blauen Rand. Beim Ansehen steht daneben <i>Vergleichen mit …</i> (zweite Zeichnung öffnen). Im
+Vergleich folgen die Ansichten als Umschalter (Alt, Neu, Vergleich, Überlagern, Nebeneinander, Schieber, Blinken); dann
+Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten <i>Optionen</i>
+(Einstellungen, links) und <i>Elemente</i> (Änderungen, Markierungen, Ebenen – rechts). Ist das Fenster schmal, verlieren
+die Knöpfe nach und nach ihren Text (Name im Tooltip). Auf der Startseite ist die Leiste fast leer.</td></tr>
 <tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
 Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer, Stempel; bei wenig
 Platz nur Symbole;
 unten Lupe und Übersicht. Das gewählte Werkzeug ist blau.</td></tr>
+<tr><td>Seitenleiste <i>Optionen</i></td><td>Im Vergleich: Zeichnungen A und B, Empfindlichkeit, Seiten, Maßstab und
+<i>Vergleichen</i>. Beim Ansehen nur die Zeichnung, <i>Mit anderer Zeichnung vergleichen …</i>, Seiten und Maßstab.</td></tr>
 <tr><td>Optionszeile (über dem Bild)</td><td>Erscheint nur bei Bedarf und zeigt die Einstellungen des gewählten Werkzeugs,
 z. B. beim Messen Messart, Einrasten, Maßstab und <i>Kalibrieren</i>; beim Markieren Farbe und Größe; beim Blinken
-Geschwindigkeit und Pause; bei Alt/Neu <i>Änderungen hervorheben</i>.</td></tr>
+Geschwindigkeit und Pause; bei Alt/Neu <i>Änderungen hervorheben</i>. Ist das Bild schmal, bricht sie in eine zweite
+Zeile um.</td></tr>
 <tr><td>Suchleiste</td><td>Erscheint mit <kbd>Strg</kbd>+<kbd>F</kbd> über dem Bild, siehe <a href="#suchen">Text suchen</a>.</td></tr>
 <tr><td>Hinweisleiste</td><td>Blau = Information, gelb = Warnung, rot = Fehler (mit <i>Details</i>). Statt vieler Meldungsfenster.</td></tr>
 <tr><td>Statusleiste (unten)</td><td>Was gerade passiert, Fortschritt in Prozent mit <i>Abbrechen</i>, Mausposition in px und mm.</td></tr>
@@ -152,7 +162,8 @@ für die Anzeige; gespeicherte Bilder und Ausdrucke bleiben normal. Unabhängig 
 <ul>
 <li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Zeichnung
 ansehen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
-Markieren, Drucken und Speichern.</li>
+Markieren, Drucken und Speichern. Das Schild oben zeigt <i>Ansehen: datei</i>; Vergleichsansichten und -einstellungen
+sind ausgeblendet. <i>Vergleichen mit …</i> (oben oder in der Seitenleiste) öffnet eine zweite Zeichnung und vergleicht.</li>
 <li><b>Jedes Dokument in seinem Fenster:</b> Ist schon etwas offen, öffnen <i>Zeichnung ansehen</i>, <i>Zuletzt
 verwendet</i>, <i>Projekt öffnen</i> und hineingezogene Dateien ein <b>neues Fenster</b> – Markierungen und Prüfstand
 eines Dokuments vermischen sich so nie. Nur <i>Alte/Neue Zeichnung öffnen</i> tauscht bewusst eine Seite des aktuellen
@@ -222,7 +233,7 @@ Eingabefeld am Zeiger: <code>25</code> = 25 in Richtung des Mauszeigers vom letz
 Einheit wie in der Messen-Zeile. <b>Nullpunkt:</b> Rechtsklick → <i>Nullpunkt hier setzen</i> (rastet ebenfalls ein); die
 Statusleiste zeigt dann x/y ab dort (y nach oben wie im CAD).</p>
 <p><b>Summen und Zählung:</b> Unter der Markierungsliste stehen Summe der Längen und Flächen sowie die Anzahl je Art – für
-die Auswahl (mehrere gewählt) oder für alle. <i>Datei → Messungen und Zählung als CSV (Excel)</i> speichert alle Maße mit
+die Auswahl (mehrere gewählt) oder für alle. <i>Datei → Markierungen → Messungen und Zählung als CSV (Excel)</i> speichert alle Maße mit
 Wert, Einheit und Seite.</p>
 <p><b>Stimmen die mm?</b> Umgerechnet wird mit <i>mm = Pixel × 25,4 ÷ dpi × Maßstab</i>. Die Auflösung liest das Programm
 aus der Datei (sonst 200 dpi).</p>
@@ -296,7 +307,7 @@ Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style
 <p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „nur geänderter Text“,
 „nur geänderte Maße“ oder „offen“ filterbar (gilt für Liste, Bild und PDF). Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
 Doppelklick bearbeitet Text A/B und Beschreibung. <i>Selbst markieren</i> nimmt einen aufgezogenen Bereich als eigene
-Änderung auf; <i>Löschen</i> entfernt unerwünschte Funde. <i>Prüfen → Abgelehnte als Zonen übernehmen</i> macht aus allen abgelehnten
+Änderung auf; <i>Löschen</i> entfernt unerwünschte Funde. <i>Vergleichen → Abgelehnte als Zonen übernehmen</i> macht aus allen abgelehnten
 Funden Zonen, die bei den nächsten Vergleichen (auch im Stapel) nicht mehr gemeldet werden. Status und Kommentare werden im <b>Projekt</b> gespeichert und
 erscheinen in CSV, PDF-Bericht und PDF mit Anmerkungen – das ist das Prüfprotokoll.</p>
 
@@ -346,7 +357,10 @@ Markierungen als Markierungen. Ist nichts geöffnet, öffnet <kbd>Strg</kbd>+<kb
 (ebenso <i>Datei → Bild aus Zwischenablage öffnen</i>).</p>
 
 <h2 id="bearbeiten">Zeichnung bearbeiten</h2>
-<p><i>Bearbeiten → Zeichnung bearbeiten</i> (beim Ansehen einer einzelnen Zeichnung). Die Originaldatei bleibt unverändert;
+<p><i>Bearbeiten → Zeichnung bearbeiten</i> (beim Ansehen einer einzelnen Zeichnung). <b>Scan oder Foto aufbereiten</b>
+(gut vor einem Vergleich: weniger falsche Änderungen): erst <i>Entzerren</i> bzw. <i>Gerade ausrichten</i>, dann
+<i>Hintergrund ausgleichen</i>. Liegt ein geöffneter Scan merklich schief oder sieht er aus wie ein Foto eines
+Blatts, zeigt die Leiste oben einen Hinweis mit Knopf dafür (es geschieht nichts von selbst). Die Originaldatei bleibt unverändert;
 <i>Bearbeitete Zeichnung speichern …</i> speichert das Ergebnis (PNG, TIFF, PDF, JPG, ohne Markierungen). Beim Schließen
 fragt das Programm nach, wenn die Bearbeitung noch nicht gespeichert ist. Markierungen wandern bei allen Änderungen mit.</p>
 <table>
@@ -356,6 +370,19 @@ fragt das Programm nach, wenn die Bearbeitung noch nicht gespeichert ist. Markie
 <tr><td>Auf Bereich zuschneiden (endgültig)</td><td>Die Zeichnung selbst auf den mit <i>Bereich</i> gewählten Teil
 zuschneiden (sonst lieber den verstellbaren Zuschnitt-Rahmen nutzen).</td></tr>
 <tr><td>90° nach rechts / links, 180° drehen</td><td>Die Zeichnung selbst drehen (<kbd>R</kbd> dreht dagegen nur die Ansicht).</td></tr>
+<tr><td>Gerade ausrichten …</td><td>Für schräg eingescannte Blätter. Das Programm erkennt den Winkel aus den langen Linien
+(Rahmen, Schriftfeld) und zeigt eine Vorschau mit Raster; der Winkel lässt sich von Hand ändern (positiv = gegen den
+Uhrzeigersinn). Das Blatt wird dabei etwas größer, damit keine Ecke verloren geht.</td></tr>
+<tr><td>Gerade ausrichten an Linie</td><td>Eine Kante nachziehen, die waagerecht oder senkrecht sein soll (Blattrand,
+Rahmen) – die Zeichnung dreht sich passend. Auch aus dem Fenster <i>Gerade ausrichten</i> über <i>An Linie
+nachzeichnen</i>.</td></tr>
+<tr><td>Entzerren (4 Ecken) …</td><td>Für ein Foto des Blatts (Handy, schräg von oben). Die Ecken des Blatts werden erkannt
+und lassen sich verschieben (mit Lupe); <i>Blatt erkennen</i> und <i>Ecken an den Bildrand</i> setzen sie neu. Das Blatt
+wird rechteckig gerechnet. Unter <i>Format</i> A4 bis A0 wählen, dann stimmen die mm (die Auflösung wird passend gesetzt);
+sonst gilt das Seitenverhältnis der Ecken. Ein gewölbtes Blatt wird nur annähernd gerade.</td></tr>
+<tr><td>Hintergrund ausgleichen …</td><td>Rechnet Schatten, Falten, Flecken und vergilbtes Papier heraus: das Papier wird
+gleichmäßig weiß (oder eine eigene Farbe), die Linien bleiben. <i>Stärke</i> regelt, wie kräftige Flecken noch weiß werden;
+zu hoch lässt sehr helle Linien verblassen. Sehr scharfe Knicke können als feine Linie stehen bleiben.</td></tr>
 <tr><td>Helligkeit und Kontrast …</td><td>Mit Vorschau; <i>Automatisch</i> macht graues Papier weiß und blasse Linien kräftig.</td></tr>
 <tr><td>Bildgröße und Auflösung …</td><td><i>Pixel neu berechnen</i> (Größe auf dem Papier bleibt, z. B. 600 dpi → 200 dpi
 für kleinere Dateien) oder <i>Nur Auflösung ändern</i> (falsche dpi-Angabe korrigieren; die mm-Werte ändern sich).</td></tr>
@@ -382,7 +409,7 @@ sie darunter im Abschnitt <i>Ebenen der PDF-Datei</i>. Ohne Haken wird die Ebene
 auch nicht verglichen. Die Auswahl wird im Projekt gespeichert.</p>
 
 <h2 id="texte">Text und Maße</h2>
-<p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Prüfen</i>):</p>
+<p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Vergleichen</i>):</p>
 <ul>
 <li><b>Geänderten Text finden</b>: liest den Text jeder Änderung – auch Maße und senkrecht stehende Texte, in beiden
 Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Bei PDF mit echtem Text wird dieser genommen
@@ -403,7 +430,7 @@ Installation an (ca. 60 MB, Internet nötig).</p>
 <p><b>PDF mit Kommentaren öffnen:</b> Die Kommentare werden nicht ins Bild gezeichnet, sondern automatisch als
 <b>bearbeitbare Markierungen</b> übernommen (im Vergleich die von Alt und Neu, jeweils an der richtigen Stelle) –
 verschieben, ändern, löschen wie eigene. Bei Projekten geschieht das nicht, die enthalten ihre Markierungen schon.</p>
-<p><i>Datei → Kommentare einlesen (XFDF, PDF) …</i> übernimmt Anmerkungen aus anderen Programmen als eigene Markierungen:</p>
+<p><i>Datei → Markierungen → Kommentare einlesen (XFDF, PDF) …</i> übernimmt Anmerkungen aus anderen Programmen als eigene Markierungen:</p>
 <ul>
 <li><b>XFDF</b> (Kommentar-Export aus Acrobat, Bluebeam, PDF-XChange …) und</li>
 <li><b>PDF mit Kommentaren</b> (die Anmerkungen der gewählten Seite).</li>
@@ -412,12 +439,12 @@ verschieben, ändern, löschen wie eigene. Bei Projekten geschieht das nicht, di
 Kommentartext (in der Markierungsliste sichtbar). Im Vergleich fragt das Programm, ob die Kommentare zur alten oder zur
 neuen Zeichnung gehören; bei der neuen werden sie passend auf das Ergebnis umgerechnet. Unbekannte Arten (z. B. Ton,
 Anhang) werden übersprungen und gemeldet.</p>
-<p><i>Datei → Markierungen als XFDF speichern …</i> schreibt die eigenen Markierungen und Maße als XFDF, das man in Acrobat &amp;
+<p><i>Datei → Markierungen → Markierungen als XFDF speichern …</i> schreibt die eigenen Markierungen und Maße als XFDF, das man in Acrobat &amp;
 Co. in die Original-PDF importiert (<i>Kommentare → Importieren</i>).</p>
 
 <h2 id="ausrichten">Von Hand ausrichten (3 Punkte)</h2>
 <p>Liegen die Zeichnungen nach dem automatischen Ausrichten nicht sauber übereinander (z. B. stark verzogener Scan,
-anderes Blattformat), hilft <i>Werkzeuge → Manuell ausrichten (3 Punkte)</i> (auch als Knopf neben „Automatisch einstellen“): Nacheinander dreimal einen Punkt in
+anderes Blattformat), hilft <i>Vergleichen → Vergleich einstellen → Manuell ausrichten (3 Punkte)</i> (auch als Knopf neben „Automatisch einstellen“): Nacheinander dreimal einen Punkt in
 <b>Alt</b> und denselben Punkt in <b>Neu</b> anklicken (die Hinweisleiste sagt, welcher dran ist; am besten weit
 auseinanderliegende Ecken oder Kreuzungen). Das Programm verschiebt, dreht und skaliert die neue Zeichnung danach und
 vergleicht neu. <i>Manuelle Ausrichtung zurücksetzen</i> hebt das auf. Die Ausrichtung wird im Projekt gespeichert.</p>
@@ -447,7 +474,9 @@ ziehen = verschieben, Ecken = Größe ändern, <kbd>Entf</kbd> oder Rechtsklick 
 <h2 id="formate">PDF-Vektordaten und DXF</h2>
 <p><b>Dateiformate:</b> PNG, JPG, TIF (auch mehrseitig), BMP, WEBP, JP2, GIF, PDF, SVG, XPS und <b>DXF</b>. DXF wird
 schwarz auf weiß aus dem Modellbereich gezeichnet (Einheit mm; sehr große Zeichnungen werden auf A0 verkleinert).
-DWG kann nicht direkt gelesen werden – im CAD-Programm als DXF oder PDF speichern.</p>
+DWG kann nicht direkt gelesen werden – im CAD-Programm als DXF oder PDF speichern. Durchsichtige Flächen (PNG mit
+Transparenz) gelten als weißes Papier; 16-Bit- und CMYK-Bilder werden umgerechnet. Bei einer <b>passwortgeschützten
+PDF</b> fragt das Programm nach dem Passwort; es gilt bis zum Beenden und wird nicht gespeichert.</p>
 <p><b>Vektordaten (PDF):</b> Enthalten beide PDF echte Linien und Text (aus dem CAD-System), erscheint links der Bereich
 <i>Vektordaten (PDF)</i>: <b>Vektorvergleich</b> vergleicht Linie gegen Linie und Text gegen Text, ohne Rastern
 (Toleranz Standard 0,05 mm; beide Zeichnungen brauchen denselben Blattursprung). <b>Ebenen und Farben …</b> wählt aus,
@@ -478,8 +507,8 @@ gemeinsam um, findet das Projekt sie wieder.</td></tr>
 Programm ab, bietet es beim nächsten Start die Wiederherstellung an.</p>
 
 <h2 id="stapel">Stapel und Revisionen</h2>
-<p><i>Datei → Stapelvergleich</i>: alle gleich benannten Dateien zweier Ordner paarweise vergleichen und je Paar ein
-Ergebnisbild (optional CSV und PDF-Bericht) speichern. <i>Datei → Revisionen vergleichen</i>: mehrere Stände einer
+<p><i>Vergleichen → Stapelvergleich</i>: alle gleich benannten Dateien zweier Ordner paarweise vergleichen und je Paar ein
+Ergebnisbild (optional CSV und PDF-Bericht) speichern. <i>Vergleichen → Revisionen vergleichen</i>: mehrere Stände einer
 Zeichnung der Reihe nach (A → B → C …) mit Änderungshistorie. Beide nutzen die aktuellen Einstellungen.</p>
 
 <h2 id="oberflaeche">Sprache und Größe der Oberfläche</h2>

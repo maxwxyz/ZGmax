@@ -68,6 +68,12 @@ QLabel#hint {{ color: {t['muted']}; }}
 QLabel#file {{ background: {t['window']}; border: 1px solid {t['border']}; border-radius: 5px; padding: 4px 8px; }}
 QToolBar#main QToolButton {{ padding: 5px 9px; }}
 QFrame#segbox {{ background: {t['segbg']}; border-radius: 9px; }}
+QToolBar#main QToolButton#modechip {{ background: {t['segbg']}; color: {t['accent']}; border: 1px solid transparent;
+                  border-radius: 9px; padding: 5px 10px; font-weight: 600; margin-left: 4px; margin-right: 4px; }}
+QToolBar#main QToolButton#modechip:hover {{ background: {t['seghover']}; }}
+QToolBar#main QToolButton#modechip::menu-indicator {{ image: none; width: 0; }}
+QToolBar#main QToolButton#modechip[single="true"] {{ color: {t['text2']}; }}
+QToolBar#main QToolButton#modechip[dirty="true"] {{ border: 1px solid {t['accent']}; }}
 QToolButton#seg {{ background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px;
                   color: {t['text2']}; }}
 QToolButton#seg:hover {{ background: {t['seghover']}; }}
@@ -75,6 +81,7 @@ QToolButton#seg:checked {{ background: {t['surface']}; border: 1px solid {t['bor
                           font-weight: 600; }}
 QFrame#palette {{ background: {t['surface']}; border-right: 1px solid {t['border']}; }}
 QFrame#palette QToolButton {{ padding: 4px 2px; border-radius: 8px; font-size: 8.5pt; }}
+QFrame#palette QToolButton::menu-button {{ background: transparent; border: none; width: 12px; }}
 QFrame#banner {{ border-radius: 0; border-bottom: 1px solid {t['border']}; }}
 QFrame#searchbar {{ background: {t['surface']}; border-bottom: 1px solid {t['border']}; }}
 QFrame#optbar {{ background: {t['window']}; border-bottom: 1px solid {t['border']}; }}

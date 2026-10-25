@@ -1,10 +1,9 @@
-# Baut die portablen Apps automatisch (Windows, macOS Apple-Chip, macOS Intel), sobald das Projekt auf GitHub liegt.
-# Start: bei jedem Tag "v*" (z. B. v2.0) oder von Hand unter "Actions" -> "Apps bauen" -> "Run workflow".
+# Baut die portablen Apps fuer Windows, macOS (Apple-Chip) und Linux auf den aktuellen GitHub-Systemen.
+# Start von Hand: auf GitHub "Actions" -> "Apps bauen" -> "Run workflow". Die ZIP/TAR-Dateien liegen danach unten im
+# Lauf unter "Artifacts".
 name: Apps bauen
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 jobs:
   build:
     strategy:
@@ -12,24 +11,45 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: packaging\build_windows.bat
-          - os: macos-14          # Apple-Chip (arm64)
-            script: packaging/build_mac.sh
-          - os: macos-13          # Intel (x86_64)
-            script: packaging/build_mac.sh
+            name: Windows-x64
+          - os: macos-latest        # Apple-Chip (arm64)
+            name: macOS-arm64
+          - os: ubuntu-latest
+            name: Linux-x64
     runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"    # wie beim Entwickeln getestet
+      - name: Qt-Grundpakete (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 \
+            fonts-dejavu-core
       - name: Bauen und testen
         shell: bash
-        env:
-          QT_QPA_PLATFORM: offscreen
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then echo | cmd //c "${{ matrix.script }}"; else bash ${{ matrix.script }}; fi
+          case "$RUNNER_OS" in
+            Windows) echo | cmd //c "packaging\\build_windows.bat" ;;
+            macOS)   bash packaging/build_mac.sh ;;
+            Linux)   bash packaging/build_linux.sh ;;
+          esac
+      - name: Selbsttest der fertigen App
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) dist/ZGmax/ZGmax.exe --selbsttest ;;
+            macOS)   dist/ZGmax.app/Contents/MacOS/ZGmax --selbsttest ;;
+            Linux)   dist/ZGmax/ZGmax --selbsttest ;;
+          esac
       - uses: actions/upload-artifact@v4
         with:
-          name: ZGmax-${{ matrix.os }}
-          path: dist/*.zip
+          name: ZGmax-${{ matrix.name }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error

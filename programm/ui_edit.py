@@ -730,7 +730,7 @@ class AdjustDialog(QDialog):
     def __init__(self, parent, img):
         super().__init__(parent)
         self.setWindowTitle(tr("Helligkeit und Kontrast"))
-        k = min(1.0, 560 / max(img.shape[:2]))
+        k = min(1.0, 520 / img.shape[1], 340 / img.shape[0])     # Vorschau passt ganz ins Fenster
         self.small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
         gray = img if img.ndim == 2 else img.min(axis=2)
         self.auto = de.auto_levels(gray)
@@ -819,7 +819,8 @@ class ImageSizeDialog(QDialog):
 
 
 class SheetEditMixin:
-    """Ganze Zeichnung bearbeiten (nur beim Ansehen einer Datei): zuschneiden, drehen, Helligkeit, Bildgroesse."""
+    """Ganze Zeichnung bearbeiten (nur beim Ansehen einer Datei): zuschneiden, drehen, Helligkeit, Bildgroesse,
+    Scan aufbereiten (Hintergrund, gerade ausrichten, entzerren)."""
 
     def _sheet_images(self):
         path = self.path_a or self.path_b
@@ -894,6 +895,7 @@ class SheetEditMixin:
         for a in (getattr(self, "act_frame_clear", None), getattr(self, "act_frame_apply", None)):
             if a is not None:
                 a.setEnabled(f is not None and (a is self.act_frame_clear or self.view_only))
+                a.setVisible(f is not None)                # im Menue nur, solange es einen Rahmen gibt
         self.canvas.update()
 
     def _frame_edited(self, x0, y0, x1, y1):
@@ -968,6 +970,368 @@ class SheetEditMixin:
         new = de.resize_images(imgs, f) if abs(f - 1) > 1e-6 else [im.copy() for im in imgs]
         self._sheet_edit(new, (lambda x, y: (x * f, y * f)) if abs(f - 1) > 1e-6 else None, f, dpi,
                          label=tr("Bildgröße {} × {} px, {} dpi").format(new[0].shape[1], new[0].shape[0], dpi))
+
+    # --- Scan aufbereiten: Hintergrund ausgleichen, gerade ausrichten, entzerren
+    def _sheet_ink(self):
+        res = (self.payload or {}).get("res")
+        return getattr(res, "a", None)
+
+    def sheet_background(self):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        dlg = BackgroundDialog(self, imgs[-1])
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            new = de.flatten_background(imgs, *dlg.values())
+        finally:
+            QApplication.restoreOverrideCursor()
+        self._sheet_edit(new, label=tr("Hintergrund ausgeglichen"))
+
+    def sheet_straighten(self):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            angle = de.skew_angle(imgs[0])
+        finally:
+            QApplication.restoreOverrideCursor()
+        dlg = StraightenDialog(self, imgs[-1], angle)
+        r = dlg.exec()
+        if r == StraightenDialog.LINE:
+            self.start_straighten_line()
+        elif r == QDialog.DialogCode.Accepted:
+            self._straighten(dlg.angle())
+
+    def start_straighten_line(self):
+        imgs, _ = self._sheet_images()
+        if imgs is not None:
+            self._set_tool("straighten")
+
+    def _straighten_line(self, x0, y0, x1, y1):
+        """Nachgezeichnete Kante: so drehen, dass sie waagerecht bzw. senkrecht liegt."""
+        self._set_tool("hand")
+        self._straighten(de.line_angle(x0, y0, x1, y1))
+
+    def _straighten(self, angle):
+        if abs(angle) < 0.005:
+            self.statusBar().showMessage(tr("Die Zeichnung liegt schon gerade."), 5000)
+            return
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        new, fn = de.rotate_angle_images(imgs, angle, self._sheet_ink())
+        self._sheet_edit(new, fn, label=tr("Um {:.2f}° gedreht").format(angle))
+
+    def sheet_perspective(self):
+        imgs, _ = self._sheet_images()
+        if imgs is None:
+            return
+        dlg = PerspectiveDialog(self, imgs[-1], self.dpi_value())
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        q, size, dpi = dlg.result()
+        new, fn = de.warp_quad(imgs, q, size, self._sheet_ink())
+        w0, _h0 = de.quad_size(q)
+        self._sheet_edit(new, fn, size[0] / max(1, w0), dpi,
+                         label=tr("Entzerrt auf {} × {} px").format(size[0], size[1]))
+
+
+def _ok_cancel(dlg, lay, ok=None):
+    bb = QDialogButtonBox()
+    bb.addButton(ok or tr("Übernehmen"), QDialogButtonBox.ButtonRole.AcceptRole).setObjectName("primary")
+    bb.addButton(tr("Abbrechen"), QDialogButtonBox.ButtonRole.RejectRole)
+    bb.accepted.connect(dlg.accept)
+    bb.rejected.connect(dlg.reject)
+    lay.addWidget(bb)
+    return bb
+
+
+class BackgroundDialog(QDialog):
+    """Hintergrund ausgleichen oder ersetzen (Schatten, Falten, Vergilbung) mit Vorschau."""
+
+    def __init__(self, parent, img):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Hintergrund ausgleichen"))
+        k = min(1.0, 520 / img.shape[1], 340 / img.shape[0])     # Vorschau passt ganz ins Fenster
+        self.small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+        self.color = None
+        lay = QVBoxLayout(self)
+        hint = QLabel(tr("Rechnet Schatten, Falten und vergilbtes Papier heraus: das Papier wird gleichmäßig, die "
+                         "Linien bleiben."))
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        lay.addWidget(hint)
+        self.preview = QLabel()
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview.setMinimumSize(460, 320)
+        lay.addWidget(self.preview, 1)
+        form = QFormLayout()
+        self.s_str = QSlider(Qt.Orientation.Horizontal)
+        self.s_str.setRange(0, 100)
+        self.s_str.setValue(50)
+        self.s_str.setToolTip(tr("Höher = auch kräftigere Flecken und Knicke werden weiß; zu hoch lässt helle Linien "
+                                 "verblassen"))
+        form.addRow(tr("Stärke"), self.s_str)
+        row = QHBoxLayout()
+        self.cb_paper = QComboBox()
+        self.cb_paper.addItem(tr("Weiß"), "white")
+        self.cb_paper.addItem(tr("Eigene Farbe …"), "color")
+        row.addWidget(self.cb_paper, 1)
+        self.sw = QLabel()
+        self.sw.setFixedSize(22, 22)
+        row.addWidget(self.sw)
+        form.addRow(tr("Papier"), row)
+        lay.addLayout(form)
+        _ok_cancel(self, lay)
+        self.s_str.valueChanged.connect(self._update)
+        self.cb_paper.activated.connect(self._paper)
+        self._update()
+
+    def _paper(self):
+        if self.cb_paper.currentData() == "color":
+            c = QColorDialog.getColor(QColor(245, 240, 225) if self.color is None else
+                                      QColor(self.color[2], self.color[1], self.color[0]), self, tr("Papierfarbe"))
+            if c.isValid():
+                self.color = (c.blue(), c.green(), c.red())
+            elif self.color is None:
+                self.cb_paper.setCurrentIndex(0)
+        else:
+            self.color = None
+        self._update()
+
+    def values(self):
+        return self.s_str.value(), self.color
+
+    def _update(self):
+        self.sw.setStyleSheet("" if self.color is None else
+                              "background: rgb({},{},{}); border: 1px solid gray;".format(*self.color[::-1]))
+        out = de.flatten_background([self.small], *self.values())[0]
+        self.preview.setPixmap(QPixmap.fromImage(to_qimage(out)))
+
+
+class StraightenDialog(QDialog):
+    """Gerade ausrichten: Winkel (automatisch erkannt oder von Hand) mit Vorschau und Raster."""
+
+    LINE = 2                                              # Rueckgabe: stattdessen Linie nachzeichnen
+
+    def __init__(self, parent, img, angle=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Gerade ausrichten"))
+        k = min(1.0, 520 / img.shape[1], 340 / img.shape[0])     # Vorschau passt ganz ins Fenster
+        self.small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
+        self.auto = angle
+        lay = QVBoxLayout(self)
+        self.preview = QLabel()
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview.setMinimumSize(460, 320)
+        lay.addWidget(self.preview, 1)
+        form = QFormLayout()
+        self.sp = QDoubleSpinBox()
+        self.sp.setRange(-45, 45)
+        self.sp.setDecimals(2)
+        self.sp.setSingleStep(0.1)
+        self.sp.setSuffix(" °")
+        self.sp.setToolTip(tr("Positiv = gegen den Uhrzeigersinn drehen"))
+        self.sp.setValue(angle or 0.0)
+        form.addRow(tr("Drehen um"), self.sp)
+        self.lbl = QLabel(tr("Automatisch erkannt: {}°").format(QLocale().toString(angle, "f", 2)) if angle is not None else
+                          tr("Keine langen geraden Linien gefunden – Winkel von Hand eingeben oder eine Linie "
+                             "nachzeichnen."))
+        self.lbl.setObjectName("hint")
+        self.lbl.setWordWrap(True)
+        form.addRow("", self.lbl)
+        lay.addLayout(form)
+        row = QHBoxLayout()
+        b = QPushButton(tr("Automatisch"))
+        b.setEnabled(angle is not None)
+        b.clicked.connect(lambda: self.sp.setValue(self.auto or 0.0))
+        row.addWidget(b)
+        b = QPushButton(tr("An Linie nachzeichnen …"))
+        b.setToolTip(tr("Im Bild eine Kante nachziehen, die waagerecht oder senkrecht sein soll"))
+        b.clicked.connect(lambda: self.done(self.LINE))
+        row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        _ok_cancel(self, lay)
+        self.sp.valueChanged.connect(self._update)
+        self._update()
+
+    def angle(self):
+        return self.sp.value()
+
+    def _update(self):
+        out = de.rotate_angle_images([self.small], self.angle())[0][0]
+        out = cv2.cvtColor(out, cv2.COLOR_GRAY2BGR) if out.ndim == 2 else out.copy()
+        h, w = out.shape[:2]
+        for x in range(0, w, 40):                         # Raster zum Vergleichen
+            out[:, x] = (out[:, x] * 0.5 + np.array((235, 160, 60)) * 0.5).astype(np.uint8)
+        for y in range(0, h, 40):
+            out[y, :] = (out[y, :] * 0.5 + np.array((235, 160, 60)) * 0.5).astype(np.uint8)
+        self.preview.setPixmap(QPixmap.fromImage(to_qimage(out)))
+
+
+class QuadEditor(QWidget):
+    """Bild mit vier verschiebbaren Ecken und Lupe an der gezogenen Ecke."""
+
+    changed = Signal()
+
+    def __init__(self, img, quad):
+        super().__init__()
+        self.img = img
+        self.qimg = to_qimage(img)
+        self.quad = [list(map(float, q)) for q in quad]
+        self.drag = None
+        self.setMinimumSize(560, 420)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.CrossCursor)
+
+    def _geom(self):
+        h, w = self.img.shape[:2]
+        k = min((self.width() - 20) / w, (self.height() - 20) / h)
+        return k, (self.width() - w * k) / 2, (self.height() - h * k) / 2
+
+    def _to_w(self, x, y):
+        k, ox, oy = self._geom()
+        return QPointF(ox + x * k, oy + y * k)
+
+    def _to_i(self, p):
+        k, ox, oy = self._geom()
+        h, w = self.img.shape[:2]
+        return min(max((p.x() - ox) / k, 0), w), min(max((p.y() - oy) / k, 0), h)
+
+    def paintEvent(self, _e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        k, ox, oy = self._geom()
+        h, w = self.img.shape[:2]
+        p.drawImage(QRectF(ox, oy, w * k, h * k), self.qimg)
+        poly = QPolygonF([self._to_w(*q) for q in self.quad])
+        p.setPen(QPen(QColor(ACCENT), 2))
+        p.setBrush(QColor(37, 99, 235, 40))
+        p.drawPolygon(poly)
+        for i, q in enumerate(self.quad):
+            p.setBrush(QColor("white") if i != self.drag else QColor(ACCENT))
+            p.drawEllipse(self._to_w(*q), 7, 7)
+        if self.drag is not None:                         # Lupe: Ausschnitt um die Ecke, vierfach
+            x, y = self.quad[self.drag]
+            r = 30
+            src = QRectF(x - r, y - r, 2 * r, 2 * r)
+            c = self._to_w(x, y)
+            size = 140
+            tx = c.x() + 20 if c.x() + 20 + size < self.width() else c.x() - 20 - size
+            ty = c.y() + 20 if c.y() + 20 + size < self.height() else c.y() - 20 - size
+            dst = QRectF(tx, ty, size, size)
+            p.setPen(QPen(QColor(ACCENT), 2))
+            p.setBrush(QColor("white"))
+            p.drawRect(dst)
+            p.drawImage(dst, self.qimg, src)
+            p.setPen(QPen(QColor("#e11d48"), 1))
+            p.drawLine(QPointF(dst.center().x(), dst.top()), QPointF(dst.center().x(), dst.bottom()))
+            p.drawLine(QPointF(dst.left(), dst.center().y()), QPointF(dst.right(), dst.center().y()))
+        p.end()
+
+    def mousePressEvent(self, e):
+        pos = e.position()
+        d = [(pos - self._to_w(*q)).manhattanLength() for q in self.quad]
+        i = int(np.argmin(d))
+        if d[i] < 40:
+            self.drag = i
+            self.update()
+
+    def mouseMoveEvent(self, e):
+        if self.drag is not None:
+            self.quad[self.drag] = list(self._to_i(e.position()))
+            self.update()
+
+    def mouseReleaseEvent(self, _e):
+        if self.drag is not None:
+            self.drag = None
+            self.update()
+            self.changed.emit()
+
+
+class PerspectiveDialog(QDialog):
+    """Entzerren: vier Ecken des Blatts setzen (automatisch erkannt), Format waehlen, Vorschau."""
+
+    def __init__(self, parent, img, dpi):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Entzerren (4 Ecken)"))
+        self.full_shape = img.shape[:2]
+        self.k = min(1.0, 900 / max(img.shape[:2]))
+        small = cv2.resize(img, None, fx=self.k, fy=self.k, interpolation=cv2.INTER_AREA)
+        self.small, self.dpi = small, dpi
+        self.auto = de.find_sheet_quad(img)
+        lay = QVBoxLayout(self)
+        hint = QLabel(tr("Die Ecken des Blatts an die vier Punkte ziehen (Lupe hilft). Danach wird das Blatt "
+                         "rechteckig gerechnet, z. B. bei einem Handyfoto."))
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        lay.addWidget(hint)
+        body = QHBoxLayout()
+        self.editor = QuadEditor(small, self.auto * self.k)
+        body.addWidget(self.editor, 3)
+        self.preview = QLabel()
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview.setMinimumSize(220, 220)
+        body.addWidget(self.preview, 2)
+        lay.addLayout(body, 1)
+        form = QFormLayout()
+        self.cb_fmt = QComboBox()
+        self.cb_fmt.addItem(tr("Seitenverhältnis aus den Ecken"), None)
+        for f in de.PAPER_MM:
+            self.cb_fmt.addItem(tr("{} (mm stimmen danach)").format(f), f)
+        form.addRow(tr("Format"), self.cb_fmt)
+        self.lbl = QLabel()
+        self.lbl.setObjectName("hint")
+        form.addRow("", self.lbl)
+        lay.addLayout(form)
+        row = QHBoxLayout()
+        b = QPushButton(tr("Blatt erkennen"))
+        b.clicked.connect(lambda: self._set_quad(self.auto * self.k))
+        row.addWidget(b)
+        b = QPushButton(tr("Ecken an den Bildrand"))
+        h, w = small.shape[:2]
+        b.clicked.connect(lambda: self._set_quad(np.float32([(0, 0), (w, 0), (w, h), (0, h)])))
+        row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        _ok_cancel(self, lay, tr("Entzerren"))
+        self.editor.changed.connect(self._update)
+        self.cb_fmt.currentIndexChanged.connect(self._update)
+        self.resize(900, 640)
+        self._update()
+
+    def _set_quad(self, q):
+        self.editor.quad = [list(map(float, p)) for p in q]
+        self.editor.update()
+        self._update()
+
+    def quad(self):
+        """Ecken im vollen Bild (oben links, im Uhrzeigersinn)."""
+        return de.order_quad(np.float32(self.editor.quad) / self.k)
+
+    def result(self):
+        """(Ecken, Zielgroesse (w, h), neue dpi)."""
+        q = self.quad()
+        size, mm_px = de.warp_size(q, self.cb_fmt.currentData())
+        if not mm_px:
+            return q, size, self.dpi
+        dpi = max(20, round(25.4 / mm_px))                 # ganze dpi; Groesse passend, damit die mm genau stimmen
+        f = dpi * mm_px / 25.4
+        return q, (int(round(size[0] * f)), int(round(size[1] * f))), dpi
+
+    def _update(self):
+        q, size, dpi = self.result()
+        self.lbl.setText(tr("Ergebnis: {} × {} px,  {:.0f} × {:.0f} mm bei {:.0f} dpi").format(
+            size[0], size[1], size[0] * 25.4 / dpi, size[1] * 25.4 / dpi, dpi))
+        f = min(1.0, 320 / max(size))
+        out = de.warp_quad([self.small], q * self.k, (max(1, int(size[0] * f)), max(1, int(size[1] * f))))[0][0]
+        self.preview.setPixmap(QPixmap.fromImage(to_qimage(out)))
 
 
 class OcrPdfMixin:

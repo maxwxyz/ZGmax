@@ -9,7 +9,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
 from ui_start import StartPage
-from ui_widgets import Banner, Collapsible, OverlayHost, PaletteFrame, PanelScroll, Section, SliderRow
+from ui_widgets import Banner, Collapsible, ElideLabel, FlowLayout, OverlayHost, PaletteFrame, PanelScroll, Section, SliderRow
 
 VIEWS = (("A", tr("Alt"), "1", tr("Nur die alte Zeichnung A")),
          ("B", tr("Neu"), "2", tr("Nur die neue Zeichnung B")),
@@ -152,15 +152,28 @@ class LayoutMixin:
                                  tip=tr("Den Zuschnitt-Rahmen entfernen; Ausgaben zeigen wieder das ganze Blatt"))
         self.act_frame_apply = A(tr("Zuschnitt endgültig anwenden"), lambda: self.apply_crop_frame(),
                                  tip=tr("Die Zeichnung selbst auf den Zuschnitt-Rahmen zuschneiden (rückgängig mit Strg+Z)"))
-        self.act_frame_clear.setEnabled(False)
-        self.act_frame_apply.setEnabled(False)
+        for a in (self.act_frame_clear, self.act_frame_apply):     # erst sichtbar, wenn ein Zuschnitt gesetzt ist
+            a.setEnabled(False)
+            a.setVisible(False)
         self.act_rot_cw = A(tr("90° nach rechts drehen"), lambda: self.sheet_rotate(1))
         self.act_rot_ccw = A(tr("90° nach links drehen"), lambda: self.sheet_rotate(3))
         self.act_rot_180 = A(tr("180° drehen"), lambda: self.sheet_rotate(2))
         self.act_adjust = A(tr("Helligkeit und Kontrast …"), lambda: self.sheet_adjust())
         self.act_size = A(tr("Bildgröße und Auflösung …"), lambda: self.sheet_size())
+        self.act_background = A(tr("Hintergrund ausgleichen …"), lambda: self.sheet_background(),
+                                tip=tr("Schatten, Falten und vergilbtes Papier eines Scans herausrechnen; Papier weiß "
+                                       "oder in eigener Farbe"))
+        self.act_straighten = A(tr("Gerade ausrichten …"), lambda: self.sheet_straighten(),
+                                tip=tr("Schräg eingescannte Zeichnung gerade drehen: Winkel automatisch erkennen oder "
+                                       "von Hand"))
+        self.act_straighten_line = A(tr("Gerade ausrichten an Linie"), lambda: self.start_straighten_line(),
+                                     tip=tr("Eine Kante nachziehen, die waagerecht oder senkrecht sein soll"))
+        self.act_perspective = A(tr("Entzerren (4 Ecken) …"), lambda: self.sheet_perspective(),
+                                 tip=tr("Foto eines Blatts rechteckig rechnen: Ecken werden erkannt und lassen sich "
+                                        "verschieben; Papierformat wählbar, damit die mm stimmen"))
         self.sheet_actions = (self.act_move_sel, self.act_sheet_crop, self.act_rot_cw, self.act_rot_ccw,
-                              self.act_rot_180, self.act_adjust, self.act_size)
+                              self.act_rot_180, self.act_straighten, self.act_straighten_line, self.act_perspective,
+                              self.act_background, self.act_adjust, self.act_size)
 
         self.mode_actions = {}
         grp = QActionGroup(self)
@@ -302,18 +315,17 @@ class LayoutMixin:
         for a in (self.act_proj_save, self.act_proj_save_as, self.act_close):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
-                  self.act_vectorize, self.act_export_all_ann, None, self.act_export_pdf, self.act_export_all_report,
-                  self.act_export_csv, None, self.act_print):
-            m.addSeparator() if a is None else m.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
+        ex = m.addMenu(tr("Exportieren"))                  # alles, was eine Datei erzeugt
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+                  self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
+                  self.act_export_all_report, self.act_export_csv):
+            ex.addSeparator() if a is None else ex.addAction(a)   # Bild/PDF | Zeichnung umwandeln | Bericht
+        m.addAction(self.act_print)
         m.addSeparator()
-        for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf,
+        mk = m.addMenu(tr("Markierungen"))
+        for a in (self.act_ann_save, self.act_ann_load, None, self.act_import_comments, self.act_export_xfdf, None,
                   self.act_export_measures):
-            m.addAction(a)
-        m.addAction(self.act_save_drawing)
-        m.addSeparator()
-        m.addAction(self.act_batch)
-        m.addAction(self.act_revisions)
+            mk.addSeparator() if a is None else mk.addAction(a)
         if os.name == "nt":
             m.addAction(self.act_shortcut)
         m.addSeparator()
@@ -323,7 +335,7 @@ class LayoutMixin:
         for a in (self.act_undo, self.act_redo):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_search, self.act_search_next, self.act_search_prev):
+        for a in (self.act_search, self.act_search_next, self.act_search_prev, self.act_title):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_copy, self.act_copy_sel, self.act_paste):
@@ -334,7 +346,7 @@ class LayoutMixin:
         sm.setToolTipsVisible(True)
         for a in self.sheet_actions:
             sm.addAction(a)
-            if a in (self.act_sheet_crop, self.act_rot_180):
+            if a in (self.act_sheet_crop, self.act_rot_180, self.act_perspective):
                 sm.addSeparator()
         sm.addSeparator()
         sm.addAction(self.act_save_drawing)
@@ -391,22 +403,23 @@ class LayoutMixin:
             m.addAction(self.tool_actions[key])
         chest = m.addMenu(tr("Werkzeugkasten"))
         chest.aboutToShow.connect(lambda c=chest: self._fill_toolchest(c))
-        m.addSeparator()
-        m.addAction(self.act_auto)
-        m.addAction(self.act_align)
-        m.addAction(self.act_align_reset)
-        m.addSeparator()
-        for a in (self.act_crop, self.act_crop_off, self.act_match, self.act_zone):
-            m.addAction(a)
 
-        m = mb.addMenu(tr("&Prüfen"))
+        # Alles zum Vergleichen an einer Stelle: starten, einstellen, pruefen, auswerten, weitere Vergleiche
+        m = mb.addMenu(tr("&Vergleichen"))
         for a in (self.act_compare, self.act_find):
             m.addAction(a)
+        sm = m.addMenu(tr("Vergleich einstellen"))
+        for a in (self.act_auto, self.act_align, self.act_align_reset, None, self.act_crop, self.act_crop_off,
+                  self.act_match, self.act_zone):
+            sm.addSeparator() if a is None else sm.addAction(a)
         m.addSeparator()
         for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_pages, self.act_title, self.act_text, self.act_dims, self.act_index):
+        for a in (self.act_text, self.act_dims, self.act_index):
+            m.addAction(a)
+        m.addSeparator()
+        for a in (self.act_pages, self.act_batch, self.act_revisions):
             m.addAction(a)
 
         self.menu_windows = mb.addMenu(tr("&Fenster"))       # alle offenen Fenster (je Dokument eines)
@@ -429,36 +442,55 @@ class LayoutMixin:
         return w
 
     def _fit_toolbar(self):
-        """Ist das Fenster zu schmal fuer die Leiste oben, zeigen Oeffnen, Vergleichen, Speichern, Optionen und
-        Elemente nur ihr Symbol (Name im Tooltip) - statt dass Knoepfe im Ueberlauf-Menue verschwinden."""
+        """Ist das Fenster zu schmal fuer die Leiste oben, verlieren die Knoepfe Schritt fuer Schritt ihren Text
+        (zuerst Elemente und Optionen, zuletzt Vergleichen; Name bleibt im Tooltip) - statt dass Knoepfe im
+        Ueberlauf-Menue verschwinden."""
         tb = getattr(self, "main_toolbar", None)
-        if tb is None:
+        if tb is None or not self._tb_text:
             return
-        need = 24
+        base, extra = 24, {}
         for act in tb.actions():                  # ueber die Aktionen: im Ueberlauf versteckte Knoepfe zaehlen mit
             if not act.isVisible():
                 continue
             if act.isSeparator():
-                need += 10
+                base += 10
                 continue
             w = tb.widgetForAction(act)
             if w is None:
                 continue
-            if w in self._tb_text:                 # Breite mit Text (auch wenn gerade nur das Symbol zu sehen ist)
-                need += w.iconSize().width() + w.fontMetrics().horizontalAdvance(w.text()) + 34
+            if w in self._tb_text:                 # Breite ohne Text; der Text kommt bei Platz dazu
+                base += w.iconSize().width() + 23 + tb.layout().spacing()
+                extra[w] = w.fontMetrics().horizontalAdvance(w.text()) + 11
             else:
-                need += max(0, w.sizeHint().width()) + tb.layout().spacing()
-        ext = tb.findChild(QToolButton, "qt_toolbar_ext_button")
-        now_compact = bool(self._tb_text) and \
-            self._tb_text[0].toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
-        if now_compact:
-            compact = need > tb.width() - 20       # erst mit etwas Luft wieder Text zeigen (kein Flackern)
-        else:
-            compact = need > tb.width() or bool(ext and ext.isVisible())
-        style = Qt.ToolButtonStyle.ToolButtonIconOnly if compact else Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+                base += max(0, w.sizeHint().width()) + tb.layout().spacing()
+        # Reihenfolge, in der der Text wegfaellt: unwichtigstes zuerst
+        order = sorted(self._tb_text, key=lambda w: getattr(w, "_text_rank", 0))
+        keep = [w for w in order if w.isVisible() or w in extra]
+        now = [w for w in keep if w.toolButtonStyle() != Qt.ToolButtonStyle.ToolButtonIconOnly]
+        avail = tb.width()
+        n = len(keep)
+        while n > 0 and base + sum(extra.get(w, 0) for w in keep[len(keep) - n:]) > avail:
+            n -= 1
+        if n > len(now) and base + sum(extra.get(w, 0) for w in keep[len(keep) - n:]) > avail - 20:
+            n = len(now)                         # erst mit etwas Luft wieder Text zeigen (kein Flackern)
+        with_text = set(keep[len(keep) - n:])
         for w in self._tb_text:
+            style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon if w in with_text else \
+                Qt.ToolButtonStyle.ToolButtonIconOnly
             if w.toolButtonStyle() != style:
                 w.setToolButtonStyle(style)
+
+    def _tb_proxy(self, src, ico):
+        """Eigene Aktion fuer die Leiste oben: laesst sich je Modus ausblenden, ohne dass der Menuepunkt
+        verschwindet (dort bleibt er ausgegraut sichtbar)."""
+        a = QAction(icon(ico), src.text(), self)
+        a.setIconText(src.iconText())
+        a.setToolTip(src.toolTip())
+        a.setEnabled(src.isEnabled())
+        a.triggered.connect(src.trigger)
+        src.changed.connect(lambda a=a, src=src: a.setEnabled(src.isEnabled()))
+        self._icon_actions.append((a, ico))
+        return a
 
     def _build_toolbar(self):
         tb = QToolBar(tr("Hauptleiste"))
@@ -486,8 +518,25 @@ class LayoutMixin:
         b.setToolTip(tr("Zeichnungen oder Projekt öffnen"))
         tb.addWidget(b)
         self._tb_text.append(b)
-        self.btn_compare_tb = self._tb_button(tb, self.act_compare)
-        self.act_compare_tb = tb.actions()[-1]
+        b._text_rank = 2
+        # Woran man den Modus erkennt: Schild mit Modus und Datei(en); Klick = was man damit tun kann
+        # (neu vergleichen, tauschen, Datei wechseln). Ersetzt im Vergleich einen eigenen Vergleichen-Knopf.
+        self.mode_chip = QToolButton()
+        self.mode_chip.setObjectName("modechip")
+        self.mode_chip.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.mode_chip.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        chip_menu = QMenu(self.mode_chip)
+        chip_menu.aboutToShow.connect(lambda m=chip_menu: self._fill_chip_menu(m))
+        self.mode_chip.setMenu(chip_menu)
+        self.act_mode_chip = tb.addWidget(self.mode_chip)
+        self.act_mode_chip.setVisible(False)
+        self.act_compare_with_tb = self._tb_proxy(self.act_open_b, "compare")   # beim Ansehen: zweite Zeichnung
+        self.act_compare_with_tb.setText(tr("Vergleichen mit …"))
+        self.act_compare_with_tb.setIconText(tr("Vergleichen mit …"))
+        self.act_compare_with_tb.setToolTip(tr("Zweite Zeichnung (neu) öffnen und mit dieser vergleichen"))
+        self.btn_compare_with_tb = self._tb_button(tb, self.act_compare_with_tb)
+        self.btn_compare_with_tb._text_rank = 4
+        self.act_compare_with_tb.setVisible(False)
         self.sep_views = tb.addSeparator()
         # Ansichten als ruhiger Umschalter (eine Gruppe, gewaehlte Ansicht hell hervorgehoben)
         self.view_box = QFrame()
@@ -513,23 +562,26 @@ class LayoutMixin:
         self.act_pause = QAction(tr("Pause"), self, checkable=True)
         self.act_pause.setToolTip(tr("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)"))
         self.act_pause.toggled.connect(self._pause_blink)
-        tb.addSeparator()
-        tb.addAction(self.act_zoom_out)
+        proxy = self._tb_proxy
+        self.tb_zoom_actions = [tb.addSeparator()]
+        tb.addAction(z := proxy(self.act_zoom_out, "zoom_out"))
+        self.tb_zoom_actions.append(z)
         self.lbl_zoom = QToolButton()
         self.lbl_zoom.setObjectName("zoomlabel")
         self.lbl_zoom.setText("–")
         self.lbl_zoom.setToolTip(tr("Zoomstufe. Klick = Originalgröße (100 %)"))
         self.lbl_zoom.clicked.connect(self._zoom100)
-        tb.addWidget(self.lbl_zoom)
-        tb.addAction(self.act_zoom_in)
-        self._tb_button(tb, self.act_fit, text_beside=False)          # Symbol genuegt (F, Doppelklick)
+        self.tb_zoom_actions.append(tb.addWidget(self.lbl_zoom))
+        for src, ico in ((self.act_zoom_in, "zoom_in"), (self.act_fit, "fit")):   # Symbol genuegt (F, Doppelklick)
+            tb.addAction(z := proxy(src, ico))
+            self.tb_zoom_actions.append(z)
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
-        save = QMenu(self)
-        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_svg, self.act_export_ocrpdf,
-                  self.act_vectorize, self.act_export_all_ann, None, self.act_export_pdf, self.act_export_all_report,
-                  self.act_export_csv, None, self.act_print):
+        save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren
+        for a in (self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
+                  self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
+                  self.act_export_all_report, self.act_export_csv, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         save.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as):
@@ -542,11 +594,12 @@ class LayoutMixin:
         b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         b.setMenu(save)
         b.setToolTip(tr("Ergebnis, Bericht oder Projekt speichern; drucken"))
-        tb.addWidget(b)
+        self.tb_zoom_actions.append(tb.addWidget(b))                  # wie Zoom: erst mit geoeffneter Zeichnung
         self._tb_text.append(b)
+        b._text_rank = 3
         tb.addSeparator()
-        self._tb_button(tb, self.act_left)
-        self._tb_button(tb, self.act_right)
+        self._tb_button(tb, self.act_left)._text_rank = 1      # Text faellt bei Platzmangel zuerst weg
+        self._tb_button(tb, self.act_right)._text_rank = 0
         ext = tb.findChild(QToolButton, "qt_toolbar_ext_button")
         if ext is not None:
             ext.setIcon(QIcon())
@@ -605,11 +658,10 @@ class LayoutMixin:
     def _build_options(self):
         bar = QFrame()
         bar.setObjectName("optbar")
-        lay = QHBoxLayout(bar)
+        lay = FlowLayout(bar, 10)                    # bricht bei schmalem Bild um, statt abzuschneiden
         lay.setContentsMargins(12, 4, 12, 4)
-        lay.setSpacing(10)
         self.opt_measure = QWidget()
-        l = QHBoxLayout(self.opt_measure)
+        l = FlowLayout(self.opt_measure)
         l.setContentsMargins(0, 0, 0, 0)
         l.addWidget(QLabel(tr("Messart")))
         self.cb_mkind = QComboBox()
@@ -657,7 +709,7 @@ class LayoutMixin:
         l.addWidget(b)
         lay.addWidget(self.opt_measure)
         self.opt_ann = QWidget()
-        l = QHBoxLayout(self.opt_ann)
+        l = FlowLayout(self.opt_ann)
         l.setContentsMargins(0, 0, 0, 0)
         self.btn_color = QPushButton(tr("Farbe"))
         self.btn_color.clicked.connect(self._pick_color)
@@ -702,7 +754,7 @@ class LayoutMixin:
         l.addWidget(self.sp_stamp)
         lay.addWidget(self.opt_ann)
         self.opt_view = QWidget()                     # Optionen der Ansicht (Blinken, Hervorheben, Schieber)
-        l = QHBoxLayout(self.opt_view)
+        l = FlowLayout(self.opt_view)
         l.setContentsMargins(0, 0, 0, 0)
         self.lbl_blink = QLabel(tr("Blinken"))
         self.cb_blink = QComboBox()
@@ -726,7 +778,7 @@ class LayoutMixin:
             l.addWidget(w)
         lay.addWidget(self.opt_view)
         self.opt_loupe = QWidget()
-        l = QHBoxLayout(self.opt_loupe)
+        l = FlowLayout(self.opt_loupe)
         l.setContentsMargins(0, 0, 0, 0)
         l.addWidget(QLabel(tr("Lupe")))
         self.cb_loupe = QComboBox()
@@ -738,7 +790,7 @@ class LayoutMixin:
         l.addWidget(self.cb_loupe)
         lay.addWidget(self.opt_loupe)
         self.opt_area = QWidget()                     # Bereichsauswahl
-        l = QHBoxLayout(self.opt_area)
+        l = FlowLayout(self.opt_area)
         l.setContentsMargins(0, 0, 0, 0)
         self.lbl_area = QLabel("")
         self.lbl_area.setObjectName("hint")
@@ -777,7 +829,7 @@ class LayoutMixin:
         l.addWidget(self.btn_area_more)
         lay.addWidget(self.opt_area)
         self.opt_float = QWidget()                    # Ausschnitt verschieben
-        l = QHBoxLayout(self.opt_float)
+        l = FlowLayout(self.opt_float)
         l.setContentsMargins(0, 0, 0, 0)
         self.chk_float_lines = QCheckBox(tr("Nur Linien (ohne Papier)"))
         self.chk_float_lines.setToolTip(tr("Verschieben: nur die Linien wandern, Papier und Hintergrund am Ziel bleiben; "
@@ -799,7 +851,7 @@ class LayoutMixin:
         self.lbl_tool_hint = QLabel("")
         self.lbl_tool_hint.setObjectName("hint")
         self.lbl_tool_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        lay.addWidget(self.lbl_tool_hint, 1)
+        lay.addWidget(self.lbl_tool_hint)
         self.options_bar = bar
         self._set_color_btn("#e11d48")
         return bar
@@ -914,9 +966,12 @@ class LayoutMixin:
         lay.setSpacing(8)
 
         sec = Section(tr("Zeichnungen"))
-        self.lbl_a, self.lbl_b = QLabel(tr("(nicht gewählt)")), QLabel(tr("(nicht gewählt)"))
+        self.lbl_a, self.lbl_b = ElideLabel(tr("(nicht gewählt)")), ElideLabel(tr("(nicht gewählt)"))
+        self.file_rows = {}
         for tag, lbl, which in ((tr("A  –  alt"), self.lbl_a, "A"), (tr("B  –  neu"), self.lbl_b, "B")):
-            row = QHBoxLayout()
+            head = QWidget()
+            row = QHBoxLayout(head)
+            row.setContentsMargins(0, 0, 0, 0)
             t = QLabel(tag)
             t.setObjectName("sec")
             row.addWidget(t)
@@ -924,16 +979,23 @@ class LayoutMixin:
             btn = QPushButton(tr("Öffnen …"))
             btn.clicked.connect(lambda _=False, w=which: self.open_file(w))
             row.addWidget(btn)
-            sec.body.addLayout(row)
+            sec.body.addWidget(head)
             lbl.setObjectName("file")
-            lbl.setWordWrap(True)
             sec.body.addWidget(lbl)
-        b = QPushButton(tr("A und B tauschen"))
-        b.clicked.connect(self.swap_ab)
-        sec.body.addWidget(b)
+            self.file_rows[which] = (head, t, lbl)
+        self.btn_swap = QPushButton(tr("A und B tauschen"))
+        self.btn_swap.clicked.connect(self.swap_ab)
+        sec.body.addWidget(self.btn_swap)
+        self.btn_add_b = QPushButton(tr("Mit anderer Zeichnung vergleichen …"))   # nur beim Ansehen
+        self.btn_add_b.setObjectName("primary")
+        self.btn_add_b.setToolTip(tr("Zweite Zeichnung (neu) öffnen; dann wird verglichen"))
+        self.btn_add_b.clicked.connect(lambda: self.open_file("B"))
+        self.btn_add_b.setVisible(False)
+        sec.body.addWidget(self.btn_add_b)
         lay.addWidget(sec)
 
         sec = Section(tr("Empfindlichkeit"))
+        self.sec_sens = sec
         self.s_tol = SliderRow(tr("Toleranz (px)"), 0, 10, 2, 1, 0,
                                tr("Linien mit weniger Abstand gelten als gleich. Höher = weniger Rauschen."))
         sec.body.addWidget(self.s_tol)
@@ -1173,6 +1235,7 @@ class LayoutMixin:
         adv.body.addWidget(b)
         lay.addWidget(adv)
         self.expert_widgets = [zon, adv]
+        self.compare_widgets = [self.sec_sens, zon]           # beim Ansehen einer einzelnen Zeichnung ohne Sinn
         lay.addStretch()
 
         for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
@@ -1613,6 +1676,22 @@ class LayoutMixin:
         for w in self.expert_widgets:
             w.setVisible(on)
         self._update_vec_visibility()
+        self._apply_mode_panels()
+
+    def _apply_mode_panels(self):
+        """Linke Seitenleiste je Modus: beim Ansehen nur Datei, Seiten und Massstab - kein Vergleichs-Zubehoer."""
+        single = getattr(self, "view_only", False)
+        expert = self.act_expert.isChecked()
+        for w in getattr(self, "compare_widgets", ()):
+            w.setVisible(not single and (w not in self.expert_widgets or expert))
+        head_a, tag_a, _l = self.file_rows["A"]
+        tag_a.setText(tr("Zeichnung") if single else tr("A  –  alt"))
+        for w in self.file_rows["B"]:
+            w.setVisible(not single)
+        self.btn_swap.setVisible(not single)
+        self.btn_add_b.setVisible(single)
+        self.btn_run.setVisible(not single)
+        self.chk_live.setVisible(not single and expert)
 
     def _update_vec_visibility(self):
         both_vec = all(self.vinfo.get(w) and self.vinfo[w]["vector"] for w in "AB")
@@ -1646,15 +1725,22 @@ class LayoutMixin:
             a.setEnabled(has)
         for a in self.sheet_actions:                                  # nur beim Ansehen einer einzelnen Zeichnung
             a.setEnabled(has and self.view_only)
-        for a in (self.act_find, self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment,
-                  self.act_export_pdf, self.act_export_csv, self.act_auto, self.act_text, self.act_dims,
-                  self.act_index, self.act_rej_zones, self.act_pages, self.act_match, self.act_align, self.act_zone,
-                  self.act_crop, self.act_crop_off, self.act_clouds):
+        for a in (self.act_find, self.act_export_pdf, self.act_export_csv, self.act_auto, self.act_index,
+                  self.act_match, self.act_align, self.act_zone, self.act_crop, self.act_crop_off, self.act_clouds):
             a.setEnabled(has and not self.view_only)                  # nur im Vergleich
         self.act_align_reset.setEnabled(has and not self.view_only and getattr(self, "manual_tf", None) is not None)
         multi = has and max(getattr(self, "n_pages_a", 1), getattr(self, "n_pages_b", 1)) > 1
         self.act_export_all_ann.setVisible(multi)                    # nur bei mehrseitigen Dateien
         self.act_export_all_report.setVisible(multi and not self.view_only)
+        self.act_pages.setEnabled(multi and not self.view_only)
+        self.act_legend.setEnabled(has and not self.view_only and self.canvas.mode in ("D", "O", "N", "R"))
+        for a in (self.tb_zoom_actions if hasattr(self, "tb_zoom_actions") else ()):
+            a.setVisible(has)                                          # Startseite: keine toten Knoepfe oben
+        if hasattr(self, "act_view_box"):
+            self.act_view_box.setVisible(has and not self.view_only)
+            self.sep_views.setVisible(has and not self.view_only)
+        self._update_review_enabled()
+        self._update_mode_chip()
         for a in self.mode_actions.values():
             a.setEnabled(has and not self.view_only)
         for b in self.seg_buttons.values():
@@ -1664,12 +1750,66 @@ class LayoutMixin:
         self.act_compare.setEnabled(bool(self.path_a and self.path_b) and not self.running)
         self.lbl_zoom.setEnabled(has)
 
+    def _update_mode_chip(self):
+        """Schild oben: 'Ansehen: datei' oder 'Vergleich: alt → neu' - man sieht sofort, in welchem Modus man ist."""
+        chip = getattr(self, "mode_chip", None)
+        if chip is None:
+            return
+        has = self.payload is not None
+        self.act_mode_chip.setVisible(has)
+        if not has:
+            return
+        fm = chip.fontMetrics()
+        name = lambda p, w: fm.elidedText(os.path.basename(p or ""), Qt.TextElideMode.ElideMiddle, w)  # noqa: E731
+        dirty = getattr(self, "_params_dirty", False) and not self.view_only
+        if self.view_only:                      # Modus bleibt immer lesbar, nur die Dateinamen werden gekuerzt
+            text = tr("Ansehen: {}").format(name(self.path_a or self.path_b, 220))
+            tip = tr("Einzelansicht: eine Zeichnung ansehen, messen und markieren. Zum Vergleichen eine zweite "
+                     "Zeichnung öffnen („Vergleichen mit …“).")
+        else:
+            text = tr("Vergleich: {} → {}").format(name(self.path_a, 120), name(self.path_b, 120))
+            tip = tr("Vergleich: A (alt) und B (neu) übereinander; Unterschiede sind farbig. Klick: neu "
+                     "vergleichen, A und B tauschen oder eine Datei wechseln.")
+            if dirty:
+                text = "● " + text
+                tip = tr("Einstellungen geändert – Klick → „Neu vergleichen“ (Strg+Enter).") + "\n" + tip
+        chip.setProperty("single", bool(self.view_only))
+        chip.setProperty("dirty", bool(dirty))
+        chip.style().unpolish(chip)
+        chip.style().polish(chip)
+        chip.setToolTip(tip + "\n\n" + "\n".join(p for p in (self.path_a, self.path_b) if p))
+        chip.setText(text + "  ▾")
+
+    def _fill_chip_menu(self, m):
+        m.clear()
+        if self.view_only:
+            m.addAction(tr("Mit anderer Zeichnung vergleichen …"), lambda: self.open_file("B"))
+            m.addAction(tr("Andere Zeichnung ansehen …"), self.open_view_only)
+        else:
+            m.addAction(self.act_compare)
+            m.addAction(tr("A und B tauschen"), self.swap_ab)
+            m.addSeparator()
+            m.addAction(tr("Andere alte Zeichnung (A) …"), lambda: self.open_file("A"))
+            m.addAction(tr("Andere neue Zeichnung (B) …"), lambda: self.open_file("B"))
+        m.addSeparator()
+        m.addAction(self.act_close)
+
+    def _update_review_enabled(self):
+        """Pruefen (naechste, geprueft, abgelehnt, ...) und Text/Masse lesen erst, wenn es Aenderungen gibt."""
+        pl = self.payload
+        regs = bool(pl and not self.view_only and pl.get("regs"))
+        for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones,
+                  self.act_text, self.act_dims):
+            a.setEnabled(regs)
+
     def _set_view_only(self, on):
         """Nur eine Datei: Vergleichsfunktionen ausblenden (reines Ansehen)."""
         self.view_only = on
-        self.act_view_box.setVisible(not on)
-        self.sep_views.setVisible(not on)
-        self.act_compare_tb.setVisible(not on)
+        self.act_compare_with_tb.setVisible(on)
+        for key, *_ in VIEWS + MORE_VIEWS:                       # Vergleichsansichten auch im Menue weg
+            self.mode_actions[key].setVisible(not on)
+        self._apply_mode_panels()
+        self._update_mode_chip()
         self._update_enabled()
         QTimer.singleShot(0, self._fit_toolbar)
         self.canvas.show_legend = not on and self.act_legend.isChecked()
