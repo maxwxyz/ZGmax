@@ -560,6 +560,7 @@ class FeaturesMixin:
         self.zones.clear()
         self.pdf_off, self._comments_done = set(), set()
         self.crop_frame = None
+        self.page_scales = {}
         self.project_path = None
         self.restore_regs = None
         self.index_info = None

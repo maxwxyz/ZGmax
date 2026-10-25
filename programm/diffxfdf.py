@@ -79,7 +79,8 @@ def parse_xfdf(path, page_h_pt, page=0):
             color = _color(m.group(1) if m else e.get("color"), "#e11d48")
         out.append(dict(kind=_KIND[tag], rect=rect, pts=pts, text=(text or "").strip(), color=color,
                         author=e.get("title", ""), date=e.get("date", ""), subject=e.get("subject", ""),
-                        cloudy=(e.get("style", "") or "").lower() == "cloudy"))
+                        cloudy=(e.get("style", "") or "").lower() == "cloudy", name=e.get("name"),
+                        irt=e.get("inreplyto"), state=e.get("state"), statemodel=e.get("statemodel")))
     return out, skipped
 
 
@@ -109,10 +110,14 @@ def pdf_comments(path, page=1):
             if rd and t in ("Square", "Circle", "Polygon") and any(rd):
                 r = pymupdf.Rect(r.x0 + rd[0], r.y0 + rd[1], r.x1 - rd[2], r.y1 - rd[3])
             border = a.border or {}
+            st = doc.xref_get_key(a.xref, "State")
+            sm = doc.xref_get_key(a.xref, "StateModel")
             out.append(dict(kind=names[t], rect=(r.x0, r.y0, r.x1, r.y1), pts=pts,
                             text=(info.get("content") or "").strip(), color=color, author=info.get("title", ""),
                             date=info.get("modDate", "") or info.get("creationDate", ""),
-                            subject=info.get("subject", ""), cloudy=bool(border.get("clouds", 0) and border["clouds"] > 0)))
+                            subject=info.get("subject", ""), cloudy=bool(border.get("clouds", 0) and border["clouds"] > 0),
+                            name=str(a.xref), irt=str(a.irt_xref) if a.irt_xref > 0 else None,
+                            state=st[1] if st[0] != "null" else None, statemodel=sm[1] if sm[0] != "null" else None))
     return out, skipped
 
 
@@ -123,8 +128,14 @@ def to_annotations(items, k, size=2.0, map_point=None):
         x, y = x * k, y * k
         return map_point(x, y) if map_point else (x, y)
 
+    from diffreport import STATE_FROM_PDF
+    replies = [it for it in items if it.get("irt")]      # Antworten und Status gehoeren zu ihrer Markierung
+    items = [it for it in items if not it.get("irt")]
+    by_name = {}
     anns = []
+    marks = []                                        # (Name, Index der ersten daraus entstandenen Markierung)
     for it in items:
+        marks.append((it.get("name"), len(anns)))
         note = it.get("text", "")
         meta = dict(author=it.get("author", ""), date=it.get("date", ""), comment=note)
         base = dict(text="", nr=0, color=it.get("color") or "#e11d48", size=size, **meta)
@@ -172,6 +183,18 @@ def to_annotations(items, k, size=2.0, map_point=None):
             else:
                 prefix = f"{it['author']}: " if (kind == "note" and it.get("author")) else ""
                 anns.append(dict(base, type="text", x=box[0], y=box[1], x2=box[0], y2=box[1], text=prefix + txt))
+    for (name, i0), nxt in zip(marks, [m[1] for m in marks[1:]] + [len(anns)]):
+        if name and i0 < nxt:
+            by_name[name] = anns[i0]
+    for rp in replies:                                # Unterhaltung an die Markierung haengen
+        parent = by_name.get(rp["irt"])
+        if parent is None:
+            continue
+        who = rp.get("author", "")
+        if rp.get("state") and (rp.get("statemodel") or "Review").lower() == "review":
+            parent.setdefault("states", {})[who] = STATE_FROM_PDF.get(rp["state"].lower(), "none")
+        elif rp.get("text"):
+            parent.setdefault("replies", []).append(dict(author=who, date=rp.get("date", ""), text=rp["text"]))
     return anns
 
 
@@ -185,13 +208,16 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
 
     now = _dt.datetime.now().strftime("D:%Y%m%d%H%M%S")
     rows = []
+    from diffreport import PDF_STATE, ann_id
     for a in anns:
         t = a["type"]
         if t in ("redact", "pixelate"):              # Schwaerzungen sind keine Kommentare
             continue
+        n_rows = len(rows)
         col = a.get("color", "#e11d48")
+        aid = a.get("id") or ann_id(dict(a))
         common = (f'page="{page}" color="{col}" title="{escape(a.get("author") or "ZGmax")}" '
-                  f'date="{escape(a.get("date") or now)}" width="1.5"')
+                  f'date="{escape(a.get("date") or now)}" width="1.5" name="{escape(aid)}"')
         contents = a.get("comment") or a.get("text") or ""
         x0, y0 = min(a["x"], a["x2"]), min(a["y"], a["y2"])
         x1, y1 = max(a["x"], a["x2"]), max(a["y"], a["y2"])
@@ -228,6 +254,15 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
             val = measure_text(a) if measure_text else ""
             rows.append(f'<polyline {common} {rect}><vertices>{verts}</vertices>'
                         f"<contents>{escape(val)}</contents></polyline>")
+        if len(rows) > n_rows:                        # Unterhaltung: Antworten und Status (inreplyto)
+            for j, r in enumerate(a.get("replies") or []):
+                rows.append(f'<text page="{page}" {rect} color="{col}" title="{escape(r.get("author") or "")}" '
+                            f'date="{escape(r.get("date") or now)}" name="{escape(aid)}-r{j}" '
+                            f'inreplyto="{escape(aid)}"><contents>{escape(r.get("text", ""))}</contents></text>')
+            for j, (who, st) in enumerate((a.get("states") or {}).items()):
+                rows.append(f'<text page="{page}" {rect} color="{col}" title="{escape(who)}" date="{now}" '
+                            f'name="{escape(aid)}-s{j}" inreplyto="{escape(aid)}" state="{PDF_STATE.get(st, "None")}" '
+                            f'statemodel="Review"><contents>{escape(PDF_STATE.get(st, "None"))}</contents></text>')
     href = f'<f href="{escape(pdf_name)}"/>' if pdf_name else ""
     xml = (f'<?xml version="1.0" encoding="UTF-8"?>\n<xfdf xmlns="{XFDF_NS}" xml:space="preserve">\n'
            f"{href}<annots>\n" + "\n".join(rows) + "\n</annots>\n</xfdf>\n")

@@ -744,6 +744,66 @@ def test_crop_frame_only_on_output(app, win, pair, tmp_path):
     assert win.export_render("D", False, legend=False).shape[:2] == (h, w)
 
 
+def test_comment_replies_and_status_roundtrip(app, win, pair, tmp_path, monkeypatch):
+    import pymupdf
+    import diffxfdf as dx
+    import diffreport as rep
+    compare(app, win, *pair)
+    win.settings.setValue("user_name", "Max")
+    win._ann_created(dict(type="cloud", x=100, y=100, x2=400, y2=300, text="", nr=0, color="#e11d48", size=2.0))
+    win.canvas._set_multi({0})
+    assert not win.thread_box.isHidden()
+    win.ed_comment.setPlainText("Maß prüfen")
+    win.ed_reply.setText("Ist geprüft, passt.")
+    win._add_reply()
+    win.cb_state.setCurrentIndex(win.cb_state.findData("accepted"))
+    a = win.anns[0]
+    assert a["comment"] == "Maß prüfen" and a["replies"][0]["author"] == "Max" and a["states"] == {"Max": "accepted"}
+    assert "💬1" in win.list_anns.item(0).text() and "Akzeptiert" in win.list_anns.item(0).text()
+    pdf = str(tmp_path / "t.pdf")                              # PDF: Antworten als echte Unterhaltung (/IRT)
+    win._save_dialog = lambda *a: pdf
+    win.export_annotated_pdf()
+    wait(app, lambda: not win.running)
+    items, _ = dx.pdf_comments(pdf, 1)
+    k = win.dpi_value() / 72
+    back = dx.to_annotations(items, k)
+    cloud = next(b for b in back if b["type"] in ("cloud", "rect"))
+    assert cloud["replies"][0]["text"] == "Ist geprüft, passt." and cloud["states"] == {"Max": "accepted"}
+    xf = str(tmp_path / "t.xfdf")                              # XFDF hin und zurueck
+    dx.write_xfdf(xf, [a], k, 842)
+    items, _ = dx.parse_xfdf(xf, 842)
+    back = dx.to_annotations(items, k)
+    assert len(back) == 1 and back[0]["replies"][0]["author"] == "Max" and back[0]["states"] == {"Max": "accepted"}
+
+
+def test_measure_chain_sums_export_and_page_scale(app, win, pair, tmp_path):
+    import csv
+    compare(app, win, *pair)
+    c = win.canvas
+    c.measure_kind = "chain"
+    c.measure = [(100, 100, None), (300, 100, None), (300, 250, None)]
+    c.finish_measure()
+    ms = [a for a in win.anns if a["type"] == "measure"]
+    assert len(ms) == 2 and ms[0]["group"] == ms[1]["group"]          # Masskette: zwei verbundene Masse
+    mm = c.mm_px
+    assert "2 Längen" in win.lbl_sums.text() and f"{350 * mm:.2f}" in win.lbl_sums.text()
+    out = str(tmp_path / "m.csv")
+    win._save_dialog = lambda *a: out
+    win.export_measures()
+    rows = list(csv.reader(open(out, encoding="utf-8-sig"), delimiter=";"))
+    assert rows[1][1] == "Länge" and float(rows[1][2].replace(",", ".")) == pytest.approx(200 * mm, rel=1e-3)
+    win.sp_scale.setValue(5.0)                                          # Massstab je Seite
+    key = f"{win.path_a}#1"
+    assert win.page_scales[key] == 5.0
+    win.page_scales[f"{win.path_a}#2"] = 2.0
+    win._page_scale_loading = False
+    win.sp_pa.setMaximum(2)
+    win.sp_pa.setValue(2)
+    assert win.scale_n() == 2.0
+    win.sp_pa.setValue(1)
+    assert win.scale_n() == 5.0
+
+
 def test_multipage_tiff(app, win, tmp_path):
     from PIL import Image
     from conftest import draw_sheet

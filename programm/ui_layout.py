@@ -102,6 +102,8 @@ class LayoutMixin:
         self.act_ann_load = A(tr("Markierungen laden …"), self.ann_load)
         self.act_import_comments = A(tr("Kommentare einlesen (XFDF, PDF) …"), self.import_comments,
                                      tip=tr("Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF"))
+        self.act_export_measures = A(tr("Messungen und Zählung als CSV (Excel) …"), lambda: self.export_measures(),
+                                     tip=tr("Alle Maße mit Wert, Einheit und Seite sowie die Anzahl je Markierungsart"))
         self.act_export_xfdf = A(tr("Markierungen als XFDF speichern …"), self.export_xfdf,
                                  tip=tr("Für Acrobat & Co.: Kommentare → Importieren"))
         self.act_batch = A(tr("Stapelvergleich (viele Dateien) …"), self.open_batch)
@@ -298,7 +300,8 @@ class LayoutMixin:
                   self.act_vectorize, None, self.act_export_pdf, self.act_export_csv, None, self.act_print):
             m.addSeparator() if a is None else m.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         m.addSeparator()
-        for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf):
+        for a in (self.act_ann_save, self.act_ann_load, self.act_import_comments, self.act_export_xfdf,
+                  self.act_export_measures):
             m.addAction(a)
         m.addAction(self.act_save_drawing)
         m.addSeparator()
@@ -1159,6 +1162,7 @@ class LayoutMixin:
         self.cb_align.currentIndexChanged.connect(self._param_changed)
         self.sp_dpi.valueChanged.connect(self._dpi_changed)
         self.sp_scale.valueChanged.connect(self._update_units)
+        self.sp_scale.valueChanged.connect(self._remember_page_scale)
 
         scroll = PanelScroll(inner, 300)
         bottom = QWidget()
@@ -1324,6 +1328,11 @@ class LayoutMixin:
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b, i // 2, i % 2)
         l2.addLayout(row)
+        self.lbl_sums = QLabel("")                    # Summen und Zaehlungen (Auswahl oder alle)
+        self.lbl_sums.setObjectName("hint")
+        self.lbl_sums.setWordWrap(True)
+        l2.addWidget(self.lbl_sums)
+        l2.addWidget(self._build_thread_panel())
         l2.addWidget(ann_hint)
         tabs.addTab(t2, tr("Markierungen"))
         tabs.addTab(self._build_layers_tab(), tr("Ebenen"))
@@ -1613,6 +1622,7 @@ class LayoutMixin:
                   self.act_proj_save_as):
             a.setEnabled(has)
         for a in (self.act_delete, self.act_ann_clear, self.act_cut, self.act_ann_save, self.act_ann_load,
+                  self.act_export_measures,
                   self.act_import_comments, self.act_export_xfdf, self.act_title):   # brauchen ein Dokument
             a.setEnabled(has)
         for a in self.sheet_actions:                                  # nur beim Ansehen einer einzelnen Zeichnung

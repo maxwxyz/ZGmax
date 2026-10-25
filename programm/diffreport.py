@@ -416,6 +416,22 @@ LAYERS = (("zeichnung", tr("Zeichnung")), ("zonen", tr("Zonen")), ("aenderungen"
 LAYER_NAMES = dict(LAYERS)
 
 
+# Pruefstatus je Person wie in Acrobat/Bluebeam (Statusmodell "Review")
+REVIEW_STATES = {"none": tr("Kein Status"), "accepted": tr("Akzeptiert"), "rejected": tr("Abgelehnt"),
+                 "cancelled": tr("Abgebrochen"), "completed": tr("Abgeschlossen")}
+PDF_STATE = {"none": "None", "accepted": "Accepted", "rejected": "Rejected", "cancelled": "Cancelled",
+             "completed": "Completed"}
+STATE_FROM_PDF = {v.lower(): k for k, v in PDF_STATE.items()}
+
+
+def ann_id(a):
+    """Feste Kennung einer Markierung (fuer Antworten in PDF/XFDF)."""
+    import uuid
+    if not a.get("id"):
+        a["id"] = uuid.uuid4().hex[:12]
+    return a["id"]
+
+
 def ann_layer(a):
     """Ebene einer Anmerkung."""
     return {"measure": "masse", "image": "bilder", "redact": "schwaerzung", "pixelate": "schwaerzung"}.get(
@@ -629,7 +645,52 @@ def ann_lines(a, th=None):
     return out
 
 
-MEASURE_KINDS = {"dist": tr("L\u00e4nge"), "poly": tr("Linienzug"), "angle": tr("Winkel"), "radius": tr("Radius"), "area": tr("Fl\u00e4che")}
+MEASURE_KINDS = {"dist": tr("L\u00e4nge"), "chain": tr("Maßkette"), "poly": tr("Linienzug"), "angle": tr("Winkel"),
+                 "radius": tr("Radius"), "area": tr("Fl\u00e4che")}
+
+
+def measure_value(a, mm):
+    """(Art, Zahl) eines Masses fuer Summen: Laenge/Linienzug in mm, Flaeche in mm2, Winkel in Grad, Radius in mm."""
+    import math
+    pts = a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]]
+    k = a.get("kind", "dist")
+    if k in ("dist", "poly"):
+        return "length", sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+                             for i in range(len(pts) - 1)) * mm
+    if k == "area" and len(pts) >= 3:
+        s = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
+        return "area", abs(s) / 2 * mm * mm
+    if k == "radius" and len(pts) >= 3 and circle_3pts(*pts[:3]):
+        return "radius", circle_3pts(*pts[:3])[2] * mm
+    if k == "angle" and len(pts) >= 3:
+        v1 = (pts[0][0] - pts[1][0], pts[0][1] - pts[1][1])
+        v2 = (pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])
+        return "angle", abs(math.degrees(math.atan2(v1[0] * v2[1] - v1[1] * v2[0], v1[0] * v2[0] + v1[1] * v2[1])))
+    return "other", 0.0
+
+
+def measure_summary(anns, mm, fmt=None):
+    """Summen und Zaehlungen fuer die Liste: Laengen, Flaechen, Anzahl je Markierungsart."""
+    fmt = fmt or MEASURE_FMT
+    unit, dec = fmt.get("unit", "mm"), int(fmt.get("dec", 2))
+    f = UNITS.get(unit, 1.0)
+    L = A = 0.0
+    nl = na = 0
+    counts = {}
+    for a in anns:
+        if a.get("type") == "measure":
+            kind, v = measure_value(a, mm)
+            if kind == "length":
+                L, nl = L + v, nl + 1
+            elif kind == "area":
+                A, na = A + v, na + 1
+        counts[a.get("type")] = counts.get(a.get("type"), 0) + 1
+    parts = []
+    if nl:
+        parts.append(tr("{} Längen: Σ {} {}").format(nl, _num(L * f, dec), unit))
+    if na:
+        parts.append(tr("{} Flächen: Σ {} {}²").format(na, _num(A * f * f, max(0, dec - 1)), unit))
+    return parts, counts
 
 
 def circle_3pts(p, q, r):
@@ -1297,6 +1358,24 @@ def _title_columns(toks, out):
 
 
 # ----------------------------------------------------------------- PDF mit Anmerkungen (Acrobat)
+def _pdf_thread(doc, page, parent, a, oc=None):
+    """Antworten und Status einer Markierung als Antwort-Anmerkungen (/IRT) - in Acrobat als Unterhaltung sichtbar."""
+    import pymupdf
+    pt = pymupdf.Point(parent.rect.x0, parent.rect.y0)
+    entries = [(r.get("author", ""), r.get("text", ""), r.get("date", ""), None) for r in a.get("replies") or []]
+    entries += [(who, REVIEW_STATES.get(st, st), "", st) for who, st in (a.get("states") or {}).items()]
+    for who, text, date, state in entries:
+        r = page.add_text_annot(pt, text or " ")
+        r.set_info(title=who or "ZGmax", content=text or "")
+        r.set_irt_xref(parent.xref)
+        if state:
+            doc.xref_set_key(r.xref, "State", pymupdf.get_pdf_str(PDF_STATE.get(state, "None")))
+            doc.xref_set_key(r.xref, "StateModel", "(Review)")
+        if oc:
+            r.set_oc(oc)
+        r.update()
+
+
 def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", ""), layers=True):
     """Ergebnisbild als PDF; Aenderungen als Revisionswolken und eigene Markierungen als echte PDF-Anmerkungen
     (in Acrobat & Co. anklick-, kommentier- und loeschbar). layers=True: jede Art auf einer eigenen PDF-Ebene
@@ -1434,6 +1513,7 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
         if ann_layer(a) in ocg:
             an.set_oc(ocg[ann_layer(a)])
         an.update()
+        _pdf_thread(doc, page, an, a, ocg.get(ann_layer(a)))
     doc.set_metadata({"title": f"Vergleich {names[0]} → {names[1]}", "creator": "ZGmax"})
     doc.save(path, deflate=True)
     doc.close()

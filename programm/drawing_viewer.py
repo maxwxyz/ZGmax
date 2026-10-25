@@ -414,7 +414,22 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if row >= 0:
             self.sp_pa.setValue(row + 1)
 
+    def _remember_page_scale(self, val):
+        """Massstab/Kalibrierung gilt je Seite (mehrseitige Dateien haben oft verschiedene Massstaebe)."""
+        if self.path_a and not getattr(self, "_page_scale_loading", False):
+            self.__dict__.setdefault("page_scales", {})[f"{self.path_a}#{self.sp_pa.value()}"] = float(val)
+
+    def _apply_page_scale(self):
+        key = f"{self.path_a}#{self.sp_pa.value()}"
+        val = getattr(self, "page_scales", {}).get(key)
+        if val is not None and abs(val - self.scale_n()) > 1e-9:
+            self._page_scale_loading = True
+            self.sp_scale.setValue(val)
+            self._page_scale_loading = False
+
     def _page_changed(self, which, v):
+        if which == "A":
+            self._apply_page_scale()
         if self.chk_couple.isChecked():
             other = self.sp_pb if which == "A" else self.sp_pa
             if other.maximum() >= v and other.value() != v:
@@ -459,6 +474,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
     def _update_units(self, *_):
         self.canvas.mm_px = 25.4 / max(1, self.dpi_value()) * self.scale_n()
         rep.MEASURE_FMT["mm"] = self.canvas.mm_px     # fuer die Lage der Messwerte (Platz auf kurzen Massen)
+        if hasattr(self, "lbl_sums"):
+            self._update_sums()
         if hasattr(self, "lbl_meas_scale"):
             n = self.scale_n()
             txt = f"1 : {n:g}" if n >= 1 else f"{1 / n:g} : 1"

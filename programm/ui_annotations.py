@@ -138,6 +138,17 @@ class AnnotationsMixin:
         return QIcon(pm)
 
     def _ann_label(self, a):
+        """Listentext: Art und Inhalt, dazu Anzahl der Antworten und gesetzte Status."""
+        lbl = self._ann_label_base(a)
+        n = len(a.get("replies") or [])
+        if n:
+            lbl += "  💬" + str(n)
+        st = [s for s in dict.fromkeys((a.get("states") or {}).values()) if s in rep.REVIEW_STATES and s != "none"]
+        if st:
+            lbl += "  [" + ", ".join(rep.REVIEW_STATES[s] for s in st) + "]"
+        return lbl
+
+    def _ann_label_base(self, a):
         t = a["type"]
         if t == "number":
             return tr("Nummer {}").format(a['nr'])
@@ -179,17 +190,144 @@ class AnnotationsMixin:
         self.sp_stamp.blockSignals(False)
         self.next_nr = self.sp_stamp.value()
         self._sync_ann_controls()
+        self._update_sums()
         if hasattr(self, "options_bar"):
             self._update_options()
         self.canvas.update()
 
+    # --- Unterhaltung: Kommentar, Antworten, Status je Person (wie Acrobat/Bluebeam)
+    def _build_thread_panel(self):
+        box = QFrame()
+        box.setObjectName("card")
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(10, 8, 10, 8)
+        lay.setSpacing(4)
+        self.lbl_thread_head = QLabel("")
+        self.lbl_thread_head.setObjectName("sec")
+        self.lbl_thread_head.setWordWrap(True)
+        lay.addWidget(self.lbl_thread_head)
+        self.ed_comment = QPlainTextEdit()
+        self.ed_comment.setPlaceholderText(tr("Kommentar zur Markierung …"))
+        self.ed_comment.setFixedHeight(54)
+        self.ed_comment.textChanged.connect(self._comment_edited)
+        lay.addWidget(self.ed_comment)
+        self.lbl_thread = QLabel("")
+        self.lbl_thread.setWordWrap(True)
+        self.lbl_thread.setTextFormat(Qt.TextFormat.RichText)
+        self.lbl_thread.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lay.addWidget(self.lbl_thread)
+        row = QHBoxLayout()
+        self.ed_reply = QLineEdit()
+        self.ed_reply.setPlaceholderText(tr("Antworten …"))
+        self.ed_reply.returnPressed.connect(self._add_reply)
+        b = QPushButton(tr("Antworten"))
+        b.clicked.connect(self._add_reply)
+        row.addWidget(self.ed_reply, 1)
+        row.addWidget(b)
+        lay.addLayout(row)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(tr("Mein Status")))
+        self.cb_state = QComboBox()
+        for k, v in rep.REVIEW_STATES.items():
+            self.cb_state.addItem(v, k)
+        self.cb_state.currentIndexChanged.connect(self._state_changed)
+        row.addWidget(self.cb_state, 1)
+        lay.addLayout(row)
+        self.thread_box = box
+        self._comment_timer = QTimer(self)
+        self._comment_timer.setSingleShot(True)
+        self._comment_timer.timeout.connect(self._commit)
+        box.hide()
+        return box
+
+    def _user_name(self, ask=True):
+        """Name fuer Kommentare und Status (einmal fragen, dann gemerkt)."""
+        name = self.settings.value("user_name", "") or self.settings.value("approval_name", "")
+        if not name and ask:
+            name, ok = QInputDialog.getText(self, APP, tr("Dein Name für Kommentare und Status:"))
+            name = name.strip() if ok else ""
+            if name:
+                self.settings.setValue("user_name", name)
+        return name
+
+    def _thread_refresh(self):
+        idx = sorted(self.canvas.selected_anns())
+        a = self.anns[idx[0]] if len(idx) == 1 and idx[0] < len(self.anns) else None
+        self.thread_box.setVisible(a is not None)
+        if a is None:
+            return
+        head = self._ann_label(a).split(":")[0]
+        who = " · ".join(v for v in (a.get("author"), (a.get("date") or "")[:16]) if v)
+        self.lbl_thread_head.setText(head + (f"  ({who})" if who else ""))
+        self.ed_comment.blockSignals(True)
+        if self.ed_comment.toPlainText() != (a.get("comment") or ""):
+            self.ed_comment.setPlainText(a.get("comment") or "")
+        self.ed_comment.blockSignals(False)
+        import html
+        parts = [f"<b>{html.escape(r.get('author') or '?')}</b> <span style='color:gray'>"
+                 f"{html.escape((r.get('date') or '')[:16])}</span><br>{html.escape(r.get('text', ''))}"
+                 for r in a.get("replies") or []]
+        states = a.get("states") or {}
+        if states:
+            parts.append(tr("Status: ") + ", ".join(f"{html.escape(k or '?')}: {rep.REVIEW_STATES.get(v, v)}"
+                                                    for k, v in states.items()))
+        self.lbl_thread.setText("<br><br>".join(parts))
+        self.lbl_thread.setVisible(bool(parts))
+        me = self._user_name(ask=False)
+        self.cb_state.blockSignals(True)
+        self.cb_state.setCurrentIndex(max(0, self.cb_state.findData(states.get(me, "none"))))
+        self.cb_state.blockSignals(False)
+
+    def _thread_ann(self):
+        idx = sorted(self.canvas.selected_anns())
+        return self.anns[idx[0]] if len(idx) == 1 and idx[0] < len(self.anns) else None
+
+    def _comment_edited(self):
+        a = self._thread_ann()
+        if a is not None:
+            a["comment"] = self.ed_comment.toPlainText()
+            self._ann_update_items(self.canvas.selected_anns())
+            self._comment_timer.start(800)        # Tippen zusammenfassen: ein Rueckgaengig-Schritt
+
+    def _add_reply(self):
+        a = self._thread_ann()
+        txt = self.ed_reply.text().strip()
+        if a is None or not txt:
+            return
+        a.setdefault("replies", []).append(dict(author=self._user_name(), text=txt,
+                                                date=dt.datetime.now().strftime("%Y-%m-%d %H:%M")))
+        self.ed_reply.clear()
+        self._ann_update_items(self.canvas.selected_anns())
+        self._thread_refresh()
+        self._commit()
+
+    def _state_changed(self, _i):
+        a = self._thread_ann()
+        if a is None:
+            return
+        me = self._user_name()
+        st = self.cb_state.currentData()
+        if st == "none":
+            (a.get("states") or {}).pop(me, None)
+        else:
+            a.setdefault("states", {})[me] = st
+        self._ann_update_items(self.canvas.selected_anns())
+        self._thread_refresh()
+        self._commit()
+
     def _sync_ann_controls(self):
         """Optionszeile zeigt die gewaehlte Markierung, sonst die Vorgabe fuer neue."""
+        if hasattr(self, "thread_box"):
+            self._thread_refresh()
+        self._update_sums()
         a = self._sel()
         self.s_asize.set_silent(a["size"] if a else self.canvas.ann_size)
         self._set_color_btn(a["color"] if a else self.canvas.ann_color, default=False)
 
     def _ann_created(self, a):
+        rep.ann_id(a)
+        if not a.get("author"):
+            a["author"] = self._user_name(ask=False)
         self.anns.append(a)
         self._ann_refresh(len(self.anns) - 1)
         self._commit()
@@ -282,6 +420,58 @@ class AnnotationsMixin:
                 self.anns[i].pop("hidden", None)
             self.canvas.update()
             self._commit()
+
+    def _update_sums(self):
+        """Summen der Messungen und Anzahl je Art - fuer die Auswahl, sonst fuer alle Markierungen."""
+        if not hasattr(self, "lbl_sums"):
+            return
+        sel = sorted(self.canvas.selected_anns())
+        anns = [self.anns[i] for i in sel] if len(sel) > 1 else self.anns
+        parts, counts = rep.measure_summary(anns, self.canvas.mm_px)
+        names = {"number": tr("Nummern"), "cloud": tr("Wolken"), "rect": tr("Rahmen"), "text": tr("Texte"),
+                 "arrow": tr("Pfeile"), "approval": tr("Stempel")}
+        cnt = [f"{n} {names[t]}" for t, n in counts.items() if t in names]
+        txt = " · ".join(parts + cnt)
+        self.lbl_sums.setText((tr("Auswahl: ") if len(sel) > 1 else tr("Gesamt: ")) + txt if txt else "")
+        self.lbl_sums.setVisible(bool(txt))
+
+    def export_measures(self):
+        """Messungen und Zaehlung als CSV (Semikolon, UTF-8 mit BOM - Excel oeffnet es direkt)."""
+        if not self.anns:
+            QMessageBox.information(self, APP, tr("Es gibt keine Markierungen zum Speichern."))
+            return
+        path = self._save_dialog(tr("Messungen speichern"), tr("CSV für Excel (*.csv)"), "messungen.csv")
+        if not path:
+            return
+        import csv
+        mm = self.canvas.mm_px
+        unit = rep.MEASURE_FMT.get("unit", "mm")
+        f = rep.UNITS.get(unit, 1.0)
+        page = self.sp_pa.value()
+        with open(path, "w", encoding="utf-8-sig", newline="") as fh:
+            w = csv.writer(fh, delimiter=";")
+            w.writerow([tr("Nr"), tr("Art"), tr("Wert"), tr("Einheit"), tr("Anzeige"), tr("Seite"), tr("Gruppe"),
+                        tr("Autor"), tr("Kommentar")])
+            n = 0
+            for a in self.anns:
+                if a.get("type") != "measure":
+                    continue
+                n += 1
+                kind, v = rep.measure_value(a, mm)
+                val, u = {"length": (v * f, unit), "area": (v * f * f, unit + "²"), "radius": (v * f, unit),
+                          "angle": (v, "°")}.get(kind, (v, ""))
+                w.writerow([n, rep.MEASURE_KINDS.get(a.get("kind"), a.get("kind")), f"{val:.4f}".replace(".", ","), u,
+                            rep.measure_text(a, mm), page, a.get("group", ""), a.get("author", ""),
+                            a.get("comment", "")])
+            w.writerow([])
+            parts, counts = rep.measure_summary(self.anns, mm)
+            for ptxt in parts:
+                w.writerow([tr("Summe"), ptxt])
+            for t, c in sorted(counts.items()):
+                w.writerow([tr("Anzahl"), self._ann_label_base(dict(type=t, nr=0, text="", x=0, y=0, x2=0, y2=0,
+                                                                     size=1, kind="dist", pts=[[0, 0], [0, 0]])
+                                                                ).split(":")[0], c])
+        self._saved(path)
 
     def _ann_update_items(self, idx):
         """Listeneintraege (Text, Farbfeld) nach einer Aenderung nachziehen, ohne die Auswahl zu verlieren."""

@@ -109,6 +109,7 @@ class ProjectMixin:
                            glyphs=self.chk_glyphs.isChecked(), flatten=self.chk_flatten.isChecked(),
                            align_on=self.chk_align.isChecked()),
             "pdf_layers_off": sorted(getattr(self, "pdf_off", set())),
+            "page_scales": getattr(self, "page_scales", {}),
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -219,6 +220,7 @@ class ProjectMixin:
         if pr.get("align"):
             quiet(self.cb_align, lambda: self.cb_align.setCurrentText(pr["align"]))
         self.pdf_off = set(data.get("pdf_layers_off") or [])
+        self.page_scales = dict(data.get("page_scales") or {})
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)

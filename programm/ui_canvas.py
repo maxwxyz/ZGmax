@@ -551,7 +551,19 @@ class Canvas(QWidget):
     def finish_measure(self):
         k = self.measure_kind
         pts = self.measure
-        need = {"dist": 2, "poly": 2, "angle": 3, "radius": 3, "area": 3}[k]
+        need = {"dist": 2, "chain": 2, "poly": 2, "angle": 3, "radius": 3, "area": 3}[k]
+        if k == "chain" and len(pts) >= 2:          # Masskette: je Abschnitt ein eigenes Mass, als Gruppe
+            import uuid
+            grp = uuid.uuid4().hex[:8]
+            for i in range(len(pts) - 1):
+                (ax, ay), (bx, by) = pts[i][:2], pts[i + 1][:2]
+                self.annCreated.emit(dict(type="measure", kind="dist", pts=[[float(ax), float(ay)], [float(bx), float(by)]],
+                                          x=ax, y=ay, x2=bx, y2=by, text="", nr=0, color=self.ann_color,
+                                          size=self.ann_size, group=grp))
+            self.measure = []
+            self.hover = None
+            self.update()
+            return
         if len(pts) >= need:
             P = [[float(q[0]), float(q[1])] for q in pts]
             if k == "dist":
@@ -1228,7 +1240,8 @@ class Canvas(QWidget):
                 h = self._pair(self.measure[0], h)[0]
             mp.append((h[0], h[1]))
         if len(mp) >= 2:
-            tmp = dict(type="measure", kind=self.measure_kind, pts=[list(q) for q in mp], x=mp[0][0], y=mp[0][1],
+            tmp = dict(type="measure", kind="poly" if self.measure_kind == "chain" else self.measure_kind,
+                       pts=[list(q) for q in mp], x=mp[0][0], y=mp[0][1],
                        x2=mp[-1][0], y2=mp[-1][1], text="", nr=0, color=self.ann_color, size=self.ann_size)
             self._paint_ann(p, tmp)
         p.setPen(QPen(QColor(self.ann_color), 2))
