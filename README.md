@@ -73,3 +73,12 @@ Package versions are pinned in `requirements*.txt`; change them only together an
 
 Project files: `.zgmax`. Settings are still stored under the old internal key `drawing_diff/viewer`, so existing
 settings and projects keep working after the rename.
+
+## License
+
+ZGmax is free software under the **GNU Affero General Public License 3.0** (AGPL-3.0), see `LICENSE`. It comes without
+any warranty. Whoever passes the program on must also make its source code available under the same license.
+
+AGPL-3.0 is required because ZGmax uses PyMuPDF/MuPDF (AGPL-3.0). Other libraries: Qt/PySide6 (LGPL-3.0), OpenCV
+(Apache 2.0), NumPy (BSD), Pillow (MIT-CMU), ezdxf (MIT), RapidOCR and the PaddleOCR model (Apache 2.0), ONNX Runtime
+(MIT), Python (PSF). The list is also shown in the program under Help → About ZGmax.

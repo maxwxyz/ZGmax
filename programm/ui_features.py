@@ -681,7 +681,21 @@ class FeaturesMixin:
 
     def show_about(self):
         import drawing_viewer
-        QMessageBox.about(self, APP, tr("<h3>{} {}</h3><p>{}: ansehen, messen, markieren, vergleichen und prüfen.</p><p>Logdatei und automatische Sicherung:<br>{}</p>").format(APP, drawing_viewer.VERSION, APP_SUBTITLE, app_data_dir()))
+        text = tr("<h3>{} {}</h3><p>{}: ansehen, messen, markieren, vergleichen und prüfen.</p><p>Logdatei und automatische Sicherung:<br>{}</p>").format(APP, drawing_viewer.VERSION, APP_SUBTITLE, app_data_dir())
+        text += tr("<p><b>Lizenz:</b> GNU Affero General Public License 3.0 (AGPL-3.0). Freie Software ohne jede "
+                   "Gewährleistung; Sie dürfen sie unter den Bedingungen der Lizenz weitergeben und verändern. "
+                   "Wer das Programm weitergibt, muss auch den Quellcode zugänglich machen. Lizenztext: "
+                   "<a href=\"https://www.gnu.org/licenses/agpl-3.0.html\">gnu.org/licenses/agpl-3.0</a></p>"
+                   "<p><b>Verwendete Bibliotheken:</b><br>"
+                   "PyMuPDF / MuPDF – AGPL-3.0<br>"
+                   "Qt / PySide6 – LGPL-3.0<br>"
+                   "OpenCV – Apache 2.0<br>"
+                   "NumPy – BSD<br>"
+                   "Pillow – MIT-CMU<br>"
+                   "ezdxf – MIT<br>"
+                   "RapidOCR, PaddleOCR-Modell – Apache 2.0; ONNX Runtime – MIT<br>"
+                   "Python – PSF-Lizenz</p>")
+        QMessageBox.about(self, APP, text)
 
     # ----------------------------------------------------------------- PDF mit Anmerkungen
     def export_annotated_pdf(self):
