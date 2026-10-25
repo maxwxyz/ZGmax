@@ -313,13 +313,14 @@ def run(args):
     out = dp.render_result(res)
     if args.mark:
         rep.draw_marks(out, regs)
-    info = (f"Toleranz {args.tol}px, Schraffur {args.hatch}, Verschiebung {args.move}, "
-            f"Objekt-Verschiebung {args.obj_shift}px, Objekt-Drehung {args.obj_rotate}Grad, "
-            f"Kacheln {res.nx}x{res.ny}, Ausrichtung {args.align}, Schwelle {args.thr}")
+    info = tr("Toleranz {}px, Schraffur {}, Verschiebung {}, Objekt-Verschiebung {}px, Objekt-Drehung {}Grad, "
+              "Kacheln {}x{}, Ausrichtung {}, Schwelle {}").format(args.tol, args.hatch, args.move, args.obj_shift,
+                                                                  args.obj_rotate, res.nx, res.ny, args.align, args.thr)
     if args.min_area:
         info += f", Min-Area {args.min_area}px"
     if zones or args.ignore_border:
-        info += f", {len(zones)} Zone(n) ausgeblendet" + (f", Rand {args.ignore_border}px" if args.ignore_border else "")
+        info += tr(", {} Zone(n) ausgeblendet").format(len(zones)) + (
+            tr(", Rand {}px").format(args.ignore_border) if args.ignore_border else "")
     if not args.no_legend:
         out = add_legend(out, os.path.basename(args.a), os.path.basename(args.b),
                          bool(res.moved.any()), info)
