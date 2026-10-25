@@ -495,3 +495,76 @@ class BatchDialog(QDialog):
     def _finish(self):
         self.btn_go.setEnabled(True)
         self.btn_cancel.setText(tr("Schließen"))
+
+
+# ----------------------------------------------------------------- Dateitypen zuordnen
+class FileTypesDialog(QDialog):
+    """Hilfe -> Dateitypen mit ZGmax öffnen: Haken je Typ; Doppelklick auf so eine Datei öffnet sie in ZGmax."""
+
+    def __init__(self, win):
+        super().__init__(win)
+        import fileassoc as fa
+        self.fa = fa
+        self.setWindowTitle(tr("Dateitypen mit ZGmax öffnen"))
+        lay = QVBoxLayout(self)
+        if os.name == "nt":
+            hint = tr("ZGmax wird für die gewählten Typen bei „Öffnen mit“ eingetragen (nur für Sie, ohne "
+                      "Administratorrechte); Projekte (.zgmax) öffnen sofort per Doppelklick. Als Standard für PDF, "
+                      "PNG & Co. setzt Windows das nur selbst: danach öffnen sich die Einstellungen, dort je Typ "
+                      "ZGmax wählen.")
+        elif sys.platform == "darwin":
+            hint = tr("Doppelklick auf eine Datei der gewählten Typen öffnet sie danach in ZGmax. Ändern lässt sich "
+                      "das jederzeit im Finder: Datei wählen → Informationen → Öffnen mit → Alle ändern.")
+        else:
+            hint = tr("ZGmax wird als Standardprogramm für die gewählten Typen eingetragen (xdg-mime, nur für Sie).")
+        h = QLabel(hint + "\n" + tr("Wird die portable App verschoben, die Zuordnung einfach erneut setzen."))
+        h.setObjectName("hint")
+        h.setWordWrap(True)
+        lay.addWidget(h)
+        ok, why = fa.supported()
+        now = fa.current() if ok else set()
+        grid = QGridLayout()
+        self.checks = {}
+        for i, (key, label, exts, _uti, _mime) in enumerate(fa.TYPES):
+            c = QCheckBox(f"{label}  ({', '.join(exts)})")
+            c.setChecked(key in now)
+            c.setEnabled(ok)
+            self.checks[key] = c
+            grid.addWidget(c, i // 2, i % 2)
+        lay.addLayout(grid)
+        row = QHBoxLayout()
+        for txt, val in ((tr("Alle"), True), (tr("Keine"), False)):
+            b = QPushButton(txt)
+            b.setEnabled(ok)
+            b.clicked.connect(lambda _=False, v=val: [c.setChecked(v) for c in self.checks.values()])
+            row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        if not ok:
+            w = QLabel(why)
+            w.setWordWrap(True)
+            lay.addWidget(w)
+        bb = QDialogButtonBox()
+        self.btn_ok = bb.addButton(tr("Übernehmen"), QDialogButtonBox.ButtonRole.AcceptRole)
+        self.btn_ok.setObjectName("primary")
+        self.btn_ok.setEnabled(ok)
+        bb.addButton(tr("Schließen"), QDialogButtonBox.ButtonRole.RejectRole)
+        bb.accepted.connect(self._apply)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+
+    def _apply(self):
+        keys = {k for k, c in self.checks.items() if c.isChecked()}
+        try:
+            fails = self.fa.apply(keys)
+        except Exception as e:                         # noqa: BLE001 - Registry/LaunchServices/xdg-mime
+            log.exception("Dateitypen zuordnen")
+            QMessageBox.warning(self, APP, tr("Die Zuordnung hat nicht geklappt: {}").format(e))
+            return
+        if fails:
+            QMessageBox.information(self, APP, tr("Nicht zugeordnet werden konnten: {}").format(", ".join(fails)))
+        if os.name == "nt" and keys - {"zgmax"}:
+            QMessageBox.information(self, APP, tr("ZGmax ist eingetragen. Jetzt öffnen sich die Windows-Einstellungen: "
+                                                  "dort bei den gewünschten Dateitypen ZGmax als Standard wählen."))
+            self.fa.open_windows_settings()
+        self.accept()

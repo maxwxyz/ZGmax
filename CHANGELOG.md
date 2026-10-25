@@ -1,5 +1,25 @@
 # ZGmax – Änderungshistorie
 
+## Version 2.2 vom 25.10.2026
+
+- Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.
+- Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert.
+- Änderungen: Regler „Feine oder dicke Linien ausklammern“ blendet Änderungen nach der Strichbreite der Linie aus; die Zeichnung bleibt vollständig.
+- Entf/Rücktaste löscht die gewählte Änderung auch im Bild und im Prüfrundgang (weiter mit der nächsten, Strg+Z holt sie zurück).
+- Eingefügtes Bild: keine Farb- und Werkzeugleiste mehr; „Werkzeug behalten“ nur beim Zeichnen.
+- Kontextmenü im Bild: „In die Zwischenablage (wie angezeigt)“; im Speichern-Menü direkt nach „Als Bild speichern“.
+- „Prüfen starten“ ist ein normaler Knopf (nicht mehr hervorgehoben).
+- Nach dem Vergleich kein blauer Hinweisbalken mehr und die Optionen-Leiste öffnet nicht von selbst.
+- Prüfrundgang: Nächste/Vorige folgen genau der Liste (auch mit Strichbreite, Suche, „Konturen und Maße“).
+- Geänderte Maße: senkrecht geschriebene Maße in Leserichtung – Maßzahl vor Toleranz (PDF-Text und Texterkennung).
+- Bereiche zuordnen verzerrt nicht mehr: verglichen wird ein gleich großer Ausschnitt um die Mitte, Ausrichtung wie gewohnt.
+- Neues Werkzeug „Haken“ (unter Nummer): grüne Haken zum Abhaken geprüfter Maße.
+- Rahmen, Ellipse und Polygon wahlweise gefüllt (auch in PDF, SVG und XFDF).
+- Schwärzen ohne wirkungslose Größe; „Mit Hintergrundfarbe“, beim Bereich „Nur Linien (ohne Hintergrund)“; Marker zeigt seine gelbe Farbe.
+- Speichern-Menü je Modus: beim Ansehen ohne Bericht/Liste/Maßtabelle, im Vergleich ohne „Bearbeitete Zeichnung speichern“.
+- Bild aus der Zwischenablage öffnen/einfügen ohne Fehler, wenn kein Bild darin ist.
+- Hilfe → Dateitypen mit ZGmax öffnen: PDF, Bilder, DXF und Projekte per Doppelklick in ZGmax öffnen (Windows, macOS, Linux; auch portable App).
+
 ## Version 2.1 vom 25.10.2026
 
 - Vergleich: Papierausgleich für Scans, Zeichenprüfung für ähnliche Ziffern (z. B. 41.8 → 43.2), Vorschlag zum exakten Vektorvergleich bei PDF, abgelehnte Funde als Zonen übernehmen.

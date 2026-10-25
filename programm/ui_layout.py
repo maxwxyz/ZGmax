@@ -337,6 +337,9 @@ class LayoutMixin:
         self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
         self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
         self.act_about = A(tr("Über ZGmax"), self.show_about)
+        self.act_fileassoc = A(tr("Dateitypen mit ZGmax öffnen …"), self.file_types,
+                               tip=tr("Wählen, welche Dateien (PDF, PNG, DXF, Projekte …) per Doppelklick in ZGmax "
+                                      "öffnen – auch für die portable App"))
         self.act_intro = A(tr("Einführung zeigen"), self.show_intro,
                            tip=tr("Die kurze Einführung (Öffnen, Vergleichen, Prüfen) auf der Startseite zeigen"))
         self.act_whats_new = A(tr("Was ist neu …"), lambda: self.show_whats_new(),
@@ -477,7 +480,7 @@ class LayoutMixin:
         for a in (self.act_help, self.act_intro, self.act_help_cli, self.act_keys, self.act_whats_new):
             m.addAction(a)
         m.addSeparator()
-        for a in (self.act_logfile, self.act_cli, self.act_reset_settings, self.act_about):
+        for a in (self.act_fileassoc, self.act_logfile, self.act_cli, self.act_reset_settings, self.act_about):
             m.addAction(a)
 
     # ----------------------------------------------------------------- Werkzeugleiste oben

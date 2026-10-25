@@ -1,5 +1,25 @@
 # ZGmax – Change history
 
+## Version 2.2 of 2026-10-25
+
+- Dark theme: the folder icons on the start page ("Choose file") are clearly visible again after switching.
+- Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed.
+- Changes: the slider “Leave out fine or thick lines” hides changes by the stroke width of the line; the drawing stays complete.
+- Del/Backspace deletes the selected change in the drawing and during the review too (the next one is shown, Ctrl+Z brings it back).
+- Pasted image: no color and tool bar any more; “Keep tool” only while drawing.
+- Context menu in the drawing: “Copy to clipboard (as shown)”; in the Save menu right after “Save as image”.
+- “Start review” is a normal button (no longer highlighted).
+- No blue message bar after a comparison any more, and the Options panel no longer opens by itself.
+- Review: Next/Previous follow exactly the list (also with stroke width, search, “Contours and dimensions”).
+- Changed dimensions: vertically written dimensions in reading direction – value before tolerance (PDF text and text recognition).
+- Match areas no longer distorts: an equally sized section around the center is compared, alignment as usual.
+- New tool “Tick” (under Number): green ticks to tick off checked dimensions.
+- Box, ellipse and polygon can be filled (also in PDF, SVG and XFDF).
+- Redact without the useless size; “With background color”, for areas “Lines only (without background)”; the marker shows its yellow color.
+- Save menu per mode: when viewing without report/list/dimension table, when comparing without “Save edited drawing”.
+- Opening/pasting an image from the clipboard no longer fails when there is no image.
+- Help → Open file types with ZGmax: open PDF, images, DXF and projects in ZGmax on double-click (Windows, macOS, Linux; also the portable app).
+
 ## Version 2.1 of 2026-10-25
 
 - Comparison: paper flattening for scans, exact character check for similar digits (e.g. 41.8 → 43.2), suggestion of the exact vector comparison for PDFs, turn rejected hits into zones.

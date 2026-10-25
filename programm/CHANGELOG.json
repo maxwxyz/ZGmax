@@ -1,43 +1,51 @@
 {
  "unreleased": {
-  "de": [
-   "Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.",
-   "Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert.",
-   "Änderungen: Regler „Feine oder dicke Linien ausklammern“ blendet Änderungen nach der Strichbreite der Linie aus; die Zeichnung bleibt vollständig.",
-   "Entf/Rücktaste löscht die gewählte Änderung auch im Bild und im Prüfrundgang (weiter mit der nächsten, Strg+Z holt sie zurück).",
-   "Eingefügtes Bild: keine Farb- und Werkzeugleiste mehr; „Werkzeug behalten“ nur beim Zeichnen.",
-   "Kontextmenü im Bild: „In die Zwischenablage (wie angezeigt)“; im Speichern-Menü direkt nach „Als Bild speichern“.",
-   "„Prüfen starten“ ist ein normaler Knopf (nicht mehr hervorgehoben).",
-   "Nach dem Vergleich kein blauer Hinweisbalken mehr und die Optionen-Leiste öffnet nicht von selbst.",
-   "Prüfrundgang: Nächste/Vorige folgen genau der Liste (auch mit Strichbreite, Suche, „Konturen und Maße“).",
-   "Geänderte Maße: senkrecht geschriebene Maße in Leserichtung – Maßzahl vor Toleranz (PDF-Text und Texterkennung).",
-   "Bereiche zuordnen verzerrt nicht mehr: verglichen wird ein gleich großer Ausschnitt um die Mitte, Ausrichtung wie gewohnt.",
-   "Neues Werkzeug „Haken“ (unter Nummer): grüne Haken zum Abhaken geprüfter Maße.",
-   "Rahmen, Ellipse und Polygon wahlweise gefüllt (auch in PDF, SVG und XFDF).",
-   "Schwärzen ohne wirkungslose Größe; „Mit Hintergrundfarbe“, beim Bereich „Nur Linien (ohne Hintergrund)“; Marker zeigt seine gelbe Farbe.",
-   "Speichern-Menü je Modus: beim Ansehen ohne Bericht/Liste/Maßtabelle, im Vergleich ohne „Bearbeitete Zeichnung speichern“.",
-   "Bild aus der Zwischenablage öffnen/einfügen ohne Fehler, wenn kein Bild darin ist."
-  ],
-  "en": [
-   "Dark theme: the folder icons on the start page (\"Choose file\") are clearly visible again after switching.",
-   "Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed.",
-   "Changes: the slider “Leave out fine or thick lines” hides changes by the stroke width of the line; the drawing stays complete.",
-   "Del/Backspace deletes the selected change in the drawing and during the review too (the next one is shown, Ctrl+Z brings it back).",
-   "Pasted image: no color and tool bar any more; “Keep tool” only while drawing.",
-   "Context menu in the drawing: “Copy to clipboard (as shown)”; in the Save menu right after “Save as image”.",
-   "“Start review” is a normal button (no longer highlighted).",
-   "No blue message bar after a comparison any more, and the Options panel no longer opens by itself.",
-   "Review: Next/Previous follow exactly the list (also with stroke width, search, “Contours and dimensions”).",
-   "Changed dimensions: vertically written dimensions in reading direction – value before tolerance (PDF text and text recognition).",
-   "Match areas no longer distorts: an equally sized section around the center is compared, alignment as usual.",
-   "New tool “Tick” (under Number): green ticks to tick off checked dimensions.",
-   "Box, ellipse and polygon can be filled (also in PDF, SVG and XFDF).",
-   "Redact without the useless size; “With background color”, for areas “Lines only (without background)”; the marker shows its yellow color.",
-   "Save menu per mode: when viewing without report/list/dimension table, when comparing without “Save edited drawing”.",
-   "Opening/pasting an image from the clipboard no longer fails when there is no image."
-  ]
+  "de": [],
+  "en": []
  },
  "releases": [
+  {
+   "version": "2.2",
+   "date": "2026-10-25",
+   "de": [
+    "Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.",
+    "Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert.",
+    "Änderungen: Regler „Feine oder dicke Linien ausklammern“ blendet Änderungen nach der Strichbreite der Linie aus; die Zeichnung bleibt vollständig.",
+    "Entf/Rücktaste löscht die gewählte Änderung auch im Bild und im Prüfrundgang (weiter mit der nächsten, Strg+Z holt sie zurück).",
+    "Eingefügtes Bild: keine Farb- und Werkzeugleiste mehr; „Werkzeug behalten“ nur beim Zeichnen.",
+    "Kontextmenü im Bild: „In die Zwischenablage (wie angezeigt)“; im Speichern-Menü direkt nach „Als Bild speichern“.",
+    "„Prüfen starten“ ist ein normaler Knopf (nicht mehr hervorgehoben).",
+    "Nach dem Vergleich kein blauer Hinweisbalken mehr und die Optionen-Leiste öffnet nicht von selbst.",
+    "Prüfrundgang: Nächste/Vorige folgen genau der Liste (auch mit Strichbreite, Suche, „Konturen und Maße“).",
+    "Geänderte Maße: senkrecht geschriebene Maße in Leserichtung – Maßzahl vor Toleranz (PDF-Text und Texterkennung).",
+    "Bereiche zuordnen verzerrt nicht mehr: verglichen wird ein gleich großer Ausschnitt um die Mitte, Ausrichtung wie gewohnt.",
+    "Neues Werkzeug „Haken“ (unter Nummer): grüne Haken zum Abhaken geprüfter Maße.",
+    "Rahmen, Ellipse und Polygon wahlweise gefüllt (auch in PDF, SVG und XFDF).",
+    "Schwärzen ohne wirkungslose Größe; „Mit Hintergrundfarbe“, beim Bereich „Nur Linien (ohne Hintergrund)“; Marker zeigt seine gelbe Farbe.",
+    "Speichern-Menü je Modus: beim Ansehen ohne Bericht/Liste/Maßtabelle, im Vergleich ohne „Bearbeitete Zeichnung speichern“.",
+    "Bild aus der Zwischenablage öffnen/einfügen ohne Fehler, wenn kein Bild darin ist.",
+    "Hilfe → Dateitypen mit ZGmax öffnen: PDF, Bilder, DXF und Projekte per Doppelklick in ZGmax öffnen (Windows, macOS, Linux; auch portable App)."
+   ],
+   "en": [
+    "Dark theme: the folder icons on the start page (\"Choose file\") are clearly visible again after switching.",
+    "Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed.",
+    "Changes: the slider “Leave out fine or thick lines” hides changes by the stroke width of the line; the drawing stays complete.",
+    "Del/Backspace deletes the selected change in the drawing and during the review too (the next one is shown, Ctrl+Z brings it back).",
+    "Pasted image: no color and tool bar any more; “Keep tool” only while drawing.",
+    "Context menu in the drawing: “Copy to clipboard (as shown)”; in the Save menu right after “Save as image”.",
+    "“Start review” is a normal button (no longer highlighted).",
+    "No blue message bar after a comparison any more, and the Options panel no longer opens by itself.",
+    "Review: Next/Previous follow exactly the list (also with stroke width, search, “Contours and dimensions”).",
+    "Changed dimensions: vertically written dimensions in reading direction – value before tolerance (PDF text and text recognition).",
+    "Match areas no longer distorts: an equally sized section around the center is compared, alignment as usual.",
+    "New tool “Tick” (under Number): green ticks to tick off checked dimensions.",
+    "Box, ellipse and polygon can be filled (also in PDF, SVG and XFDF).",
+    "Redact without the useless size; “With background color”, for areas “Lines only (without background)”; the marker shows its yellow color.",
+    "Save menu per mode: when viewing without report/list/dimension table, when comparing without “Save edited drawing”.",
+    "Opening/pasting an image from the clipboard no longer fails when there is no image.",
+    "Help → Open file types with ZGmax: open PDF, images, DXF and projects in ZGmax on double-click (Windows, macOS, Linux; also the portable app)."
+   ]
+  },
   {
    "version": "2.1",
    "date": "2026-10-25",

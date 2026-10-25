@@ -308,6 +308,11 @@ class FeaturesMixin:
         self._run_job(work, tr("Speichere alle Seiten …"), self._saved)
 
     # ----------------------------------------------------------------- Schriftfeld
+    def file_types(self):
+        """Hilfe -> Dateitypen mit ZGmax oeffnen."""
+        from ui_dialogs import FileTypesDialog
+        FileTypesDialog(self).exec()
+
     def read_title_block(self):
         path = self.path_a or self.path_b
         if not path:

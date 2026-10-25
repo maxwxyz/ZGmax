@@ -97,7 +97,12 @@ line up and sets the tolerance and search ranges to match.</p>
 the first start macOS may say “unidentified developer”: right-click the app → <i>Open</i> → confirm <i>Open</i> (only once).
 You can drop drawings and projects onto the app icon.<br><b>Windows:</b> unzip (e.g. to <code>C:\Program Files\ZGmax</code>
 or a USB stick) and start <code>ZGmax.exe</code>. No installation and no Python needed. Desktop icon:
-<i>File → Create desktop shortcut</i>.</td></tr>
+<i>File → Create desktop shortcut</i>.<br><b>Open files in ZGmax on double-click:</b> <i>Help → Open file types with
+ZGmax …</i>, tick the types (PDF, PNG, JPEG, TIFF, BMP, WebP, SVG, DXF, projects), <i>Apply</i> – also for the portable
+app, only for your own user, without administrator rights. Mac: applies right away (only from the finished app).
+Windows: ZGmax then appears under “Open with”, projects open right away on double-click; Windows only lets the user set
+the default for PDF & co. – the settings open for that (<i>Default apps → ZGmax</i>). Linux: default via xdg-mime. If
+the portable app is moved, set the assignment again.</td></tr>
 <tr><td>With Python</td><td>Double-click <code>Start ZGmax.command</code> (Mac) or <code>Start ZGmax.bat</code> (Windows).
 The first time, the required packages are installed in tested versions (internet needed). Directly:
 <code>python programm/drawing_viewer.py [old [new]]</code>.</td></tr>
@@ -790,6 +795,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Command-line manual</td><td></td><td></td></tr>
 <tr><td>Keyboard shortcuts</td><td></td><td></td></tr>
 <tr><td>What&#x27;s new …</td><td></td><td>Change history: what changed in which version</td></tr>
+<tr><td>Open file types with ZGmax …</td><td></td><td>Choose which files (PDF, PNG, DXF, projects …) open in ZGmax on double-click – also for the portable app</td></tr>
 <tr><td>Open log file</td><td></td><td></td></tr>
 <tr><td>Copy command-line command</td><td></td><td></td></tr>
 <tr><td>Reset all settings …</td><td></td><td>Appearance, language, size, comparison values and tool options back to defaults; files and projects stay unchanged</td></tr>
