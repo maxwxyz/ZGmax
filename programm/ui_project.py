@@ -107,7 +107,8 @@ class ProjectMixin:
             "dpi": self.dpi_value(), "scale": self.scale_n(),
             "params": dict(sliders, align=self.cb_align.currentText(), edge_noise=self.chk_edges.isChecked(),
                            glyphs=self.chk_glyphs.isChecked(), flatten=self.chk_flatten.isChecked(),
-                           align_on=self.chk_align.isChecked()),
+                           align_on=self.chk_align.isChecked(), lines=self.cb_lines.currentData(),
+                           line_min=self.sp_wmin.value(), line_max=self.sp_wmax.value()),
             "pdf_layers_off": sorted(getattr(self, "pdf_off", set())),
             "page_scales": getattr(self, "page_scales", {}),
             "annotations_page": getattr(self, "_anns_key", None),
@@ -221,6 +222,11 @@ class ProjectMixin:
                 quiet(chk, lambda chk=chk, key=key: chk.setChecked(bool(pr[key])))
         if pr.get("align"):
             quiet(self.cb_align, lambda: self.cb_align.setCurrentText(pr["align"]))
+        quiet(self.sp_wmin, lambda: self.sp_wmin.setValue(int(pr.get("line_min", 0))))
+        quiet(self.sp_wmax, lambda: self.sp_wmax.setValue(int(pr.get("line_max", 0))))
+        i = self.cb_lines.findData(pr.get("lines", "all"))
+        quiet(self.cb_lines, lambda: self.cb_lines.setCurrentIndex(max(0, i)))
+        self.row_lines.setVisible(self.cb_lines.currentData() == "custom")
         self.pdf_off = set(data.get("pdf_layers_off") or [])
         self.page_scales = dict(data.get("page_scales") or {})
         self.page_anns = copy.deepcopy(data.get("page_annotations") or {})

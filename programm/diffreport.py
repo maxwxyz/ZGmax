@@ -68,6 +68,21 @@ def find_regions(res, merge=25, min_moved=30):
     return regs
 
 
+def mark_contours(regs, res, min_px=20):
+    """Setzt r["contour"]: die Aenderung betrifft Koerperkanten (dicke Linien). Grundlage fuer den Listenfilter
+    "Konturen und Masse". Ohne deutlich dickere Linien in der Zeichnung gilt jede Aenderung als Kontur."""
+    import diffedit as de
+    gw = de.suggest_geometry_width(res.a)
+    for r in regs:
+        if r["typ"] == "verschoben" or gw is None:
+            r["contour"] = gw is None
+            continue
+        sl = (slice(r["y"], r["y"] + r["h"]), slice(r["x"], r["x"] + r["w"]))
+        crop = (res.oa[sl] > 0) | (res.ob[sl] > 0)
+        r["contour"] = bool(de.open_lines(crop, gw).sum() >= min_px)
+    return regs
+
+
 # Pruefstatus je Aenderung (Pruefprotokoll). Aeltere Dateien kennen nur "checked" (geprueft ja/nein).
 STATUS_LABEL = {"offen": tr("offen"), "ok": tr("gepr\u00fcft"), "abgelehnt": tr("abgelehnt")}
 STATUS_COLORS = {"offen": "#f97316", "ok": "#16a34a", "abgelehnt": "#7c3aed"}

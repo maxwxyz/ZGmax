@@ -1,35 +1,25 @@
-# Übergabe (Stand 2026-10-25, lokal → Cloud)
+# Übergabe (Stand 2026-10-25, Cloud → lokal)
 
-Branch: `wip/ui-runde` (auf `main` liegt der letzte fertige Stand 786153d). Lokale Session musste wegen
-Nutzungslimit pausieren. **Fertig, aber noch nicht voll getestet** (nur Einzeltests/Screenshots):
-- Menü-Icons im Zustand „an“ blau statt weiß (`ui_icons.icon`, Theme-Schlüssel `on_bg/on_hover/on_fg`), aktive
-  Werkzeugknöpfe hellblau; Listenzeilen mit Abstand (überlappende Checkboxen).
-- Palette: Stempel unter Nummer gruppiert; Doppelklick auf Zeichenwerkzeug = „Werkzeug behalten“ an, auf
-  Auswahl/Bereich/Zoom/Messen = aus (`_tool_double_clicked`, `DoubleClickFilter`).
-- Startseite: „← Zurück zur Zeichnung“ (+ Esc), `show_work()`.
-- Verschieben/Ecken ziehen: Umschalt = nur waagerecht/senkrecht; Einrasten an Kanten/Mitten anderer Markierungen
-  mit gestrichelten Hilfslinien, Alt = ohne Einrasten (`Canvas._align_snap`, `_paint_guides`).
-- Änderungsliste: Backspace (Mac-„delete“) löscht; Abwählen per Klick ins Leere/Esc/Liste.
-- PDF-Änderungsbericht, CSV und Bildexport nur mit den Einträgen der Liste (Filter, ohne Gelöschte):
-  `RegionsMixin.filter_regs`, `_filter_spec`, `_regs_listed`.
-- Reiter rechts: Markierungen, Änderungen, Ebenen (`tab_anns`, `tab_regs`, `tab_layers` statt Indizes).
+Branch: `wip/ui-runde-8d9lrn` (Cloud). Basis: lokaler Branch `wip/ui-runde` (0dc3923); auf `main` liegt der letzte
+fertige Stand 786153d. Lokal weitermachen: `git fetch origin && git checkout wip/ui-runde-8d9lrn`.
 
-**Halb fertig – Linienfilter** (Anzeige und Vergleich nur bestimmte Strichbreiten):
-- Fertig: `diffedit.width_band`, `diffedit.resolve_band`, `Params.lines/line_min/line_max`,
-  `diffpipe.apply_line_filter` (in `run_compare` und Einzelansicht), `hide_filtered` für Farbbilder.
-- Offen: UI in der linken Leiste (beide Modi, nicht nur Experte): Collapsible „Linien filtern“ mit `self.cb_lines`
-  (all / contours „Nur Konturen (dicke Linien)“ / thin „Nur dünne Linien (Maße, Text, Schraffur)“ / custom) und
-  `self.sp_wmin`, `self.sp_wmax` (px, 0 = ohne Grenze, nur bei custom sichtbar); Änderung → `start_compute()`
-  (entprellt). Hinweis im Modus-Schild, wenn aktiv. In Projektdatei speichern (`ui_project.py`).
-  `params()` in `drawing_viewer.py` liest die Widgets schon (mit hasattr-Fallback).
-- Offen: Listenfilter „Konturen und Maße“ in `cb_filter` (`ui_layout.py` ~1338): Region gilt als Kontur, wenn
-  `diffedit.open_lines(changed_crop, gw).sum() >= 20` (gw = `suggest_geometry_width(res.a)`), berechnet in
-  `_ensure_regs` (Hintergrund); oder `r["dim"]`.
+**In dieser Cloud-Runde erledigt** (mit Tests in `tests/test_gui.py`):
+- Linienfilter-UI: Collapsible „Linien filtern“ in der linken Leiste (beide Modi), `cb_lines` (all/contours/thin/custom),
+  `sp_wmin`/`sp_wmax` (nur bei custom, `row_lines`), Änderung → `_lines_changed` → `debounce` → `start_compute()`.
+  Modus-Schild zeigt „· Linienfilter“ (`lines_active()`). Im Projekt gespeichert (`params.lines/line_min/line_max`).
+- Listenfilter „Konturen und Maße“ (`cb_filter` Schlüssel `geo`): `diffreport.mark_contours` setzt `r["contour"]`
+  in `_ensure_regs`; ohne deutlich dickere Linien gilt alles als Kontur; manuelle/alte Einträge ohne Schlüssel = Kontur.
+- „Änderungen neu nummerieren“ (Menü Vergleichen, `act_renumber`, `renumber_regs`).
+- Abwählen einer Änderung: Esc jetzt bei jedem Werkzeug, Klick ins Leere auch bei ausgeblendeten Rahmen und im
+  Werkzeug Bereich (`ui_canvas._click`, Bereich-Freigabe).
+- Bestätigungsfrage „Liste leeren“ übersetzt; fehlende Übersetzungen ergänzt (`english_check` = ENGLISH-OK).
+- Legende im Bildexport: nutzt `tr` beim Aufruf, alle Texte in `i18n_en.json` → bei englischer Oberfläche englisch.
+- Anleitungen DE/EN: Reiterreihenfolge, Zurück zur Zeichnung, Linienfilter, Doppelklick, Umschalt/Einrasten,
+  Konturen und Maße, Backspace, neu nummerieren, Abwählen, Berichte nur Liste.
 
-**Weitere offene Punkte aus den Nutzerwünschen:**
-- „Änderungen neu nummerieren“ (Befehl im Menü Vergleichen); Nummern bleiben sonst beim Löschen erhalten.
-- Prüfen: exportierte Legende im Bild englisch bei englischer Oberfläche (`diffcore` Legende nutzt `tr`, testen).
-- Antwort an den Nutzer: Über-Fenster liegt auf dem Mac im Programmmenü „ZGmax → Über ZGmax“.
-- Dann: Tests für alle Punkte, Übersetzungen (`english_check`), Anleitungen DE/EN (Reiterreihenfolge, Doppelklick,
-  Umschalt/Einrasten, Zurück zur Zeichnung, Linienfilter, Backspace), volle Tests, Commit/Merge nach `main`, Push,
-  `packaging/build_mac.sh` nur lokal.
+**Offen / nächste Schritte:**
+- Volle Testsuite lief in der Cloud (Ergebnis siehe Commit-Nachricht bzw. unten). Danach Merge nach `main`.
+- Lokal: `packaging/build_mac.sh`, `ZGmax --selbsttest`, Sichtprüfung (Linienfilter-Leiste, Modus-Schild, Dark Mode).
+- Antwort an den Nutzer offen: Über-Fenster auf dem Mac im Programmmenü „ZGmax → Über ZGmax“.
+- Letzte Nutzerfrage kam abgeschnitten an („gibts ein modus um farben zu …“) – nachfragen.
+- Vorschläge für weitere Funktionen (an Nutzer gegeben): siehe letzte Antwort.

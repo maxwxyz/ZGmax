@@ -93,7 +93,7 @@ old → new</i> (blue). Clicking it shows what you can do – in a comparison <i
 choose another old or new drawing. If settings have changed, the chip shows ● and a blue border. When viewing, <i>Compare
 with …</i> next to it opens a second drawing. In a comparison the view switch follows (Old, New, Compare, Overlay, Side by
 side, Slider, Blink); then zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels
-<i>Options</i> (settings, left) and <i>Items</i> (changes, markups, layers – right). In a narrow window the buttons lose
+<i>Options</i> (settings, left) and <i>Items</i> (markups, changes, layers – right). In a narrow window the buttons lose
 their text step by step (name in the tooltip). On the start page the bar is almost empty.</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
 polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number, Stamp; icons only when space is short;
@@ -168,6 +168,8 @@ lists all open windows for switching.</li>
 independent (own files, markups and view settings).</li>
 <li><b>Close without quitting:</b> <i>File → Close</i> (<kbd>Ctrl</kbd>+<kbd>W</kbd>). If markups or review results are
 unsaved, the program asks first; then the start page appears again.</li>
+<li><b>Back from the start page:</b> if you open the start page while a drawing is open, <i>← Back to drawing</i> (top
+right) or <kbd>Esc</kbd> returns to it.</li>
 <li><b>Recently used:</b> on the start page and under <i>File → Recently used</i> (pairs, single files, projects).</li>
 </ul>
 
@@ -176,6 +178,12 @@ unsaved, the program asks first; then the start page appears again.</li>
 1 pixel is about 0.13 mm). Many thin red/blue double lines → increase; small changes missing → decrease.
 <b>Minimum size</b>: smaller differences (dust, dots) are ignored. Then click <i>Compare</i>; a dot (●) on the button shows
 that something changed since the last calculation.</p>
+<p><b>Filter lines</b> (left panel, when viewing and comparing): shows and compares only lines of a certain stroke width.
+<i>Contours only (thick lines)</i> hides dimension, leader and center lines, hatching and normal text – what remains are
+the object outlines; the program determines the limit from the drawing. <i>Thin lines only</i> shows the opposite. With
+<i>Choose stroke width</i> you enter the width in pixels from … to … (<i>none</i> = no limit). The filter takes effect at
+once; the mode chip then shows <i>· Line filter</i>. It is saved in the project. It only works if the drawing has
+different line weights.</p>
 <p><b>Auto-adjust</b> measures the current pair of drawings:</p>
 <ul>
 <li><i>Line threshold</i> – separates paper and lines (important for gray or yellowed scans).</li>
@@ -267,7 +275,8 @@ hidden. Text underneath is not saved as searchable text. The original file stays
 </table>
 <p><b>Keep tool</b> (checkbox in the options bar): the tool stays active after drawing, e.g. for several arrows in a row.
 Without it you are back in <i>Select</i>, so you can move what you just drew. Pen, Number and Measure always stay active;
-<kbd>Esc</kbd> ends the tool.</p>
+<kbd>Esc</kbd> ends the tool. Quicker: <b>double-click</b> a drawing tool in the palette to switch <i>Keep tool</i> on,
+double-click Select, Area, Zoom or Measure to switch it off again.</p>
 <p><b>Tool chest:</b> <i>Templates</i> in the options bar (or <i>Tools → Tool chest</i>) saves the current tool with color and
 size as a preset, e.g. "Cloud red thick" or "Highlighter green", and selects it later with one click. <b>Custom stamps:</b>
 type any text in the stamp window (e.g. "FOR INFORMATION") and choose <i>Remember as custom stamp</i>.</p>
@@ -279,6 +288,8 @@ back when read in. The list shows 💬 number of replies and the statuses set.</
 <p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
 selected one(s). With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize;
 double-click = edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo.
+While moving or dragging a corner, <kbd>Shift</kbd> keeps the movement horizontal or vertical. Edges and centers snap to
+other markups (dashed guide line); hold <kbd>Alt</kbd> to move without snapping.
 <b>Selecting several:</b> hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with
 <kbd>Shift</kbd>; then move, recolor, resize, copy (<kbd>Ctrl</kbd>+<kbd>C</kbd>) or delete them together. All markups are
 listed in the <i>Markups</i> tab on the right (select several there as well, <kbd>Del</kbd> deletes them; <i>Delete all …</i>
@@ -295,9 +306,12 @@ The status is shown in color: <span style="color:#f97316">● open</span>, <span
 <span style="color:#7c3aed">● rejected</span> – in the list and on the frames in the drawing.</li>
 </ol>
 <p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “changed text
-only”, “changed dimensions only” or “open” (applies to list, drawing and PDF). Clicking a row jumps into the drawing, clicking a frame selects the row;
+only”, “changed dimensions only”, “Contours and dimensions” (only changes to thick lines, i.e. object outlines, or to
+dimensions – fine lines and hatching are left out) or “open”. The filter applies to the list, the drawing, the PDF report,
+the CSV and the image export: only what is in the list is written, deleted entries never. Clicking a row jumps into the drawing, clicking a frame selects the row;
 double-click edits text A/B and the description. <i>Mark manually</i> adds a dragged area as your own change;
-<i>Delete</i> removes unwanted hits. <i>Compare → Turn rejected into zones</i> turns all rejected hits into zones that are no
+<i>Delete</i> (or <kbd>Del</kbd>/<kbd>Backspace</kbd>) removes unwanted hits; the others keep their number,
+<i>Compare → Renumber changes</i> counts from 1 again. Clicking empty paper or <kbd>Esc</kbd> clears the selection. <i>Compare → Turn rejected into zones</i> turns all rejected hits into zones that are no
 longer reported in later comparisons (batch too). Status and comments are saved in the <b>project</b> and appear in the CSV,
 the PDF report and the PDF with annotations – that is your review record.</p>
 

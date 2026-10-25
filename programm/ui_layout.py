@@ -259,6 +259,9 @@ class LayoutMixin:
         self.act_compare = A(tr("Vergleichen"), self.start_compute, "Ctrl+Return", tr("Vergleich (neu) berechnen"), "compare")
 
         self.act_find = A(tr("Änderungen suchen"), self.find_regs, "Ctrl+Shift+F")
+        self.act_renumber = A(tr("Änderungen neu nummerieren"), self.renumber_regs,
+                              tip=tr("Liste fortlaufend ab 1 nummerieren (sonst behalten die Einträge ihre Nummer "
+                                     "auch nach dem Löschen)"))
         self.act_search = A(tr("Text suchen …"), self.open_search, "Ctrl+F", tr("Text in der Zeichnung suchen (PDF-Text, "
                             "bei Bildern Texterkennung)"), "loupe")
         self.act_search_next = A(tr("Weitersuchen"), lambda: self.search_step(1), "F3", tr("Nächster Treffer (F3, Enter)"),
@@ -407,7 +410,7 @@ class LayoutMixin:
 
         # Alles zum Vergleichen an einer Stelle: starten, einstellen, pruefen, auswerten, weitere Vergleiche
         m = mb.addMenu(tr("&Vergleichen"))
-        for a in (self.act_compare, self.act_find):
+        for a in (self.act_compare, self.act_find, self.act_renumber):
             m.addAction(a)
         sm = m.addMenu(tr("Vergleich einstellen"))
         for a in (self.act_auto, self.act_align, self.act_align_reset, None, self.act_crop, self.act_crop_off,
@@ -1048,6 +1051,37 @@ class LayoutMixin:
         sec.body.addWidget(h)
         lay.addWidget(sec)
 
+        # Linienfilter: gilt fuer Anzeige und Vergleich, daher in beiden Modi sichtbar
+        lf = Collapsible(tr("Linien filtern"), tr("Nur bestimmte Strichbreiten anzeigen und vergleichen"))
+        self.cb_lines = QComboBox()
+        for txt, key in ((tr("Alle Linien"), "all"), (tr("Nur Konturen (dicke Linien)"), "contours"),
+                         (tr("Nur dünne Linien (Maße, Text, Schraffur)"), "thin"),
+                         (tr("Strichbreite selbst wählen"), "custom")):
+            self.cb_lines.addItem(txt, key)
+        self.cb_lines.setToolTip(tr("Blendet Linien nach ihrer Strichbreite aus. „Nur Konturen“ zeigt und vergleicht "
+                                 "nur die Körperkanten; die Grenze wird aus der Zeichnung bestimmt."))
+        lf.body.addWidget(self.cb_lines)
+        self.sp_wmin, self.sp_wmax = QSpinBox(), QSpinBox()
+        for s_ in (self.sp_wmin, self.sp_wmax):
+            s_.setRange(0, 40)
+            s_.setSuffix(tr(" px"))
+            s_.setSpecialValueText(tr("ohne"))
+        self.sp_wmin.setToolTip(tr("Dünnere Linien ausblenden (0 = ohne Grenze)"))
+        self.sp_wmax.setToolTip(tr("Dickere Linien ausblenden (0 = ohne Grenze)"))
+        self.row_lines = QWidget()
+        row = QHBoxLayout(self.row_lines)
+        row.setContentsMargins(0, 0, 0, 0)
+        for w in (QLabel(tr("Breite von")), self.sp_wmin, QLabel(tr("bis")), self.sp_wmax):
+            row.addWidget(w)
+        row.addStretch()
+        self.row_lines.setVisible(False)
+        lf.body.addWidget(self.row_lines)
+        self.cb_lines.currentIndexChanged.connect(self._lines_changed)
+        self.sp_wmin.valueChanged.connect(self._lines_changed)
+        self.sp_wmax.valueChanged.connect(self._lines_changed)
+        lay.addWidget(lf)
+        self.sec_lines = lf
+
         self.sec_pages = Collapsible(tr("Seiten"), tr("Seite auswählen"))
         self.list_pages = QListWidget()
         self.list_pages.setIconSize(QSize(40, 56))
@@ -1337,10 +1371,12 @@ class LayoutMixin:
         self.cb_filter = QComboBox()
         for txt, key in ((tr("Änderungen"), "changes"), (tr("Alle (auch verschoben)"), "all"), (tr("entfernt"), "entfernt"),
                          (tr("neu"), "neu"), (tr("geändert"), "geaendert"), (tr("verschoben"), "verschoben"),
-                         (tr("nur geänderter Text"), "text"), (tr("nur geänderte Maße"), "dims"), (tr("offen"), "open")):
+                         (tr("nur geänderter Text"), "text"), (tr("nur geänderte Maße"), "dims"),
+                         (tr("Konturen und Maße"), "geo"), (tr("offen"), "open")):
             self.cb_filter.addItem(txt, key)
         self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „nur geänderte Maße“ = "
-                                  "Änderungen mit geänderter Maßzahl (nach „Geänderte Maße finden“), „offen“ = noch "
+                                  "Änderungen mit geänderter Maßzahl (nach „Geänderte Maße finden“), „Konturen und Maße“ = nur "
+                                  "Änderungen an dicken Linien (Körperkanten) oder Maßen, „offen“ = noch "
                                   "nicht geprüft. Gilt für Liste, Bild und PDF."))
         self.cb_filter.currentIndexChanged.connect(self._fill_table)
         row.addWidget(self.cb_filter, 1)
@@ -1794,6 +1830,9 @@ class LayoutMixin:
             if dirty:
                 text = "● " + text
                 tip = tr("Einstellungen geändert – Klick → „Neu vergleichen“ (Strg+Enter).") + "\n" + tip
+        if self.lines_active():                 # Linienfilter blendet Linien aus: sichtbar machen
+            text += "  · " + tr("Linienfilter")
+            tip += "\n" + tr("Linienfilter aktiv: nur ein Teil der Linien wird gezeigt und verglichen.")
         chip.setProperty("single", bool(self.view_only))
         chip.setProperty("dirty", bool(dirty))
         chip.style().unpolish(chip)
@@ -1820,7 +1859,7 @@ class LayoutMixin:
         pl = self.payload
         regs = bool(pl and not self.view_only and pl.get("regs"))
         for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones,
-                  self.act_text, self.act_dims):
+                  self.act_text, self.act_dims, self.act_renumber):
             a.setEnabled(regs)
 
     def _set_view_only(self, on):

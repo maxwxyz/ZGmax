@@ -1441,3 +1441,58 @@ def test_english_ui():
     r = subprocess.run([sys.executable, os.path.join(here, "english_check.py")], capture_output=True, text=True,
                        timeout=300)
     assert "ENGLISH-OK" in r.stdout, r.stdout[-3000:] + r.stderr[-2000:]
+
+
+def test_line_filter_contour_list_and_renumber(app, win, pair, tmp_path):
+    compare(app, win, *pair)
+    n_all = int((win.payload["res"].a > 0).sum())
+    assert not win.sec_lines.isHidden() and win.row_lines.isHidden()
+    win.cb_lines.setCurrentIndex(win.cb_lines.findData("custom"))
+    assert not win.row_lines.isHidden()
+    win.sp_wmin.setValue(3)                                       # nur Linien ab 3 px: Raster und Schraffur weg
+    assert "Linienfilter" in win.mode_chip.text()
+    wait(app, lambda: not win.debounce.isActive() and not win.running)
+    assert 0 < int((win.payload["res"].a > 0).sum()) < n_all
+    path = str(tmp_path / "p.zgmax")
+    win._save_dialog = lambda *a: path
+    win.project_save(as_new=True)
+    data = json.load(open(path, encoding="utf-8"))
+    assert data["params"]["lines"] == "custom" and data["params"]["line_min"] == 3
+    win.cb_lines.setCurrentIndex(0)
+    wait(app, lambda: not win.debounce.isActive() and not win.running)
+    assert int((win.payload["res"].a > 0).sum()) == n_all
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    regs = win.payload["regs"]
+    assert regs and all("contour" in r for r in regs)
+    win.cb_filter.setCurrentIndex(win.cb_filter.findData("geo"))
+    shown = win._shown_regs()
+    assert all(r["contour"] or r.get("dim") for r in shown) and win.table.rowCount() == len(shown)
+    win.cb_filter.setCurrentIndex(win.cb_filter.findData("all"))
+    win.table.selectRow(0)
+    win._reg_delete()
+    assert min(r["nr"] for r in win.payload["regs"]) > 1 or len(regs) == 0
+    win.renumber_regs()
+    assert sorted(r["nr"] for r in win.payload["regs"]) == list(range(1, len(win.payload["regs"]) + 1))
+
+
+def test_view_only_line_filter(app, win, pair):
+    win._set_file("A", pair[0])
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.view_only and not win.sec_lines.isHidden()
+    n_all = int((win.payload["res"].a > 0).sum())
+    win.cb_lines.setCurrentIndex(win.cb_lines.findData("custom"))
+    win.sp_wmax.setValue(1)                                       # nur dünne Linien: Schraffur bleibt
+    wait(app, lambda: not win.debounce.isActive() and not win.running)
+    assert 0 < int((win.payload["res"].a > 0).sum()) < n_all
+
+
+def test_deselect_region(app, win, pair):
+    compare(app, win, *pair)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    win._select_region_nr(win.payload["regs"][0]["nr"])
+    assert win.canvas.selected is not None
+    win.canvas.show_regs = False                                  # Rahmen ausgeblendet: Klick ins Leere hebt auf
+    win.canvas._click(5, 5)
+    assert win.canvas.selected is None and not win.table.selectionModel().selectedRows()

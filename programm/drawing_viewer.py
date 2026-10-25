@@ -611,9 +611,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             min_area=int(self.s_area.value()), ignore=self._local_zones(self._compute_origin()),
             ignore_border=int(self.s_border.value()), edge_noise=self.chk_edges.isChecked(),
             flatten=self.chk_flatten.isChecked(), glyphs=self.chk_glyphs.isChecked(),
-            lines=self.cb_lines.currentData() if hasattr(self, "cb_lines") else "all",   # UI folgt (HANDOFF.md)
-            line_min=self.sp_wmin.value() if hasattr(self, "sp_wmin") else 0,
-            line_max=self.sp_wmax.value() if hasattr(self, "sp_wmax") else 0)
+            lines=self.cb_lines.currentData(), line_min=self.sp_wmin.value(), line_max=self.sp_wmax.value())
 
     def _param_changed(self):
         if not (self.path_a and self.path_b):
@@ -624,6 +622,18 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         self.btn_run.setText(tr("Vergleichen \u25cf"))
         self.act_compare.setText(tr("Vergleichen \u25cf"))
         self._update_mode_chip()
+
+    def lines_active(self):
+        """True, wenn der Linienfilter etwas ausblendet."""
+        key = self.cb_lines.currentData()
+        return key in ("contours", "thin") or (key == "custom" and (self.sp_wmin.value() or self.sp_wmax.value()))
+
+    def _lines_changed(self, *_):
+        """Linienfilter geaendert: Anzeige (und Vergleich) entprellt neu berechnen - auch beim Ansehen."""
+        self.row_lines.setVisible(self.cb_lines.currentData() == "custom")
+        self._update_mode_chip()
+        if self.path_a or self.path_b:
+            self.debounce.start(500)
 
     def _reset_params(self):
         for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,

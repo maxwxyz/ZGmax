@@ -14,7 +14,7 @@ class RegionsMixin:
         if force or not pl["regs_done"]:
             log(tr("Suche \u00c4nderungen \u2026"))
             manual = [r for r in pl["regs"] if r.get("manuell")]
-            auto = rep.find_regions(pl["res"], merge=max(1, int(self.s_group.value())))
+            auto = rep.mark_contours(rep.find_regions(pl["res"], merge=max(1, int(self.s_group.value()))), pl["res"])
             nr = len(auto)
             for r in manual:                       # eigene Bereiche bleiben erhalten
                 nr += 1
@@ -40,15 +40,30 @@ class RegionsMixin:
         pl = self.payload
         if not pl or not pl["regs"]:
             return
-        if QMessageBox.question(self, APP, "Alle Eintr\u00e4ge der \u00c4nderungsliste l\u00f6schen?\n"
-                                "(\u201e\u00c4nderungen suchen\u201c erstellt die automatische Liste jederzeit neu.)"
-                                ) != QMessageBox.StandardButton.Yes:
+        if QMessageBox.question(self, APP, tr("Alle Einträge der Änderungsliste löschen?\n"
+                                "(„Änderungen suchen“ erstellt die automatische Liste jederzeit neu.)")) != QMessageBox.StandardButton.Yes:
             return
         pl["regs"].clear()
         pl["regs_done"] = True                     # leer lassen, nicht automatisch neu f\u00fcllen
         self.canvas.selected = None
         self._fill_table()
         self.canvas.update()
+
+    def renumber_regs(self):
+        """Aenderungen fortlaufend neu nummerieren (in Lesereihenfolge). Sonst bleiben die Nummern beim Loeschen
+        erhalten, damit Verweise in Kommentaren und Berichten stimmen."""
+        pl = self.payload
+        if not pl or not pl["regs"]:
+            return
+        pl["regs"].sort(key=lambda r: (r["y"] // 300, r["x"]))
+        for i, r in enumerate(pl["regs"], 1):
+            r["nr"] = i
+        self.canvas.selected = None
+        self._fill_table()
+        self.canvas.update()
+        self._dirty = True
+        self._update_title()
+        self._log(tr("Änderungen neu nummeriert (1 bis {})").format(len(pl["regs"])))
 
     def _region_drawn(self, x, y, w, h):
         pl = self.payload
@@ -174,7 +189,7 @@ class RegionsMixin:
 
     def _filter_types(self):
         t = self.cb_filter.currentData()
-        if t in ("dims", "open", "changes", "text"):
+        if t in ("dims", "open", "changes", "text", "geo"):
             return {"entfernt", "neu", "geaendert"}  # nur verschobene Teile sind keine echte Aenderung
         if t == "all":
             return None
@@ -188,6 +203,7 @@ class RegionsMixin:
     def filter_regs(regs, spec):
         f, types = spec
         return [r for r in regs if (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
+                and (f != "geo" or r.get("contour", True) or r.get("dim"))
                 and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
     def _shown_regs(self):
@@ -203,7 +219,7 @@ class RegionsMixin:
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()
         f = self.cb_filter.currentData()                   # Masse/offen: auch im Bild nur diese Rahmen
-        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text") else None
+        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text", "geo") else None
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)

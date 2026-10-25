@@ -95,7 +95,7 @@ berechnen), <i>A und B tauschen</i>, eine andere alte oder neue Zeichnung wähle
 das Schild ● und einen blauen Rand. Beim Ansehen steht daneben <i>Vergleichen mit …</i> (zweite Zeichnung öffnen). Im
 Vergleich folgen die Ansichten als Umschalter (Alt, Neu, Vergleich, Überlagern, Nebeneinander, Schieber, Blinken); dann
 Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten <i>Optionen</i>
-(Einstellungen, links) und <i>Elemente</i> (Änderungen, Markierungen, Ebenen – rechts). Ist das Fenster schmal, verlieren
+(Einstellungen, links) und <i>Elemente</i> (Markierungen, Änderungen, Ebenen – rechts). Ist das Fenster schmal, verlieren
 die Knöpfe nach und nach ihren Text (Name im Tooltip). Auf der Startseite ist die Leiste fast leer.</td></tr>
 <tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
 Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer, Stempel; bei wenig
@@ -172,6 +172,8 @@ Vergleichs. Das Menü <i>Fenster</i> listet alle offenen Fenster zum Wechseln.</
 ist unabhängig (eigene Dateien, Markierungen, Einstellungen der Ansicht).</li>
 <li><b>Schließen, ohne das Programm zu beenden:</b> <i>Datei → Schließen</i> (<kbd>Strg</kbd>+<kbd>W</kbd>). Bei ungespeicherten
 Markierungen oder Prüfergebnissen fragt das Programm nach; danach erscheint wieder die Startseite.</li>
+<li><b>Von der Startseite zurück:</b> Wer bei offener Zeichnung die Startseite aufruft, kommt mit <i>← Zurück zur
+Zeichnung</i> (oben rechts) oder <kbd>Esc</kbd> wieder zum Bild.</li>
 <li><b>Zuletzt verwendet:</b> auf der Startseite und unter <i>Datei → Zuletzt verwendet</i> (Paare, Einzeldateien, Projekte).</li>
 </ul>
 
@@ -180,6 +182,12 @@ Markierungen oder Prüfergebnissen fragt das Programm nach; danach erscheint wie
 (bei 200 dpi ist 1 Pixel etwa 0,13 mm). Viele dünne rote/blaue Doppellinien → erhöhen; kleine Änderungen fehlen →
 verringern. <b>Mindestgröße</b>: kleinere Unterschiede (Staub, Punkte) werden ignoriert. Danach <i>Vergleichen</i>; ein
 Punkt (●) am Knopf zeigt, dass sich seit der letzten Berechnung etwas geändert hat.</p>
+<p><b>Linien filtern</b> (linke Leiste, beim Ansehen und im Vergleich): zeigt und vergleicht nur Linien einer bestimmten
+Strichbreite. <i>Nur Konturen (dicke Linien)</i> blendet Maß-, Hinweis- und Mittellinien, Schraffur und normalen Text aus –
+übrig bleiben die Körperkanten; die Grenze bestimmt das Programm aus der Zeichnung. <i>Nur dünne Linien</i> zeigt das
+Gegenteil. Mit <i>Strichbreite selbst wählen</i> gibt man die Breite in Pixeln von … bis … vor (<i>ohne</i> = keine Grenze).
+Der Filter wirkt sofort; das Modus-Schild zeigt dann <i>· Linienfilter</i>. Er wird im Projekt gespeichert. Funktioniert
+nur, wenn die Zeichnung unterschiedliche Strichstärken hat.</p>
 <p><b>Automatisch einstellen</b> misst am aktuellen Zeichnungspaar:</p>
 <ul>
 <li><i>Linienschwelle</i> – trennt Papier und Linien (wichtig bei grauen oder vergilbten Scans).</li>
@@ -274,7 +282,9 @@ durchsuchbarer Text mitgespeichert. Die Originaldatei bleibt unverändert.</td><
 </table>
 <p><b>Werkzeug behalten</b> (Haken in der Optionszeile): Nach dem Zeichnen bleibt das Werkzeug aktiv, z. B. für mehrere
 Pfeile nacheinander. Ohne Haken geht es zurück zur <i>Auswahl</i>, damit man das Gezeichnete gleich verschieben kann.
-Stift, Nummer und Messen bleiben immer aktiv; <kbd>Esc</kbd> beendet das Werkzeug.</p>
+Stift, Nummer und Messen bleiben immer aktiv; <kbd>Esc</kbd> beendet das Werkzeug. Schneller: <b>Doppelklick</b> auf ein
+Zeichenwerkzeug in der Palette schaltet <i>Werkzeug behalten</i> ein, Doppelklick auf Auswahl, Bereich, Zoom oder Messen
+schaltet es wieder aus.</p>
 <p><b>Werkzeugkasten:</b> <i>Vorlagen</i> in der Optionszeile (oder <i>Werkzeuge → Werkzeugkasten</i>) speichert das
 aktuelle Werkzeug mit Farbe und Größe als Vorlage, z. B. „Wolke rot dick“ oder „Marker grün“, und wählt es später mit
 einem Klick. <b>Eigene Stempel:</b> Im Stempel-Fenster beliebigen Text eintippen (z. B. „ZUR KENNTNIS“) und <i>Als eigenen
@@ -288,6 +298,8 @@ die gesetzten Status.</p>
 <p>Farbe und Größe stehen in der Optionszeile; ohne Auswahl gelten sie für die nächste Markierung, mit Auswahl für die
 gewählte(n). Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die Größe ändern; Doppelklick =
 bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> = rückgängig.
+Beim Verschieben oder Ziehen an einer Ecke hält <kbd>Umschalt</kbd> die Bewegung waagerecht oder senkrecht. Kanten und
+Mitten rasten an anderen Markierungen ein (gestrichelte Hilfslinie); <kbd>Alt</kbd> gedrückt = ohne Einrasten.
 <b>Mehrere auswählen:</b> <kbd>Strg</kbd> oder <kbd>Umschalt</kbd> gedrückt halten und anklicken, oder mit
 <kbd>Umschalt</kbd> einen Rahmen über leeres Papier ziehen; dann gemeinsam verschieben, Farbe/Größe ändern, kopieren
 (<kbd>Strg</kbd>+<kbd>C</kbd>) oder löschen. Alle Markierungen stehen im Reiter <i>Markierungen</i> rechts (dort ebenfalls
@@ -305,9 +317,12 @@ Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style
 <span style="color:#7c3aed">● abgelehnt</span> – in der Liste und an den Rahmen im Bild.</li>
 </ol>
 <p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „nur geänderter Text“,
-„nur geänderte Maße“ oder „offen“ filterbar (gilt für Liste, Bild und PDF). Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
+„nur geänderte Maße“, „Konturen und Maße“ (nur Änderungen an dicken Linien, also Körperkanten, oder an Maßen – feine
+Linien und Schraffur fallen weg) oder „offen“ filterbar. Der Filter gilt für Liste, Bild, PDF-Bericht, CSV und Bildexport:
+ausgegeben wird nur, was in der Liste steht, gelöschte Einträge nie. Klick auf eine Zeile springt ins Bild, Klick auf einen Rahmen wählt die Zeile;
 Doppelklick bearbeitet Text A/B und Beschreibung. <i>Selbst markieren</i> nimmt einen aufgezogenen Bereich als eigene
-Änderung auf; <i>Löschen</i> entfernt unerwünschte Funde. <i>Vergleichen → Abgelehnte als Zonen übernehmen</i> macht aus allen abgelehnten
+Änderung auf; <i>Löschen</i> (oder <kbd>Entf</kbd>/<kbd>Rücktaste</kbd>) entfernt unerwünschte Funde; die übrigen behalten ihre Nummer,
+<i>Vergleichen → Änderungen neu nummerieren</i> zählt wieder ab 1. Klick ins Leere oder <kbd>Esc</kbd> hebt die Auswahl auf. <i>Vergleichen → Abgelehnte als Zonen übernehmen</i> macht aus allen abgelehnten
 Funden Zonen, die bei den nächsten Vergleichen (auch im Stapel) nicht mehr gemeldet werden. Status und Kommentare werden im <b>Projekt</b> gespeichert und
 erscheinen in CSV, PDF-Bericht und PDF mit Anmerkungen – das ist das Prüfprotokoll.</p>
 

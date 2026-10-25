@@ -1955,6 +1955,8 @@ class Canvas(QWidget):
                     self.sel_rects = (self.sel_rects if self._drag[1] else []) + [rect]
             elif not self._drag[1]:                    # Klick ins Leere: Auswahl aufheben
                 self.sel_rects = []
+                if self.selected is not None:          # auch die gewaehlte Aenderung
+                    self.regionClicked.emit(-1)
             self.areaChanged.emit()
         elif kind == "areamove":
             _, (sx, sy), _o, rects0 = self._drag
@@ -2099,6 +2101,8 @@ class Canvas(QWidget):
             self.ann_selected = None
             self.annSelected.emit(-1)
         if not self.show_overlays or not self.show_regs:
+            if self.selected is not None:                # ausgeblendete Rahmen: Auswahl trotzdem aufheben
+                self.regionClicked.emit(-1)
             return
         hit = [r for r in self.regs if r["x"] - 10 <= ix <= r["x"] + r["w"] + 10
                and r["y"] - 10 <= iy <= r["y"] + r["h"] + 10
@@ -2176,7 +2180,7 @@ class Canvas(QWidget):
             self._rubber = None
             self._ann_prev = None
             self._drag = None
-            if self.selected is not None and self.tool == "hand":   # Esc: gewaehlte Aenderung abwaehlen
+            if self.selected is not None:                # Esc: gewaehlte Aenderung abwaehlen (jedes Werkzeug)
                 self.regionClicked.emit(-1)
             self.update()
             self.escapePressed.emit()
