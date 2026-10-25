@@ -148,6 +148,17 @@ class AnnotationsMixin:
             lbl += "  [" + ", ".join(rep.REVIEW_STATES[s] for s in st) + "]"
         return lbl
 
+    def _ann_apply_search(self):
+        """Suchfeld ueber der Markierungsliste: nicht passende Zeilen ausblenden (Zeile = Index in anns bleibt)."""
+        q = self.ed_ann_search.text().strip().lower() if hasattr(self, "ed_ann_search") else ""
+        for i, a in enumerate(self.anns):
+            it = self.list_anns.item(i)
+            if it is None:
+                continue
+            hay = " ".join([it.text(), a.get("text") or "", a.get("comment") or "", a.get("author") or ""]
+                           + [r.get("text", "") + " " + r.get("author", "") for r in a.get("replies") or []])
+            it.setHidden(bool(q) and q not in hay.lower())
+
     def _ann_label_base(self, a):
         t = a["type"]
         if t == "number":
@@ -184,6 +195,7 @@ class AnnotationsMixin:
             self.list_anns.setCurrentRow(select)
         self.list_anns.blockSignals(False)
         self.canvas.ann_selected = select if ok else None
+        self._ann_apply_search()
         nrs = [a["nr"] for a in self.anns if a["type"] == "number"]
         self.sp_stamp.blockSignals(True)
         self.sp_stamp.setValue(max(nrs) + 1 if nrs else 1)

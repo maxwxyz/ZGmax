@@ -19,6 +19,7 @@ from ui_project import ProjectMixin
 from ui_export import ExportMixin
 from ui_layout import LayoutMixin
 from ui_panels import PanelsMixin
+from ui_review import ReviewMixin
 from ui_features import FeaturesMixin
 from ui_search import SearchMixin
 from ui_edit import AreaMixin, ClipboardMixin, EditMixin, OcrPdfMixin, SheetEditMixin, VectorizeMixin
@@ -40,7 +41,7 @@ def hide_filtered(img, ink_all, ink_kept):
     return out
 
 
-class MainWindow(LayoutMixin, PanelsMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
+class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
                  VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
@@ -1084,7 +1085,10 @@ class MainWindow(LayoutMixin, PanelsMixin, FeaturesMixin, SearchMixin, EditMixin
         if snap.get("single"):
             self._busy(False, tr("Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen."))
         else:
-            self._busy(False, tr("Fertig. \u201e\u00c4nderungen suchen\u201c (rechte Leiste) nummeriert die Unterschiede."))
+            self._busy(False, tr("Fertig. „Prüfen starten“ (rechte Leiste, Strg+Umschalt+R) führt durch alle Änderungen."))
+            if not self.banner.isVisible() and not (self.payload or {}).get("regs_done"):
+                self.banner.show_msg(tr("Vergleich fertig. Rot = nur in A, blau = nur in B, grün = nur verschoben."),
+                                     "info", action=(tr("Prüfen starten"), self.review_start), timeout=15)
         if self.pending or (self.chk_live.isChecked() and getattr(self, "_params_dirty", False)):
             self.start_compute()
 

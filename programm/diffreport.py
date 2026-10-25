@@ -1694,3 +1694,202 @@ def build_searchable_pdf(path, img_bgr, lines, dpi=200, title=""):
     doc.save(path, deflate=True)
     doc.close()
     return n
+
+
+# ----------------------------------------------------------------- Massaenderungs-Tabelle
+_FIT = re.compile(r"(?<![A-Za-z])([A-HJ-NP-Za-hj-np-z]{1,2})\s?(\d{1,2})(?![\d.,])(?:\s?/\s?([A-Za-z]{1,2}\d{1,2}))?")
+_PM = re.compile(r"(?:±|\+/-|\+-)\s*(\d+(?:[.,]\d+)?)")
+_DEV = re.compile(r"([+-]\s?\d+(?:[.,]\d+)?)\s*(?:/\s*)?([+-]\s?\d+(?:[.,]\d+)?)?")
+
+
+def parse_tolerance(text):
+    """Toleranz aus einem Masstext: ISO-Passung ('H7', 'H7/g6'), symmetrisch ('±0,1') oder Abmasse ('+0,2/-0,1').
+    Leer, wenn keine erkennbar."""
+    t = (text or "").replace("−", "-")
+    m = _PM.search(t)
+    if m:
+        return "±" + m.group(1).replace(".", ",")
+    nums = list(_NUM.finditer(t))
+    rest = t[nums[0].end():] if nums else t
+    m = _FIT.search(rest)
+    if m and not re.fullmatch(r"(?i)mm|x|m", m.group(1)):
+        return m.group(1) + m.group(2) + ("/" + m.group(3) if m.group(3) else "")
+    m = _DEV.search(rest)
+    if m and (m.group(2) or m.group(1).strip().startswith(("+", "-"))):
+        return "/".join(g.replace(" ", "").replace(".", ",") for g in m.groups() if g)
+    return ""
+
+
+def dim_rows(regs, mm_px=0.127, page=None):
+    """Zeilen der Massaenderungs-Tabelle (nur Aenderungen mit erkannter Massaenderung): Nr, Art, Mass alt -> neu,
+    Toleranz alt/neu, Position (mm vom Blatt links oben), Pruefstatus, Kommentar."""
+    kind = {"geaendert": tr("geändert"), "neu": tr("neu"), "entfernt": tr("entfernt")}
+    rows = []
+    for r in regs:
+        if not r.get("dim"):
+            continue
+        ta, tb = parse_tolerance(r.get("text_a", "")), parse_tolerance(r.get("text_b", ""))
+        rows.append(dict(nr=r["nr"], page=page, kind=kind.get(r.get("dim_kind"), r.get("dim_kind", "")),
+                         dim=r["dim"], text_a=r.get("text_a", ""), text_b=r.get("text_b", ""),
+                         tol_a=ta, tol_b=tb, tol_changed=ta != tb,
+                         x=(r["x"] + r["w"] / 2) * mm_px, y=(r["y"] + r["h"] / 2) * mm_px,
+                         status=STATUS_LABEL[reg_status(r)], comment=r.get("comment", "")))
+    return rows
+
+
+def write_dim_csv(path, rows):
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow([tr("Nr"), tr("Seite"), tr("Art"), tr("Maß alt → neu"), tr("Text A"), tr("Text B"),
+                    tr("Toleranz alt"), tr("Toleranz neu"), "x_mm", "y_mm", tr("Status"), tr("Kommentar")])
+        for d in rows:
+            w.writerow([d["nr"], d["page"] or "", d["kind"], d["dim"], d["text_a"], d["text_b"], d["tol_a"], d["tol_b"],
+                        f"{d['x']:.0f}", f"{d['y']:.0f}", d["status"], d["comment"]])
+
+
+def _pdf_table(doc, title, head_lines, cols, rows, footer=""):
+    """Einfache Tabellenseiten (A4 quer, echter Text) fuer Massaenderungen und Pruefprotokoll."""
+    import pymupdf
+    PW, PH, M = 842.0, 595.0, 30.0
+    NAVY, DARK, GREY = (34 / 255, 48 / 255, 68 / 255), (0.1, 0.1, 0.1), (0.4, 0.4, 0.4)
+    font = pymupdf.Font("helv")
+
+    def clean(s):
+        return str(s).encode("cp1252", "replace").decode("cp1252").replace("\n", " ")
+
+    def fit(s, width, size):
+        s = clean(s)
+        while s and font.text_length(s, size) > width:
+            s = s[:-2] + "…" if len(s) > 2 else ""
+            s = clean(s)
+        return s
+
+    def page():
+        pg = doc.new_page(width=PW, height=PH)
+        pg.draw_rect(pymupdf.Rect(0, 0, PW, 40), color=None, fill=NAVY)
+        pg.insert_text((M, 26), clean(title), fontsize=16, fontname="helv", color=(1, 1, 1))
+        pg.insert_text((PW - M - 60, 26), tr("Seite {}").format(doc.page_count), fontsize=10, fontname="helv",
+                       color=(0.8, 0.84, 0.9))
+        if footer:
+            pg.insert_text((M, PH - 14), fit(footer, PW - 2 * M, 7), fontsize=7, fontname="helv", color=GREY)
+        return pg
+
+    pg = page()
+    y = 62.0
+    for ln in head_lines:
+        pg.insert_text((M, y), fit(ln, PW - 2 * M, 11), fontsize=11, fontname="helv", color=DARK)
+        y += 16
+    y += 8
+    scale = (PW - 2 * M) / sum(w for _, w in cols)
+
+    def header(pg, y):
+        x = M
+        for name, w in cols:
+            pg.insert_text((x, y), fit(name, w * scale - 4, 9), fontsize=9, fontname="helv", color=NAVY)
+            x += w * scale
+        pg.draw_line((M, y + 5), (PW - M, y + 5), color=NAVY, width=1)
+        return y + 18
+
+    y = header(pg, y)
+    for vals in rows:
+        if y > PH - 36:
+            pg = page()
+            y = header(pg, 62.0)
+        x = M
+        for (name, w), v in zip(cols, vals):
+            col = (0.75, 0.1, 0.1) if isinstance(v, tuple) else DARK
+            pg.insert_text((x, y), fit(v[0] if isinstance(v, tuple) else v, w * scale - 4, 9), fontsize=9,
+                           fontname="helv", color=col)
+            x += w * scale
+        pg.draw_line((M, y + 5), (PW - M, y + 5), color=(0.88, 0.89, 0.91), width=0.5)
+        y += 16
+    return doc
+
+
+def build_dim_report(path, rows, name_a, name_b, info=""):
+    """Massaenderungen als PDF-Tabelle (fuer Lieferanten und Fertigung). Geaenderte Toleranzen in Rot."""
+    import pymupdf
+    doc = pymupdf.open()
+    n_tol = sum(1 for d in rows if d["tol_changed"])
+    head = [tr("A (alt): {}").format(name_a), tr("B (neu): {}").format(name_b),
+            tr("Erstellt: {:%d.%m.%Y %H:%M}").format(_dt.datetime.now()),
+            tr("Maßänderungen: {}   davon mit geänderter Toleranz: {}").format(len(rows), n_tol)]
+    cols = [(tr("Nr"), 28), (tr("Seite"), 34), (tr("Art"), 60), (tr("Maß alt → neu"), 150), (tr("Toleranz alt"), 80),
+            (tr("Toleranz neu"), 80), (tr("Position x / y (mm)"), 92), (tr("Status"), 62), (tr("Kommentar"), 196)]
+    vals = []
+    for d in rows:
+        tb = (d["tol_b"],) if d["tol_changed"] else d["tol_b"]
+        vals.append([str(d["nr"]), str(d["page"] or ""), d["kind"], d["dim"], d["tol_a"], tb,
+                     f"{d['x']:.0f} / {d['y']:.0f}", d["status"], d["comment"]])
+    _pdf_table(doc, tr("Maßänderungen"), head, cols, vals, info)
+    doc.save(path, garbage=3, deflate=True)
+    doc.close()
+    return path
+
+
+# ----------------------------------------------------------------- Pruefprotokoll mit Freigabe
+PROTOCOL_RESULTS = {"ok": tr("Freigegeben"), "cond": tr("Freigegeben mit Auflagen"), "no": tr("Nicht freigegeben")}
+
+
+def _canon(rec):
+    import json
+    return json.dumps({k: v for k, v in rec.items() if k != "hash"}, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":")).encode("utf-8")
+
+
+def protocol_hash(rec):
+    import hashlib
+    return hashlib.sha256(_canon(rec)).hexdigest()
+
+
+def make_protocol(regs, reviewer, result, remark, files, page=None, app_version=""):
+    """Abgeschlossenes Pruefprotokoll: Pruefer, Zeitpunkt, Ergebnis und der Stand jeder Aenderung. Die Pruefsumme
+    (SHA-256 ueber den Inhalt) zeigt spaeter, ob das Protokoll nachtraeglich veraendert wurde. Keine qualifizierte
+    elektronische Signatur."""
+    items = [dict(nr=r["nr"], typ=r["typ"], status=reg_status(r), comment=r.get("comment", ""), dim=r.get("dim", ""),
+                  x=r["x"], y=r["y"], w=r["w"], h=r["h"]) for r in regs if r["typ"] != "verschoben"]
+    rec = dict(reviewer=reviewer, result=result, remark=remark,
+               date=_dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+               files=files, page=page, app_version=app_version, items=items,
+               counts={s: sum(1 for i in items if i["status"] == s) for s in STATUS_LABEL})
+    rec["hash"] = protocol_hash(rec)
+    return rec
+
+
+def protocol_valid(rec):
+    """True, wenn das Protokoll seit dem Abschluss nicht veraendert wurde."""
+    return bool(rec.get("hash")) and protocol_hash(rec) == rec["hash"]
+
+
+def protocol_matches(rec, regs):
+    """True, wenn der aktuelle Pruefstand noch dem protokollierten entspricht (Status und Kommentare)."""
+    cur = {r["nr"]: (reg_status(r), r.get("comment", "")) for r in regs if r["typ"] != "verschoben"}
+    old = {i["nr"]: (i["status"], i["comment"]) for i in rec.get("items", [])}
+    return cur == old
+
+
+def build_protocol_pdf(path, rec):
+    import pymupdf
+    doc = pymupdf.open()
+    try:
+        when = _dt.datetime.fromisoformat(rec["date"]).strftime("%d.%m.%Y %H:%M")
+    except (KeyError, ValueError):
+        when = rec.get("date", "")
+    c = rec.get("counts", {})
+    head = [tr("Ergebnis: {}").format(PROTOCOL_RESULTS.get(rec["result"], rec["result"])),
+            tr("Prüfer: {}     Datum: {}").format(rec["reviewer"], when)]
+    for f in rec.get("files", []):
+        head.append(f"{f.get('role', '')}: {f.get('name', '')}   SHA-256 {f.get('sha256', '')[:16]}…")
+    head.append(tr("Änderungen: {}   geprüft {}   abgelehnt {}   offen {}").format(
+        len(rec.get("items", [])), c.get("ok", 0), c.get("abgelehnt", 0), c.get("offen", 0)))
+    if rec.get("remark"):
+        head.append(tr("Bemerkung: {}").format(rec["remark"]))
+    cols = [(tr("Nr"), 30), (tr("Typ"), 80), (tr("Status"), 80), (tr("Maß"), 150), (tr("Kommentar"), 440)]
+    vals = [[str(i["nr"]), TYPE_LABEL.get(i["typ"], i["typ"]),
+             (STATUS_LABEL[i["status"]],) if i["status"] != "ok" else STATUS_LABEL[i["status"]], i["dim"], i["comment"]]
+            for i in rec.get("items", [])]
+    foot = tr("Prüfsumme (SHA-256): {}  ·  {} {}").format(rec.get("hash", ""), "ZGmax", rec.get("app_version", ""))
+    _pdf_table(doc, tr("Prüfprotokoll"), head, cols, vals, foot)
+    doc.save(path, garbage=3, deflate=True)
+    doc.close()
+    return path

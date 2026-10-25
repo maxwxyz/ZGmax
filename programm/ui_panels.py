@@ -382,9 +382,10 @@ class PanelsMixin:
         t1.setObjectName("panel")
         l1 = QVBoxLayout(t1)
         l1.setContentsMargins(0, 6, 0, 0)
-        self.btn_regs = QPushButton(tr("Änderungen suchen und nummerieren"))
+        self.btn_regs = QPushButton(tr("Prüfen starten"))
         self.btn_regs.setObjectName("primary")
-        self.btn_regs.clicked.connect(self.find_regs)
+        self.btn_regs.setToolTip(self.act_review_start.toolTip())
+        self.btn_regs.clicked.connect(self.review_start)
         l1.addWidget(self.btn_regs)
         nav = QGridLayout()                       # Zeile 1: blaettern, Zeile 2: bewerten
         nav.setContentsMargins(0, 0, 0, 0)
@@ -408,6 +409,10 @@ class PanelsMixin:
         self.lbl_summary.setObjectName("hint")
         self.lbl_summary.setWordWrap(True)
         l1.addWidget(self.lbl_summary)
+        self.lbl_protocol = QLabel("")                # zuletzt abgeschlossene Pruefung dieser Seite
+        self.lbl_protocol.setWordWrap(True)
+        self.lbl_protocol.hide()
+        l1.addWidget(self.lbl_protocol)
         row = QHBoxLayout()
         row.addWidget(QLabel(tr("Zeigen:")))
         self.cb_filter = QComboBox()
@@ -427,6 +432,8 @@ class PanelsMixin:
         self.chk_regs.toggled.connect(self._toggle_regs)
         row.addWidget(self.chk_regs)
         l1.addLayout(row)
+        self.ed_reg_search = self._search_field(tr("Suchen: Nr., Text, Maß, Kommentar"), self._fill_table)
+        l1.addWidget(self.ed_reg_search)
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Text / Kommentar")])
         self.table.verticalHeader().hide()
@@ -497,6 +504,8 @@ class PanelsMixin:
         for key in ("Delete", "Backspace"):                # Entf in der Liste loescht die Auswahl
             QShortcut(QKeySequence(key), self.list_anns, activated=self._ann_delete).setContext(
                 Qt.ShortcutContext.WidgetShortcut)
+        self.ed_ann_search = self._search_field(tr("Suchen: Art, Text, Kommentar, Name"), self._ann_apply_search)
+        l2.addWidget(self.ed_ann_search)
         l2.addWidget(self.list_anns, 1)
         row = QGridLayout()
         for i, (text, fn) in enumerate(((tr("Bearbeiten …"), lambda: self._ann_edit(self.canvas.ann_selected)),
@@ -530,6 +539,15 @@ class PanelsMixin:
         lay.addWidget(self.log)
         self.expert_widgets.append(self.log)
         self._fill_table()
+
+    def _search_field(self, placeholder, fn):
+        """Suchfeld ueber einer Liste: filtert beim Tippen, Esc/Kreuz leert es."""
+        ed = QLineEdit()
+        ed.setPlaceholderText(placeholder)
+        ed.setClearButtonEnabled(True)
+        ed.textChanged.connect(lambda _t: fn())
+        QShortcut(QKeySequence("Escape"), ed, activated=ed.clear).setContext(Qt.ShortcutContext.WidgetShortcut)
+        return ed
 
     def _build_layers_tab(self):
         t = QWidget()

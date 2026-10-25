@@ -189,6 +189,7 @@ class ProjectMixin:
             "page_annotations": getattr(self, "page_anns", {}),           # Markierungen der anderen Seiten
             "page_regions": getattr(self, "page_regs", {}),               # Pruefstand der anderen Seiten
             "page_views": getattr(self, "page_views", {}),                # gemerkte Ausschnitte je Seite
+            "protocols": getattr(self, "protocols", []),                  # abgeschlossene Pruefungen
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -306,6 +307,11 @@ class ProjectMixin:
         self.page_anns = copy.deepcopy(data.get("page_annotations") or {})
         self.page_regs = copy.deepcopy(data.get("page_regions") or {})
         self.page_views = copy.deepcopy(data.get("page_views") or {})
+        self.protocols = copy.deepcopy(data.get("protocols") or [])
+        if any(not rep.protocol_valid(p) for p in self.protocols):
+            self.banner.show_msg(tr("Achtung: Ein Prüfprotokoll in diesem Projekt wurde nachträglich verändert "
+                                    "(Prüfsumme stimmt nicht)."), "warn", action=(tr("Prüfprotokolle …"),
+                                                                                 self.show_protocols))
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)

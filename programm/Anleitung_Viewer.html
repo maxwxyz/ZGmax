@@ -53,15 +53,17 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
 <div class="quick">
 <h2 id="schnell">Schnellstart</h2>
 <ol>
-  <li><b>Starten:</b> Programm <i>ZGmax</i> öffnen. Es erscheint die Startseite.</li>
+  <li><b>Starten:</b> Programm <i>ZGmax</i> öffnen. Es erscheint die Startseite; beim ersten Start mit einer kurzen
+Einführung in drei Schritten (<i>Verstanden</i> blendet sie aus, <i>Hilfe → Einführung zeigen</i> wieder ein).</li>
   <li><b>Zeichnungen wählen:</b> Links die <b>alte</b>, rechts die <b>neue</b> Zeichnung wählen – oder beide Dateien
       zusammen ins Fenster ziehen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt.</li>
   <li><b>Ansehen:</b> <span class="sw" style="background:#e5173f"></span><b>Rot</b> = nur in der alten Zeichnung
       (entfernt), <span class="sw" style="background:#1f3fff"></span><b>Blau</b> = nur in der neuen (neu),
       <span class="sw" style="background:#969696"></span>Grau = gleich, <span class="sw" style="background:#00aa00"></span>Grün =
       nur verschoben. Mausrad = zoomen, Papier ziehen = verschieben, <kbd>F</kbd> = ganze Zeichnung.</li>
-  <li><b>Prüfen (optional):</b> Rechts „Änderungen suchen“, dann mit <kbd>N</kbd> von Änderung zu Änderung,
-      <kbd>G</kbd> = geprüft, <kbd>X</kbd> = abgelehnt.</li>
+  <li><b>Prüfen (optional):</b> <b>Prüfen starten</b> (rechte Leiste oder <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>R</kbd>)
+      sucht die Änderungen und zeigt die erste; mit <kbd>N</kbd> von Änderung zu Änderung, <kbd>G</kbd> = geprüft,
+      <kbd>X</kbd> = abgelehnt. Am Ende <i>Prüfung abschließen</i>.</li>
   <li><b>Speichern:</b> Oben rechts <i>Speichern</i> → Bild, PDF oder Projekt.</li>
 </ol>
 <p><b>Viele kleine Fundstellen?</b> Links „Automatisch einstellen“ klicken: Das Programm misst, wie genau die beiden
@@ -314,14 +316,27 @@ Markierungen, Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht ge
 
 <h2 id="pruefen">Änderungen prüfen</h2>
 <ol>
-<li>Rechte Leiste öffnen (<i>Änderungen und Markierungen</i>) und <b>Änderungen suchen und nummerieren</b>
-(<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>F</kbd>). Jede Änderung bekommt eine Nummer und einen Rahmen (auf Wunsch als Revisionswolke:
-<i>Ansicht → Änderungen als Revisionswolken</i>).</li>
+<li><b>Prüfen starten</b> (Knopf oben im Reiter <i>Änderungen</i>, <i>Vergleichen → Prüfen starten</i> oder
+<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>R</kbd>): sucht die Änderungen, falls noch nicht geschehen, öffnet die Liste, zeigt
+die erste offene Änderung und blendet oben die Tasten ein. Jede Änderung bekommt eine Nummer und einen Rahmen (auf Wunsch
+als Revisionswolke: <i>Ansicht → Änderungen als Revisionswolken</i>). Nur suchen ohne Rundgang:
+<i>Vergleichen → Änderungen suchen</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>F</kbd>).</li>
 <li><b>Nächste</b> (<kbd>N</kbd>) springt zur nächsten noch offenen Änderung und zoomt hin; <b>Vorige</b> (<kbd>P</kbd>) zurück.</li>
 <li><b>Geprüft</b> (<kbd>G</kbd>, springt weiter), <b>Abgelehnt</b> (<kbd>X</kbd>), <b>Kommentar</b> (<kbd>C</kbd>).
 Der Status ist farbig: <span style="color:#f97316">● offen</span>, <span style="color:#16a34a">● geprüft</span>,
 <span style="color:#7c3aed">● abgelehnt</span> – in der Liste und an den Rahmen im Bild.</li>
 </ol>
+<p><b>Prüfung abschließen</b> (<i>Vergleichen → Prüfung abschließen …</i> oder Knopf in der Hinweisleiste): Name des
+Prüfers, Ergebnis (<i>Freigegeben</i>, <i>Freigegeben mit Auflagen</i>, <i>Nicht freigegeben</i>) und Bemerkung. Das
+Programm hält den Stand jeder Änderung (Status, Kommentar, Maß), Zeitpunkt und die Prüfsummen beider Zeichnungsdateien
+als <b>Prüfprotokoll</b> im Projekt fest und speichert es auf Wunsch als PDF. Eine Prüfsumme (SHA-256) über das Protokoll
+zeigt später, ob es nachträglich verändert wurde – das ist ein Nachweis gegen unbemerktes Ändern, keine qualifizierte
+elektronische Signatur. Unter der Liste steht danach „✔ Freigegeben – Name, Datum“; ändert sich der Prüfstand
+danach, steht dort „Prüfstand seitdem geändert – erneut abschließen“. <i>Vergleichen → Prüfprotokolle …</i> listet alle
+abgeschlossenen Prüfungen mit Prüfung der Prüfsumme.</p>
+<p><b>Suchen:</b> Das Feld über der Liste filtert beim Tippen nach Nummer (<i>#12</i>), Art, Text, Maß, Beschreibung,
+Status oder Kommentar; Liste, Bild und Ausgaben zeigen dann nur die Treffer. <kbd>Esc</kbd> oder das Kreuz leert es.
+Ebenso hat der Reiter <i>Markierungen</i> ein Suchfeld (Art, Text, Kommentar, Name).</p>
 <p><b>Zeigen:</b> „Änderungen“ (Standard) zeigt alles außer nur verschobenen Teilen; außerdem nach Art, „nur geänderter Text“,
 „nur geänderte Maße“, „Konturen und Maße“ (nur Änderungen an dicken Linien, also Körperkanten, oder an Maßen – feine
 Linien und Schraffur fallen weg) oder „offen“ filterbar. Der Filter gilt für Liste, Bild, PDF-Bericht, CSV und Bildexport:
@@ -440,6 +455,10 @@ Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Be
 stehen in Liste, Bild und PDF <b>nur noch Änderungen, bei denen sich eine Maßzahl geändert hat</b> („12,5 → 12,8“);
 feine Strichänderungen an der Geometrie werden ausgeblendet (Filter <i>Zeigen: nur geänderte Maße</i>).
 <i>Zeigen: Änderungen</i> holt alles zurück.</li>
+<li><b>Maßänderungen als Tabelle</b> (<i>Vergleichen</i> oder <i>Speichern</i>): alle geänderten Maße als PDF oder CSV
+mit Nummer, Art, <i>Maß alt → neu</i>, <i>Toleranz alt</i> und <i>neu</i> (ISO-Passung wie H7/g6, ±0,1 oder Abmaße
++0,2/−0,1; geänderte Toleranz rot), Position in mm, Prüfstatus und Kommentar – zum Weitergeben an Lieferanten und
+Fertigung. Sind die Maße noch nicht gelesen, geschieht das vorher automatisch.</li>
 <li><b>Schriftfeld-Index prüfen</b>: liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die
 Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</li>
 <li><b>Gruppierung</b>: wie nah beieinander liegende Unterschiede zu einem Eintrag zusammengefasst werden.</li>
@@ -541,8 +560,13 @@ Projekt und Zeichnungen gemeinsam um, findet es sie wieder.</td></tr>
 Programm ab, bietet es beim nächsten Start die Wiederherstellung an.</p>
 
 <h2 id="stapel">Stapel und Revisionen</h2>
-<p><i>Vergleichen → Stapelvergleich</i>: alle gleich benannten Dateien zweier Ordner paarweise vergleichen und je Paar ein
-Ergebnisbild (optional CSV und PDF-Bericht) speichern. <i>Vergleichen → Revisionen vergleichen</i>: mehrere Stände einer
+<p><b>Ordner vergleichen</b> (<i>Vergleichen → Ordner vergleichen (Stapel) …</i>): vergleicht alle zueinander passenden
+Zeichnungen zweier Ordner, jede Seite – z. B. den eigenen Stand gegen einen Lieferanten-Datensatz. Zugeordnet wird über
+den Dateinamen; auf Wunsch auch in Unterordnern und ohne Revisionskennung am Namensende (<i>1234_B</i> ↔ <i>1234_C</i>).
+Die Übersicht zeigt je Zeichnung <span style="color:#c2410c">● geändert</span> (mit Anzahl und betroffenen Seiten),
+<span style="color:#16a34a">● gleich</span>, <i>nur im alten</i> bzw. <i>nur im neuen Stand</i> oder Fehler;
+Doppelklick öffnet ein Paar zum Prüfen. In den Ausgabeordner kommen <i>uebersicht.pdf</i> und <i>uebersicht.csv</i>,
+auf Wunsch je geändertem Blatt ein Ergebnisbild, eine CSV-Liste und ein PDF-Bericht. <i>Vergleichen → Revisionen vergleichen</i>: mehrere Stände einer
 Zeichnung der Reihe nach (A → B → C …) mit Änderungshistorie. Beide nutzen die aktuellen Einstellungen.</p>
 
 <h2 id="oberflaeche">Sprache und Größe der Oberfläche</h2>
@@ -716,6 +740,7 @@ einer neueren Version öffnet mit Hinweis.</p>
 <h3>Vergleichen</h3>
 <table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
 <tr><td>Vergleichen</td><td>Strg+Enter</td><td>Vergleich (neu) berechnen</td></tr>
+<tr><td>Prüfen starten</td><td>Strg+Umschalt+R</td><td>Änderungen suchen (falls nötig), die erste offene zeigen und Schritt für Schritt prüfen: N = nächste, G = geprüft, X = abgelehnt, C = Kommentar</td></tr>
 <tr><td>Änderungen suchen</td><td>Strg+Umschalt+F</td><td></td></tr>
 <tr><td>Änderungen neu nummerieren</td><td></td><td>Liste fortlaufend ab 1 nummerieren (sonst behalten die Einträge ihre Nummer auch nach dem Löschen)</td></tr>
 <tr><td>Nächste Änderung</td><td>N</td><td>Zur nächsten offenen Änderung (N)</td></tr>
@@ -724,11 +749,14 @@ einer neueren Version öffnet mit Hinweis.</p>
 <tr><td>Als abgelehnt markieren</td><td>X</td><td>Gewählte Änderung ist nicht in Ordnung (X)</td></tr>
 <tr><td>Kommentar …</td><td>C</td><td>Kommentar zur gewählten Änderung (C)</td></tr>
 <tr><td>Abgelehnte als Zonen übernehmen</td><td></td><td>Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen</td></tr>
+<tr><td>Prüfung abschließen …</td><td></td><td>Prüfer, Ergebnis (freigegeben, mit Auflagen, nicht freigegeben) und Bemerkung festhalten: Protokoll mit Prüfsumme im Projekt, auf Wunsch als PDF</td></tr>
+<tr><td>Prüfprotokolle …</td><td></td><td>Abgeschlossene Prüfungen dieses Projekts ansehen und als PDF speichern</td></tr>
 <tr><td>Geänderten Text finden</td><td></td><td>Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich geändert hat; „Zeigen: Änderungen“ holt alles zurück.</td></tr>
 <tr><td>Geänderte Maße finden</td><td></td><td>Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden ausgeblendet; „Zeigen: Änderungen“ holt sie zurück.</td></tr>
+<tr><td>Maßänderungen als Tabelle …</td><td></td><td>Geänderte Maße mit alt → neu, Toleranz alt/neu, Position und Prüfstatus als PDF oder CSV – z. B. für Lieferanten und Fertigung</td></tr>
 <tr><td>Schriftfeld-Index prüfen</td><td></td><td>Liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</td></tr>
 <tr><td>Alle Seiten vergleichen</td><td></td><td></td></tr>
-<tr><td>Stapelvergleich (viele Dateien) …</td><td></td><td></td></tr>
+<tr><td>Ordner vergleichen (Stapel) …</td><td></td><td>Alle passenden Zeichnungen zweier Ordner vergleichen, z. B. eigenen Stand gegen Lieferanten-Datensatz: Übersicht, welche Blätter geändert sind oder fehlen</td></tr>
 <tr><td>Revisionen vergleichen (A → B → C) …</td><td></td><td></td></tr>
 </table>
 <h3>Vergleichen → Vergleich einstellen</h3>
@@ -744,6 +772,7 @@ einer neueren Version öffnet mit Hinweis.</p>
 <h3>Hilfe</h3>
 <table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>
 <tr><td>Anleitung</td><td>F1</td><td></td></tr>
+<tr><td>Einführung zeigen</td><td></td><td>Die kurze Einführung (Öffnen, Vergleichen, Prüfen) auf der Startseite zeigen</td></tr>
 <tr><td>Anleitung Kommandozeile</td><td></td><td></td></tr>
 <tr><td>Tastenkürzel</td><td></td><td></td></tr>
 <tr><td>Was ist neu …</td><td></td><td>Änderungshistorie: was sich in welcher Version geändert hat</td></tr>

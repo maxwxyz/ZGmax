@@ -7,6 +7,7 @@ Stufen:
 """
 from i18n import tr
 from dataclasses import dataclass, field, replace
+import re
 
 import cv2
 import numpy as np
@@ -492,3 +493,45 @@ def suggest_params(gray_a, gray_b, dpi=200, base=None, log=print, cancel=None):
     why.append(tr("Mindestgröße {} px: Linien sind etwa {:.1f} px breit; kleinere Punkte gelten als Staub.").format(p.min_area, stroke))
     log(tr("Automatisch eingestellt: ") + " ".join(why))
     return p, why
+
+
+_IDX = re.compile(r"[ _.-]+(?:(?:rev|idx|index|ind|stand)[ ._-]?(?:[a-z]{1,2}|\d{1,2})|[a-z]{1,2})$", re.IGNORECASE)
+
+
+def batch_pairs(dir_a, dir_b, exts, sub=False, ignore_index=False):
+    """Dateien zweier Ordner einander zuordnen (gleicher Name, bei sub auch gleicher Unterordner).
+    ignore_index: Revisionskennung am Namensende ignorieren ('1234_B.pdf' passt zu '1234_C.pdf'), solange das
+    eindeutig bleibt. Rueckgabe: (Paare [(name, pfad_a, pfad_b)], nur_in_a [name], nur_in_b [name])."""
+    import os
+
+    def scan(root):
+        out = {}
+        for d, dirs, files in os.walk(root):
+            dirs.sort()
+            for n in sorted(files):
+                if os.path.splitext(n)[1].lower() in exts:
+                    rel = os.path.relpath(os.path.join(d, n), root)
+                    out[rel] = os.path.join(d, n)
+            if not sub:
+                break
+        return out
+
+    def keys(files):
+        def k(rel):
+            stem = os.path.splitext(rel)[0].replace("\\", "/").lower()
+            return _IDX.sub("", stem) if ignore_index else stem
+        km = {}
+        for rel in files:
+            km.setdefault(k(rel), []).append(rel)
+        res = {}
+        for key, rels in km.items():            # nicht eindeutig: dann den vollen Namen nehmen
+            if len(rels) == 1:
+                res[key] = rels[0]
+            else:
+                for rel in rels:
+                    res[os.path.splitext(rel)[0].replace("\\", "/").lower()] = rel
+        return res
+    fa, fb = scan(dir_a), scan(dir_b)
+    ka, kb = keys(fa), keys(fb)
+    pairs = [(ka[k] if ka[k] == kb[k] else f"{ka[k]}  ↔  {kb[k]}", fa[ka[k]], fb[kb[k]]) for k in sorted(set(ka) & set(kb))]
+    return pairs, sorted(ka[k] for k in set(ka) - set(kb)), sorted(kb[k] for k in set(kb) - set(ka))

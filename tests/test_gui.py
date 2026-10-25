@@ -7,7 +7,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QPointF, QSettings, Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -1730,3 +1730,113 @@ def test_manual_menu_reference_up_to_date():
     r = subprocess.run([sys.executable, os.path.join(root, "packaging", "menu_reference.py"), "--check"],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_review_start_finish_and_protocol(app, win, pair, tmp_path, monkeypatch):
+    """Pruefen starten (suchen + erste Aenderung), Pruefung abschliessen mit Protokoll, Pruefsumme, Projekt."""
+    from PySide6.QtWidgets import QDialog
+    import diffreport as rep
+    compare(app, win, *pair)
+    win.review_start()
+    wait(app, lambda: not win.running)
+    assert win.payload["regs_done"] and win.canvas.selected is not None
+    assert win.banner.isVisible() and "N = nächste" in win.banner.lbl.text()
+    win.review_set("ok")
+    win.review_set("abgelehnt")
+    monkeypatch.setattr(QDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+    win.settings.setValue("user_name", "Erika Muster")
+    pdf = str(tmp_path / "protokoll.pdf")
+    win._save_dialog = lambda *a: pdf
+    win.review_finish()
+    rec = win.current_protocol()
+    assert rec and rec["reviewer"] == "Erika Muster" and rep.protocol_valid(rec)
+    assert os.path.isfile(pdf) and win.lbl_protocol.isVisible() and "Erika" in win.lbl_protocol.text()
+    import pymupdf
+    with pymupdf.open(pdf) as d:
+        assert rec["hash"][:20] in d[0].get_text().replace("\n", "")
+    win._select_region_nr(win.payload["regs"][0]["nr"])          # Stand nach Abschluss geaendert
+    win.review_set("abgelehnt" if win.payload["regs"][0].get("status") != "abgelehnt" else "ok")
+    assert "seitdem geändert" in win.lbl_protocol.text()
+    proj = str(tmp_path / "p.zgmax")
+    win._save_dialog = lambda *a: proj
+    win.project_save(True)
+    data = load_project(proj)
+    assert data["protocols"][0]["hash"] == rec["hash"]
+    data["protocols"][0]["reviewer"] = "Jemand anders"            # Manipulation wird erkannt
+    assert not rep.protocol_valid(data["protocols"][0])
+
+
+def test_dim_table_and_tolerance(app, win, pair, tmp_path):
+    import diffreport as rep
+    assert rep.parse_tolerance("Ø20g6") == "g6" and rep.parse_tolerance("40 +0,2/-0,1") == "+0,2/-0,1"
+    assert rep.parse_tolerance("12,5 ±0,1") == "±0,1" and rep.parse_tolerance("M8x1,25") == ""
+    compare(app, win, *pair)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    r = win.payload["regs"][0]
+    r["text_a"], r["text_b"] = "25 H7", "30 H8"
+    rep.dim_changes(win.payload["regs"])
+    rows = rep.dim_rows(win.payload["regs"], win.canvas.mm_px)
+    assert len(rows) == 1 and rows[0]["tol_a"] == "H7" and rows[0]["tol_b"] == "H8" and rows[0]["tol_changed"]
+    for name in ("m.pdf", "m.csv"):
+        out = str(tmp_path / name)
+        win._save_dialog = lambda *a, out=out: out
+        win.export_dim_table()
+        assert os.path.getsize(out) > 100
+    assert "H8" in open(str(tmp_path / "m.csv"), encoding="utf-8-sig").read()
+
+
+def test_list_search(app, win, pair):
+    compare(app, win, *pair)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    n = win.table.rowCount()
+    nr = win.payload["regs"][-1]["nr"]
+    win.ed_reg_search.setText(f"#{nr}")
+    assert win.table.rowCount() == 1 and win.table.item(0, 1).text() == str(nr)
+    win.ed_reg_search.clear()
+    assert win.table.rowCount() == n
+    for t, txt in (("text", "Bohrung prüfen"), ("rect", "")):
+        win._ann_created(dict(type=t, x=100, y=100, x2=300, y2=200, text=txt, nr=0, color="#e11d48", size=2.0))
+    win.ed_ann_search.setText("bohrung")
+    assert not win.list_anns.item(0).isHidden() and win.list_anns.item(1).isHidden()
+    win.ed_ann_search.clear()
+    assert not win.list_anns.item(1).isHidden()
+
+
+def test_intro_first_start(app, win):
+    assert win.start.intro.isVisibleTo(win.start)                 # erster Start (leere Einstellungen)
+    btn = [b for b in win.start.intro.findChildren(QPushButton) if b.text() == "Verstanden"][0]
+    btn.click()
+    assert not win.start.intro.isVisibleTo(win.start) and win.settings.value("intro_done") == "true"
+    win.show_intro()
+    assert win.start.intro.isVisibleTo(win.start)
+
+
+def test_batch_folder_compare(app, win, tmp_path, monkeypatch):
+    """Ordnervergleich: geaenderte, gleiche und nur einseitig vorhandene Blaetter; Revisionskennung ignorieren."""
+    from PIL import Image
+    from conftest import draw_sheet
+    from ui_dialogs import BatchDialog
+    import diffpipe as dp
+    da, db, out = tmp_path / "eigen", tmp_path / "lieferant", tmp_path / "out"
+    for d in (da, db):
+        d.mkdir()
+    for name, d, changed in (("1000_A.png", da, False), ("1000_B.png", db, True), ("2000.png", da, False),
+                             ("2000.png", db, False), ("3000.png", da, False), ("4000.png", db, False)):
+        Image.fromarray(draw_sheet(changed)).save(d / name, dpi=(200, 200))
+    pairs, oa, ob = dp.batch_pairs(str(da), str(db), {".png"}, ignore_index=True)
+    assert len(pairs) == 2 and oa == ["3000.png"] and ob == ["4000.png"]
+    dlg = BatchDialog(win)
+    for e, v in zip(dlg.ed, (da, db, out)):
+        e.setText(str(v))
+    dlg.chk_idx.setChecked(True)
+    dlg.chk_img.setChecked(True)
+    dlg.start()
+    wait(app, lambda: dlg.btn_go.isEnabled(), 120)
+    states = {r["name"].split("  ")[0]: r["state"] for r in dlg.results}
+    assert states["1000_A.png"] == "changed" and states["2000.png"] == "same"
+    assert states["3000.png"] == "only_a" and states["4000.png"] == "only_b"
+    assert (out / "uebersicht.pdf").is_file() and (out / "uebersicht.csv").is_file()
+    assert (out / "1000_A_diff.png").is_file() and not (out / "2000_diff.png").exists()
+    dlg.close()

@@ -128,7 +128,9 @@ class LayoutMixin:
                                      tip=tr("Alle Maße mit Wert, Einheit und Seite sowie die Anzahl je Markierungsart"))
         self.act_export_xfdf = A(tr("Markierungen als XFDF speichern …"), self.export_xfdf,
                                  tip=tr("Für Acrobat & Co.: Kommentare → Importieren"))
-        self.act_batch = A(tr("Stapelvergleich (viele Dateien) …"), self.open_batch)
+        self.act_batch = A(tr("Ordner vergleichen (Stapel) …"), self.open_batch,
+                           tip=tr("Alle passenden Zeichnungen zweier Ordner vergleichen, z. B. eigenen Stand gegen "
+                                  "Lieferanten-Datensatz: Übersicht, welche Blätter geändert sind oder fehlen"))
         self.act_revisions = A(tr("Revisionen vergleichen (A → B → C) …"), self.open_revisions)
         self.act_quit = A(tr("Beenden"), QApplication.instance().closeAllWindows, "Ctrl+Q")
         self.act_close = A(tr("Schlie\u00dfen"), self.close_document, "Ctrl+W",
@@ -294,6 +296,17 @@ class LayoutMixin:
         self.act_comment = A(tr("Kommentar …"), self.review_comment, "C", tr("Kommentar zur gewählten Änderung (C)"),
                              canvas_key=True)
         self.act_pages = A(tr("Alle Seiten vergleichen"), self.compare_all_pages)
+        self.act_review_start = A(tr("Prüfen starten"), self.review_start, "Ctrl+Shift+R",
+                                  tr("Änderungen suchen (falls nötig), die erste offene zeigen und Schritt für Schritt "
+                                     "prüfen: N = nächste, G = geprüft, X = abgelehnt, C = Kommentar"), "check")
+        self.act_review_finish = A(tr("Prüfung abschließen …"), self.review_finish,
+                                   tip=tr("Prüfer, Ergebnis (freigegeben, mit Auflagen, nicht freigegeben) und Bemerkung "
+                                          "festhalten: Protokoll mit Prüfsumme im Projekt, auf Wunsch als PDF"))
+        self.act_protocols = A(tr("Prüfprotokolle …"), self.show_protocols,
+                               tip=tr("Abgeschlossene Prüfungen dieses Projekts ansehen und als PDF speichern"))
+        self.act_dim_report = A(tr("Maßänderungen als Tabelle …"), self.export_dim_table,
+                                tip=tr("Geänderte Maße mit alt → neu, Toleranz alt/neu, Position und Prüfstatus als PDF "
+                                       "oder CSV – z. B. für Lieferanten und Fertigung"))
         self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
                                tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
         self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
@@ -318,6 +331,8 @@ class LayoutMixin:
         self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
         self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
         self.act_about = A(tr("Über ZGmax"), self.show_about)
+        self.act_intro = A(tr("Einführung zeigen"), self.show_intro,
+                           tip=tr("Die kurze Einführung (Öffnen, Vergleichen, Prüfen) auf der Startseite zeigen"))
         self.act_whats_new = A(tr("Was ist neu …"), lambda: self.show_whats_new(),
                                tip=tr("Änderungshistorie: was sich in welcher Version geändert hat"))
         self.act_about.setMenuRole(QAction.MenuRole.AboutRole)
@@ -432,17 +447,18 @@ class LayoutMixin:
 
         # Alles zum Vergleichen an einer Stelle: starten, einstellen, pruefen, auswerten, weitere Vergleiche
         m = mb.addMenu(tr("&Vergleichen"))
-        for a in (self.act_compare, self.act_find, self.act_renumber):
+        for a in (self.act_compare, self.act_review_start, self.act_find, self.act_renumber):
             m.addAction(a)
         sm = m.addMenu(tr("Vergleich einstellen"))
         for a in (self.act_auto, self.act_align, self.act_align_reset, None, self.act_crop, self.act_crop_off,
                   self.act_match, self.act_zone):
             sm.addSeparator() if a is None else sm.addAction(a)
         m.addSeparator()
-        for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones):
-            m.addAction(a)
+        for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones, None,
+                  self.act_review_finish, self.act_protocols):
+            m.addSeparator() if a is None else m.addAction(a)
         m.addSeparator()
-        for a in (self.act_text, self.act_dims, self.act_index):
+        for a in (self.act_text, self.act_dims, self.act_dim_report, self.act_index):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_pages, self.act_batch, self.act_revisions):
@@ -452,7 +468,7 @@ class LayoutMixin:
         self.menu_windows.aboutToShow.connect(self._fill_window_menu)
 
         m = mb.addMenu(tr("&Hilfe"))
-        for a in (self.act_help, self.act_help_cli, self.act_keys, self.act_whats_new):
+        for a in (self.act_help, self.act_intro, self.act_help_cli, self.act_keys, self.act_whats_new):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_logfile, self.act_cli, self.act_reset_settings, self.act_about):
@@ -632,7 +648,7 @@ class LayoutMixin:
         save = QMenu(self)                                # gleiche Gruppen wie Datei -> Exportieren
         for a in (self.act_copy_view, self.act_export_img, self.act_export_annpdf, self.act_export_all_ann, self.act_export_svg, None,
                   self.act_export_ocrpdf, self.act_vectorize, self.act_save_drawing, None, self.act_export_pdf,
-                  self.act_export_all_report, self.act_export_csv, None, self.act_print):
+                  self.act_export_all_report, self.act_export_csv, self.act_dim_report, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         save.addSeparator()
         for a in (self.act_proj_save, self.act_proj_save_as, self.act_embed):
@@ -986,6 +1002,8 @@ class LayoutMixin:
         self.start.projectRequested.connect(self.project_open)
         self.start.viewOnly.connect(lambda: self.start_compute())
         self.start.backRequested.connect(self.show_work)
+        self.start.introClosed.connect(lambda: self.settings.setValue("intro_done", "true"))
+        self.start.set_intro(self.settings.value("intro_done", "") != "true")    # nur beim ersten Start
         self.stack.addWidget(self.start)
         work = QWidget()
         v = QVBoxLayout(work)
@@ -1229,6 +1247,7 @@ class LayoutMixin:
         for a in self.sheet_actions:                                  # nur beim Ansehen einer einzelnen Zeichnung
             a.setEnabled(has and self.view_only)
         for a in (self.act_find, self.act_export_pdf, self.act_export_csv, self.act_auto, self.act_index,
+                  self.act_review_start, self.act_review_finish, self.act_dim_report,
                   self.act_match, self.act_align, self.act_zone, self.act_crop, self.act_crop_off, self.act_clouds):
             a.setEnabled(has and not self.view_only)                  # nur im Vergleich
         self.act_align_reset.setEnabled(has and not self.view_only and getattr(self, "manual_tf", None) is not None)

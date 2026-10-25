@@ -632,7 +632,7 @@ class FeaturesMixin:
         self.crop_frame = None
         self.page_scales = {}
         self.page_anns, self._anns_key = {}, None
-        self.page_regs, self.page_views = {}, {}
+        self.page_regs, self.page_views, self.protocols = {}, {}, []
         self.project_path = None
         self.restore_regs = None
         self.index_info = None
@@ -735,6 +735,11 @@ class FeaturesMixin:
         else:
             a = m.addAction(tr("(noch keine Ausschnitte auf dieser Seite)"))
             a.setEnabled(False)
+
+    def show_intro(self):
+        """Hilfe -> Einfuehrung zeigen: Startseite mit den drei Schritten (zurueck mit Esc)."""
+        self.start.set_intro(True)
+        self.show_start()
 
     def show_whats_new(self, since=None):
         """Aenderungshistorie in der Sprache der Oberflaeche (Hilfe -> Was ist neu)."""

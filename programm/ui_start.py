@@ -58,6 +58,7 @@ class StartPage(QWidget):
     projectRequested = Signal()
     viewOnly = Signal()
     backRequested = Signal()               # zurueck zur offenen Zeichnung
+    introClosed = Signal()                 # Einfuehrung "Verstanden"
 
     def __init__(self):
         super().__init__()
@@ -88,6 +89,8 @@ class StartPage(QWidget):
         sub.setWordWrap(True)
         lay.addWidget(h)
         lay.addWidget(sub)
+        self.intro = self._build_intro()
+        lay.addWidget(self.intro)
         row = QHBoxLayout()
         row.setSpacing(16)
         self.card_a = DropCard(tr("Alte Zeichnung (A)"), tr("Noch keine Datei"))
@@ -123,6 +126,52 @@ class StartPage(QWidget):
         center.addStretch(1)
         outer.addLayout(center)
         outer.addStretch(2)
+
+    def _build_intro(self):
+        """Kurze Einfuehrung in drei Schritten (beim ersten Start; Hilfe -> Einfuehrung zeigt sie wieder)."""
+        card = QFrame()
+        card.setObjectName("introcard")
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(18, 14, 18, 14)
+        head = QHBoxLayout()
+        t = QLabel(tr("So geht's – in drei Schritten"))
+        t.setObjectName("cardtitle")
+        head.addWidget(t)
+        head.addStretch()
+        b = QPushButton(tr("Verstanden"))
+        b.clicked.connect(lambda: (card.hide(), self.introClosed.emit()))
+        head.addWidget(b)
+        lay.addLayout(head)
+        row = QHBoxLayout()
+        row.setSpacing(18)
+        for nr, title, text in (
+                ("1", tr("Öffnen"), tr("Alte Zeichnung links, neue rechts ablegen. Eine einzelne Datei wird nur "
+                                       "angezeigt – zum Messen und Markieren.")),
+                ("2", tr("Vergleichen"), tr("Startet von selbst. Rot = nur in alt, blau = nur in neu, grün = nur "
+                                            "verschoben, grau = gleich.")),
+                ("3", tr("Prüfen"), tr("„Prüfen starten“ zeigt jede Änderung: G = geprüft, X = abgelehnt, "
+                                       "C = Kommentar. Am Ende „Prüfung abschließen“."))):
+            col = QVBoxLayout()
+            top = QHBoxLayout()
+            n = QLabel(nr)
+            n.setObjectName("stepnr")
+            tt = QLabel(title)
+            tt.setObjectName("sec")
+            top.addWidget(n)
+            top.addWidget(tt, 1)
+            col.addLayout(top)
+            d = QLabel(text)
+            d.setObjectName("hint")
+            d.setWordWrap(True)
+            col.addWidget(d)
+            col.addStretch()
+            row.addLayout(col, 1)
+        lay.addLayout(row)
+        card.hide()
+        return card
+
+    def set_intro(self, on):
+        self.intro.setVisible(on)
 
     def set_back(self, on):
         self.btn_back.setVisible(on)

@@ -53,15 +53,17 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <div class="quick">
 <h2 id="quick">Quick start</h2>
 <ol>
-  <li><b>Start:</b> open <i>ZGmax</i>. The start page appears.</li>
+  <li><b>Start:</b> open <i>ZGmax</i>. The start page appears; at the first start with a short introduction in three
+      steps (<i>Got it</i> hides it, <i>Help → Show introduction</i> shows it again).</li>
   <li><b>Choose drawings:</b> choose the <b>old</b> drawing on the left and the <b>new</b> one on the right, or drag both
       files into the window together. The comparison starts by itself. A single file is just displayed.</li>
   <li><b>Look:</b> <span class="sw" style="background:#e5173f"></span><b>Red</b> = only in the old drawing
       (removed), <span class="sw" style="background:#1f3fff"></span><b>Blue</b> = only in the new one (added),
       <span class="sw" style="background:#969696"></span>Gray = unchanged, <span class="sw" style="background:#00aa00"></span>Green =
       only moved. Mouse wheel = zoom, drag the paper = pan, <kbd>F</kbd> = whole drawing.</li>
-  <li><b>Review (optional):</b> on the right, <i>Find changes</i>, then <kbd>N</kbd> goes from change to change,
-      <kbd>G</kbd> = checked, <kbd>X</kbd> = rejected.</li>
+  <li><b>Review (optional):</b> <b>Start review</b> (right panel or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>) finds
+      the changes and shows the first one; <kbd>N</kbd> goes from change to change, <kbd>G</kbd> = checked,
+      <kbd>X</kbd> = rejected. At the end <i>Complete review</i>.</li>
   <li><b>Save:</b> <i>Save</i> at the top right → image, PDF or project.</li>
 </ol>
 <p><b>Lots of small hits?</b> Click <i>Auto-adjust</i> on the left. The program measures how precisely the two drawings
@@ -301,14 +303,26 @@ empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden 
 
 <h2 id="review">Reviewing changes</h2>
 <ol>
-<li>Open the right panel (<i>Changes and markups</i>) and click <b>Find and number changes</b>
-(<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>). Each change gets a number and a frame (as a revision cloud if you like:
-<i>View → Changes as revision clouds</i>).</li>
+<li><b>Start review</b> (button at the top of the <i>Changes</i> tab, <i>Compare → Start review</i> or
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>): finds the changes if not done yet, opens the list, shows the first open
+change and shows the keys at the top. Each change gets a number and a frame (as a revision cloud if you like:
+<i>View → Changes as revision clouds</i>). Only find, without the walk-through: <i>Compare → Find changes</i>
+(<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>).</li>
 <li><b>Next</b> (<kbd>N</kbd>) jumps to the next open change and zooms to it; <b>Previous</b> (<kbd>P</kbd>) goes back.</li>
 <li><b>Checked</b> (<kbd>G</kbd>, moves on), <b>Rejected</b> (<kbd>X</kbd>), <b>Comment</b> (<kbd>C</kbd>).
 The status is shown in color: <span style="color:#f97316">● open</span>, <span style="color:#16a34a">● checked</span>,
 <span style="color:#7c3aed">● rejected</span> – in the list and on the frames in the drawing.</li>
 </ol>
+<p><b>Complete review</b> (<i>Compare → Complete review …</i> or the button in the message bar): reviewer name, result
+(<i>Approved</i>, <i>Approved with conditions</i>, <i>Not approved</i>) and remark. The program records the state of every
+change (status, comment, dimension), the time and the checksums of both drawing files as a <b>review record</b> in the
+project and optionally saves it as PDF. A checksum (SHA-256) over the record later shows whether it was altered
+afterwards – a safeguard against unnoticed changes, not a qualified electronic signature. Below the list it then says
+“✔ Approved – name, date”; if the review state changes afterwards, it says “Review state changed since – complete again”.
+<i>Compare → Review records …</i> lists all completed reviews with a check of the checksum.</p>
+<p><b>Search:</b> the field above the list filters while typing by number (<i>#12</i>), type, text, dimension,
+description, status or comment; list, drawing and outputs then show only the hits. <kbd>Esc</kbd> or the cross clears it.
+The <i>Markups</i> tab has a search field as well (type, text, comment, name).</p>
 <p><b>Show:</b> “Changes” (default) shows everything except merely moved parts; you can also filter by type, “changed text
 only”, “changed dimensions only”, “Contours and dimensions” (only changes to thick lines, i.e. object outlines, or to
 dimensions – fine lines and hatching are left out) or “open”. The filter applies to the list, the drawing, the PDF report,
@@ -417,6 +431,10 @@ changed text</b> (filter <i>Show: changed text only</i>).</li>
 <li><b>Find changed dimensions</b>: reads the numbers of each change and compares them (also R and M values). Afterwards
 list, drawing and PDF show <b>only changes in which a dimension value changed</b> (“12.5 → 12.8”); small line changes in
 the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.</li>
+<li><b>Dimension changes as table</b> (<i>Compare</i> or <i>Save</i>): all changed dimensions as PDF or CSV with number,
+type, <i>dimension old → new</i>, <i>tolerance old</i> and <i>new</i> (ISO fits such as H7/g6, ±0.1 or deviations
++0.2/−0.1; a changed tolerance in red), position in mm, review status and comment – to pass on to suppliers and
+production. If the dimensions have not been read yet, this happens automatically first.</li>
 <li><b>Check title block revision</b>: reads the revision index in the title block of Old and New and warns if the drawing
 changed but the index stayed the same – or the other way round.</li>
 <li><b>Grouping</b>: how close differences must be to be combined into one entry.</li>
@@ -516,8 +534,13 @@ again.</td></tr>
 restore them on the next start.</p>
 
 <h2 id="batch">Batch and revisions</h2>
-<p><i>Compare → Batch comparison</i>: compares all files with the same name in two folders pair by pair and saves a result image
-per pair (optionally CSV and PDF report). <i>Compare → Compare revisions</i>: several revisions of a drawing in order
+<p><b>Compare folders</b> (<i>Compare → Compare folders (batch) …</i>): compares all matching drawings of two folders, every
+page – e.g. your own release against a supplier data set. Files are matched by name; optionally in subfolders too and
+ignoring a revision letter at the end of the name (<i>1234_B</i> ↔ <i>1234_C</i>). The overview shows per drawing
+<span style="color:#c2410c">● changed</span> (with count and affected pages), <span style="color:#16a34a">● identical</span>,
+<i>only in old</i> or <i>only in new release</i>, or an error; double-click opens a pair for review. The output folder
+receives <i>uebersicht.pdf</i> and <i>uebersicht.csv</i>, optionally a result image, CSV list and PDF report per changed
+sheet. <i>Compare → Compare revisions</i>: several revisions of a drawing in order
 (A → B → C …) with a change history. Both use the current settings.</p>
 
 <h2 id="ui">Language and interface size</h2>
@@ -688,6 +711,7 @@ menu <i>ZGmax → About ZGmax</i>) and is stored in every project; a project fro
 <h3>Compare</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Compare</td><td>Ctrl+Return</td><td>Compute the comparison (again)</td></tr>
+<tr><td>Start review</td><td>Ctrl+Shift+R</td><td>Find the changes (if needed), show the first open one and review step by step: N = next, G = checked, X = rejected, C = comment</td></tr>
 <tr><td>Find changes</td><td>Ctrl+Shift+F</td><td></td></tr>
 <tr><td>Renumber changes</td><td></td><td>Number the list consecutively from 1 (otherwise entries keep their number after deleting)</td></tr>
 <tr><td>Next change</td><td>N</td><td>To the next open change (N)</td></tr>
@@ -696,11 +720,14 @@ menu <i>ZGmax → About ZGmax</i>) and is stored in every project; a project fro
 <tr><td>Mark as rejected</td><td>X</td><td>Selected change is not OK (X)</td></tr>
 <tr><td>Comment …</td><td>C</td><td>Comment on the selected change (C)</td></tr>
 <tr><td>Turn rejected into zones</td><td></td><td>Stop comparing changes marked as rejected</td></tr>
+<tr><td>Complete review …</td><td></td><td>Record reviewer, result (approved, with conditions, not approved) and remark: record with checksum in the project, optionally as PDF</td></tr>
+<tr><td>Review records …</td><td></td><td>View the completed reviews of this project and save them as PDF</td></tr>
 <tr><td>Find changed text</td><td></td><td>Reads the text in each change (Old → New, also dimensions) – from the PDF if it contains real text, otherwise by text recognition in any orientation (horizontal and vertical), German and English. Afterwards list and drawing only show changes whose text changed; “Show: Changes” brings everything back.</td></tr>
 <tr><td>Find changed dimensions</td><td></td><td>Reads the numbers of each change and then shows only the changes in which a dimension value changed (e.g. 12.5 → 12.8). Purely graphical changes are hidden; “Show: Changes” brings them back.</td></tr>
+<tr><td>Dimension changes as table …</td><td></td><td>Changed dimensions with old → new, tolerance old/new, position and review status as PDF or CSV – e.g. for suppliers and production</td></tr>
 <tr><td>Check title block revision</td><td></td><td>Reads the revision index in the title block of Old and New and warns if the drawing changed but the index stayed the same – or the other way round.</td></tr>
 <tr><td>Compare all pages</td><td></td><td></td></tr>
-<tr><td>Batch comparison (many files) …</td><td></td><td></td></tr>
+<tr><td>Compare folders (batch) …</td><td></td><td>Compare all matching drawings of two folders, e.g. your own release against a supplier data set: overview of which sheets changed or are missing</td></tr>
 <tr><td>Compare revisions (A → B → C) …</td><td></td><td></td></tr>
 </table>
 <h3>Compare → Comparison settings</h3>
@@ -716,6 +743,7 @@ menu <i>ZGmax → About ZGmax</i>) and is stored in every project; a project fro
 <h3>Help</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Manual</td><td>F1</td><td></td></tr>
+<tr><td>Show introduction</td><td></td><td>Show the short introduction (open, compare, review) on the start page</td></tr>
 <tr><td>Command-line manual</td><td></td><td></td></tr>
 <tr><td>Keyboard shortcuts</td><td></td><td></td></tr>
 <tr><td>What&#x27;s new …</td><td></td><td>Change history: what changed in which version</td></tr>

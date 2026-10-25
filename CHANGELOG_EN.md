@@ -19,6 +19,11 @@
 - Project as a container: the drawings are embedded in the .zgmax file and can be sent along with it; program version stored in the project.
 - Save views (View → Saved views, Ctrl+D) and jump back with one click; print to scale also for the visible area or a selected area, with footer.
 - Manuals: new section “All menu commands”, generated automatically from the menus; the menu item “View drawing” is now called “Open single drawing”.
+- “Start review”: one button finds the changes, shows the first open one and shows the keys; introduction in three steps at the first start.
+- Complete review: reviewer, result (approved, with conditions, not approved) and remark as a review record with checksum in the project and as PDF.
+- Dimension changes as table (PDF/CSV) with dimension old → new, tolerance old/new (ISO fit, ±, deviations), position and review status.
+- Compare folders: own release against a supplier data set, all pages, subfolders, revision letter in the name can be ignored; overview (changed, identical, only old/new) as table, PDF and CSV.
+- Search fields above the change list and the markup list.
 - Versions with change history (Help → What's new).
 - License AGPL-3.0.
 - Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”.

@@ -106,6 +106,10 @@ QCheckBox::indicator, QAbstractItemView::indicator {{ width: 15px; height: 15px;
 QCheckBox::indicator:checked, QAbstractItemView::indicator:checked {{ background: {t['accent']}; border-color: {t['accent']}; image: url("{t.get('check_png', '')}"); }}
 QCheckBox::indicator:disabled {{ border-color: {t['disabled']}; background: {t['window']}; }}
 QLabel#status_ok {{ color: #16a34a; font-weight: 600; }}
+QLabel#ok {{ color: #16a34a; font-weight: 600; }}
+QLabel#warn {{ color: #c2410c; font-weight: 600; }}
+QFrame#introcard {{ background: {t['surface']}; border: 1px solid {t['accent']}; border-radius: 10px; }}
+QLabel#stepnr {{ color: {t['accent']}; font-size: 16pt; font-weight: 700; }}
 QLabel#zoomlabel {{ min-width: 52px; qproperty-alignment: AlignCenter; }}
 """
 

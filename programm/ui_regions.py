@@ -142,7 +142,8 @@ class RegionsMixin:
         self.canvas.selected = None
         self.find_regs()
 
-    def run_dims(self):
+    def run_dims(self, then=None):
+        """Massaenderungen finden (PDF-Text oder Texterkennung). then(n): danach statt Filter "Masse" aufrufen."""
         if not self.payload:
             QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
@@ -170,7 +171,9 @@ class RegionsMixin:
             self._fill_table()
             self._commit()
             self._busy(False, tr("{} Maßänderungen gefunden").format(n))
-            if n:
+            if then is not None:
+                then(n)
+            elif n:
                 self.cb_filter.setCurrentIndex(self.cb_filter.findData("dims"))
         self._run_job(work, tr("Vergleiche Ma\u00dfzahlen \u2026"), done)
 
@@ -201,13 +204,25 @@ class RegionsMixin:
         return {t}
 
     def _filter_spec(self):
-        """Aktueller Listenfilter (fuer Hintergrundarbeiten, die keine Widgets lesen duerfen)."""
-        return self.cb_filter.currentData(), self._filter_types()
+        """Aktueller Listenfilter (fuer Hintergrundarbeiten, die keine Widgets lesen duerfen): Auswahl unter „Zeigen“,
+        Typen und Suchtext."""
+        q = self.ed_reg_search.text().strip().lower() if hasattr(self, "ed_reg_search") else ""
+        return self.cb_filter.currentData(), self._filter_types(), q
 
     @staticmethod
-    def filter_regs(regs, spec):
-        f, types = spec
-        return [r for r in regs if (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
+    def reg_matches(r, q):
+        """Suchtext in Nummer, Art, Texten, Mass, Beschreibung oder Kommentar."""
+        if not q:
+            return True
+        hay = " ".join(str(v) for v in (r["nr"], TYPE_SHOW.get(r["typ"], r["typ"]), r.get("text_a", ""),
+                                        r.get("text_b", ""), r.get("dim", ""), r.get("desc", ""), r.get("comment", ""),
+                                        rep.STATUS_LABEL[rep.reg_status(r)]))
+        return q.lstrip("#") == str(r["nr"]) or q in hay.lower()
+
+    @classmethod
+    def filter_regs(cls, regs, spec):
+        f, types, q = (tuple(spec) + ("",))[:3]
+        return [r for r in regs if cls.reg_matches(r, q) and (not types or r["typ"] in types) and (f != "dims" or r.get("dim"))
                 and (f != "geo" or r.get("contour", True) or r.get("dim"))
                 and (f != "text" or rep.text_changed(r)) and (f != "open" or rep.reg_status(r) == "offen")]
 
@@ -225,7 +240,9 @@ class RegionsMixin:
         regs = pl["regs"] if pl else []
         self.canvas.visible_types = self._filter_types()
         f = self.cb_filter.currentData()                   # Masse/offen: auch im Bild nur diese Rahmen
-        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text", "geo") else None
+        searching = bool(self.ed_reg_search.text().strip()) if hasattr(self, "ed_reg_search") else False
+        self.canvas.visible_nrs = {r["nr"] for r in self._shown_regs()} if f in ("dims", "open", "text", "geo") \
+            or searching else None
         mm = self.canvas.mm_px
         self.table.blockSignals(True)
         self.table.setRowCount(0)
@@ -267,6 +284,7 @@ class RegionsMixin:
                 i = self.index_info
                 s += tr("\nIndex: A = {}, B = {}.  ").format(i['index_a'], i['index_b']) + " ".join(i["notes"])
             self.lbl_summary.setText(s)
+        self._update_protocol_label()
         self.canvas.update()
 
     def _reg(self, nr):

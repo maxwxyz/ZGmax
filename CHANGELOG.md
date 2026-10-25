@@ -19,6 +19,11 @@
 - Projekt als Container: Die Zeichnungen werden in die .zgmax-Datei eingebettet und lassen sich mit ihr verschicken; Programmversion im Projekt.
 - Ausschnitte merken (Ansicht → Ausschnitte, Strg+D) und mit einem Klick wieder anspringen; Drucken im Maßstab auch für den sichtbaren Ausschnitt oder einen gewählten Bereich, mit Fußzeile.
 - Anleitungen: neuer Abschnitt „Alle Menübefehle“, automatisch aus den Menüs erzeugt; Menüpunkt „Zeichnung ansehen“ heißt jetzt „Einzelne Zeichnung öffnen“.
+- „Prüfen starten“: ein Knopf sucht die Änderungen, zeigt die erste offene und blendet die Tasten ein; Einführung in drei Schritten beim ersten Start.
+- Prüfung abschließen: Prüfer, Ergebnis (freigegeben, mit Auflagen, nicht freigegeben) und Bemerkung als Prüfprotokoll mit Prüfsumme im Projekt und als PDF.
+- Maßänderungen als Tabelle (PDF/CSV) mit Maß alt → neu, Toleranz alt/neu (ISO-Passung, ±, Abmaße), Position und Prüfstatus.
+- Ordner vergleichen: eigener Stand gegen Lieferanten-Datensatz, alle Seiten, Unterordner, Revisionskennung im Namen ignorierbar; Übersicht (geändert, gleich, nur alt/neu) als Tabelle, PDF und CSV.
+- Suchfelder über der Änderungs- und der Markierungsliste.
 - Versionen mit Änderungshistorie (Hilfe → Was ist neu).
 - Lizenz AGPL-3.0.
 - Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“.
