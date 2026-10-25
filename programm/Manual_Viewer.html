@@ -27,6 +27,23 @@
   nav{columns:3;font-size:.95em} nav a{display:block}
   a{color:var(--accent)}
   .muted{color:var(--muted)}
+
+  figure{margin:1.2rem 0}
+  figure a{display:block}
+  figure img{max-width:100%;border:1px solid var(--line);border-radius:10px;box-shadow:0 3px 14px rgba(0,0,0,.10);cursor:zoom-in}
+  figcaption{color:var(--muted);font-size:.9em;margin-top:.35rem}
+  .lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;font-size:.85em;margin:.2rem 0 .8rem}
+  .lang a,.lang span{padding:.2rem .8rem;text-decoration:none}
+  .lang span{background:var(--accent);color:#fff}
+  nav#toc .head{font-weight:700;margin-bottom:.2rem}
+  @media (min-width:1150px){
+    body{margin:2rem 2rem 4rem 310px}
+    nav#toc{position:fixed;top:0;left:0;bottom:0;width:270px;overflow-y:auto;columns:auto;padding:1.2rem .8rem;
+            border-right:1px solid var(--line);background:var(--th);box-sizing:border-box}
+    nav#toc a{padding:.22rem .6rem;border-radius:6px;text-decoration:none;color:var(--fg);line-height:1.35;margin:1px 0}
+    nav#toc a:hover{background:var(--line)}
+    nav#toc a.active{background:var(--accent);color:#fff}
+  }
 </style>
 </head>
 <body>
@@ -35,11 +52,13 @@
 <p><b>ZGmax</b> displays technical drawings and compares two revisions (old and new). Differences are highlighted in
 color and numbered, and you can review, comment on and measure them one by one, then save them as an image, a PDF or a list.
 For automation, see the <a href="Manual_CommandLine.html">command line manual</a>.
-<span class="muted">Deutsch: <a href="Anleitung_Viewer.html">Anleitung</a>.</span></p>
+<span class="muted">Deutsch: <a class="switch" href="Anleitung_Viewer.html">Anleitung</a>.</span></p>
 <p class="muted">Shortcuts: <kbd>Ctrl</kbd> means <kbd>⌘</kbd> on the Mac. Single keys such as <kbd>F</kbd> or
 <kbd>N</kbd> work when the drawing has the focus (click into it once).</p>
 
-<nav>
+<nav id="toc">
+<div class="head">ZGmax – Contents</div>
+<div class="lang"><a class="switch" href="Anleitung_Viewer.html">Deutsch</a><span>English</span></div>
 <a href="#quick">Quick start</a><a href="#start">Starting the program</a><a href="#window">The window</a>
 <a href="#navigation">Zooming and panning</a><a href="#views">Views</a><a href="#viewing">Viewing only, windows, closing</a>
 <a href="#sensitivity">Sensitivity, Auto-adjust</a><a href="#measure">Measuring and calibrating</a>
@@ -71,6 +90,7 @@ line up and sets the tolerance and search ranges to match.</p>
 </div>
 
 <h2 id="start">Starting the program</h2>
+<figure><a href="doc_img/en/start.png" target="_blank"><img src="doc_img/en/start.png" alt="Start page with the three-step introduction: drop the old drawing on the left, the new one on the right." loading="lazy"></a><figcaption>Start page with the three-step introduction: drop the old drawing on the left, the new one on the right.</figcaption></figure>
 <table>
 <tr><th>Variant</th><th>How</th></tr>
 <tr><td><b>App (recommended)</b></td><td><b>Mac:</b> drag <code>ZGmax.app</code> into <i>Applications</i> and open it. On
@@ -96,7 +116,8 @@ choose another old or new drawing. If settings have changed, the chip shows ● 
 with …</i> next to it opens a second drawing. In a comparison the view switch follows (Old, New, Compare, Overlay, Side by
 side, Slider, Blink); then zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels
 <i>Options</i> (settings, left) and <i>Items</i> (markups, changes, layers – right). In a narrow window the buttons lose
-their text step by step (name in the tooltip). On the start page the bar is almost empty.</td></tr>
+their text step by step (name in the tooltip); narrower still, <i>Overlay</i>, <i>Slider</i> and <i>Blink</i> are only in
+the <i>View</i> menu (keys <kbd>4</kbd>, <kbd>5</kbd>, <kbd>6</kbd>). On the start page the bar is almost empty.</td></tr>
 <tr><td>Tool palette (left of the drawing)</td><td>Select, Region, Zoom, Measure, Text, Cloud, Shapes (▾ box, ellipse, line,
 polyline, polygon), Arrow, Pen, Marker, Redact (▾ redact, pixelate), Number, Stamp; icons only when space is short;
 at the bottom Magnifier and Overview. The active tool is blue.</td></tr>
@@ -139,6 +160,7 @@ name, e.g. “Section A-A” or “Title block”. In the same menu one click ju
 size. Views apply per page and are saved in the project; <i>Delete view</i> removes one.</p>
 
 <h2 id="views">Views</h2>
+<figure><a href="doc_img/en/vergleich.png" target="_blank"><img src="doc_img/en/vergleich.png" alt="Comparison: red = only in old, blue = only in new, grey = identical, green = only moved." loading="lazy"></a><figcaption>Comparison: red = only in old, blue = only in new, grey = identical, green = only moved.</figcaption></figure>
 <table>
 <tr><th>View</th><th>Key</th><th>Shows</th></tr>
 <tr><td>Old / New</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Only the old or new drawing, as in the file (gray or in color).
@@ -151,6 +173,7 @@ With <i>Highlight changes</i> in the options bar (<kbd>8</kbd> / <kbd>7</kbd>), 
 <tr><td>Blink</td><td><kbd>6</kbd></td><td>Alternates between old and new; speed and pause are in the options bar.
 <kbd>Space</kbd> switches by hand.</td></tr>
 </table>
+<figure><a href="doc_img/en/nebeneinander.png" target="_blank"><img src="doc_img/en/nebeneinander.png" alt="Side by side view: both revisions zoom and pan together." loading="lazy"></a><figcaption>Side by side view: both revisions zoom and pan together.</figcaption></figure>
 <p><b>Color:</b> colored drawings (e.g. PDFs with colored layers) appear in their original colors in Old, New, Side by side,
 Blink and Slider, and gray scans in their gray tones. Compare, Overlay and <i>Highlight changes</i> always work in black and
 white (red/blue/gray). The comparison itself always uses the black-and-white version. Can be switched off:
@@ -189,6 +212,7 @@ the object outlines; the program determines the limit from the drawing. <i>Thin 
 <i>Choose stroke width</i> you enter the width in pixels from … to … (<i>none</i> = no limit). When viewing, the filter takes effect
 at once, in a comparison with <i>Compare</i>; the mode chip then shows <i>· Line filter</i>. It is saved in the project. It only works if the drawing has
 different line weights.</p>
+<figure><a href="doc_img/en/linienfilter.png" target="_blank"><img src="doc_img/en/linienfilter.png" alt="Filter lines: contours only (object outlines) – dimensions, text and hatching are hidden." loading="lazy"></a><figcaption>Filter lines: contours only (object outlines) – dimensions, text and hatching are hidden.</figcaption></figure>
 <p><b>Auto-adjust</b> measures the current pair of drawings:</p>
 <ul>
 <li><i>Line threshold</i> – separates paper and lines (important for gray or yellowed scans).</li>
@@ -255,6 +279,7 @@ from PDF text, by text recognition for images) and offers to use the scale.</li>
 </ul>
 
 <h2 id="markup">Markups and drawing</h2>
+<figure><a href="doc_img/en/markieren.png" target="_blank"><img src="doc_img/en/markieren.png" alt="Markups when viewing a single drawing: cloud, arrow, text, number and dimension; on the right the list with search field." loading="lazy"></a><figcaption>Markups when viewing a single drawing: cloud, arrow, text, number and dimension; on the right the list with search field.</figcaption></figure>
 <p>All markups are <b>vectors</b>: they stay individually clickable, movable and editable (color, line width via
 <i>Size</i>, shape at the white handles) and are saved as real PDF comments or SVG elements.</p>
 <table>
@@ -302,6 +327,7 @@ listed in the <i>Markups</i> tab on the right (select several there as well, <kb
 empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden items are not saved either.</p>
 
 <h2 id="review">Reviewing changes</h2>
+<figure><a href="doc_img/en/pruefen.png" target="_blank"><img src="doc_img/en/pruefen.png" alt="Start review: the first open change is selected, the keys are shown at the top, the numbered list on the right." loading="lazy"></a><figcaption>Start review: the first open change is selected, the keys are shown at the top, the numbered list on the right.</figcaption></figure>
 <ol>
 <li><b>Start review</b> (button at the top of the <i>Changes</i> tab, <i>Compare → Start review</i> or
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>): finds the changes if not done yet, opens the list, shows the first open
@@ -320,6 +346,7 @@ project and optionally saves it as PDF. A checksum (SHA-256) over the record lat
 afterwards – a safeguard against unnoticed changes, not a qualified electronic signature. Below the list it then says
 “✔ Approved – name, date”; if the review state changes afterwards, it says “Review state changed since – complete again”.
 <i>Compare → Review records …</i> lists all completed reviews with a check of the checksum.</p>
+<figure><a href="doc_img/en/abschliessen.png" target="_blank"><img src="doc_img/en/abschliessen.png" alt="Complete review: reviewer, result and remark – the record is stored in the project with a checksum." loading="lazy"></a><figcaption>Complete review: reviewer, result and remark – the record is stored in the project with a checksum.</figcaption></figure>
 <p><b>Search:</b> the field above the list filters while typing by number (<i>#12</i>), type, text, dimension,
 description, status or comment; list, drawing and outputs then show only the hits. <kbd>Esc</kbd> or the cross clears it.
 The <i>Markups</i> tab has a search field as well (type, text, comment, name).</p>
@@ -422,6 +449,7 @@ in the section <i>Layers of the PDF file</i>. Unticked, a layer is not drawn and
 The choice is saved in the project.</p>
 
 <h2 id="texts">Text and dimensions</h2>
+<figure><a href="doc_img/en/masstabelle.png" target="_blank"><img src="doc_img/en/masstabelle.png" alt="Dimension changes as table (PDF): old → new, tolerance old/new, position and status." loading="lazy"></a><figcaption>Dimension changes as table (PDF): old → new, tolerance old/new, position and status.</figcaption></figure>
 <p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Compare</i> menu):</p>
 <ul>
 <li><b>Find changed text</b>: reads the text of each change – also dimensions and vertical text in both reading
@@ -542,6 +570,7 @@ ignoring a revision letter at the end of the name (<i>1234_B</i> ↔ <i>1234_C</
 receives <i>uebersicht.pdf</i> and <i>uebersicht.csv</i>, optionally a result image, CSV list and PDF report per changed
 sheet. <i>Compare → Compare revisions</i>: several revisions of a drawing in order
 (A → B → C …) with a change history. Both use the current settings.</p>
+<figure><a href="doc_img/en/ordner.png" target="_blank"><img src="doc_img/en/ordner.png" alt="Compare folders: own release against a supplier data set, with overview." loading="lazy"></a><figcaption>Compare folders: own release against a supplier data set, with overview.</figcaption></figure>
 
 <h2 id="ui">Language and interface size</h2>
 <ul>
@@ -784,5 +813,30 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 and several GB of memory. Stop with <i>Cancel</i>; compare only the relevant part with a region; for PDFs reduce the dpi (e.g. 150).</td></tr>
 <tr><td>Something does not work.</td><td>The message bar shows the error (<i>Details</i>). <i>Help → Open log file</i> opens the log.</td></tr>
 </table>
+<script>
+// Inhaltsverzeichnis: aktuellen Abschnitt hervorheben; Sprachumschalter bleibt im selben Abschnitt
+(function(){
+  var heads = Array.prototype.slice.call(document.querySelectorAll("h2[id]"));
+  var links = {};
+  document.querySelectorAll("nav#toc a[href^='#']").forEach(function(a){ links[a.getAttribute("href").slice(1)] = a; });
+  function current(){
+    var cur = 0;
+    heads.forEach(function(h, i){ if (h.getBoundingClientRect().top < 120) cur = i; });
+    return cur;
+  }
+  function mark(){
+    var i = current();
+    Object.keys(links).forEach(function(k){ links[k].classList.remove("active"); });
+    if (heads[i] && links[heads[i].id]) links[heads[i].id].classList.add("active");
+  }
+  window.addEventListener("scroll", mark, {passive: true});
+  document.querySelectorAll("a.switch").forEach(function(a){
+    a.addEventListener("click", function(e){ e.preventDefault(); location.href = a.getAttribute("href") + "?sec=" + current(); });
+  });
+  var m = /[?&]sec=(\d+)/.exec(location.search);
+  if (m && heads[+m[1]]) heads[+m[1]].scrollIntoView();
+  mark();
+})();
+</script>
 </body>
 </html>

@@ -54,6 +54,7 @@ NAV_TOOLS = ("hand", "area", "zoom", "measure")              # Doppelklick hier:
 
 class LayoutMixin:
     """Teil des Hauptfensters (wird in MainWindow eingemischt)."""
+    _chip_room = 120                      # Platz (px) je Dateiname im Modus-Schild; _fit_toolbar verkleinert ihn
 
     # ----------------------------------------------------------------- Aktionen und Menue
     def _act(self, text, fn=None, key=None, tip="", ico=None, checkable=False, canvas_key=False):
@@ -483,44 +484,50 @@ class LayoutMixin:
             self._tb_text.append(w)
         return w
 
+    def _schedule_fit(self):
+        """Leiste oben nach jeder Inhaltsaenderung (Schild, Ansichten, Seitenwahl) neu einpassen - gebuendelt."""
+        if not getattr(self, "_fit_pending", False) and not getattr(self, "_fitting", False):
+            self._fit_pending = True
+            QTimer.singleShot(0, self._fit_toolbar)
+
     def _fit_toolbar(self):
         """Ist das Fenster zu schmal fuer die Leiste oben, verlieren die Knoepfe Schritt fuer Schritt ihren Text
-        (zuerst Elemente und Optionen, zuletzt Vergleichen; Name bleibt im Tooltip) - statt dass Knoepfe im
-        Ueberlauf-Menue verschwinden."""
+        (zuerst Elemente und Optionen, zuletzt Vergleichen; Name bleibt im Tooltip), danach werden die Dateinamen im
+        Modus-Schild gekuerzt - statt dass Knoepfe im Ueberlauf-Menue verschwinden. Gemessen wird der echte
+        Platzbedarf der Leiste (alle Knoepfe, auch die gerade im Ueberlauf)."""
+        self._fit_pending = False
         tb = getattr(self, "main_toolbar", None)
-        if tb is None or not self._tb_text:
+        if tb is None or not self._tb_text or getattr(self, "_fitting", False):
             return
-        base, extra = 24, {}
-        for act in tb.actions():                  # ueber die Aktionen: im Ueberlauf versteckte Knoepfe zaehlen mit
-            if not act.isVisible():
-                continue
-            if act.isSeparator():
-                base += 10
-                continue
-            w = tb.widgetForAction(act)
-            if w is None:
-                continue
-            if w in self._tb_text:                 # Breite ohne Text; der Text kommt bei Platz dazu
-                base += w.iconSize().width() + 23 + tb.layout().spacing()
-                extra[w] = w.fontMetrics().horizontalAdvance(w.text()) + 11
-            else:
-                base += max(0, w.sizeHint().width()) + tb.layout().spacing()
-        # Reihenfolge, in der der Text wegfaellt: unwichtigstes zuerst
-        order = sorted(self._tb_text, key=lambda w: getattr(w, "_text_rank", 0))
-        keep = [w for w in order if w.isVisible() or w in extra]
-        now = [w for w in keep if w.toolButtonStyle() != Qt.ToolButtonStyle.ToolButtonIconOnly]
-        avail = tb.width()
-        n = len(keep)
-        while n > 0 and base + sum(extra.get(w, 0) for w in keep[len(keep) - n:]) > avail:
-            n -= 1
-        if n > len(now) and base + sum(extra.get(w, 0) for w in keep[len(keep) - n:]) > avail - 20:
-            n = len(now)                         # erst mit etwas Luft wieder Text zeigen (kein Flackern)
-        with_text = set(keep[len(keep) - n:])
-        for w in self._tb_text:
-            style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon if w in with_text else \
-                Qt.ToolButtonStyle.ToolButtonIconOnly
-            if w.toolButtonStyle() != style:
-                w.setToolButtonStyle(style)
+        self._fitting = True
+        try:
+            avail = tb.width() - 6
+
+            def need():
+                tb.layout().invalidate()
+                return tb.layout().sizeHint().width()
+            order = sorted(self._tb_text, key=lambda w: getattr(w, "_text_rank", 0))   # unwichtigstes zuerst
+            for w in self._tb_text:
+                w.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            segs = getattr(self, "seg_buttons", {})
+            for b in segs.values():
+                b.setVisible(True)
+            if self._chip_room != 120:
+                self._chip_room = 120
+                self._update_mode_chip()
+            for w in order:
+                if need() <= avail:
+                    break
+                w.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            while need() > avail and self._chip_room > 30:          # langes Modus-Schild: Namen kuerzen
+                self._chip_room = max(30, self._chip_room - 20)
+                self._update_mode_chip()
+            for key in ("K", "S", "O"):                            # zuletzt selten gebrauchte Ansichten (Menue/Taste)
+                if need() <= avail or key not in segs or segs[key].isChecked():
+                    break
+                segs[key].setVisible(False)
+        finally:
+            self._fitting = False
 
     def _tb_proxy(self, src, ico):
         """Eigene Aktion fuer die Leiste oben: laesst sich je Modus ausblenden, ohne dass der Menuepunkt
@@ -1290,11 +1297,11 @@ class LayoutMixin:
         name = lambda p, w: fm.elidedText(os.path.basename(p or ""), Qt.TextElideMode.ElideMiddle, w)  # noqa: E731
         dirty = getattr(self, "_params_dirty", False) and not self.view_only
         if self.view_only:                      # Modus bleibt immer lesbar, nur die Dateinamen werden gekuerzt
-            text = tr("Ansehen: {}").format(name(self.path_a or self.path_b, 220))
+            text = tr("Ansehen: {}").format(name(self.path_a or self.path_b, 2 * self._chip_room))
             tip = tr("Einzelansicht: eine Zeichnung ansehen, messen und markieren. Zum Vergleichen eine zweite "
                      "Zeichnung öffnen („Vergleichen mit …“).")
         else:
-            text = tr("Vergleich: {} → {}").format(name(self.path_a, 120), name(self.path_b, 120))
+            text = tr("Vergleich: {} → {}").format(name(self.path_a, self._chip_room), name(self.path_b, self._chip_room))
             tip = tr("Vergleich: A (alt) und B (neu) übereinander; Unterschiede sind farbig. Klick: neu "
                      "vergleichen, A und B tauschen oder eine Datei wechseln.")
             if dirty:
@@ -1309,6 +1316,7 @@ class LayoutMixin:
         chip.style().polish(chip)
         chip.setToolTip(tip + "\n\n" + "\n".join(p for p in (self.path_a, self.path_b) if p))
         chip.setText(text + "  ▾")
+        self._schedule_fit()
 
     def _fill_chip_menu(self, m):
         m.clear()

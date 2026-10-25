@@ -256,3 +256,15 @@ def test_changelog_complete():
     keys = [version.version_key(r["version"]) for r in data["releases"]]
     assert keys == sorted(keys, reverse=True)
     assert "<h3>" in version.changes_html("en") and version.changes_html("de", since=version.VERSION) == ""
+
+
+def test_manual_images_exist():
+    """Alle Bilder der Anleitungen liegen vor (packaging/doc_screenshots.py erzeugt sie)."""
+    import re
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "programm")
+    for name in ("Anleitung_Viewer.html", "Manual_Viewer.html"):
+        html = open(os.path.join(root, name), encoding="utf-8").read()
+        imgs = re.findall(r'<img src="([^"]+)"', html)
+        assert len(imgs) >= 8, name
+        for src in imgs:
+            assert os.path.isfile(os.path.join(root, src)), src

@@ -30,9 +30,10 @@
     "Maßänderungen als Tabelle (PDF/CSV) mit Maß alt → neu, Toleranz alt/neu (ISO-Passung, ±, Abmaße), Position und Prüfstatus.",
     "Ordner vergleichen: eigener Stand gegen Lieferanten-Datensatz, alle Seiten, Unterordner, Revisionskennung im Namen ignorierbar; Übersicht (geändert, gleich, nur alt/neu) als Tabelle, PDF und CSV.",
     "Suchfelder über der Änderungs- und der Markierungsliste.",
+    "Anleitungen mit Bildern, Inhaltsverzeichnis als Seitenleiste und Umschalter Deutsch/Englisch, der im selben Abschnitt bleibt.",
     "Versionen mit Änderungshistorie (Hilfe → Was ist neu).",
     "Lizenz AGPL-3.0.",
-    "Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“."
+    "Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“; Pfeile (→) erschienen in PDF-Berichten als „?“; die Leiste oben lief bei langen Dateinamen über."
    ],
    "en": [
     "Comparison: paper flattening for scans, exact character check for similar digits (e.g. 41.8 → 43.2), suggestion of the exact vector comparison for PDFs, turn rejected hits into zones.",
@@ -57,9 +58,10 @@
     "Dimension changes as table (PDF/CSV) with dimension old → new, tolerance old/new (ISO fit, ±, deviations), position and review status.",
     "Compare folders: own release against a supplier data set, all pages, subfolders, revision letter in the name can be ignored; overview (changed, identical, only old/new) as table, PDF and CSV.",
     "Search fields above the change list and the markup list.",
+    "Manuals with pictures, table of contents as a side bar and a German/English switch that stays in the same section.",
     "Versions with change history (Help → What's new).",
     "License AGPL-3.0.",
-    "Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”."
+    "Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”; arrows (→) appeared as “?” in PDF reports; the top bar overflowed with long file names."
    ]
   },
   {

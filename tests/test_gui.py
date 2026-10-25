@@ -865,6 +865,13 @@ def test_enabled_states_by_mode(app, win, pair):
         app.processEvents()
     win._fit_toolbar()
     assert win._tb_text[0].toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
+    from PySide6.QtWidgets import QToolButton                      # nichts verschwindet im Ueberlauf-Menue
+    for w in (1100, 1280, 1440):
+        win.resize(w, 800)
+        for _ in range(10):
+            app.processEvents()
+        win._fit_toolbar()
+        assert win.main_toolbar.layout().sizeHint().width() <= win.main_toolbar.width(), w
 
 
 def test_pdf_comments_imported_and_pdf_layers(app, win, tmp_path):

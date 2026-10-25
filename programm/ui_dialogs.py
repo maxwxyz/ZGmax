@@ -294,6 +294,7 @@ class BatchDialog(QDialog):
         lay.addWidget(self.logbox, 1)
         self.bar = QProgressBar()
         self.bar.setRange(0, 1)
+        self.bar.setTextVisible(False)
         lay.addWidget(self.bar)
         row = QHBoxLayout()
         self.btn_open = QPushButton(tr("Ausgabeordner öffnen"))

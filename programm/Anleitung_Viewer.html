@@ -27,6 +27,23 @@
   nav{columns:3;font-size:.95em} nav a{display:block}
   a{color:var(--accent)}
   .muted{color:var(--muted)}
+
+  figure{margin:1.2rem 0}
+  figure a{display:block}
+  figure img{max-width:100%;border:1px solid var(--line);border-radius:10px;box-shadow:0 3px 14px rgba(0,0,0,.10);cursor:zoom-in}
+  figcaption{color:var(--muted);font-size:.9em;margin-top:.35rem}
+  .lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;font-size:.85em;margin:.2rem 0 .8rem}
+  .lang a,.lang span{padding:.2rem .8rem;text-decoration:none}
+  .lang span{background:var(--accent);color:#fff}
+  nav#toc .head{font-weight:700;margin-bottom:.2rem}
+  @media (min-width:1150px){
+    body{margin:2rem 2rem 4rem 310px}
+    nav#toc{position:fixed;top:0;left:0;bottom:0;width:270px;overflow-y:auto;columns:auto;padding:1.2rem .8rem;
+            border-right:1px solid var(--line);background:var(--th);box-sizing:border-box}
+    nav#toc a{padding:.22rem .6rem;border-radius:6px;text-decoration:none;color:var(--fg);line-height:1.35;margin:1px 0}
+    nav#toc a:hover{background:var(--line)}
+    nav#toc a.active{background:var(--accent);color:#fff}
+  }
 </style>
 </head>
 <body>
@@ -35,11 +52,13 @@
 <p><b>ZGmax</b> zeigt technische Zeichnungen an und vergleicht zwei Stände (alt und neu): Unterschiede werden farbig
 markiert, nummeriert und lassen sich Schritt für Schritt prüfen, kommentieren, vermessen und als Bild, PDF oder Liste
 speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Kommandozeile.html">Anleitung Kommandozeile</a>.
-<span class="muted">English: <a href="Manual_Viewer.html">Manual</a>.</span></p>
+<span class="muted">English: <a class="switch" href="Manual_Viewer.html">Manual</a>.</span></p>
 <p class="muted">Tastenkürzel: <kbd>Strg</kbd> steht auf dem Mac für <kbd>⌘</kbd>. Einzeltasten wie <kbd>F</kbd> oder
 <kbd>N</kbd> wirken, wenn das Bild den Fokus hat (einmal hineinklicken).</p>
 
-<nav>
+<nav id="toc">
+<div class="head">ZGmax – Inhalt</div>
+<div class="lang"><span>Deutsch</span><a class="switch" href="Manual_Viewer.html">English</a></div>
 <a href="#schnell">Schnellstart</a><a href="#start">Programm starten</a><a href="#fenster">Das Fenster</a>
 <a href="#navigation">Zoomen und Verschieben</a><a href="#ansichten">Ansichten</a><a href="#ansehen">Nur ansehen, Fenster, Schließen</a>
 <a href="#empfindlich">Empfindlichkeit, Automatisch einstellen</a><a href="#messen">Messen und Kalibrieren</a>
@@ -71,6 +90,7 @@ Zeichnungen übereinanderliegen, und stellt Toleranz und Suchbereiche passend ei
 </div>
 
 <h2 id="start">Programm starten</h2>
+<figure><a href="doc_img/de/start.png" target="_blank"><img src="doc_img/de/start.png" alt="Startseite mit Einführung in drei Schritten: alte Zeichnung links, neue rechts ablegen." loading="lazy"></a><figcaption>Startseite mit Einführung in drei Schritten: alte Zeichnung links, neue rechts ablegen.</figcaption></figure>
 <table>
 <tr><th>Variante</th><th>So geht's</th></tr>
 <tr><td><b>App (empfohlen)</b></td><td><b>Mac:</b> <code>ZGmax.app</code> in den Ordner
@@ -98,7 +118,8 @@ das Schild ● und einen blauen Rand. Beim Ansehen steht daneben <i>Vergleichen 
 Vergleich folgen die Ansichten als Umschalter (Alt, Neu, Vergleich, Überlagern, Nebeneinander, Schieber, Blinken); dann
 Zoom (−, Zoomstufe, +, Ganze Zeichnung), <i>Speichern</i> und die Schalter für die beiden Seitenleisten <i>Optionen</i>
 (Einstellungen, links) und <i>Elemente</i> (Markierungen, Änderungen, Ebenen – rechts). Ist das Fenster schmal, verlieren
-die Knöpfe nach und nach ihren Text (Name im Tooltip). Auf der Startseite ist die Leiste fast leer.</td></tr>
+die Knöpfe nach und nach ihren Text (Name im Tooltip); noch schmaler stehen <i>Überlagern</i>, <i>Schieber</i> und
+<i>Blinken</i> nur noch im Menü <i>Ansicht</i> (Tasten <kbd>4</kbd>, <kbd>5</kbd>, <kbd>6</kbd>). Auf der Startseite ist die Leiste fast leer.</td></tr>
 <tr><td>Werkzeugpalette (links am Bild)</td><td>Auswahl, Bereich, Zoom, Messen, Text, Wolke, Formen (▾ Rahmen, Ellipse,
 Linie, Linienzug, Polygon), Pfeil, Stift, Marker, Schwärzen (▾ Schwärzen, Verpixeln), Nummer, Stempel; bei wenig
 Platz nur Symbole;
@@ -144,6 +165,7 @@ genau dorthin, auch bei anderer Fenstergröße. Ausschnitte gelten je Seite und 
 <i>Ausschnitt löschen</i> entfernt einen.</p>
 
 <h2 id="ansichten">Ansichten</h2>
+<figure><a href="doc_img/de/vergleich.png" target="_blank"><img src="doc_img/de/vergleich.png" alt="Vergleich: rot = nur in alt, blau = nur in neu, grau = gleich, grün = nur verschoben." loading="lazy"></a><figcaption>Vergleich: rot = nur in alt, blau = nur in neu, grau = gleich, grün = nur verschoben.</figcaption></figure>
 <table>
 <tr><th>Ansicht</th><th>Taste</th><th>Zeigt</th></tr>
 <tr><td>Alt / Neu</td><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Nur die alte bzw. neue Zeichnung im Original (grau bzw. farbig wie in der Datei).
@@ -156,6 +178,7 @@ Legende anzeigen</i> – gilt auch für Bild, Kopie und Druck)</td></tr>
 <kbd>Leertaste</kbd> wechselt von Hand.</td></tr>
 <tr><td>Schieber</td><td><kbd>5</kbd></td><td>Links alt, rechts neu; Trennlinie mit der Maus ziehen</td></tr>
 </table>
+<figure><a href="doc_img/de/nebeneinander.png" target="_blank"><img src="doc_img/de/nebeneinander.png" alt="Ansicht Nebeneinander: beide Stände synchron zoomen und verschieben." loading="lazy"></a><figcaption>Ansicht Nebeneinander: beide Stände synchron zoomen und verschieben.</figcaption></figure>
 <p><b>Farbe:</b> Farbige Zeichnungen (z. B. PDF mit farbigen Ebenen) erscheinen in den Ansichten Alt, Neu,
 Nebeneinander, Blinken und Schieber in ihren Originalfarben, graue Scans in ihren Grautönen. Vergleich, Überlagern und
 <i>Änderungen hervorheben</i> arbeiten immer schwarz-weiß (rot/blau/grau). Verglichen wird stets die Schwarz-Weiß-Fassung. Abschaltbar: <i>Ansicht → Original anzeigen (Farbe, Graustufen)</i>.</p>
@@ -194,6 +217,7 @@ Strichbreite. <i>Nur Konturen (dicke Linien)</i> blendet Maß-, Hinweis- und Mit
 Gegenteil. Mit <i>Strichbreite selbst wählen</i> gibt man die Breite in Pixeln von … bis … vor (<i>ohne</i> = keine Grenze).
 Beim Ansehen wirkt der Filter sofort, im Vergleich mit <i>Vergleichen</i>; das Modus-Schild zeigt dann <i>· Linienfilter</i>. Er wird im Projekt gespeichert. Funktioniert
 nur, wenn die Zeichnung unterschiedliche Strichstärken hat.</p>
+<figure><a href="doc_img/de/linienfilter.png" target="_blank"><img src="doc_img/de/linienfilter.png" alt="Linien filtern: nur Konturen (Körperkanten) – Maße, Text und Schraffur sind ausgeblendet." loading="lazy"></a><figcaption>Linien filtern: nur Konturen (Körperkanten) – Maße, Text und Schraffur sind ausgeblendet.</figcaption></figure>
 <p><b>Automatisch einstellen</b> misst am aktuellen Zeichnungspaar:</p>
 <ul>
 <li><i>Linienschwelle</i> – trennt Papier und Linien (wichtig bei grauen oder vergilbten Scans).</li>
@@ -261,6 +285,7 @@ Text direkt, bei Bildern per Texterkennung) und bietet den Maßstab zur Übernah
 </ul>
 
 <h2 id="markieren">Markieren und Zeichnen</h2>
+<figure><a href="doc_img/de/markieren.png" target="_blank"><img src="doc_img/de/markieren.png" alt="Markieren beim Ansehen einer einzelnen Zeichnung: Wolke, Pfeil, Text, Nummer und Maß; rechts die Liste mit Suchfeld." loading="lazy"></a><figcaption>Markieren beim Ansehen einer einzelnen Zeichnung: Wolke, Pfeil, Text, Nummer und Maß; rechts die Liste mit Suchfeld.</figcaption></figure>
 <p>Alle Markierungen sind <b>Vektoren</b>: Sie bleiben einzeln anklickbar, verschiebbar und änderbar (Farbe, Strichstärke
 über <i>Größe</i>, Form an den weißen Punkten) und werden als echte PDF-Kommentare bzw. SVG-Elemente gespeichert.</p>
 <table>
@@ -315,6 +340,7 @@ mehrere wählen, <kbd>Entf</kbd> löscht sie; <i>Alle löschen …</i> leert die
 Markierungen, Nummern und Zonen aus – was ausgeblendet ist, wird auch nicht gespeichert.</p>
 
 <h2 id="pruefen">Änderungen prüfen</h2>
+<figure><a href="doc_img/de/pruefen.png" target="_blank"><img src="doc_img/de/pruefen.png" alt="Prüfen starten: Die erste offene Änderung ist gewählt, oben stehen die Tasten, rechts die nummerierte Liste." loading="lazy"></a><figcaption>Prüfen starten: Die erste offene Änderung ist gewählt, oben stehen die Tasten, rechts die nummerierte Liste.</figcaption></figure>
 <ol>
 <li><b>Prüfen starten</b> (Knopf oben im Reiter <i>Änderungen</i>, <i>Vergleichen → Prüfen starten</i> oder
 <kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>R</kbd>): sucht die Änderungen, falls noch nicht geschehen, öffnet die Liste, zeigt
@@ -334,6 +360,7 @@ zeigt später, ob es nachträglich verändert wurde – das ist ein Nachweis geg
 elektronische Signatur. Unter der Liste steht danach „✔ Freigegeben – Name, Datum“; ändert sich der Prüfstand
 danach, steht dort „Prüfstand seitdem geändert – erneut abschließen“. <i>Vergleichen → Prüfprotokolle …</i> listet alle
 abgeschlossenen Prüfungen mit Prüfung der Prüfsumme.</p>
+<figure><a href="doc_img/de/abschliessen.png" target="_blank"><img src="doc_img/de/abschliessen.png" alt="Prüfung abschließen: Prüfer, Ergebnis und Bemerkung – das Protokoll kommt mit Prüfsumme ins Projekt." loading="lazy"></a><figcaption>Prüfung abschließen: Prüfer, Ergebnis und Bemerkung – das Protokoll kommt mit Prüfsumme ins Projekt.</figcaption></figure>
 <p><b>Suchen:</b> Das Feld über der Liste filtert beim Tippen nach Nummer (<i>#12</i>), Art, Text, Maß, Beschreibung,
 Status oder Kommentar; Liste, Bild und Ausgaben zeigen dann nur die Treffer. <kbd>Esc</kbd> oder das Kreuz leert es.
 Ebenso hat der Reiter <i>Markierungen</i> ein Suchfeld (Art, Text, Kommentar, Name).</p>
@@ -445,6 +472,7 @@ sie darunter im Abschnitt <i>Ebenen der PDF-Datei</i>. Ohne Haken wird die Ebene
 auch nicht verglichen. Die Auswahl wird im Projekt gespeichert.</p>
 
 <h2 id="texte">Text und Maße</h2>
+<figure><a href="doc_img/de/masstabelle.png" target="_blank"><img src="doc_img/de/masstabelle.png" alt="Maßänderungen als Tabelle (PDF): alt → neu, Toleranz alt/neu, Position und Status." loading="lazy"></a><figcaption>Maßänderungen als Tabelle (PDF): alt → neu, Toleranz alt/neu, Position und Status.</figcaption></figure>
 <p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Vergleichen</i>):</p>
 <ul>
 <li><b>Geänderten Text finden</b>: liest den Text jeder Änderung – auch Maße und senkrecht stehende Texte, in beiden
@@ -568,6 +596,7 @@ Die Übersicht zeigt je Zeichnung <span style="color:#c2410c">● geändert</spa
 Doppelklick öffnet ein Paar zum Prüfen. In den Ausgabeordner kommen <i>uebersicht.pdf</i> und <i>uebersicht.csv</i>,
 auf Wunsch je geändertem Blatt ein Ergebnisbild, eine CSV-Liste und ein PDF-Bericht. <i>Vergleichen → Revisionen vergleichen</i>: mehrere Stände einer
 Zeichnung der Reihe nach (A → B → C …) mit Änderungshistorie. Beide nutzen die aktuellen Einstellungen.</p>
+<figure><a href="doc_img/de/ordner.png" target="_blank"><img src="doc_img/de/ordner.png" alt="Ordner vergleichen: eigener Stand gegen Lieferanten-Datensatz mit Übersicht." loading="lazy"></a><figcaption>Ordner vergleichen: eigener Stand gegen Lieferanten-Datensatz mit Übersicht.</figcaption></figure>
 
 <h2 id="oberflaeche">Sprache und Größe der Oberfläche</h2>
 <ul>
@@ -814,5 +843,30 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <i>Abbrechen</i> stoppen; mit Ausschnitt nur den relevanten Teil vergleichen; bei PDF die dpi verringern (z. B. 150).</td></tr>
 <tr><td>Etwas funktioniert nicht.</td><td>Die Hinweisleiste zeigt den Fehler (<i>Details</i>). Die Logdatei öffnet <i>Hilfe → Logdatei öffnen</i>.</td></tr>
 </table>
+<script>
+// Inhaltsverzeichnis: aktuellen Abschnitt hervorheben; Sprachumschalter bleibt im selben Abschnitt
+(function(){
+  var heads = Array.prototype.slice.call(document.querySelectorAll("h2[id]"));
+  var links = {};
+  document.querySelectorAll("nav#toc a[href^='#']").forEach(function(a){ links[a.getAttribute("href").slice(1)] = a; });
+  function current(){
+    var cur = 0;
+    heads.forEach(function(h, i){ if (h.getBoundingClientRect().top < 120) cur = i; });
+    return cur;
+  }
+  function mark(){
+    var i = current();
+    Object.keys(links).forEach(function(k){ links[k].classList.remove("active"); });
+    if (heads[i] && links[heads[i].id]) links[heads[i].id].classList.add("active");
+  }
+  window.addEventListener("scroll", mark, {passive: true});
+  document.querySelectorAll("a.switch").forEach(function(a){
+    a.addEventListener("click", function(e){ e.preventDefault(); location.href = a.getAttribute("href") + "?sec=" + current(); });
+  });
+  var m = /[?&]sec=(\d+)/.exec(location.search);
+  if (m && heads[+m[1]]) heads[+m[1]].scrollIntoView();
+  mark();
+})();
+</script>
 </body>
 </html>

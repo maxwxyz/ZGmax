@@ -24,9 +24,10 @@
 - Dimension changes as table (PDF/CSV) with dimension old → new, tolerance old/new (ISO fit, ±, deviations), position and review status.
 - Compare folders: own release against a supplier data set, all pages, subfolders, revision letter in the name can be ignored; overview (changed, identical, only old/new) as table, PDF and CSV.
 - Search fields above the change list and the markup list.
+- Manuals with pictures, table of contents as a side bar and a German/English switch that stays in the same section.
 - Versions with change history (Help → What's new).
 - License AGPL-3.0.
-- Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”.
+- Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”; arrows (→) appeared as “?” in PDF reports; the top bar overflowed with long file names.
 
 ## Version 2.0 of 2026-10-22
 

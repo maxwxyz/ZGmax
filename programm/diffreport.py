@@ -1140,6 +1140,19 @@ def build_report_raster(path, res, regs, name_a, name_b, dpi=200, info="", index
     return len(pages)
 
 
+_PDF_SUBST = {"\u2192": "->", "\u2190": "<-", "\u2194": "<->", "\u2264": "<=", "\u2265": ">=", "\u2300": "\u00d8",
+              "\u2212": "-", "\u2713": "OK", "\u2714": "OK", "\u2026": "...", "\u2248": "~"}
+
+
+def pdf_text(s):
+    """Text fuer die eingebaute PDF-Schrift (Helvetica, Zeichensatz cp1252): Pfeile und Zeichen, die sie nicht kennt,
+    ersetzen statt als '?' auszugeben."""
+    s = str(s).replace("\n", " ")
+    for a, b in _PDF_SUBST.items():
+        s = s.replace(a, b)
+    return s.encode("cp1252", "replace").decode("cp1252")
+
+
 def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, max_detail=40, log=print,
                  anns=None, scale_n=1.0):
     """PDF-Bericht mit echtem Text (durchsuchbar) und hochaufgeloesten Bildern. Ohne PyMuPDF: Rasterbericht."""
@@ -1155,7 +1168,7 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
     font = pymupdf.Font("helv")
 
     def clean(s):
-        return str(s).encode("cp1252", "replace").decode("cp1252").replace("\n", " ")
+        return pdf_text(s)
 
     def fit_text(s, width, size):
         s = clean(s)
@@ -1755,7 +1768,7 @@ def _pdf_table(doc, title, head_lines, cols, rows, footer=""):
     font = pymupdf.Font("helv")
 
     def clean(s):
-        return str(s).encode("cp1252", "replace").decode("cp1252").replace("\n", " ")
+        return pdf_text(s)
 
     def fit(s, width, size):
         s = clean(s)

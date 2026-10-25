@@ -12,6 +12,7 @@ datas = [(os.path.join(SRC, f), ".") for f in ("Anleitung_Viewer.html", "Anleitu
                                                "Manual_Viewer.html", "Manual_CommandLine.html",
                                                "i18n_en.json", "CHANGELOG.json", "icon.png", "icon.ico", "icon.icns")]
 datas += [(os.path.join(ROOT, "LICENSE"), ".")]       # AGPL-3.0, liegt der App bei
+datas += [(os.path.join(SRC, "doc_img", lang), os.path.join("doc_img", lang)) for lang in ("de", "en")]   # Bilder der Anleitung
 datas += [(os.path.join(SRC, "ocr", f), "ocr") for f in ("latin_rec.onnx", "latin_dict.txt", "HERKUNFT.txt")]
 hidden = ["ezdxf.addons.drawing.pymupdf", "ezdxf.addons.drawing.layout", "ezdxf.addons.drawing.config",
           "PySide6.QtPrintSupport", "PySide6.QtSvg"]

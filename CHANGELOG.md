@@ -24,9 +24,10 @@
 - Maßänderungen als Tabelle (PDF/CSV) mit Maß alt → neu, Toleranz alt/neu (ISO-Passung, ±, Abmaße), Position und Prüfstatus.
 - Ordner vergleichen: eigener Stand gegen Lieferanten-Datensatz, alle Seiten, Unterordner, Revisionskennung im Namen ignorierbar; Übersicht (geändert, gleich, nur alt/neu) als Tabelle, PDF und CSV.
 - Suchfelder über der Änderungs- und der Markierungsliste.
+- Anleitungen mit Bildern, Inhaltsverzeichnis als Seitenleiste und Umschalter Deutsch/Englisch, der im selben Abschnitt bleibt.
 - Versionen mit Änderungshistorie (Hilfe → Was ist neu).
 - Lizenz AGPL-3.0.
-- Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“.
+- Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“; Pfeile (→) erschienen in PDF-Berichten als „?“; die Leiste oben lief bei langen Dateinamen über.
 
 ## Version 2.0 vom 22.10.2026
 
