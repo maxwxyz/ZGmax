@@ -244,3 +244,15 @@ def test_contour_width_dense_thin_lines(thick, thin):
     assert (keep & only_a).sum() > 0.98 * only_a.sum()
     assert (keep & only_b).sum() < 0.1 * only_b.sum()
     assert de.suggest_geometry_width(a) is None                # nur eine Strichbreite
+
+
+def test_changelog_complete():
+    """Jede Version (und 'unreleased') hat deutsche und englische Eintraege in gleicher Anzahl."""
+    import version
+    data = version.changelog()
+    assert version.VERSION == data["releases"][0]["version"]
+    for r in data["releases"] + [dict(data["unreleased"], version="unreleased")]:
+        assert len(r["de"]) == len(r["en"]), r["version"]
+    keys = [version.version_key(r["version"]) for r in data["releases"]]
+    assert keys == sorted(keys, reverse=True)
+    assert "<h3>" in version.changes_html("en") and version.changes_html("de", since=version.VERSION) == ""

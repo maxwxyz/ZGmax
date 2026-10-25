@@ -84,8 +84,17 @@ class LayoutMixin:
         self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O")
         self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S")
         self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
+        self.act_embed = A(tr("Zeichnungen ins Projekt einbetten"), checkable=True,
+                           tip=tr("An (Standard): Die .zgmax-Datei enthält auch die Zeichnungen und kann so verschickt "
+                                  "und anderswo geöffnet werden. Aus: nur Verweise auf die Dateien (kleiner)."))
+        self.act_embed.setChecked(self.settings.value("embed", "true") == "true")
+        self.act_embed.toggled.connect(lambda on: self.settings.setValue("embed", "true" if on else "false"))
         self.act_export_img = A(tr("Als Bild speichern (wie angezeigt) …"), self.export_image, "Ctrl+E",
                                 tr("Bild mit Markierungen wie angezeigt als PNG, JPG, TIFF oder PDF"), ico="save")
+        self.act_page_prev = A(tr("Vorige Seite"), lambda: self.page_step(-1), "PgUp",
+                               tr("Vorige Seite (Bild auf)"), canvas_key=True)
+        self.act_page_next = A(tr("Nächste Seite"), lambda: self.page_step(1), "PgDown",
+                               tr("Nächste Seite (Bild ab)"), canvas_key=True)
         self.act_copy_view = A(tr("In die Zwischenablage (wie angezeigt)"), self.copy_view, "Ctrl+Shift+E",
                                tr("Den sichtbaren Ausschnitt genau so, wie er am Bildschirm zu sehen ist, als Bild in die "
                                   "Zwischenablage legen (ohne Legende) – z. B. zum Einfügen in E-Mail oder Präsentation"))
@@ -306,6 +315,8 @@ class LayoutMixin:
         self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
         self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
         self.act_about = A(tr("Über ZGmax"), self.show_about)
+        self.act_whats_new = A(tr("Was ist neu …"), lambda: self.show_whats_new(),
+                               tip=tr("Änderungshistorie: was sich in welcher Version geändert hat"))
         self.act_about.setMenuRole(QAction.MenuRole.AboutRole)
 
     def _build_menubar(self):
@@ -319,7 +330,7 @@ class LayoutMixin:
         self.menu_recent = m.addMenu(tr("Zuletzt verwendet"))
         self.menu_recent.aboutToShow.connect(self._fill_recent_menu)
         m.addSeparator()
-        for a in (self.act_proj_save, self.act_proj_save_as, self.act_close):
+        for a in (self.act_proj_save, self.act_proj_save_as, self.act_embed, self.act_close):
             m.addAction(a)
         m.addSeparator()
         ex = m.addMenu(tr("Exportieren"))                  # alles, was eine Datei erzeugt
@@ -365,6 +376,9 @@ class LayoutMixin:
             m.addAction(self.mode_actions[key])
         m.addSeparator()
         for a in (self.act_fit, self.act_100, self.act_zoom_in, self.act_zoom_out, self.act_zoom_box, self.act_rotate):
+            m.addAction(a)
+        m.addSeparator()
+        for a in (self.act_page_prev, self.act_page_next):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_overview, self.act_loupe, self.act_overlays, self.act_legend, self.act_layers,
@@ -433,7 +447,7 @@ class LayoutMixin:
         self.menu_windows.aboutToShow.connect(self._fill_window_menu)
 
         m = mb.addMenu(tr("&Hilfe"))
-        for a in (self.act_help, self.act_help_cli, self.act_keys):
+        for a in (self.act_help, self.act_help_cli, self.act_keys, self.act_whats_new):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_logfile, self.act_cli, self.act_reset_settings, self.act_about):
@@ -570,6 +584,31 @@ class LayoutMixin:
         self.act_pause.setToolTip(tr("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)"))
         self.act_pause.toggled.connect(self._pause_blink)
         proxy = self._tb_proxy
+        # Seiten: nur bei mehrseitigen Dateien sichtbar (◀ Seite n / N ▶)
+        self.page_box = QFrame()
+        pl = QHBoxLayout(self.page_box)
+        pl.setContentsMargins(4, 0, 4, 0)
+        pl.setSpacing(2)
+        for act, txt in ((self.act_page_prev, "◀"), (None, None), (self.act_page_next, "▶")):
+            if act is None:
+                self.sp_page_tb = QSpinBox()
+                self.sp_page_tb.setRange(1, 1)
+                self.sp_page_tb.setKeyboardTracking(False)
+                self.sp_page_tb.setToolTip(tr("Seite (Bild auf/ab blättert)"))
+                self.sp_page_tb.valueChanged.connect(lambda v: self.sp_pa.setValue(v) if self.path_a
+                                                     else self.sp_pb.setValue(v))
+                self.lbl_page_tb = QLabel("/ 1")
+                pl.addWidget(self.sp_page_tb)
+                pl.addWidget(self.lbl_page_tb)
+                continue
+            b = QToolButton()
+            b.setText(txt)
+            b.setAutoRaise(True)
+            b.setToolTip(act.toolTip())
+            b.clicked.connect(act.trigger)
+            pl.addWidget(b)
+        self.act_page_box = tb.addWidget(self.page_box)
+        self.act_page_box.setVisible(False)
         self.tb_zoom_actions = [tb.addSeparator()]
         tb.addAction(z := proxy(self.act_zoom_out, "zoom_out"))
         self.tb_zoom_actions.append(z)
@@ -591,7 +630,7 @@ class LayoutMixin:
                   self.act_export_all_report, self.act_export_csv, None, self.act_print):
             save.addSeparator() if a is None else save.addAction(a)   # Bild/PDF | Aenderungsbericht | Drucken
         save.addSeparator()
-        for a in (self.act_proj_save, self.act_proj_save_as):
+        for a in (self.act_proj_save, self.act_proj_save_as, self.act_embed):
             save.addAction(a)
         b = QToolButton()
         b.setText(tr("Speichern"))
@@ -1800,6 +1839,11 @@ class LayoutMixin:
         self.act_export_all_ann.setVisible(multi)                    # nur bei mehrseitigen Dateien
         self.act_export_all_report.setVisible(multi and not self.view_only)
         self.act_pages.setEnabled(multi and not self.view_only)
+        for a in (self.act_page_prev, self.act_page_next):
+            a.setEnabled(multi)
+        if hasattr(self, "act_page_box"):
+            self.act_page_box.setVisible(multi)
+            self._sync_page_box()
         self.act_legend.setEnabled(has and not self.view_only and self.canvas.mode in ("D", "O", "N", "R"))
         for a in (self.tb_zoom_actions if hasattr(self, "tb_zoom_actions") else ()):
             a.setVisible(has)                                          # Startseite: keine toten Knoepfe oben

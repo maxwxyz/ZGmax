@@ -9,6 +9,10 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   JSON schreiben mit `json.dumps(d, ensure_ascii=False, indent=0, sort_keys=True)` ohne Zeilenende am Schluss.
 - Kommentare/Docstrings im Code deutsch ohne Umlaute (ae, oe, ue), Stil wie im umgebenden Code.
 - Anleitungen pflegen: `programm/Anleitung_Viewer.html` (DE) und `programm/Manual_Viewer.html` (EN).
+- Änderungshistorie: jede für Nutzer sichtbare Änderung im selben Commit in `programm/CHANGELOG.json` unter
+  `unreleased` eintragen (`de` und `en`, gleiche Reihenfolge, kurz, aus Nutzersicht). Version = neuester Eintrag in
+  `releases` (App liest ihn, `version.py`). Release: `.venv/bin/python packaging/release.py minor|patch|major --git`
+  (schreibt auch `CHANGELOG.md`/`CHANGELOG_EN.md`, setzt Tag `v<version>`), danach Apps bauen.
 - Commits enden mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nach jedem Commit pushen**
   (`origin` = github.com/maxwxyz/ZGmax, privat).
 - Hilfsskripte dürfen nie die echten Nutzereinstellungen berühren: `QSettings.setDefaultFormat(IniFormat)` +

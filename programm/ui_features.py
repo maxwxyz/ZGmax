@@ -1,6 +1,8 @@
 """Hauptfenster: Startseite, Zuletzt verwendet, automatische Sicherung, automatische Einstellung,
 alle Seiten vergleichen, Schriftfeld lesen, Bereiche zuordnen, Pruefrundgang, Hilfe."""
+import i18n
 from i18n import tr
+from PySide6.QtWidgets import QTextBrowser
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_dialogs import RevisionDialog
@@ -630,6 +632,7 @@ class FeaturesMixin:
         self.crop_frame = None
         self.page_scales = {}
         self.page_anns, self._anns_key = {}, None
+        self.page_regs = {}
         self.project_path = None
         self.restore_regs = None
         self.index_info = None
@@ -677,6 +680,31 @@ class FeaturesMixin:
         html = (tr("<table cellspacing=6>") + "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in rows) +
                 tr("</table><p>Auf dem Mac steht Strg für {}. Einzeltasten wirken, wenn das Bild den Fokus hat (einmal hineinklicken).</p>").format(mod))
         QMessageBox.information(self, tr("Tastenkürzel"), html)
+
+    def show_whats_new(self, since=None):
+        """Aenderungshistorie in der Sprache der Oberflaeche (Hilfe -> Was ist neu)."""
+        import version
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Was ist neu in {} {}").format(APP, version.VERSION))
+        dlg.resize(640, 560)
+        lay = QVBoxLayout(dlg)
+        tb = QTextBrowser()
+        tb.setOpenExternalLinks(True)
+        tb.setHtml(version.changes_html(i18n.LANG, since) or tr("Keine Einträge."))
+        lay.addWidget(tb)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        bb.rejected.connect(dlg.reject)
+        lay.addWidget(bb)
+        dlg.exec()
+
+    def _announce_update(self):
+        """Erster Start nach einem Update: kurzer Hinweis mit Knopf zur Aenderungshistorie."""
+        import version
+        last = self.settings.value("last_version", "")
+        self.settings.setValue("last_version", version.VERSION)
+        if last and version.version_key(last) < version.version_key(version.VERSION):
+            self.banner.show_msg(tr("{} wurde auf Version {} aktualisiert.").format(APP, version.VERSION), "info",
+                                 action=(tr("Was ist neu …"), lambda: self.show_whats_new(last)), timeout=20)
 
     def open_logfile(self):
         p = os.path.join(app_data_dir(), "zeichnungsvergleich.log")

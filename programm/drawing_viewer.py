@@ -22,7 +22,7 @@ from ui_features import FeaturesMixin
 from ui_search import SearchMixin
 from ui_edit import AreaMixin, ClipboardMixin, EditMixin, OcrPdfMixin, SheetEditMixin, VectorizeMixin
 
-VERSION = "2.0"
+from version import VERSION  # noqa: E402,F401  (Quelle: CHANGELOG.json)
 WINDOWS = []                     # alle offenen Hauptfenster (Datei > Neues Fenster)
 
 
@@ -165,6 +165,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if path_a:
             self.start_compute()
         QTimer.singleShot(400, self.check_autosave)
+        QTimer.singleShot(600, self._announce_update)
 
 
     # --- Hilfe
@@ -370,6 +371,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self._crop_reset(silent=True)
             self.canvas.reset_rotation()
         self._setup_pages(which, path)
+        self.page_regs, self._regs_stale = {}, True       # Pruefstand je Seite gilt nur fuer dieses Zeichnungspaar
         if compute:
             self.start_compute()
 
@@ -448,6 +450,29 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
         if row >= 0:
             self.sp_pa.setValue(row + 1)
 
+    def _page_spin(self):
+        """Fuehrendes Seitenfeld: A, beim Ansehen von B allein B."""
+        return self.sp_pa if self.path_a else self.sp_pb
+
+    def page_step(self, d):
+        """Vorige/naechste Seite (Bild auf/ab, Pfeile oben)."""
+        sp = self._page_spin()
+        v = min(max(1, sp.value() + d), sp.maximum())
+        if v != sp.value():
+            sp.setValue(v)
+        else:
+            self.statusBar().showMessage(tr("Erste Seite") if d < 0 else tr("Letzte Seite"), 2000)
+
+    def _sync_page_box(self):
+        sp = self._page_spin()
+        self.sp_page_tb.blockSignals(True)
+        self.sp_page_tb.setRange(1, sp.maximum())
+        self.sp_page_tb.setValue(sp.value())
+        self.sp_page_tb.blockSignals(False)
+        self.lbl_page_tb.setText(f"/ {sp.maximum()}")
+        self.act_page_prev.setEnabled(sp.value() > 1)
+        self.act_page_next.setEnabled(sp.value() < sp.maximum())
+
     def _remember_page_scale(self, val):
         """Massstab/Kalibrierung gilt je Seite (mehrseitige Dateien haben oft verschiedene Massstaebe)."""
         if self.path_a and not getattr(self, "_page_scale_loading", False):
@@ -462,6 +487,8 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self._page_scale_loading = False
 
     def _page_changed(self, which, v):
+        if hasattr(self, "sp_page_tb"):
+            self._sync_page_box()
         if which == "A":
             self._apply_page_scale()
         if self.chk_couple.isChecked():
@@ -505,6 +532,14 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             shift_ann(a, -ox, -oy)
         self.anns[:] = new
         self._anns_key = key
+        # Aenderungsliste mit Pruefstand gehoert ebenfalls zur Seite (nur im Vergleich): beiseitelegen und beim
+        # naechsten Ergebnis fuer diese Seite wieder einsetzen
+        pregs = self.__dict__.setdefault("page_regs", {})
+        pl = self.payload
+        if ":" in old and pl and pl.get("regs_done") and not self.view_only and not getattr(self, "_regs_stale", False):
+            pregs[old] = copy.deepcopy(pl["regs"])
+        if ":" in key and key in pregs:
+            self.restore_regs = pregs.pop(key)
         self.undo_stack, self.redo_stack = [], []          # Rueckgaengig gilt je Seite; Ungespeichertes bleibt markiert
         self._cur_state = self._state()
         self._update_history_buttons()
@@ -522,7 +557,17 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             cnt = len(self.anns) if key == getattr(self, "_anns_key", None) else len(pages.get(key, []))
             base = tr("Seite {}").format(n)
             chg = getattr(self, "page_summary", {}).get(n)
-            if chg is not None:
+            regs = None
+            if not single:                                 # Pruefstand: aktuelle Seite live, andere aus dem Speicher
+                pl = self.payload
+                regs = (pl["regs"] if pl and pl.get("regs_done") else None) if key == getattr(self, "_anns_key", None) \
+                    else getattr(self, "page_regs", {}).get(key)
+            if regs is not None:
+                real = [r for r in regs if r["typ"] != "verschoben"]
+                still = sum(1 for r in real if rep.reg_status(r) == "offen")
+                base += tr("  –  ") + (tr("{} Änderungen, {} offen").format(len(real), still) if real
+                                        else tr("keine Änderung"))
+            elif chg is not None:
                 base += tr("  –  ") + (tr("{} Änderungen").format(chg) if chg else tr("keine Änderung"))
             if cnt:
                 base += tr("  ·  {} Markierungen").format(cnt)
@@ -1022,6 +1067,7 @@ class MainWindow(LayoutMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMi
             self.banner.show_msg(tr("Linienfilter wirkt hier nicht: Die Zeichnung hat keine deutlich "
                                     "unterschiedlichen Strichstärken. Es werden alle Linien gezeigt."), "info",
                                  timeout=12)
+        self._regs_stale = False
         self._regs_ver = getattr(self, "_regs_ver", 0) + 1    # neue Liste: Rueckgaengig beginnt fuer sie neu
         self._cur_state = self._state()
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)

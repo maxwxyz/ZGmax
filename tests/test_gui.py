@@ -41,6 +41,12 @@ def wait(app, cond, timeout=60):
             raise TimeoutError("Zeitueberschreitung")
 
 
+def load_project(path):
+    """Projektdaten lesen (Container oder JSON)."""
+    from ui_project import read_project
+    return read_project(path)[0]
+
+
 def compare(app, w, pa, pb):
     w._set_file("A", pa, compute=False)
     w._set_file("B", pb)
@@ -68,7 +74,7 @@ def test_project_roundtrip(app, win, pair, tmp_path):
     path = str(tmp_path / "p.zgmax")
     win._save_dialog = lambda *a: path
     assert win.project_save(True)
-    data = json.load(open(path))
+    data = load_project(path)
     assert data["format"] == "zgmax" and data["annotations"][0]["text"] == "Hallo"
     import drawing_viewer as vw
     win.project_open(path)                                   # schon etwas offen: Projekt im eigenen Fenster
@@ -1020,7 +1026,7 @@ def test_markups_per_page_and_all_pages_pdf(app, win, tmp_path):
     proj = str(tmp_path / "s.zgmax")                          # Projekt: Markierungen aller Seiten
     win._save_dialog = lambda *a: proj
     assert win.project_save(True)
-    data = json.load(open(proj))
+    data = load_project(proj)
     assert len(data["page_annotations"]["2"]) == 2 and len(data["annotations"]) == 1
 
 
@@ -1456,7 +1462,7 @@ def test_line_filter_contour_list_and_renumber(app, win, pair, tmp_path):
     path = str(tmp_path / "p.zgmax")
     win._save_dialog = lambda *a: path
     win.project_save(as_new=True)
-    data = json.load(open(path, encoding="utf-8"))
+    data = load_project(path)
     assert data["params"]["lines"] == "custom" and data["params"]["line_min"] == 3
     win.cb_lines.setCurrentIndex(0)
     wait(app, lambda: not win.debounce.isActive() and not win.running)
@@ -1569,3 +1575,82 @@ def test_shift_constrain_and_copy_view(app, win, pair):
     win.copy_view()
     img = QApplication.clipboard().image()
     assert not img.isNull() and img.width() >= c.width() and img.height() >= c.height()
+
+
+def test_page_navigation_and_review_per_page(app, win, tmp_path):
+    import pymupdf
+    paths = []
+    for name, dx in (("a.pdf", 0), ("b.pdf", 30)):
+        d = pymupdf.open()
+        for i in range(3):
+            pg = d.new_page(width=595, height=420)
+            pg.draw_rect(pymupdf.Rect(50, 50, 300, 200), width=2)
+            pg.draw_circle((400 + dx * (i + 1), 300), 30, width=2)     # je Seite eine Aenderung
+        d.save(str(tmp_path / name))
+        paths.append(str(tmp_path / name))
+    compare(app, win, *paths)
+    assert win.act_page_box.isVisible() and win.lbl_page_tb.text() == "/ 3"
+    assert not win.act_page_prev.isEnabled() and win.act_page_next.isEnabled()
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    win._select_region_nr(win.payload["regs"][0]["nr"])
+    win.review_set("abgelehnt")
+    assert "offen" in win.list_pages.item(0).text()
+    win.page_step(1)                                                    # Bild ab
+    assert win.sp_pa.value() == 2 and win.sp_page_tb.value() == 2
+    win.page_timer.stop()
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert not win.payload["regs_done"]
+    win.sp_page_tb.setValue(1)                                          # Seitenfeld oben
+    assert win.sp_pa.value() == 1
+    win.page_timer.stop()
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert any(r.get("status") == "abgelehnt" for r in win.payload["regs"])   # Pruefstand der Seite 1 zurueck
+
+
+def test_project_container_embeds_drawings(app, win, pair, tmp_path):
+    import shutil
+    import zipfile
+    work = tmp_path / "work"
+    work.mkdir()
+    pa, pb = (str(work / os.path.basename(p)) for p in pair)
+    shutil.copy(pair[0], pa)
+    shutil.copy(pair[1], pb)
+    compare(app, win, pa, pb)
+    win._ann_created(dict(type="rect", x=100, y=100, x2=300, y2=200, text="", nr=0, color="#e11d48", size=2.0))
+    assert win.act_embed.isChecked()                                # Standard: einbetten
+    proj = str(tmp_path / "versand.zgmax")
+    win._save_dialog = lambda *a: proj
+    assert win.project_save(as_new=True)
+    with zipfile.ZipFile(proj) as z:
+        names = z.namelist()
+        data = json.loads(z.read("projekt.json"))
+    assert "projekt.json" in names and len([n for n in names if n.startswith("dateien/")]) == 2
+    import version
+    assert data["app_version"] == version.VERSION
+    shutil.rmtree(work)                                             # Empfaenger hat die Zeichnungen nicht
+    win._dirty = False
+    win.close_document()
+    win.project_open(proj)
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert os.path.isfile(win.path_a) and os.path.basename(win.path_a) == "alt.png"
+    assert len(win.anns) == 1
+    win.act_embed.setChecked(False)                                 # aus: reines JSON wie bisher
+    proj2 = str(tmp_path / "klein.zgmax")
+    win._save_dialog = lambda *a: proj2
+    assert win.project_save(as_new=True)
+    assert not zipfile.is_zipfile(proj2) and json.load(open(proj2, encoding="utf-8"))["format"] == "zgmax"
+
+
+def test_whats_new_after_update(app, win, monkeypatch):
+    from PySide6.QtWidgets import QDialog
+    shown = []
+    monkeypatch.setattr(QDialog, "exec", lambda self: shown.append(self.windowTitle()) or 0)
+    win.settings.setValue("last_version", "1.0")
+    win._announce_update()
+    assert win.banner.isVisible() and win.banner.btn_action.isVisible()
+    win.banner.btn_action.click()
+    assert shown and "2." in shown[0]
+    assert win.settings.value("last_version") != "1.0"

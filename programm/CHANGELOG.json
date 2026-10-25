@@ -1,0 +1,62 @@
+{
+ "unreleased": {
+  "de": [],
+  "en": []
+ },
+ "releases": [
+  {
+   "version": "2.1",
+   "date": "2026-10-25",
+   "de": [
+    "Vergleich: Papierausgleich für Scans, Zeichenprüfung für ähnliche Ziffern (z. B. 41.8 → 43.2), Vorschlag zum exakten Vektorvergleich bei PDF, abgelehnte Funde als Zonen übernehmen.",
+    "Manuelles Ausrichten mit zwei oder drei Punkten.",
+    "Texterkennung Deutsch/Englisch (Umlaute, ß, °, ±); Textsuche im PDF-Text oder per Texterkennung, Treffer auch in der neuen Zeichnung.",
+    "Kommentare aus XFDF und PDF-Anmerkungen einlesen und als XFDF speichern; Antworten und Prüfstatus je Person (wie Acrobat und Bluebeam).",
+    "Englische Oberfläche (Systemsprache) und englische Anleitungen; Größe der Oberfläche einstellbar.",
+    "Messen: Maße wie Bemaßung, Maßkette, Summen und Zählungen, Messungen als CSV, Maßstab und Kalibrierung je Seite, CAD-Fang an Mittelpunkten, Ecken, Schnitt- und Endpunkten, Nullpunkt und Koordinateneingabe.",
+    "Zeichenwerkzeuge: Stift, Ellipse, Linie, Linienzug, Polygon, Text direkt im Bild; Werkzeugkasten mit Vorlagen und eigenen Stempeln.",
+    "Ebenen, Zeichnung bearbeiten (Bereich verschieben), durchsuchbares PDF, Vektorisieren (SVG, PDF, DXF), Schwärzen.",
+    "Zuschnitt als verstellbarer Rahmen für Ausgaben; Markierungen einzeln ein- und ausblenden.",
+    "Mehrseitige Dateien: Markierungen und Prüfstand je Seite, Seitenliste mit Anzahl, Seitenwahl oben und Blättern mit Bild auf/ab, PDF mit Anmerkungen und Änderungsbericht über alle Seiten.",
+    "Scans aufbereiten: Hintergrund bereinigen, gerade ausrichten, Foto eines Blatts entzerren.",
+    "Linienfilter: nur Konturen, nur dünne Linien oder eigene Strichbreite – beim Ansehen und im Vergleich; bei Vektor-PDF mit den echten Strichbreiten.",
+    "Änderungsliste: Filter „Konturen und Maße“, Rückgängig auch für Löschen, Status und Kommentare, Neu nummerieren, Rücktaste löscht; Bericht, CSV und Bild enthalten nur die Einträge der Liste.",
+    "Bedienung: Doppelklick auf ein Werkzeug = Werkzeug behalten; Umschalt = waagerecht/senkrecht verschieben, Linie in 45°-Schritten, Kreis, Quadrat; Einrasten an anderen Markierungen; Ansicht wie angezeigt in die Zwischenablage; von der Startseite zurück zur Zeichnung.",
+    "Projekt als Container: Die Zeichnungen werden in die .zgmax-Datei eingebettet und lassen sich mit ihr verschicken; Programmversion im Projekt.",
+    "Versionen mit Änderungshistorie (Hilfe → Was ist neu).",
+    "Lizenz AGPL-3.0.",
+    "Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen."
+   ],
+   "en": [
+    "Comparison: paper flattening for scans, exact character check for similar digits (e.g. 41.8 → 43.2), suggestion of the exact vector comparison for PDFs, turn rejected hits into zones.",
+    "Manual alignment with two or three points.",
+    "Text recognition German/English (umlauts, ß, °, ±); text search in PDF text or via text recognition, hits also in the new drawing.",
+    "Read comments from XFDF and PDF annotations and save them as XFDF; replies and review status per person (as in Acrobat and Bluebeam).",
+    "English user interface (system language) and English manuals; adjustable interface size.",
+    "Measuring: dimensions drawn like dimensioning, dimension chains, sums and counts, measurements as CSV, scale and calibration per page, CAD snap to centers, corners, intersections and end points, origin and coordinate input.",
+    "Drawing tools: pen, ellipse, line, polyline, polygon, text directly in the drawing; tool chest with presets and custom stamps.",
+    "Layers, drawing editing (move an area), searchable PDF, vectorize (SVG, PDF, DXF), redaction.",
+    "Crop as an adjustable frame for outputs; show and hide single markups.",
+    "Multi-page files: markups and review state per page, page list with counts, page selector at the top and Page Up/Down, PDF with annotations and change report across all pages.",
+    "Clean up scans: background, straighten, rectify a photo of a sheet.",
+    "Line filter: contours only, thin lines only or a custom stroke width – when viewing and comparing; for vector PDFs using the real stroke widths.",
+    "Change list: “Contours and dimensions” filter, undo also for delete, status and comments, renumber, Backspace deletes; report, CSV and image contain only the entries of the list.",
+    "Handling: double-click a tool = keep tool; Shift = move horizontally/vertically, line in 45° steps, circle, square; snapping to other markups; copy the view as shown to the clipboard; back to the drawing from the start page.",
+    "Project as a container: the drawings are embedded in the .zgmax file and can be sent along with it; program version stored in the project.",
+    "Versions with change history (Help → What's new).",
+    "License AGPL-3.0.",
+    "Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing."
+   ]
+  },
+  {
+   "version": "2.0",
+   "date": "2026-10-22",
+   "de": [
+    "Ausgangsstand: Viewer und Vergleich mit Ausrichtung, Kachel-Feinausrichtung, verschobenen Blöcken und Objekten, Änderungsliste mit Prüfstatus, Markierungen, Messen, Projekt, PDF-Bericht, Stapel und Revisionen, Kommandozeile."
+   ],
+   "en": [
+    "Baseline: viewer and comparison with alignment, tile fine alignment, moved blocks and objects, change list with review status, markups, measuring, project, PDF report, batch and revisions, command line."
+   ]
+  }
+ ]
+}

@@ -3,6 +3,69 @@ from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
+import hashlib
+from version import VERSION, version_key
+import shutil
+import zipfile
+
+
+PROJECT_JSON = "projekt.json"              # im Container (ZIP): Projektdaten; Zeichnungen unter dateien/
+
+
+def file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_project(path, data, embed=True):
+    """Projekt schreiben. embed=True: Container (ZIP) mit projekt.json und den Zeichnungen, damit es samt Dateien
+    verschickt und anderswo geoeffnet werden kann; sonst nur JSON mit Dateipfaden. Erst fertig schreiben, dann
+    ersetzen."""
+    tmp = path + ".tmp"
+    if embed:
+        data = copy.deepcopy(data)
+        fl = data["files"]
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+            for k in ("a", "b"):
+                p = fl.get(k)
+                if not p or not os.path.isfile(p) or (k == "b" and p == fl.get("a")):
+                    continue
+                name = f"dateien/{k.upper()}_{os.path.basename(p)}"
+                z.write(p, name)
+                fl[k + "_embedded"], fl[k + "_sha256"] = name, file_sha256(p)
+            z.writestr(PROJECT_JSON, json.dumps(data, ensure_ascii=False, indent=1))
+    else:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+
+
+def read_project(path):
+    """Projekt lesen (Container oder reines JSON). Eingebettete Zeichnungen werden bei Bedarf in den Datenordner
+    entpackt; Rueckgabe (data, {"a": pfad, "b": pfad} der eingebetteten Fassungen)."""
+    if not zipfile.is_zipfile(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f), {}
+    embedded = {}
+    with zipfile.ZipFile(path) as z:
+        data = json.loads(z.read(PROJECT_JSON).decode("utf-8"))
+        fl = data.get("files", {})
+        for k in ("a", "b"):
+            name, sha = fl.get(k + "_embedded"), fl.get(k + "_sha256", "")
+            if not name or name not in z.namelist():
+                continue
+            out_dir = os.path.join(app_data_dir(), "projektdateien", (sha or k)[:16])
+            out = os.path.join(out_dir, os.path.basename(name).split("_", 1)[-1])
+            if not (os.path.isfile(out) and (not sha or file_sha256(out) == sha)):
+                os.makedirs(out_dir, exist_ok=True)
+                with z.open(name) as src, open(out + ".tmp", "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                os.replace(out + ".tmp", out)
+            embedded[k] = out
+    return data, embedded
 
 
 class ProjectMixin:
@@ -112,7 +175,7 @@ class ProjectMixin:
         lay, col = self.vfilter
         st = self._state()
         return {
-            "format": "zgmax", "version": 2, "program": APP,
+            "format": "zgmax", "version": 2, "program": APP, "app_version": VERSION,
             "saved": dt.datetime.now().isoformat(timespec="seconds"),
             "files": {"a": pa, "b": pb, "page_a": self.sp_pa.value(), "page_b": self.sp_pb.value()},
             "dpi": self.dpi_value(), "scale": self.scale_n(),
@@ -124,6 +187,7 @@ class ProjectMixin:
             "page_scales": getattr(self, "page_scales", {}),
             "annotations_page": getattr(self, "_anns_key", None),
             "page_annotations": getattr(self, "page_anns", {}),           # Markierungen der anderen Seiten
+            "page_regions": getattr(self, "page_regs", {}),               # Pruefstand der anderen Seiten
             "vector": {"on": self.chk_vec.isChecked(), "tol": self.sp_vtol.value(),
                        "layers": sorted(lay) if lay is not None else None,
                        "colors": sorted(col) if col is not None else None},
@@ -157,10 +221,7 @@ class ProjectMixin:
                 except ValueError:                # anderes Laufwerk
                     pass
         try:
-            tmp = path + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=1)
-            os.replace(tmp, path)                 # erst fertig schreiben, dann ersetzen
+            write_project(path, data, self.act_embed.isChecked())
         except OSError as ex:
             QMessageBox.warning(self, APP, tr("Projekt konnte nicht gespeichert werden:\n{}").format(ex))
             return False
@@ -181,14 +242,13 @@ class ProjectMixin:
             self._doc_window().project_open(path)
             return
         try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
+            data, embedded = read_project(path)
             if data.get("format") != "zgmax":
                 raise ValueError(tr("keine Projektdatei dieses Programms"))
-            if int(data.get("version", 1)) > 2:
+            if int(data.get("version", 1)) > 2 or version_key(data.get("app_version", "0")) > version_key(VERSION):
                 self.banner.show_msg(tr("Das Projekt stammt aus einer neueren Programmversion. Es wird ge\u00f6ffnet, "
                                      "neuere Angaben k\u00f6nnen aber fehlen."), "warn", timeout=15)
-        except (OSError, ValueError) as ex:
+        except (OSError, ValueError, KeyError, zipfile.BadZipFile) as ex:
             QMessageBox.warning(self, APP, tr("Projekt konnte nicht gelesen werden:\n{}").format(ex))
             return
         base_dir = os.path.dirname(os.path.abspath(path))
@@ -198,6 +258,8 @@ class ProjectMixin:
             cands = [fl.get(k), os.path.normpath(os.path.join(base_dir, fl[k + "_rel"])) if fl.get(k + "_rel") else None,
                      os.path.join(base_dir, os.path.basename(fl[k])) if fl.get(k) else None]
             found[k] = next((c for c in cands if c and os.path.isfile(c)), None)
+            if k in embedded and (found[k] is None or file_sha256(found[k]) != fl.get(k + "_sha256")):
+                found[k] = embedded[k]            # Original fehlt oder wurde seitdem geaendert: eingebettete Fassung
         missing = [k.upper() for k in ("a", "b") if fl.get(k) and not found[k]]
         if missing:
             QMessageBox.warning(self, APP, tr("Zeichnung ") + tr(" und ").join(missing) + tr(" wurde nicht gefunden. Das Projekt "
@@ -241,6 +303,7 @@ class ProjectMixin:
         self.pdf_off = set(data.get("pdf_layers_off") or [])
         self.page_scales = dict(data.get("page_scales") or {})
         self.page_anns = copy.deepcopy(data.get("page_annotations") or {})
+        self.page_regs = copy.deepcopy(data.get("page_regions") or {})
         vc = data.get("vector", {})
         self.vfilter = (set(vc["layers"]) if vc.get("layers") is not None else None,
                         set(vc["colors"]) if vc.get("colors") is not None else None)

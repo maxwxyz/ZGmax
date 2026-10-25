@@ -219,6 +219,7 @@ class RegionsMixin:
 
     def _fill_table(self):
         self._update_review_enabled()
+        self._update_page_labels()                         # Seitenliste: Aenderungen und offene je Seite
         self._regs_listed = self._shown_regs()             # fuer Ausgaben aus dem Hintergrund (ohne Widgets)
         pl = self.payload
         regs = pl["regs"] if pl else []
