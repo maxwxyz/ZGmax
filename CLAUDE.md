@@ -34,3 +34,8 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
 ## Übergabe zwischen lokal und Cloud
 Am Ende **jeder** Antwort: `HANDOFF.md` aktualisieren (Stand, was offen ist, nächste Schritte, Branch), committen,
 pushen. Arbeit, die nicht fertig ist, auf einem Branch `wip/...` committen, nicht auf `main`.
+- In `HANDOFF.md` immer einen Abschnitt **„Plan und Roadmap“**: `ROADMAP.md` prüfen und abgleichen (Erledigtes nach
+  „Umgesetzt“, neue Vorhaben unter „Geplant“, bekannte Probleme), Stand dort kurz nennen.
+- **Nach jedem Commit und Push** nicht mehr benötigte Branches lokal und auf GitHub löschen (vorher
+  `git log main..origin/<branch>` prüfen).
+- **Ist keine Aktion mehr offen: Pause** – nichts Neues anfangen, auf die nächste Eingabe des Nutzers warten.

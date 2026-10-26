@@ -6,6 +6,13 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
+## Plan und Roadmap
+- `ROADMAP.md` geprüft (2026-10-26): Stand 0.8 vollständig unter „Umgesetzt“; als Nächstes **0.9 Stabilität** (echte
+  Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Dateitypen auf Windows/Linux prüfen, GitHub-Builds grün,
+  Actions-Versionen, Sichtprüfung am Mac), dann **1.0 erste stabile Version**. Ideen (noch nicht beschlossen): scharfer
+  PDF-Zoom, Revisionstabelle prüfen, große Blätter, 3D-Modelle. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
+- Keine offenen Aktionen – Pause bis zur nächsten Eingabe.
+
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):
    - Bereiche zuordnen A ↔ B: `dp.match_region` sucht den Inhalt von A im erweiterten Rahmen von B (`_match_in`), danach
