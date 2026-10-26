@@ -1,6 +1,6 @@
-# Übergabe (Stand 2026-10-26, Cloud → lokal) – Cloud gestoppt, lokal weitermachen
+# Übergabe (Stand 2026-10-26, lokal) – alles auf `main`, keine offenen Branches
 
-Branch **`wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, **noch nicht gemergt**).
+Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):
@@ -22,17 +22,21 @@ Branch **`wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, **noch nicht gem
    - `CLAUDE.md`: fester Ablauf nach jeder Aufgabe (bauen, Tests, nur bei Grün committen → main → pushen → Branches
      löschen).
 
-## Offen – lokal als Nächstes
-1. **Stresstest hängt** (`tests/test_stress.py`): bleibt in `show_about` stehen, weil `QMessageBox.about` im Fixture
-   `quiet_dialogs` nicht abgefangen wird (modaler Dialog wartet ewig). Fix: in `quiet_dialogs` ergänzen
-   `monkeypatch.setattr(QMessageBox, "about", staticmethod(lambda *a, **k: None))` (ggf. auch `aboutQt`).
-   Danach mit `ZV_STRESS_TIMES=1 ... pytest -s tests/test_stress.py` die langsamsten Befehle ansehen (Ausgabe am Ende)
-   und teure in `SKIP` aufnehmen (Neuberechnung, alle Seiten, Texterkennung, Vektorisieren – nicht jede Kombination
-   nötig). **Ziel: alle Tests zusammen höchstens 20 min** (Nutzerwunsch).
-2. Volle Tests, `english_check`, Mac-App bauen (`packaging/build_mac.sh`), Selbsttest, ausprobieren: Bereiche
-   zuordnen mit echten Zeichnungen, Umschalt-Ecke an eingefügtem Bild, Zuschnitt aufheben, Projekt mit einer
-   Zeichnung öffnen, Über-Fenster, Fenstertitel.
-3. Wenn grün: nach `main` (Fast-Forward), pushen, `wip/ui-runde-8d9lrn` lokal und auf GitHub löschen.
+## Lokal erledigt (2026-10-26)
+- Stresstest hing in `show_about` → `QMessageBox.about`/`aboutQt` im Fixture `quiet_dialogs` abgefangen. Er läuft jetzt in
+  **17 s**; langsamster Befehl 1,2 s (`act_text`, `act_dims`) → nichts in `SKIP` nötig.
+- **Volle Tests: 106 grün in 1 min 27 s** (vorher ~53 min). Langsamste: Stresstest 17 s, Seitenwechsel 11 s, Golden-Tests
+  je 2–5 s. `english_check` = ENGLISH-OK.
+- `packaging/build_mac.sh` mit Tests grün, `ZGmax --selbsttest` OK.
+- Ausprobieren mit Bildschirmfotos (Bereiche zuordnen mit echten Zeichnungen, Umschalt-Ecke, Zuschnitt aufheben, Projekt
+  mit einer Zeichnung, Über-Fenster/Titel) **auf Wunsch übersprungen** – noch offen für eine spätere Sichtprüfung.
+
+## Offen
+- Sichtprüfung der Punkte oben am Mac.
+- Dateitypen zuordnen auf Windows und Linux ausprobieren (siehe Abschnitt 2.2 unten).
+- Absturz „Schriftfeld lesen“ (OpenCV-KleidiCV-Resize, siehe unten).
+- Ideen: PDF beim Hineinzoomen scharf nachrendern, Golden-Tests mit echten Zeichnungen, Revisionstabelle prüfen,
+  A0-Warnung/Vorschau.
 
 ---
 
@@ -78,7 +82,7 @@ Branch **`wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, **noch nicht gem
   die Texterkennung (onnxruntime/rapidocr) lief. Im Python-Log nichts. Mit Test-PNG/-PDF lokal nicht auslösbar. Ideen:
   `cv2.resize`-Aufrufe vor der OCR mit `np.ascontiguousarray`, `cv2.setNumThreads(1)` nur während der OCR, oder
   OpenCV-Version wechseln; zuerst mit der Datei des Nutzers nachstellen.
-- **Wichtigstes nächstes Thema: Tests schneller machen.** Lokal ~53 min, davon das meiste im Setup: spätere GUI-Tests
+- ~~Tests schneller machen~~ – erledigt 2026-10-26 (1 min 27 s). Lokal ~53 min, davon das meiste im Setup: spätere GUI-Tests
   brauchen 80–123 s nur fürs Fixture (`--durations=15` zeigt „setup“), Tendenz steigend im Lauf → vermutlich bleiben
   Fenster, Threads (Job/QThread), Timer oder Caches der vorigen Tests liegen. Vorgehen: Fixture `win` in
   `tests/test_gui.py` messen (Zeit bis `MainWindow()` und bis `show()`), nach jedem Test `w.close()`,

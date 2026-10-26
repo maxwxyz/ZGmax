@@ -27,6 +27,8 @@ def quiet_dialogs(monkeypatch, tmp_path):
     for name in ("question", "information", "warning", "critical"):
         monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: QMessageBox.StandardButton.No))
     monkeypatch.setattr(QMessageBox, "exec", lambda self: QMessageBox.StandardButton.Cancel)
+    for name in ("about", "aboutQt"):                    # Ueber-Fenster: sonst wartet der Test auf einen Klick
+        monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: None))
     monkeypatch.setattr(QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: ("", "")))
     monkeypatch.setattr(QFileDialog, "getOpenFileNames", staticmethod(lambda *a, **k: ([], "")))
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: ""))
