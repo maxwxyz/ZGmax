@@ -1144,7 +1144,7 @@ def test_multipage_tiff(app, win, tmp_path):
     s1.save(pa, save_all=True, append_images=[s1])
     s1.save(pb, save_all=True, append_images=[s2])
     compare(app, win, str(pa), str(pb))
-    assert win.n_pages_a == 2 and win.sec_pages.isVisibleTo(win)
+    assert win.n_pages_a == 2 and not win.sec_pages.isHidden()          # linke Leiste darf zu sein
     win.compare_all_pages()
     wait(app, lambda: not win.running)
     assert win.page_summary[1] == 0 and win.page_summary[2] > 0

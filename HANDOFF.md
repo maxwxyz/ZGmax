@@ -1,22 +1,38 @@
-# Übergabe (Stand 2026-10-26, Cloud → lokal)
+# Übergabe (Stand 2026-10-26, Cloud → lokal) – Cloud gestoppt, lokal weitermachen
 
-**Neu auf Branch `wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, noch nicht gemergt; **Tests auf Wunsch nicht
-gelaufen**, nur Syntaxprüfung, `english_check` und ein Funktionscheck der Bereichssuche):
-- Bereiche zuordnen (A ↔ B): `dp.match_region` sucht den Inhalt von A im erweiterten Rahmen von B (`_match_in`,
-  Template-Matching bei gleichem Maßstab), danach Ausrichtung `euclidean` (Verschiebung + Drehung, kein Verzerren);
-  nur wenn nichts passt (Score < 0,35) `dc.autofit` mit anderem Maßstab und `affine`. `same_size_box` entfernt.
-  Hinweis bei schwacher Übereinstimmung (`cache["region_score"]`). Funktionscheck: Verschiebung exakt,
-  Verschiebung + 0,8° und Maßstab 0,8 gefunden.
-- Umschalt an Ecken: Seitenverhältnis bleibt (Zieh-Art „handle“ merkt den Rahmen beim Anfassen, `ui_canvas.py`).
-- Modus-Schild zeigt „· Zuschnitt“ / „· Ausschnitt“; Aufheben im Schild-Menü und Rechtsklick (`_add_crop_actions`).
-- Fenstertitel mit Version; Über-Fenster mit `COPYRIGHT`/`AUTHOR` (`ui_common.py`), Info.plist `NSHumanReadableCopyright`.
-- Behoben: Projekte mit nur einer Zeichnung blieben auf der Startseite (`project_open` rechnet jetzt auch dann).
-- Anleitungen, Menüreferenz, CHANGELOG `unreleased`, Übersetzungen nachgezogen.
+Branch **`wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, **noch nicht gemergt**).
 
-**Lokal als Nächstes:** `git fetch && git checkout wip/ui-runde-8d9lrn`; Mac-App bauen
-(`packaging/build_mac.sh --ohne-tests`, in der Cloud nicht möglich) und ausprobieren: Bereiche zuordnen mit echten
-Zeichnungen, Umschalt-Ecke an eingefügtem Bild, Zuschnitt aufheben, Projekt mit einer Zeichnung öffnen. Danach Tests
-komplett, nach `main` mergen, Branch löschen.
+## Inhalt des Branches
+1. **Funktionen** (Commit 523eb3e):
+   - Bereiche zuordnen A ↔ B: `dp.match_region` sucht den Inhalt von A im erweiterten Rahmen von B (`_match_in`), danach
+     Ausrichtung `euclidean` (Verschiebung + Drehung, kein Verzerren); nur wenn nichts passt (Score < 0,35)
+     `dc.autofit` mit anderem Maßstab und `affine`. Hinweis bei schwacher Übereinstimmung.
+   - Umschalt an Ecken: Seitenverhältnis bleibt (`ui_canvas.py`, Zieh-Art „handle“).
+   - Modus-Schild „· Zuschnitt“ / „· Ausschnitt“, Aufheben im Schild-Menü und per Rechtsklick (`_add_crop_actions`).
+   - Version im Fenstertitel; Über-Fenster mit `COPYRIGHT`/`AUTHOR`; Info.plist `NSHumanReadableCopyright`.
+   - Behoben: Projekt mit nur einer Zeichnung blieb auf der Startseite.
+2. **Testlaufzeit** (Commit 6749965 + Test-Korrektur im letzten Commit):
+   - Ursache: Jedes Testfenster ließ ~37 versteckte Fenster liegen (nie gelöscht), `apply_theme` stylte alle neu →
+     Aufbau wuchs von 0,01 s auf 8 s nach 8 Tests (später 80–120 s). Jetzt `cleanup_windows()` im Fixture `win`
+     (`tests/test_gui.py`): Jobs beenden, alle Fenster schließen und mit `deleteLater` + `DeferredDelete` löschen.
+   - Verzögerte Timer an das Fenster gebunden (`QTimer.singleShot(ms, self, self.x)`), sonst Fehler nach dem Löschen.
+   - **Ergebnis Cloud: test_gui + test_core in 2 min 47 s** (vorher > 60 min): 100 grün, 1 veralteter Test
+     (`test_multipage_tiff`, linke Leiste bleibt seit „keine Optionen-Leiste nach dem Vergleich“ zu) korrigiert
+     und einzeln grün.
+   - `CLAUDE.md`: fester Ablauf nach jeder Aufgabe (bauen, Tests, nur bei Grün committen → main → pushen → Branches
+     löschen).
+
+## Offen – lokal als Nächstes
+1. **Stresstest hängt** (`tests/test_stress.py`): bleibt in `show_about` stehen, weil `QMessageBox.about` im Fixture
+   `quiet_dialogs` nicht abgefangen wird (modaler Dialog wartet ewig). Fix: in `quiet_dialogs` ergänzen
+   `monkeypatch.setattr(QMessageBox, "about", staticmethod(lambda *a, **k: None))` (ggf. auch `aboutQt`).
+   Danach mit `ZV_STRESS_TIMES=1 ... pytest -s tests/test_stress.py` die langsamsten Befehle ansehen (Ausgabe am Ende)
+   und teure in `SKIP` aufnehmen (Neuberechnung, alle Seiten, Texterkennung, Vektorisieren – nicht jede Kombination
+   nötig). **Ziel: alle Tests zusammen höchstens 20 min** (Nutzerwunsch).
+2. Volle Tests, `english_check`, Mac-App bauen (`packaging/build_mac.sh`), Selbsttest, ausprobieren: Bereiche
+   zuordnen mit echten Zeichnungen, Umschalt-Ecke an eingefügtem Bild, Zuschnitt aufheben, Projekt mit einer
+   Zeichnung öffnen, Über-Fenster, Fenstertitel.
+3. Wenn grün: nach `main` (Fast-Forward), pushen, `wip/ui-runde-8d9lrn` lokal und auf GitHub löschen.
 
 ---
 
