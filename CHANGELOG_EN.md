@@ -1,5 +1,13 @@
 # ZGmax – Change history
 
+## In progress
+
+- Match areas (A ↔ B): the frame in B only has to fit roughly; the program finds the spot itself – first at the same scale (shift, small rotation), a different scale only if needed. No more distorted results.
+- Dragging a corner with Shift keeps the aspect ratio (e.g. pasted images).
+- Crop and comparison region are shown in the mode chip and can be removed there or via right-click.
+- Version number in the window title; About window with author and copyright.
+- Fixed: projects with only one drawing stayed on the start page after opening.
+
 ## Version 2.2 of 2026-10-25
 
 - Dark theme: the folder icons on the start page ("Choose file") are clearly visible again after switching.

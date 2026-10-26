@@ -53,4 +53,5 @@ if sys.platform == "darwin":
                  info_plist={"CFBundleShortVersionString": VERSION, "CFBundleVersion": VERSION,
                              "CFBundleDisplayName": "ZGmax", "NSHighResolutionCapable": True,
                              "LSMinimumSystemVersion": "12.0", "CFBundleDocumentTypes": doc_types,
-                             "NSRequiresAquaSystemAppearance": False})
+                             "NSRequiresAquaSystemAppearance": False,
+                             "NSHumanReadableCopyright": "© 2026 Max Wilfinger"})

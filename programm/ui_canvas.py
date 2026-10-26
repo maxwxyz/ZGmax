@@ -464,7 +464,10 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
             name = self._hit_handle(ix, iy) if self.show_overlays and not add and not self.ann_multi else None
             i = self.hit_ann(ix, iy) if self.show_overlays else None
             if name:
-                self._drag = ("handle", name, (ix, iy))
+                sel = self.anns[self.ann_selected] if self.ann_selected is not None else None
+                box = (rep.pts_bbox(sel["pts"]) if sel.get("pts") else (min(sel["x"], sel["x2"]), min(sel["y"], sel["y2"]),
+                       max(sel["x"], sel["x2"]), max(sel["y"], sel["y2"]))) if sel and "x2" in sel else None
+                self._drag = ("handle", name, (ix, iy), box)   # box: Rahmen beim Anfassen (Seitenverhaeltnis)
             elif i is not None and add:                  # Strg/Umschalt + Klick: zur Auswahl hinzu / heraus
                 chosen = self.selected_anns()
                 chosen ^= {i}
@@ -707,7 +710,17 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
                         a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
         elif kind == "handle":
             mods = e.modifiers()
-            if mods & Qt.KeyboardModifier.ShiftModifier:          # Umschalt: Ecke nur waagerecht oder senkrecht
+            name, box = self._drag[1], self._drag[3]
+            typ = self.anns[self.ann_selected]["type"]
+            corner = name in ("tl", "tr", "bl", "br") and box is not None and (typ in rep.RECT_TYPES or typ == "pen")
+            if mods & Qt.KeyboardModifier.ShiftModifier and corner:   # Umschalt an einer Ecke: Seitenverhaeltnis
+                x0, y0, x1, y1 = box                                  # bleibt (z. B. eingefuegte Bilder)
+                fx, fy = (x1 if "l" in name else x0), (y1 if "t" in name else y0)   # feste Ecke gegenueber
+                w0, h0 = max(1e-6, x1 - x0), max(1e-6, y1 - y0)
+                k = max(abs(ix - fx) / w0, abs(iy - fy) / h0, 0.02)
+                ix = fx + (-1 if "l" in name else 1) * w0 * k
+                iy = fy + (-1 if "t" in name else 1) * h0 * k
+            elif mods & Qt.KeyboardModifier.ShiftModifier:        # Umschalt sonst: nur waagerecht oder senkrecht
                 sx, sy = self._drag[2]
                 if abs(ix - sx) >= abs(iy - sy):
                     iy = sy
@@ -715,7 +728,7 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
                     ix = sx
             if self._drag[1].startswith("m"):
                 ix, iy, _k = self.snap_point(ix, iy)
-            elif not mods & Qt.KeyboardModifier.AltModifier:     # Kante/Ecke an anderen Elementen einrasten
+            elif not mods & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):   # einrasten
                 dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})
                 ix, iy = ix + dx, iy + dy
             apply_handle(self.shape, self.anns[self.ann_selected], self._drag[1], ix, iy)

@@ -336,7 +336,8 @@ die gesetzten Status.</p>
 <p>Farbe und Größe stehen in der Optionszeile; ohne Auswahl gelten sie für die nächste Markierung, mit Auswahl für die
 gewählte(n). Mit <i>Auswahl</i> (<kbd>V</kbd>) anklicken, verschieben, an den Ecken die Größe ändern; Doppelklick =
 bearbeiten, Rechtsklick = Menü, <kbd>Entf</kbd> = löschen, <kbd>Strg</kbd>+<kbd>Z</kbd> = rückgängig.
-Beim Verschieben oder Ziehen an einer Ecke hält <kbd>Umschalt</kbd> die Bewegung waagerecht oder senkrecht. Kanten und
+Beim Verschieben hält <kbd>Umschalt</kbd> die Bewegung waagerecht oder senkrecht; beim Ziehen an einer Ecke bleibt mit
+<kbd>Umschalt</kbd> das Seitenverhältnis erhalten (z. B. eingefügte Bilder). Kanten und
 Mitten rasten an anderen Markierungen ein (gestrichelte Hilfslinie); <kbd>Alt</kbd> gedrückt = ohne Einrasten.
 Beim <b>Zeichnen</b> mit gedrückter <kbd>Umschalt</kbd>-Taste rasten Linie und Pfeil in 45°-Schritten ein, Ellipse wird
 ein Kreis, Rechteck und Wolke werden quadratisch.
@@ -412,7 +413,8 @@ Fläche bekommt die Papierfarbe.</td></tr>
 <tr><td>Zuschneiden</td><td>Setzt einen <b>Zuschnitt-Rahmen</b> – es wird nichts gelöscht. Außerhalb ist die Zeichnung
 abgedunkelt; der Rahmen lässt sich mit <i>Auswahl</i> an den Anfassern (Ecken und Kanten) anpassen. Speichern, Drucken und
 Kopieren zeigen nur den Rahmen; ragt er über das Blatt, bekommt die Ausgabe einen Rand. Gilt auch im Vergleich.
-<i>Bearbeiten → Zuschnitt aufheben</i> entfernt ihn; beim Ansehen einer Zeichnung schneidet <i>Zuschnitt endgültig
+Solange er gesetzt ist, zeigt das Modus-Schild oben <i>· Zuschnitt</i>. Aufheben: Klick auf das Schild, Rechtsklick ins Bild
+oder <i>Bearbeiten → Zuschnitt aufheben</i>; beim Ansehen einer Zeichnung schneidet <i>Zuschnitt endgültig
 anwenden</i> die Zeichnung selbst zu.</td></tr>
 <tr><td>Markierungen entfernen (<kbd>Entf</kbd>)</td><td>Markierungen, Änderungen und Zonen in der Auswahl löschen; die Zeichnung bleibt. Den Zeichnungsinhalt entfernt <i>Mehr ▾ → Zeichnung im Bereich leeren</i>.</td></tr>
 <tr><td>Exportieren …</td><td>Auswahl als PNG, TIFF, JPG, PDF oder SVG mit Ebenen speichern.</td></tr>
@@ -552,9 +554,10 @@ Seitenpaare. Beide erscheinen nur bei mehrseitigen Dateien.</p>
 <ul>
 <li><b>Ausschnitt</b>: nur einen Teil vergleichen (schneller). Rahmen in A aufziehen; der passende Bereich in B wird automatisch gesucht.</li>
 <li><b>Bereiche zuordnen (A ↔ B)</b>: Bereich in A und passenden Bereich in B selbst wählen – z. B. wenn eine Ansicht auf dem
-Blatt verschoben oder anders skaliert wurde. Die beiden Rahmen müssen nicht gleich groß sein: verglichen wird ein gleich
-großer Ausschnitt um die Mitte des Rahmens in B – nichts wird gestreckt oder gestaucht; Lage und Maßstab gleicht die
-normale Ausrichtung aus.</li>
+Blatt verschoben oder anders skaliert wurde. Den Rahmen in B nur <b>ungefähr</b> aufziehen (gern etwas größer); Größe
+und Seitenverhältnis müssen nicht passen. Das Programm sucht den Inhalt von A in der Umgebung des Rahmens in B: zuerst
+bei gleichem Maßstab (Verschiebung, danach eine kleine Drehung), nur wenn das nicht passt auch mit anderem Maßstab und
+zuletzt mit Verzerrung. Passen die Bereiche kaum zusammen, erscheint ein Hinweis.</li>
 <li><b>Zonen</b>: Bereiche, die nicht verglichen werden (Schriftfeld, Stempel). Im Bild mit <i>Auswahl</i> anklicken:
 ziehen = verschieben, Ecken = Größe ändern, <kbd>Entf</kbd> oder Rechtsklick = löschen (auch in der Liste der Zonen).
 <b>Randstreifen</b>: Blattrand ausnehmen.</li>

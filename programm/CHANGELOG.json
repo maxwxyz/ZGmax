@@ -1,7 +1,19 @@
 {
  "unreleased": {
-  "de": [],
-  "en": []
+  "de": [
+   "Bereiche zuordnen (A ↔ B): Der Rahmen in B muss nur ungefähr passen; das Programm sucht die Stelle selbst – zuerst bei gleichem Maßstab (Verschiebung, kleine Drehung), nur bei Bedarf mit anderem Maßstab. Keine verzerrten Ergebnisse mehr.",
+   "Ecke ziehen mit Umschalt: Seitenverhältnis bleibt (z. B. eingefügte Bilder).",
+   "Zuschnitt und Vergleichs-Ausschnitt stehen im Modus-Schild und lassen sich dort oder per Rechtsklick aufheben.",
+   "Versionsnummer im Fenstertitel; Über-Fenster mit Autor und Copyright.",
+   "Behoben: Projekte mit nur einer Zeichnung blieben nach dem Öffnen auf der Startseite."
+  ],
+  "en": [
+   "Match areas (A ↔ B): the frame in B only has to fit roughly; the program finds the spot itself – first at the same scale (shift, small rotation), a different scale only if needed. No more distorted results.",
+   "Dragging a corner with Shift keeps the aspect ratio (e.g. pasted images).",
+   "Crop and comparison region are shown in the mode chip and can be removed there or via right-click.",
+   "Version number in the window title; About window with author and copyright.",
+   "Fixed: projects with only one drawing stayed on the start page after opening."
+  ]
  },
  "releases": [
   {

@@ -372,9 +372,9 @@ class FeaturesMixin:
                               "aufziehen, der verglichen werden soll."))
         if da.exec() != QDialog.DialogCode.Accepted:
             return
-        db = RegionPickDialog(self, gb, tr("Bereich in B (neu)"), tr("Schritt 2 von 2: In der neuen Zeichnung den "
-                              "passenden Bereich aufziehen. Die Größe muss nicht genau passen: verglichen wird ein gleich großer "
-                              "Ausschnitt um die Mitte, ohne zu verzerren."))
+        db = RegionPickDialog(self, gb, tr("Bereich in B (neu)"), tr("Schritt 2 von 2: In der neuen Zeichnung ungefähr "
+                              "den passenden Bereich aufziehen, gern etwas größer. Die genaue Lage sucht das Programm selbst: "
+                              "Verschiebung und kleine Drehung, nur wenn nötig auch ein anderer Maßstab."))
         if db.exec() != QDialog.DialogCode.Accepted:
             return
         self.crop, self.crop_b = da.box(), db.box()
@@ -783,7 +783,9 @@ class FeaturesMixin:
 
     def show_about(self):
         import drawing_viewer
-        text = tr("<h3>{} {}</h3><p>{}: ansehen, messen, markieren, vergleichen und prüfen.</p><p>Logdatei und automatische Sicherung:<br>{}</p>").format(APP, drawing_viewer.VERSION, APP_SUBTITLE, app_data_dir())
+        text = tr("<h3>{} {}</h3><p>{}: messen, markieren, Änderungen prüfen und freigeben.</p><p>{} · Autor: {}</p>"
+                  "<p>Logdatei und automatische Sicherung:<br>{}</p>").format(
+            APP, drawing_viewer.VERSION, APP_SUBTITLE, COPYRIGHT, AUTHOR, app_data_dir())
         text += tr("<p><b>Lizenz:</b> GNU Affero General Public License 3.0 (AGPL-3.0). Freie Software ohne jede "
                    "Gewährleistung; Sie dürfen sie unter den Bedingungen der Lizenz weitergeben und verändern. "
                    "Wer das Programm weitergibt, muss auch den Quellcode zugänglich machen. Lizenztext: "

@@ -85,6 +85,8 @@ settings and projects keep working after the rename.
 
 ## License
 
+Copyright © 2026 Max Wilfinger.
+
 ZGmax is free software under the **GNU Affero General Public License 3.0** (AGPL-3.0), see `LICENSE`. It comes without
 any warranty. Whoever passes the program on must also make its source code available under the same license.
 

@@ -1368,6 +1368,12 @@ class LayoutMixin:
         if self.lines_active():                 # Linienfilter blendet Linien aus: sichtbar machen
             text += "  · " + tr("Linienfilter")
             tip += "\n" + tr("Linienfilter aktiv: nur ein Teil der Linien wird gezeigt und verglichen.")
+        if getattr(self, "crop_frame", None) is not None:      # Zuschnitt/Ausschnitt: sichtbar und aufhebbar (Klick)
+            text += "  · " + tr("Zuschnitt")
+            tip += "\n" + tr("Zuschnitt aktiv: Speichern, Drucken und Kopieren zeigen nur den Rahmen. Klick → aufheben.")
+        if getattr(self, "crop", None) and not self.view_only:
+            text += "  · " + tr("Ausschnitt")
+            tip += "\n" + tr("Nur ein Ausschnitt wird verglichen. Klick → ganzes Blatt vergleichen.")
         chip.setProperty("single", bool(self.view_only))
         chip.setProperty("dirty", bool(dirty))
         chip.style().unpolish(chip)
@@ -1387,8 +1393,21 @@ class LayoutMixin:
             m.addSeparator()
             m.addAction(tr("Andere alte Zeichnung (A) …"), lambda: self.open_file("A"))
             m.addAction(tr("Andere neue Zeichnung (B) …"), lambda: self.open_file("B"))
+        self._add_crop_actions(m)
         m.addSeparator()
         m.addAction(self.act_close)
+
+    def _add_crop_actions(self, m):
+        """Zuschnitt aufheben / ganzes Blatt vergleichen - wenn gesetzt, in Schild- und Rechtsklick-Menue."""
+        items = []
+        if getattr(self, "crop_frame", None) is not None:
+            items.append(self.act_frame_clear)
+        if getattr(self, "crop", None) and not self.view_only:
+            items.append(self.act_crop_off)
+        if items:
+            m.addSeparator()
+            for a in items:
+                m.addAction(a)
 
     def _update_review_enabled(self):
         """Pruefen (naechste, geprueft, abgelehnt, ...) und Text/Masse lesen erst, wenn es Aenderungen gibt."""

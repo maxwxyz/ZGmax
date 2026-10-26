@@ -159,14 +159,55 @@ def crop_pair(a_full, b_full, box_a, log=print):
 
 
 # ----------------------------------------------------------------- Stufe 2
-def same_size_box(box_a, box_b):
-    """Zugeordnete Bereiche: Fenster in B mit genau der Groesse des Bereichs in A, um die Mitte des in B gewaehlten
-    Bereichs. So wird nichts gestreckt oder gestaucht, wenn die beiden Rahmen nicht gleich gross gezogen wurden;
-    Lage und Massstab gleicht danach die normale Ausrichtung aus. Kann ueber den Blattrand hinausragen."""
-    _xa, _ya, wa, ha = box_a
-    xb, yb, wb, hb = box_b
-    cx, cy = xb + wb / 2, yb + hb / 2
-    return int(round(cx - wa / 2)), int(round(cy - ha / 2)), int(wa), int(ha)
+def _match_in(win, tpl, work=1400):
+    """Sucht tpl (Tinte) gleich gross in win (Tinte). Rueckgabe (score, (x, y)) in Pixeln von win.
+    Verkleinert und geglaettet gerechnet; leere Flaechen zaehlen nicht als Treffer."""
+    f = min(1.0, work / max(win.shape))
+    W = cv2.GaussianBlur(cv2.resize(win, None, fx=f, fy=f, interpolation=cv2.INTER_AREA).astype(np.float32) / 255,
+                         (0, 0), 1.5)
+    T = cv2.GaussianBlur(cv2.resize(tpl, None, fx=f, fy=f, interpolation=cv2.INTER_AREA).astype(np.float32) / 255,
+                         (0, 0), 1.5)
+    if min(T.shape) < 8 or T.shape[0] > W.shape[0] or T.shape[1] > W.shape[1] or float(T.std()) < 1e-4:
+        return -1.0, (0, 0)
+    res = cv2.matchTemplate(W, T, cv2.TM_CCOEFF_NORMED)
+    res = np.nan_to_num(res, nan=-1.0, posinf=-1.0, neginf=-1.0)
+    ink = cv2.boxFilter(W, -1, (T.shape[1], T.shape[0]), normalize=True)
+    ink = ink[T.shape[0] // 2:T.shape[0] // 2 + res.shape[0], T.shape[1] // 2:T.shape[1] // 2 + res.shape[1]]
+    res[ink < 0.5 * float(T.mean())] = -1.0
+    _, mx, _, loc = cv2.minMaxLoc(res)
+    return float(mx), (int(round(loc[0] / f)), int(round(loc[1] / f)))
+
+
+def match_region(a_full, b_full, box_a, hint_b, log=print, good=0.35):
+    """Zugeordnete Bereiche: findet den Inhalt von Bereich A (box_a) in der Umgebung des in B grob gewaehlten Bereichs
+    (hint_b) - der Rahmen in B muss weder genau sitzen noch dasselbe Seitenverhaeltnis haben.
+    Zuerst gleicher Massstab (Verschiebung; eine kleine Drehung gleicht danach die Ausrichtung aus), nur wenn das nicht
+    passt auch ein anderer Massstab und zuletzt Verzerrung.
+    Rueckgabe (box_b, ausrichtung, score): box_b (x, y, w, h) in B, ausrichtung 'euclidean' (Verschiebung + Drehung,
+    ohne Verzerren) oder 'affine' (Massstab/Verzerrung als letzter Ausweg)."""
+    a = dc.crop(a_full, box_a)
+    ha, wa = a.shape[:2]
+    xb, yb, wb, hb = hint_b
+    m = int(max(wa, ha) * 0.5) + 40                  # Suchbereich: Rahmen in B grosszuegig erweitert
+    win_box = (xb - m - max(0, (wa - wb) // 2), yb - m - max(0, (ha - hb) // 2),
+               max(wb, wa) + 2 * m, max(hb, ha) + 2 * m)
+    win = crop_padded(b_full, win_box, 0)
+    score, (x, y) = _match_in(win, a)
+    box = (win_box[0] + x, win_box[1] + y, wa, ha)
+    log(tr("Zugeordnete Bereiche: gleicher Maßstab, Übereinstimmung {:.2f}").format(score))
+    if score >= good:
+        return box, "euclidean", score
+    # nichts Ueberzeugendes bei gleichem Massstab: anderer Massstab (Seitenverhaeltnis bleibt), Suchbereich groesser
+    m2 = int(max(wa, ha, wb, hb))
+    win_box2 = (xb - m2, yb - m2, wb + 2 * m2, hb + 2 * m2)
+    win2 = crop_padded(b_full, win_box2, 0)
+    box2, score2 = dc.autofit(a, win2)
+    if box2 is not None and score2 > score + 0.05:
+        log(tr("  anderer Maßstab {:.3f}, Übereinstimmung {:.2f} – Feinausrichtung darf verzerren").format(
+            box2[2] / wa, score2))
+        return (win_box2[0] + box2[0], win_box2[1] + box2[1], box2[2], box2[3]), "affine", score2
+    log(tr("  Warnung: Bereiche passen kaum zusammen – Ergebnis prüfen oder größere Bereiche wählen"))
+    return box, "euclidean", score
 
 
 def crop_padded(img, box, fill=0):

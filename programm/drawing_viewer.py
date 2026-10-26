@@ -957,14 +957,18 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.cache["key"] = None
             log.progress(0.22, tr("Richte aus"))
             a_full, b_full = dp.ink_from_gray(ga, p.thr, p.flatten), dp.ink_from_gray(gb, p.thr, p.flatten)
-            if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet: gleich grosses Fenster in B,
-                box_b = dp.same_size_box(snap["crop"], snap["crop_b"])   # nichts verzerren
+            align = p.align
+            if snap.get("crop_b") and snap["crop"]:   # Bereiche selbst zugeordnet: Inhalt von A in B suchen
+                box_b, mode, score = dp.match_region(a_full, b_full, snap["crop"], snap["crop_b"], log)
                 a, b0 = dc.crop(a_full, snap["crop"]), dp.crop_padded(b_full, box_b, 0)
-                log(tr("Zugeordnete Bereiche: A {}  B {}").format(snap['crop'], snap['crop_b']))
+                if align in ("affine", "euclidean"):          # nicht verzerren, ausser es passt nur so
+                    align = mode
+                self.cache["region_score"] = score
+                log(tr("Zugeordnete Bereiche: A {}  B {}").format(snap['crop'], box_b))
             else:
                 a, b0, box_b = dp.crop_pair(a_full, b_full, snap["crop"], log)
             log.check()
-            self.cache["b"], tf = dp.prepare_pair_tf(a, b0, p.align, log)
+            self.cache["b"], tf = dp.prepare_pair_tf(a, b0, align, log)
             self.cache["a"] = a
             self.cache["tf"], self.cache["box_b"] = tf, box_b     # fuer Suchtreffer in B (Punkte ausrichten)
             # Farbfassungen (nur Anzeige von Alt/Neu) genauso zuschneiden und ausrichten wie die Tinte
@@ -1069,6 +1073,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
                                     "unterschiedlichen Strichstärken. Es werden alle Linien gezeigt."), "info",
                                  timeout=12)
         self._regs_stale = self._reviewing = False
+        if snap.get("crop_b") and snap["crop"] and self.cache.get("region_score", 1.0) < 0.35:
+            self.banner.show_msg(tr("Die zugeordneten Bereiche passen kaum zusammen. Ergebnis prüfen oder in B einen "
+                                    "größeren Bereich um dieselbe Stelle wählen."), "warn", timeout=15)
         self._regs_ver = getattr(self, "_regs_ver", 0) + 1    # neue Liste: Rueckgaengig beginnt fuer sie neu
         self._cur_state = self._state()
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
@@ -1232,6 +1239,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if self.view_only:
             m.addAction(self.act_move_sel)
         m.addAction(self.act_export_img)
+        self._add_crop_actions(m)
         if not self.canvas.sel_rects and not self.canvas.selected_anns():   # nichts gewaehlt: ganze Ansicht
             m.addAction(self.act_copy_view)
         m.exec(gpos)

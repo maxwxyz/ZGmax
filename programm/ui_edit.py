@@ -897,6 +897,7 @@ class SheetEditMixin:
             if a is not None:
                 a.setEnabled(f is not None and (a is self.act_frame_clear or self.view_only))
                 a.setVisible(f is not None)                # im Menue nur, solange es einen Rahmen gibt
+        self._update_mode_chip()
         self.canvas.update()
 
     def _frame_edited(self, x0, y0, x1, y1):

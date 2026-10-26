@@ -326,7 +326,8 @@ back when read in. The list shows 💬 number of replies and the statuses set.</
 <p>Color and size are in the options bar; without a selection they apply to the next markup, with a selection to the
 selected one(s). With <i>Select</i> (<kbd>V</kbd>) click to select, drag to move, drag the corners to resize;
 double-click = edit, right-click = menu, <kbd>Del</kbd> = delete, <kbd>Ctrl</kbd>+<kbd>Z</kbd> = undo.
-While moving or dragging a corner, <kbd>Shift</kbd> keeps the movement horizontal or vertical. Edges and centers snap to
+While moving, <kbd>Shift</kbd> keeps the movement horizontal or vertical; while dragging a corner, <kbd>Shift</kbd> keeps
+the aspect ratio (e.g. pasted images). Edges and centers snap to
 other markups (dashed guide line); hold <kbd>Alt</kbd> to move without snapping. While <b>drawing</b> with
 <kbd>Shift</kbd> held, line and arrow snap to 45° steps, an ellipse becomes a circle, rectangle and cloud become square.
 <b>Selecting several:</b> hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click, or drag a frame over empty paper with
@@ -395,7 +396,8 @@ rectangles; with <i>Lines only (without background)</i> the paper too). Pasted i
 content too – with <i>Lines only (without background)</i> only the lines. The vacated area gets the paper color.</td></tr>
 <tr><td>Crop</td><td>Sets a <b>crop frame</b> – nothing is deleted. Outside it the drawing is dimmed; adjust the frame with
 <i>Select</i> at its handles (corners and edges). Save, print and copy output only the frame; if it extends beyond the
-sheet, the output gets a margin. Works in a comparison too. <i>Edit → Remove crop frame</i> removes it; when viewing a single
+sheet, the output gets a margin. Works in a comparison too. While it is set, the mode chip at the top shows <i>· Crop</i>. To remove it: click the chip, right-click into the drawing
+or <i>Edit → Remove crop frame</i>; when viewing a single
 drawing, <i>Apply crop permanently</i> crops the drawing itself.</td></tr>
 <tr><td>Remove markups (<kbd>Del</kbd>)</td><td>Delete markups, changes and zones in the selection; the drawing stays. <i>More ▾ → Clear drawing in region</i> removes the drawing content.</td></tr>
 <tr><td>Export …</td><td>Save the selection as PNG, TIFF, JPG, PDF or SVG with layers.</td></tr>
@@ -527,8 +529,10 @@ files.</p>
 <ul>
 <li><b>Region</b>: compare only part of the sheet (faster). Drag a frame in A; the matching area in B is found automatically.</li>
 <li><b>Match areas (A ↔ B)</b>: choose an area in A and the matching area in B yourself – e.g. when a view was moved or
-scaled on the sheet. The two frames do not have to be the same size: an equally sized section around the center of the
-frame in B is compared – nothing is stretched or squeezed; position and scale are matched by the normal alignment.</li>
+scaled on the sheet. Drag the frame in B only <b>roughly</b> (preferably a bit larger); size and aspect ratio do not have
+to match. The program looks for the content of A around the frame in B: first at the same scale (shift, then a small
+rotation), only if that does not fit with a different scale and last with distortion. If the areas hardly match, a
+notice appears.</li>
 <li><b>Zones</b>: areas that are not compared (title block, stamps). Click them in the drawing with <i>Select</i>: drag =
 move, corners = resize, <kbd>Del</kbd> or right-click = delete (also in the zone list). <b>Border strip</b>: exclude the
 sheet border.</li>

@@ -1,5 +1,13 @@
 # ZGmax – Änderungshistorie
 
+## In Arbeit
+
+- Bereiche zuordnen (A ↔ B): Der Rahmen in B muss nur ungefähr passen; das Programm sucht die Stelle selbst – zuerst bei gleichem Maßstab (Verschiebung, kleine Drehung), nur bei Bedarf mit anderem Maßstab. Keine verzerrten Ergebnisse mehr.
+- Ecke ziehen mit Umschalt: Seitenverhältnis bleibt (z. B. eingefügte Bilder).
+- Zuschnitt und Vergleichs-Ausschnitt stehen im Modus-Schild und lassen sich dort oder per Rechtsklick aufheben.
+- Versionsnummer im Fenstertitel; Über-Fenster mit Autor und Copyright.
+- Behoben: Projekte mit nur einer Zeichnung blieben nach dem Öffnen auf der Startseite.
+
 ## Version 2.2 vom 25.10.2026
 
 - Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.

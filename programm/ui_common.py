@@ -29,6 +29,8 @@ import diffvector as dv
 
 APP = tr("ZGmax")
 APP_SUBTITLE = tr("Zeichnungen ansehen, vergleichen und pr\u00fcfen")
+AUTHOR = "Max Wilfinger"
+COPYRIGHT = f"\u00a9 2026 {AUTHOR}"
 ACCENT = "#2563eb"
 FILE_FILTER = (tr("Zeichnungen (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp *.jp2 *.gif *.pdf *.svg *.xps *.dxf);;"
                "Alle Dateien (*)"))

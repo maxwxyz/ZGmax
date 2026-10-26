@@ -166,7 +166,7 @@ class ProjectMixin:
             name = os.path.basename(self.path_a or self.path_b)
         else:
             name = APP_SUBTITLE
-        self.setWindowTitle(f"{name}{' *' if getattr(self, '_dirty', False) else ''} \u2013 {APP}")
+        self.setWindowTitle(f"{name}{' *' if getattr(self, '_dirty', False) else ''} \u2013 {APP} {VERSION}")
 
     def _project_data(self):
         pa, pb = self.path_a, self.path_b
@@ -351,7 +351,7 @@ class ProjectMixin:
         self._log(tr("Projekt geöffnet: {}").format(path))
         if not path.endswith("wiederherstellen" + PROJECT_EXT):
             recent_add(self.settings, project=path)
-        if self.path_a and self.path_b:
+        if self.path_a or self.path_b:                 # auch Projekte mit nur einer Zeichnung (Ansehen) gleich zeigen
             self.start_compute()
 
     def _maybe_save(self):
