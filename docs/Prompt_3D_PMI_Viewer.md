@@ -7,7 +7,7 @@ Arbeitsweise; Erfahrungen aus ZGmax (2D-Zeichnungsvergleich) sind eingeflossen.
 
 ## Auftrag
 
-Baue ein Desktop-Programm, mit dem Konstrukteure und SE-Teamleiter **3D-Modelle mit PMI** (Product and Manufacturing
+Baue ein Desktop-Programm, mit dem man **3D-Modelle mit PMI** (Product and Manufacturing
 Information: Maße, Toleranzen, Form- und Lagetoleranzen, Bezüge, Oberflächenangaben, Hinweise) ansehen, vermessen,
 prüfen und **zwei Stände eines Modells vergleichen** können – das 3D-Gegenstück zu einem Zeichnungsvergleich, für
 Modelle ohne klassische 2D-Zeichnung (Model Based Definition).

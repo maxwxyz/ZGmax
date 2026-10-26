@@ -8,7 +8,7 @@ Versionsverwaltung belegt und sollten vor der Präsentation ergänzt werden (mar
 
 ## 1. Ausgangslage: ein ganz normaler Engpass
 
-- Ein Konstrukteur ist krank, zwei Revisionen einer Zeichnung müssen trotzdem verglichen werden.
+- Zwei Revisionen einer Zeichnung müssen kurzfristig verglichen werden.
 - Das vorhandene Werkzeug (ZG-View) liefert kein brauchbares Ergebnis: Zeichnungen und Ansichten sind leicht
   gegeneinander versetzt, der Vergleich zeigt fast alles als geändert.
 - Händisches Vergleichen („Flip-Flop“ oder Ausdruck auf Leuchttisch) kostet Zeit und übersieht kleine Maßänderungen.
@@ -85,14 +85,14 @@ Stresstest, der jede Funktion durchklickt, sichern jeden Schritt ab.
 
 ---
 
-## 6. Heute: Was ZGmax für Konstrukteure und SE-Teamleiter leistet
+## 6. Heute: Was ZGmax leistet
 
-**Für Konstrukteure**
+**Vergleichen und Messen**
 - Zwei Revisionen in Sekunden vergleichen – auch bei versetzten Ansichten, anderem Maßstab, Scan gegen PDF.
 - Nur das sehen, was zählt: Filter auf Konturen und Maße, verschobene Teile grün, Änderungen nummeriert.
 - Messen wie im CAD (Fang, Kalibrieren, Maßstab je Seite) und markieren wie in Acrobat.
 
-**Für SE-Teamleiter**
+**Prüfen und Dokumentieren**
 - Prüfrundgang mit Status je Änderung (offen, geprüft, abgelehnt, Kommentar) als Prüfprotokoll:
   PDF-Bericht, CSV, PDF mit Anmerkungen.
 - Mehrseitige Zeichnungssätze: Prüfstand je Seite, „Alle Seiten vergleichen“ zeigt, wo sich etwas geändert hat.

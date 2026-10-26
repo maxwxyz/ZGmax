@@ -18,7 +18,7 @@ nicht beschlossen) · ⚠️ bekanntes Problem
                     bleibt, Tests in 1,5 min
 0.9  geplant     🟡 Stabilität: echte Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Windows/Linux
                     vollständig geprüft, GitHub-Builds grün
-1.0  geplant     🟡 Pilotgruppe: Rückmeldungen einarbeiten, Anleitung/Schulung, freigegebene Version für alle
+1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
 später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Blätter (A0), 3D-Modelle (eigenes Werkzeug)
 ```
 
@@ -32,7 +32,7 @@ später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Bl
 | GitHub-Builds für Windows, macOS, Linux einmal komplett grün | Fertige Apps für alle Systeme aus einer Hand | 🟡 0.9 |
 | GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | 🟡 0.9 |
 | Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 0.9 |
-| Pilotgruppe, Rückmeldungen, Schulung | Einführung im Team | 🟡 1.0 |
+| Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
 | PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | 💡 |
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | 💡 |
 | Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | 💡 |
