@@ -1,3 +1,25 @@
+# Übergabe (Stand 2026-10-26, Cloud → lokal)
+
+**Neu auf Branch `wip/ui-runde-8d9lrn`** (auf `main` = v2.2 aufgesetzt, noch nicht gemergt; **Tests auf Wunsch nicht
+gelaufen**, nur Syntaxprüfung, `english_check` und ein Funktionscheck der Bereichssuche):
+- Bereiche zuordnen (A ↔ B): `dp.match_region` sucht den Inhalt von A im erweiterten Rahmen von B (`_match_in`,
+  Template-Matching bei gleichem Maßstab), danach Ausrichtung `euclidean` (Verschiebung + Drehung, kein Verzerren);
+  nur wenn nichts passt (Score < 0,35) `dc.autofit` mit anderem Maßstab und `affine`. `same_size_box` entfernt.
+  Hinweis bei schwacher Übereinstimmung (`cache["region_score"]`). Funktionscheck: Verschiebung exakt,
+  Verschiebung + 0,8° und Maßstab 0,8 gefunden.
+- Umschalt an Ecken: Seitenverhältnis bleibt (Zieh-Art „handle“ merkt den Rahmen beim Anfassen, `ui_canvas.py`).
+- Modus-Schild zeigt „· Zuschnitt“ / „· Ausschnitt“; Aufheben im Schild-Menü und Rechtsklick (`_add_crop_actions`).
+- Fenstertitel mit Version; Über-Fenster mit `COPYRIGHT`/`AUTHOR` (`ui_common.py`), Info.plist `NSHumanReadableCopyright`.
+- Behoben: Projekte mit nur einer Zeichnung blieben auf der Startseite (`project_open` rechnet jetzt auch dann).
+- Anleitungen, Menüreferenz, CHANGELOG `unreleased`, Übersetzungen nachgezogen.
+
+**Lokal als Nächstes:** `git fetch && git checkout wip/ui-runde-8d9lrn`; Mac-App bauen
+(`packaging/build_mac.sh --ohne-tests`, in der Cloud nicht möglich) und ausprobieren: Bereiche zuordnen mit echten
+Zeichnungen, Umschalt-Ecke an eingefügtem Bild, Zuschnitt aufheben, Projekt mit einer Zeichnung öffnen. Danach Tests
+komplett, nach `main` mergen, Branch löschen.
+
+---
+
 # Übergabe (Stand 2026-10-25 spät, lokal)
 
 `main` = letzter Stand, **v2.1 getaggt** (Tag auf b30ef0e). Keine offenen WIP-Branches.
