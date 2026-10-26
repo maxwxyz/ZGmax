@@ -1,14 +1,16 @@
 # ZGmax – Change history
 
-## In progress
+## Version 0.8 of 2026-10-26
 
 - Match areas (A ↔ B): the frame in B only has to fit roughly; the program finds the spot itself – first at the same scale (shift, small rotation), a different scale only if needed. No more distorted results.
 - Dragging a corner with Shift keeps the aspect ratio (e.g. pasted images).
 - Crop and comparison region are shown in the mode chip and can be removed there or via right-click.
-- Version number in the window title; About window with author and copyright.
+- Version number in the window title; About window with copyright.
 - Fixed: projects with only one drawing stayed on the start page after opening.
+- macOS: “About ZGmax” appears again (own window with the app icon).
+- Markups: the size set last applies to the next arrows, numbers etc. (also after a restart).
 
-## Version 2.2 of 2026-10-25
+## Version 0.7 of 2026-10-25
 
 - Dark theme: the folder icons on the start page ("Choose file") are clearly visible again after switching.
 - Build optionally without the test run (--ohne-tests); GitHub workflow lets you choose platform and tests; Windows build on GitHub fixed.
@@ -28,7 +30,7 @@
 - Opening/pasting an image from the clipboard no longer fails when there is no image.
 - Help → Open file types with ZGmax: open PDF, images, DXF and projects in ZGmax on double-click (Windows, macOS, Linux; also the portable app).
 
-## Version 2.1 of 2026-10-25
+## Version 0.6 of 2026-10-25
 
 - Comparison: paper flattening for scans, exact character check for similar digits (e.g. 41.8 → 43.2), suggestion of the exact vector comparison for PDFs, turn rejected hits into zones.
 - Manual alignment with two or three points.
@@ -57,6 +59,6 @@
 - License AGPL-3.0.
 - Fixed: menu icons in light mode, overlapping check boxes in lists, a selected change could not be deselected, “Comparing …” shown when only viewing, a started markup stuck to the mouse pointer after a cancelled dialog, “Fit to paper” when printing with the English interface; the area selection button “Delete” is now called “Remove markups”; arrows (→) appeared as “?” in PDF reports; the top bar overflowed with long file names.
 
-## Version 2.0 of 2026-10-22
+## Version 0.5 of 2026-10-22
 
 - Baseline: viewer and comparison with alignment, tile fine alignment, moved blocks and objects, change list with review status, markups, measuring, project, PDF report, batch and revisions, command line.

@@ -28,10 +28,16 @@ def _version():
 VERSION = _version()
 
 
+# Bis Oktober 2026 hiessen die Versionen 2.0-2.2; sie wurden auf 0.5-0.7 umbenannt (erste Version 0.8). Aeltere
+# Projekte und Einstellungen tragen noch die alten Nummern - so werden sie richtig eingeordnet.
+OLD_NUMBERS = {"2.0": "0.5", "2.1": "0.6", "2.2": "0.7"}
+
+
 def version_key(v):
     """'2.10' > '2.9': Versionen als Zahlentupel vergleichen."""
+    v = OLD_NUMBERS.get(str(v), str(v))
     try:
-        return tuple(int(x) for x in str(v).split("."))
+        return tuple(int(x) for x in v.split("."))
     except ValueError:
         return (0,)
 

@@ -1,14 +1,16 @@
 # ZGmax – Änderungshistorie
 
-## In Arbeit
+## Version 0.8 vom 26.10.2026
 
 - Bereiche zuordnen (A ↔ B): Der Rahmen in B muss nur ungefähr passen; das Programm sucht die Stelle selbst – zuerst bei gleichem Maßstab (Verschiebung, kleine Drehung), nur bei Bedarf mit anderem Maßstab. Keine verzerrten Ergebnisse mehr.
 - Ecke ziehen mit Umschalt: Seitenverhältnis bleibt (z. B. eingefügte Bilder).
 - Zuschnitt und Vergleichs-Ausschnitt stehen im Modus-Schild und lassen sich dort oder per Rechtsklick aufheben.
-- Versionsnummer im Fenstertitel; Über-Fenster mit Autor und Copyright.
+- Versionsnummer im Fenstertitel; Über-Fenster mit Copyright.
 - Behoben: Projekte mit nur einer Zeichnung blieben nach dem Öffnen auf der Startseite.
+- macOS: „Über ZGmax“ erscheint wieder (eigenes Fenster mit Programmsymbol).
+- Markierungen: die zuletzt eingestellte Größe gilt für die nächsten Pfeile, Nummern usw. (auch nach dem Neustart).
 
-## Version 2.2 vom 25.10.2026
+## Version 0.7 vom 25.10.2026
 
 - Dunkles Farbschema: Ordner-Symbole der Startseite („Datei wählen“) sind nach dem Umschalten wieder gut sichtbar.
 - Bauen wahlweise ohne Testlauf (--ohne-tests); GitHub-Workflow mit Wahl von Plattform und Tests; Windows-Bau auf GitHub repariert.
@@ -28,7 +30,7 @@
 - Bild aus der Zwischenablage öffnen/einfügen ohne Fehler, wenn kein Bild darin ist.
 - Hilfe → Dateitypen mit ZGmax öffnen: PDF, Bilder, DXF und Projekte per Doppelklick in ZGmax öffnen (Windows, macOS, Linux; auch portable App).
 
-## Version 2.1 vom 25.10.2026
+## Version 0.6 vom 25.10.2026
 
 - Vergleich: Papierausgleich für Scans, Zeichenprüfung für ähnliche Ziffern (z. B. 41.8 → 43.2), Vorschlag zum exakten Vektorvergleich bei PDF, abgelehnte Funde als Zonen übernehmen.
 - Manuelles Ausrichten mit zwei oder drei Punkten.
@@ -57,6 +59,6 @@
 - Lizenz AGPL-3.0.
 - Behoben: Menüsymbole im hellen Modus, überlappende Haken in Listen, gewählte Änderung ließ sich nicht abwählen, „Vergleich läuft“ beim bloßen Ansehen, angefangene Markierung klebte nach einem abgebrochenen Dialog am Mauszeiger, „Auf Papier einpassen“ beim Drucken in englischer Oberfläche; Knopf „Löschen“ der Bereichsauswahl heißt jetzt „Markierungen entfernen“; Pfeile (→) erschienen in PDF-Berichten als „?“; die Leiste oben lief bei langen Dateinamen über.
 
-## Version 2.0 vom 22.10.2026
+## Version 0.5 vom 22.10.2026
 
 - Ausgangsstand: Viewer und Vergleich mit Ausrichtung, Kachel-Feinausrichtung, verschobenen Blöcken und Objekten, Änderungsliste mit Prüfstatus, Markierungen, Messen, Projekt, PDF-Bericht, Stapel und Revisionen, Kommandozeile.
