@@ -7,8 +7,9 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` geprüft (2026-10-26): Stand 0.8 vollständig unter „Umgesetzt“; als Nächstes **0.9 Stabilität** (echte
-  Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Dateitypen auf Windows/Linux prüfen, GitHub-Builds grün,
+- `ROADMAP.md` geprüft (2026-10-26): Stand 0.8 vollständig unter „Umgesetzt“, GitHub-Builds aller Systeme grün ✅;
+  als Nächstes **0.9 Stabilität** (echte Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Dateitypen auf
+  Windows/Linux prüfen,
   Actions-Versionen, Sichtprüfung am Mac), dann **1.0 erste stabile Version**. Ideen (noch nicht beschlossen): scharfer
   PDF-Zoom, Revisionstabelle prüfen, große Blätter, 3D-Modelle. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
 - GitHub-Lauf 40354924834 (alle Plattformen, mit Tests) schlug fehl: (1) `test_whats_new_after_update` setzte
@@ -22,6 +23,8 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
 - Lauf 40359482979 (Windows): Leiste und Drucktest jetzt grün; nur Menüreferenz wich ab (Windows-Befehl
   „Desktop-Verknüpfung erstellen“) → Befehle mit Eigenschaft `platform_only` stehen nicht in der Referenz; `--check`
   zeigt jetzt die ersten abweichenden Zeilen. Windows erneut gestartet.
+- **Lauf 40360683020: Windows grün.** Damit sind alle drei Systeme mit allen Tests auf GitHub grün (macOS/Linux im Lauf
+  40357927325). ROADMAP.md entsprechend abgehakt.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):

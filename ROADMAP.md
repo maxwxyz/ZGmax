@@ -17,7 +17,7 @@ nicht beschlossen) · ⚠️ bekanntes Problem
 0.8  26.10.2026  ✅ Bereiche zuordnen ohne Verzerren, Modus-Schild mit Zuschnitt, Über-Fenster, Werkzeuggröße
                     bleibt, Tests in 1,5 min
 0.9  geplant     🟡 Stabilität: echte Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Windows/Linux
-                    vollständig geprüft, GitHub-Builds grün
+                    vollständig geprüft (GitHub-Builds mit allen Tests sind grün ✅)
 1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
 später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Blätter (A0), 3D-Modelle (eigenes Werkzeug)
 ```
@@ -29,7 +29,7 @@ später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Bl
 | Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🟡 0.9 |
 | Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🟡 0.9 |
 | Dateitypen zuordnen auf Windows und Linux ausprobieren | Doppelklick öffnet PDF/TIFF/… in ZGmax | 🟡 0.9 |
-| GitHub-Builds für Windows, macOS, Linux einmal komplett grün | Fertige Apps für alle Systeme aus einer Hand | 🟡 0.9 |
+| GitHub-Builds für Windows, macOS, Linux einmal komplett grün (mit allen Tests) | Fertige Apps für alle Systeme aus einer Hand | ✅ 26.10.2026 |
 | GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | 🟡 0.9 |
 | Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 0.9 |
 | Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
@@ -90,7 +90,7 @@ später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Bl
 - ✅ Projekte (.zgmax, auch mit eingebetteten Zeichnungen), gemerkte Ausschnitte, automatische Sicherung (0.6–0.7)
 
 ### Technik und Betrieb
-- ✅ Portable Apps für macOS (lokal gebaut), Windows und Linux (GitHub-Workflow, wahlweise ohne Tests) (0.6–0.7)
+- ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
 - ✅ 106 automatische Tests in 1,5 min, Stresstest über alle Befehle (0.8)
 - ✅ Anleitungen Deutsch/Englisch mit Bildern und Menüreferenz, Änderungshistorie „Was ist neu“ (0.6–0.7)
