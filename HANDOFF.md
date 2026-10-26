@@ -1,7 +1,7 @@
 # Übergabe (Stand 2026-10-26, lokal) – alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
-(CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
+(CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` stehen noch auf GitHub und lokal – Löschen braucht die Freigabe des Nutzers). `version.OLD_NUMBERS`
 ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1“/„2.2“ steht, ist 0.6/0.7 gemeint.
 
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
