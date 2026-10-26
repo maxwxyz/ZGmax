@@ -783,9 +783,9 @@ class FeaturesMixin:
 
     def show_about(self):
         import drawing_viewer
-        text = tr("<h3>{} {}</h3><p>{}: messen, markieren, Änderungen prüfen und freigeben.</p><p>{} · Autor: {}</p>"
+        text = tr("<h3>{} {}</h3><p>{}: messen, markieren, Änderungen prüfen und freigeben.</p><p>{}</p>"
                   "<p>Logdatei und automatische Sicherung:<br>{}</p>").format(
-            APP, drawing_viewer.VERSION, APP_SUBTITLE, COPYRIGHT, AUTHOR, app_data_dir())
+            APP, drawing_viewer.VERSION, APP_SUBTITLE, COPYRIGHT, app_data_dir())
         text += tr("<p><b>Lizenz:</b> GNU Affero General Public License 3.0 (AGPL-3.0). Freie Software ohne jede "
                    "Gewährleistung; Sie dürfen sie unter den Bedingungen der Lizenz weitergeben und verändern. "
                    "Wer das Programm weitergibt, muss auch den Quellcode zugänglich machen. Lizenztext: "

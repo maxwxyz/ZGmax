@@ -6,7 +6,8 @@
    "Zuschnitt und Vergleichs-Ausschnitt stehen im Modus-Schild und lassen sich dort oder per Rechtsklick aufheben.",
    "Versionsnummer im Fenstertitel; Über-Fenster mit Autor und Copyright.",
    "Behoben: Projekte mit nur einer Zeichnung blieben nach dem Öffnen auf der Startseite.",
-   "macOS: „Über ZGmax“ erscheint wieder (eigenes Fenster mit Programmsymbol)."
+   "macOS: „Über ZGmax“ erscheint wieder (eigenes Fenster mit Programmsymbol).",
+   "Markierungen: die zuletzt eingestellte Größe gilt für die nächsten Pfeile, Nummern usw. (auch nach dem Neustart); Über-Fenster ohne doppelten Autor."
   ],
   "en": [
    "Match areas (A ↔ B): the frame in B only has to fit roughly; the program finds the spot itself – first at the same scale (shift, small rotation), a different scale only if needed. No more distorted results.",
@@ -14,7 +15,8 @@
    "Crop and comparison region are shown in the mode chip and can be removed there or via right-click.",
    "Version number in the window title; About window with author and copyright.",
    "Fixed: projects with only one drawing stayed on the start page after opening.",
-   "macOS: “About ZGmax” appears again (own window with the app icon)."
+   "macOS: “About ZGmax” appears again (own window with the app icon).",
+   "Markups: the size set last applies to the next arrows, numbers etc. (also after a restart); About window without the duplicate author."
   ]
  },
  "releases": [

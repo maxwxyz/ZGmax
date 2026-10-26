@@ -116,13 +116,15 @@ class AnnotationsMixin:
         return [self.anns[i] for i in sorted(self.canvas.selected_anns())]
 
     def _ann_size(self):
-        a = self._sel()
-        if a:
+        """Groesse aendern: gilt fuer die gewaehlten Markierungen und bleibt fuer die naechsten (auch nach dem
+        Neustart) - sonst zeichnete der naechste Pfeil wieder mit der Standardgroesse."""
+        v = self.s_asize.value()
+        if self._sel():
             for b in self._sel_all():
-                b["size"] = self.s_asize.value()
+                b["size"] = v
             self._commit()
-        else:
-            self.canvas.ann_size = self.s_asize.value()
+        self.canvas.ann_size = v
+        self.settings.setValue("ann_size", v)
         self.canvas.update()
 
     @staticmethod

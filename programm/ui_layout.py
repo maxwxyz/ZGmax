@@ -846,6 +846,12 @@ class LayoutMixin:
         self.s_asize.valueChanged.connect(self._ann_size)
         self.s_asize.set_silent = lambda v: (self.s_asize.blockSignals(True), self.s_asize.setValue(v),
                                              self.s_asize.blockSignals(False))
+        try:                                              # zuletzt gewaehlte Groesse (gilt auch nach dem Neustart)
+            last = float(self.settings.value("ann_size", 2.0))
+        except (TypeError, ValueError):
+            last = 2.0
+        self.s_asize.set_silent(last)
+        self.canvas.ann_size = last
         l.addWidget(self.s_asize)
         self.chk_keep_tool = QCheckBox(tr("Werkzeug behalten"))
         self.chk_keep_tool.setToolTip(tr("Nach dem Zeichnen bleibt das Werkzeug aktiv – z. B. mehrere Pfeile "
