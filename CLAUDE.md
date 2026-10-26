@@ -8,6 +8,8 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   (alle neuen `tr("...")`-Texte eintragen; Prüfung: `.venv/bin/python tests/english_check.py` muss `ENGLISH-OK` ausgeben).
   JSON schreiben mit `json.dumps(d, ensure_ascii=False, indent=0, sort_keys=True)` ohne Zeilenende am Schluss.
 - Kommentare/Docstrings im Code deutsch ohne Umlaute (ae, oe, ue), Stil wie im umgebenden Code.
+- `ROADMAP.md` pflegen: neue Funktionen unter „Umgesetzt“ (mit Version), Geplantes/Ideen und bekannte Probleme
+  aktuell halten.
 - Anleitungen pflegen: `programm/Anleitung_Viewer.html` (DE) und `programm/Manual_Viewer.html` (EN).
 - Änderungshistorie: jede für Nutzer sichtbare Änderung im selben Commit in `programm/CHANGELOG.json` unter
   `unreleased` eintragen (`de` und `en`, gleiche Reihenfolge, kurz, aus Nutzersicht). Version = neuester Eintrag in

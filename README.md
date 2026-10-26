@@ -6,6 +6,7 @@ View, compare, measure, mark up and review technical drawings. ZGmax compares tw
 * User manual: `programm/Manual_Viewer.html` (German: `programm/Anleitung_Viewer.html`). In the program: Help → Manual, F1.
 * Command line: `programm/Manual_CommandLine.html` (German: `programm/Anleitung_Kommandozeile.html`).
 * `Anleitung.html` in the root folder opens the manual in the system language.
+* Roadmap and feature status (done / planned): `ROADMAP.md`. Change history: `CHANGELOG.md`.
 
 The user interface is available in German and English. By default it follows the system language (German on a German
 system, otherwise English); it can be changed under View → Sprache / Language.
