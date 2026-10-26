@@ -799,7 +799,25 @@ class FeaturesMixin:
                    "ezdxf – MIT<br>"
                    "RapidOCR, PaddleOCR-Modell – Apache 2.0; ONNX Runtime – MIT<br>"
                    "Python – PSF-Lizenz</p>")
-        QMessageBox.about(self, APP, text)
+        # Eigenes modales Fenster statt QMessageBox.about: das ist auf dem Mac nicht modal und blieb oft unsichtbar
+        # (hinter dem Hauptfenster oder an einem verborgenen Fenster, wenn der Menuepunkt im Programmmenue steht)
+        parent = self if self.isVisible() else (QApplication.activeWindow() or self)
+        box = QMessageBox(parent)
+        box.setWindowTitle(tr("Über {}").format(APP))
+        box.setTextFormat(Qt.TextFormat.RichText)
+        import re
+        m = re.match(r"\s*<h3>(.*?)</h3>(.*)", text, re.S)       # Titel fett, der Rest normal (Mac: Haupttext fett)
+        box.setText(f"<b>{m.group(1)}</b>" if m else text)
+        if m:
+            box.setInformativeText(m.group(2))
+        ico = QApplication.windowIcon()
+        if not ico.isNull():
+            box.setIconPixmap(ico.pixmap(64, 64))
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.setWindowModality(Qt.WindowModality.ApplicationModal)
+        box.raise_()
+        box.activateWindow()
+        box.exec()
 
     # ----------------------------------------------------------------- PDF mit Anmerkungen
     def export_annotated_pdf(self):
