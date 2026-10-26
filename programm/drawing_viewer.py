@@ -166,8 +166,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self._set_file("B", path_b, compute=False)
         if path_a:
             self.start_compute()
-        QTimer.singleShot(400, self.check_autosave)
-        QTimer.singleShot(600, self._announce_update)
+        QTimer.singleShot(400, self, self.check_autosave)
+        QTimer.singleShot(600, self, self._announce_update)
 
 
     # --- Hilfe
@@ -1081,10 +1081,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         recent_add(self.settings, a=self.path_a, b=self.path_b, project=self.project_path)
         self._update_enabled()
         self._refresh_pdf_layers()
-        QTimer.singleShot(0, self._auto_import_pdf_comments)
-        QTimer.singleShot(400, self._scan_hint)
+        QTimer.singleShot(0, self, self._auto_import_pdf_comments)
+        QTimer.singleShot(400, self, self._scan_hint)
         if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
-            QTimer.singleShot(0, self.run_search)
+            QTimer.singleShot(0, self, self.run_search)
         self._fill_table()
         self._update_title()
         self.canvas.setFocus()
@@ -1204,7 +1204,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        QTimer.singleShot(0, self._fit_toolbar)
+        QTimer.singleShot(0, self, self._fit_toolbar)
 
     def _canvas_menu(self, gpos):
         m = QMenu(self)

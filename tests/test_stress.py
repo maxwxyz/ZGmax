@@ -11,6 +11,7 @@ import pytest
 
 from test_gui import app, wait  # noqa: F401  (Fixture und Hilfsfunktion)
 
+TIMES = [] if os.environ.get("ZV_STRESS_TIMES") else None   # Laufzeit je Befehl messen (Ausgabe am Ende)
 SKIP = {"act_quit", "act_close", "act_new_window", "act_shortcut", "act_help", "act_help_cli", "act_logfile",
         "act_reset_settings", "act_cli"}
 
@@ -73,6 +74,7 @@ def _all_actions(app, w, label, tmp_path, errors):
         if not a.isEnabled():
             continue
         before = len(errors)
+        t0 = time.time()
         try:
             a.trigger()
             _settle(app, w)
@@ -83,6 +85,8 @@ def _all_actions(app, w, label, tmp_path, errors):
             errors.append(traceback.format_exc())
         for i in range(before, len(errors)):
             errors[i] = f"[{label}] {n}: {errors[i]}"
+        if TIMES is not None:
+            TIMES.append((time.time() - t0, label, n))
         w._set_tool("hand")
 
 
@@ -192,4 +196,7 @@ def test_every_action_and_tool_in_every_situation(app, quiet_dialogs, pair, tmp_
         sys.excepthook = old_hook
         from PySide6.QtWidgets import QApplication
         QApplication.clipboard().clear()
+    if TIMES:
+        for t, label, n in sorted(TIMES, reverse=True)[:25]:
+            print(f"{t:7.2f}s  {label:10s} {n}", file=sys.stderr)
     assert not errors, "\n\n".join(errors[:10])

@@ -28,8 +28,26 @@ def win(app, tmp_path, monkeypatch):
     w = vw.MainWindow()
     w.show()
     yield w
-    w._dirty = False
-    w.close()
+    cleanup_windows(app)
+
+
+def cleanup_windows(app):
+    """Nach jedem Test alles abbauen: laufende Jobs beenden, Fenster und Dialoge schliessen und wirklich loeschen.
+    Sonst bleiben je Test ~40 versteckte Fenster liegen und jedes neue Theme/Fenster wird langsamer."""
+    from PySide6.QtCore import QCoreApplication, QEvent
+    import drawing_viewer as vw
+    for tw in app.topLevelWidgets():
+        for job in list(getattr(tw, "jobs", []) or []) + list(getattr(tw, "_bg", []) or []):
+            job.cancelled = True
+            job.wait(15000)
+        if hasattr(tw, "_dirty"):
+            tw._dirty = False
+    for tw in app.topLevelWidgets():
+        tw.close()
+        tw.deleteLater()
+    vw.WINDOWS.clear()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
 
 
 def wait(app, cond, timeout=60):

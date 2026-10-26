@@ -111,7 +111,7 @@ class PaletteFrame(QFrame):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        QTimer.singleShot(0, self._fit)
+        QTimer.singleShot(0, self, self._fit)
 
     def _fit(self):
         bs = self._buttons()
@@ -299,7 +299,7 @@ class OverlayHost(QWidget):
 
     def eventFilter(self, obj, ev):
         if ev.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Show, QEvent.Type.Hide):
-            QTimer.singleShot(0, self.relayout)
+            QTimer.singleShot(0, self, self.relayout)       # an self gebunden: entfaellt, wenn es geloescht ist
         return False
 
     def relayout(self):

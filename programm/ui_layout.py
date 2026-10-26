@@ -496,7 +496,7 @@ class LayoutMixin:
         """Leiste oben nach jeder Inhaltsaenderung (Schild, Ansichten, Seitenwahl) neu einpassen - gebuendelt."""
         if not getattr(self, "_fit_pending", False) and not getattr(self, "_fitting", False):
             self._fit_pending = True
-            QTimer.singleShot(0, self._fit_toolbar)
+            QTimer.singleShot(0, self, self._fit_toolbar)
 
     def _fit_toolbar(self):
         """Ist das Fenster zu schmal fuer die Leiste oben, verlieren die Knoepfe Schritt fuer Schritt ihren Text
@@ -1427,7 +1427,7 @@ class LayoutMixin:
         self._apply_mode_panels()
         self._update_mode_chip()
         self._update_enabled()
-        QTimer.singleShot(0, self._fit_toolbar)
+        QTimer.singleShot(0, self, self._fit_toolbar)
         self.canvas.show_legend = not on and self.act_legend.isChecked()
         self.act_legend.setEnabled(not on and self.canvas.mode in ("D", "O", "N", "R"))
         self.tabs.setTabVisible(self.tabs.indexOf(self.tab_regs), not on)

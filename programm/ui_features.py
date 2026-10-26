@@ -495,7 +495,7 @@ class FeaturesMixin:
         want = "A" if len(pts["A"]) == len(pts["B"]) else "B"
         if side != want:
             self.banner.show_msg(tr("Bitte jetzt in der {} Zeichnung klicken.").format('alten (linken)' if want == 'A' else 'neuen (rechten)'), "warn", timeout=6)
-            QTimer.singleShot(1500, self._align_hint)
+            QTimer.singleShot(1500, self, self._align_hint)
             return
         pts[side].append((x, y))
         self.canvas.update()
