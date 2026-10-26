@@ -19,6 +19,9 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   1100 px zu breit (→ letzter Schritt in `_fit_toolbar`: Ansichten als ein Knopf „Vergleich ▾“; Test meldet jetzt die
   Breite jedes Knopfs), Drucktest (Windows schreibt die Schrift im PDF als Umrisse → Textprüfung nur, wenn Text da),
   Menüreferenz (Ausgabe cp1252 → UTF-8 erzwungen). Danach nur Windows neu gestartet.
+- Lauf 40359482979 (Windows): Leiste und Drucktest jetzt grün; nur Menüreferenz wich ab (Windows-Befehl
+  „Desktop-Verknüpfung erstellen“) → Befehle mit Eigenschaft `platform_only` stehen nicht in der Referenz; `--check`
+  zeigt jetzt die ersten abweichenden Zeilen. Windows erneut gestartet.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):

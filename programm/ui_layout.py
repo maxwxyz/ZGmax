@@ -336,6 +336,7 @@ class LayoutMixin:
         self.act_logfile = A(tr("Logdatei öffnen"), self.open_logfile)
         self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
         self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
+        self.act_shortcut.setProperty("platform_only", True)   # nur Windows: nicht in der Menuereferenz
         self.act_about = A(tr("Über ZGmax"), self.show_about)
         self.act_fileassoc = A(tr("Dateitypen mit ZGmax öffnen …"), self.file_types,
                                tip=tr("Wählen, welche Dateien (PDF, PNG, DXF, Projekte …) per Doppelklick in ZGmax "

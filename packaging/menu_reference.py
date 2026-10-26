@@ -49,8 +49,8 @@ def emit():
         menu.aboutToShow.emit()                       # dynamische Menues fuellen
         rows, subs = [], []
         for a in menu.actions():
-            if a.isSeparator() or not a.text().strip():
-                continue
+            if a.isSeparator() or not a.text().strip() or a.property("platform_only"):
+                continue                              # nur auf einem System vorhanden: Referenz ueberall gleich
             name = a.text().replace("&", "")
             if a.menu() is not None:
                 subs.append((a.menu(), path + [name]))
@@ -107,6 +107,10 @@ def main():
         new = "\n" + build(lang) + "\n"
         if s[i:j] != new:
             stale.append(path)
+            if "--check" in sys.argv:                 # erste Abweichungen zeigen (z. B. andere Systeme im CI)
+                import difflib
+                diff = list(difflib.unified_diff(s[i:j].splitlines(), new.splitlines(), lineterm="", n=0))
+                print("\n".join(diff[:20]))
             if "--check" not in sys.argv:
                 open(path, "w", encoding="utf-8").write(s[:i] + new + s[j:])
     if "--check" in sys.argv and stale:
