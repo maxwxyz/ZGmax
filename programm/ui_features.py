@@ -35,7 +35,8 @@ class RegionPickDialog(QDialog):
         k = min((scr.width() - 160) / gray.shape[1], (scr.height() - 260) / gray.shape[0], 1.0)
         small = cv2.resize(gray, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
         self.k = k
-        self.img = QImage(np.ascontiguousarray(small).data, small.shape[1], small.shape[0], small.strides[0],
+        small = np.ascontiguousarray(small)               # Daten und Zeilenabstand vom selben Array
+        self.img = QImage(small.data, small.shape[1], small.shape[0], small.strides[0],
                           QImage.Format.Format_Grayscale8).copy()
         lay = QVBoxLayout(self)
         t = QLabel(hint)

@@ -1675,12 +1675,15 @@ def test_whats_new_after_update(app, win, monkeypatch):
     from PySide6.QtWidgets import QDialog
     shown = []
     monkeypatch.setattr(QDialog, "exec", lambda self: shown.append(self.windowTitle()) or 0)
-    win.settings.setValue("last_version", "1.0")
+    import version
+    win.settings.setValue("last_version", "0.1")              # aelter als jede echte Version
     win._announce_update()
     assert win.banner.isVisible() and win.banner.btn_action.isVisible()
     win.banner.btn_action.click()
-    assert shown and "2." in shown[0]
-    assert win.settings.value("last_version") != "1.0"
+    assert shown and version.VERSION in shown[0]
+    assert win.settings.value("last_version") == version.VERSION
+    # alte Nummerierung (2.x = heute 0.5-0.7) gilt als aelter als 0.8
+    assert version.version_key("2.2") < version.version_key("0.8")
 
 
 def test_view_bookmarks(app, win, pair, tmp_path, monkeypatch):
@@ -1717,7 +1720,8 @@ def test_print_area_to_scale(app, win, pair, tmp_path):
     vb = win._print_box("view")
     assert vb[2] - vb[0] <= win.canvas.width() / 2 + 2
     out = win.export_render("D", True, False)[100:400, 100:500]
-    img = QImage(np.ascontiguousarray(out).data, 400, 300, out.strides[0], QImage.Format.Format_BGR888).copy()
+    out = np.ascontiguousarray(out)                 # Zeilenabstand des zusammenhaengenden Arrays (sonst Lesen ausserhalb)
+    img = QImage(out.data, 400, 300, out.strides[0], QImage.Format.Format_BGR888).copy()
     pdf = str(tmp_path / "druck.pdf")
     pr = QPrinter(QPrinter.PrinterMode.HighResolution)
     pr.setOutputFormat(QPrinter.OutputFormat.PdfFormat)

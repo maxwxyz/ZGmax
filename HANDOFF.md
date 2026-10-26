@@ -11,7 +11,10 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Dateitypen auf Windows/Linux prüfen, GitHub-Builds grün,
   Actions-Versionen, Sichtprüfung am Mac), dann **1.0 erste stabile Version**. Ideen (noch nicht beschlossen): scharfer
   PDF-Zoom, Revisionstabelle prüfen, große Blätter, 3D-Modelle. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
-- Keine offenen Aktionen – Pause bis zur nächsten Eingabe.
+- GitHub-Lauf 40354924834 (alle Plattformen, mit Tests) schlug fehl: (1) `test_whats_new_after_update` setzte
+  „1.0“ als alte Version – seit der Umstellung auf 0.8 neuer → Test versionsunabhängig; (2) Windows-Absturz in
+  `test_print_area_to_scale`: Zeilenabstand vom nicht zusammenhängenden Array, Daten von der Kopie → Lesen außerhalb
+  (gleiches Muster in `ui_features.py` RegionPickDialog behoben). Lokal 106 grün in 1:28; Workflow neu gestartet.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):
