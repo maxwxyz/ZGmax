@@ -1,7 +1,11 @@
 {
  "unreleased": {
-  "de": [],
-  "en": []
+  "de": [
+   "Sehr schmales Fenster: die Ansichten werden zu einem Knopf „Vergleich ▾“ zusammengefasst, statt im Überlaufmenü zu verschwinden."
+  ],
+  "en": [
+   "Very narrow window: the views are combined into one “Compare ▾” button instead of disappearing into the overflow menu."
+  ]
  },
  "releases": [
   {

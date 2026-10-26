@@ -1133,6 +1133,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self.chk_highlight.blockSignals(False)
         fit_after = (m == "Y") != (self.canvas.mode == "Y")      # Nebeneinander halbiert die Breite
         self.canvas.mode = m
+        self._update_view_btn()
         self.act_legend.setEnabled(m in ("D", "O", "N", "R") and not self.view_only)   # Legende nur im Vergleich
         if fit_after:
             self.canvas.fit()

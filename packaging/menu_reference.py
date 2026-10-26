@@ -82,8 +82,11 @@ SKIP_MENUS = ("Zuletzt verwendet", "Recently used", "Fenster", "Window", "Aussch
 
 def build(lang):
     with tempfile.TemporaryDirectory() as tmp:
-        env = dict(os.environ, ZV_LANG=lang, ZV_DATA_DIR=tmp, QT_QPA_PLATFORM="offscreen")
-        r = subprocess.run([sys.executable, __file__, "--emit"], env=env, capture_output=True, text=True, check=True)
+        # UTF-8 erzwingen: unter Windows waere die Ausgabe sonst cp1252 und Zeichen wie "→" fuehren zum Abbruch
+        env = dict(os.environ, ZV_LANG=lang, ZV_DATA_DIR=tmp, QT_QPA_PLATFORM="offscreen", PYTHONIOENCODING="utf-8")
+        r = subprocess.run([sys.executable, __file__, "--emit"], env=env, capture_output=True, encoding="utf-8")
+        if r.returncode:
+            raise RuntimeError("menu_reference.py --emit ({}) fehlgeschlagen:\n{}".format(lang, r.stderr[-3000:]))
     lines, keep = [], True
     for ln in r.stdout.splitlines():                  # Menues mit wechselndem Inhalt (Dateilisten u. a.) auslassen
         if ln.startswith("<h3>"):

@@ -15,6 +15,10 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   „1.0“ als alte Version – seit der Umstellung auf 0.8 neuer → Test versionsunabhängig; (2) Windows-Absturz in
   `test_print_area_to_scale`: Zeilenabstand vom nicht zusammenhängenden Array, Daten von der Kopie → Lesen außerhalb
   (gleiches Muster in `ui_features.py` RegionPickDialog behoben). Lokal 106 grün in 1:28; Workflow neu gestartet.
+- Lauf 40357927325: **macOS und Linux grün**, Windows 3 Fehler (erstmals alle Tests auf Windows): Leiste oben bei
+  1100 px zu breit (→ letzter Schritt in `_fit_toolbar`: Ansichten als ein Knopf „Vergleich ▾“; Test meldet jetzt die
+  Breite jedes Knopfs), Drucktest (Windows schreibt die Schrift im PDF als Umrisse → Textprüfung nur, wenn Text da),
+  Menüreferenz (Ausgabe cp1252 → UTF-8 erzwungen). Danach nur Windows neu gestartet.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):

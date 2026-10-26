@@ -520,6 +520,8 @@ class LayoutMixin:
             segs = getattr(self, "seg_buttons", {})
             for b in segs.values():
                 b.setVisible(True)
+            if hasattr(self, "act_view_btn"):
+                self._set_views_compact(False)
             if self._chip_room != 120:
                 self._chip_room = 120
                 self._update_mode_chip()
@@ -534,8 +536,26 @@ class LayoutMixin:
                 if need() <= avail or key not in segs or segs[key].isChecked():
                     break
                 segs[key].setVisible(False)
+            if need() > avail and self.act_view_box.isVisible():  # reicht immer noch nicht: Ansichten als ein Knopf
+                self._set_views_compact(True)
         finally:
             self._fitting = False
+
+    def _set_views_compact(self, on):
+        """Ansichten als Umschalter (aus) oder als ein Knopf mit Menue (an), je nach Platz in der Leiste oben."""
+        views = self.payload is not None and not self.view_only
+        self._views_compact = on
+        self.act_view_box.setVisible(views and not on)
+        self.act_view_btn.setVisible(views and on)
+        if on:
+            self._update_view_btn()
+
+    def _update_view_btn(self):
+        if not hasattr(self, "view_btn"):
+            return
+        m = self.canvas.mode
+        label = next((lbl for key, lbl, *_ in VIEWS + MORE_VIEWS if key == m), m)
+        self.view_btn.setText(label + "  ▾")
 
     def _fill_save_menu(self, m):
         """Speichern-Knopf oben: nur, was im aktuellen Modus geht. Beim Ansehen fehlen Bericht, Änderungsliste und
@@ -636,6 +656,18 @@ class LayoutMixin:
             self.seg_buttons[key] = btn
         self.seg_buttons["D"].setChecked(True)
         self.act_view_box = tb.addWidget(self.view_box)
+        # Sehr schmales Fenster: statt der Umschalter ein Knopf "Vergleich ▾" mit allen Ansichten im Menue
+        self.view_btn = QToolButton()
+        self.view_btn.setObjectName("modechip")
+        self.view_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.view_btn.setToolTip(tr("Ansicht wählen (das Fenster ist zu schmal für alle Umschalter)"))
+        vm = QMenu(self.view_btn)
+        for key, *_ in VIEWS + MORE_VIEWS:
+            vm.addAction(self.mode_actions[key])
+        self.view_btn.setMenu(vm)
+        self.act_view_btn = tb.addWidget(self.view_btn)
+        self.act_view_btn.setVisible(False)
+        self._views_compact = False
         self.act_pause = QAction(tr("Pause"), self, checkable=True)
         self.act_pause.setToolTip(tr("Blinken anhalten/fortsetzen (auch Klick ins Bild; Leertaste wechselt von Hand)"))
         self.act_pause.toggled.connect(self._pause_blink)
@@ -1335,7 +1367,9 @@ class LayoutMixin:
         for a in (self.tb_zoom_actions if hasattr(self, "tb_zoom_actions") else ()):
             a.setVisible(has)                                          # Startseite: keine toten Knoepfe oben
         if hasattr(self, "act_view_box"):
-            self.act_view_box.setVisible(has and not self.view_only)
+            views = has and not self.view_only
+            self.act_view_box.setVisible(views and not self._views_compact)
+            self.act_view_btn.setVisible(views and self._views_compact)
             self.sep_views.setVisible(has and not self.view_only)
         self._update_review_enabled()
         self._update_mode_chip()
