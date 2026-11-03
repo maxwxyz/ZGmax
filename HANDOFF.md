@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-10-26, lokal) – alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-03, lokal) – alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -8,14 +8,27 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
 
 ## Plan und Roadmap
 - `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – erledigt: scharfer PDF-Zoom (`ui_canvas_sharp.py`),
-  Index und Revisionstabelle prüfen (`rep.revision_entries/revision_check`), Hinweis bei großen Blättern
-  (`dp.sheet_pixels/lighter_dpi`), Texterkennung einfädig (`rep._SafeOcr`, GCD braucht `setNumThreads(0)`),
-  Gerüst für echte Zeichnungen (`tests/real/`, `tests/test_real.py`, ein synthetisches Beispiel), Actions v7.
+  Index und Revisionstabelle prüfen, Hinweis bei großen Blättern, Texterkennung einfädig (`rep._SafeOcr`), Gerüst für
+  echte Zeichnungen (`tests/real/`), Actions v7, **Text finden vereint und schneller**, **Vergleich schneller**.
   Offen für 0.9: echte Fälle in `tests/real/` (Dateien vom Nutzer), Windows/Linux von Hand prüfen (Dateitypen),
-  Bestätigung des Absturz-Fixes mit der Originaldatei. Ideen: eine Instanz, Ordnervergleich als ein PDF,
-  Tastenkürzel belegen, macOS-Signatur. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
-- Nächste Aufgabe (Nutzer, 2026-11-03): OCR-Ergebnis der Textsuche für Text/Maße wiederverwenden, „Geänderten Text“
-  und „Geänderte Maße finden“ zusammenlegen (Knopf über der Tabelle), Tempo (Start, Laden, Vergleich), UI/UX-Review.
+  Bestätigung des Absturz-Fixes mit der Originaldatei. Neue Ideen: Texterkennung im Hintergrund nach dem Laden,
+  matchTemplate je Kachel parallel; dazu eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur.
+  Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
+
+## Erledigt 2026-11-03 (zweiter Commit)
+- **Geänderten Text finden** = eine Funktion (`MainWindow.run_text(then=None)`), `act_dims` entfernt, `run_dims` ruft
+  `run_text`. Liest Text und Maße (`rep.dim_changes`) in einem Durchgang. Knopf `btn_text` über der Liste nach „Feine
+  oder dicke Linien ausklammern“; Rest im Collapsible „Weitere Prüfungen“ (Gruppierung, Index/Revisionstabelle).
+- **OCR wiederverwenden:** `rep.ocr_box(..., known=...)` nimmt bekannte waagerechte Zeilen (Textsuche-Cache
+  `self.cache[self._text_key(side)[0]]`, auch vom durchsuchbaren PDF in `ui_edit.export_searchable_pdf`) und erkennt nur
+  noch senkrechte Texte (Drehung 1/3); `rep.text_diff(..., only_new=True)` überspringt Bereiche mit `r["text_read"]`.
+  `ocr_any_orientation(..., rots=)` gibt 7-Tupel mit Drehung zurück. Test `test_changed_text_reuses_read_text`.
+- **Tempo** (A1, 200 dpi: 2,2 s → 1,45 s): `dc.darkest_channel` (cv2 statt `min(axis=2)`), `dc.render` per Code +
+  `cv2.LUT` (8x), `suppress_edge_noise` mit Dilatation/Erosion statt distanceTransform (bitgleich), `build_pyramids`
+  parallel. Rest: `matchTemplate` in `refine_objects` (~0,6 s), Programmstart-Import ~0,3 s (ok).
+- Statusleiste nach dem Vergleich leer; Summenzeile ohne Tastenhinweis; Hinweis „Noch keine Liste“ nennt „Prüfen
+  starten“; Markierungssummen „Längen: 2 (Σ …) · Wolken: 1“.
+- Anleitungen DE/EN, Bilder, Menüreferenz, i18n, CHANGELOG, ROADMAP aktualisiert. 112 Tests grün, Mac-Bau + Selbsttest OK.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):

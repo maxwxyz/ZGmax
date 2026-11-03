@@ -151,39 +151,8 @@ class RegionsMixin:
         self.find_regs()
 
     def run_dims(self, then=None):
-        """Massaenderungen finden (PDF-Text oder Texterkennung). then(n): danach statt Filter "Masse" aufrufen."""
-        if not self.payload:
-            QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
-            return
-        pdf = bool(self.path_a and self.path_b and self.path_a.lower().endswith(".pdf")
-                   and self.path_b.lower().endswith(".pdf") and dv.available())
-        if not pdf and not self.ensure_ocr(tr("Ma\u00dfzahlen in Bildern zu lesen")):
-            return
-        pl, pa, pb = self.payload, self.path_a, self.path_b
-        na, nb, dpi = self.sp_pa.value(), self.sp_pb.value(), self.dpi_value()
-
-        def work(log):
-            self._ensure_regs(log)
-            wa, wb = (dv.pdf_words(pa, na), dv.pdf_words(pb, nb)) if pdf else ([], [])
-            if wa or wb:
-                log(tr("Ma\u00dfzahlen aus dem PDF-Text \u2026"))
-                dv.fill_text(pl["regs"], wa, wb, dpi, log)
-            elif rep.ocr_available():
-                log(tr("Ma\u00dfzahlen per OCR \u2026"))
-                rep.text_diff(pl["res"], pl["regs"], log)
-            else:
-                log(tr("Weder PDF-Text noch OCR verf\u00fcgbar."))
-            return rep.dim_changes(pl["regs"], log)
-
-        def done(n):
-            self._fill_table()
-            self._commit()
-            self._busy(False, tr("{} Maßänderungen gefunden").format(n))
-            if then is not None:
-                then(n)
-            elif n:
-                self.cb_filter.setCurrentIndex(self.cb_filter.findData("dims"))
-        self._run_job(work, tr("Vergleiche Ma\u00dfzahlen \u2026"), done)
+        """Massaenderungen: Teil von „Geaenderten Text finden“ (liest den Text einmal und vergleicht die Zahlen)."""
+        self.run_text(then=then)
 
     def find_regs(self):
         if not self.payload:
@@ -296,15 +265,14 @@ class RegionsMixin:
         if not pl:
             self.lbl_summary.setText(tr("Erst zwei Zeichnungen vergleichen."))
         elif not pl["regs_done"]:
-            self.lbl_summary.setText(tr("Noch keine Liste. \u201e\u00c4nderungen suchen\u201c nummeriert alle Unterschiede "
-                                     "und markiert sie im Bild. Das geschieht nur auf Wunsch, damit der Vergleich "
-                                     "schneller l\u00e4dt."))
+            self.lbl_summary.setText(tr("Noch keine Liste. \u201ePr\u00fcfen starten\u201c nummeriert alle Unterschiede "
+                                     "und markiert sie im Bild (nur auf Wunsch, damit der Vergleich schneller l\u00e4dt)."))
         else:
             cnt = {k: sum(1 for r in regs if r["typ"] == k) for k in rep.TYPE_LABEL}
             st = [rep.reg_status(r) for r in regs if r["typ"] != "verschoben"]   # nur Verschobenes: nichts zu pruefen
             done = tr("{} geprüft, {} abgelehnt, {} offen").format(st.count('ok'), st.count('abgelehnt'), st.count('offen'))
             nd = sum(1 for r in regs if r.get("dim"))
-            s = (tr("{} Bereiche: {} entfernt, {} neu, {} geändert, {} verschoben.\nPrüfung: {}  (N = nächste, G = geprüft, X = abgelehnt)").format(len(regs), cnt['entfernt'], cnt['neu'], cnt['geaendert'], cnt['verschoben'], done))
+            s = (tr("{} Bereiche: {} entfernt, {} neu, {} geändert, {} verschoben.\nPrüfung: {}").format(len(regs), cnt['entfernt'], cnt['neu'], cnt['geaendert'], cnt['verschoben'], done))
             if nd:
                 s += tr("\nDavon {} mit geändertem Maß (Filter „Maße“).").format(nd)
             if self.index_info:

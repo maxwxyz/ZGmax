@@ -227,6 +227,13 @@ def read_image(path, page=1, dpi=200, hidden_layers=()):
     return img
 
 
+def darkest_channel(img):
+    """Dunkelster Kanal je Pixel (BGR -> Grau); wie img.min(axis=2), aber mit OpenCV gut zehnmal schneller."""
+    if img.ndim == 2:
+        return img
+    return cv2.min(cv2.min(img[:, :, 0], img[:, :, 1]), img[:, :, 2])
+
+
 def load_ink(path, thr, page=1, dpi=200):
     """Laedt Bild und liefert Tinten-Maske (uint8, 255 = Linie/Text/Farbe).
 
@@ -234,7 +241,7 @@ def load_ink(path, thr, page=1, dpi=200):
     (schwarz, gelb, rot, blau, ...), zaehlt als Inhalt. Nur Weiss/Hellgrau ist Hintergrund.
     """
     img = read_image(path, page, dpi)
-    low = img.min(axis=2)
+    low = darkest_channel(img)
     return ((low < thr).astype(np.uint8)) * 255
 
 
@@ -570,12 +577,16 @@ def suppress_edge_noise(only_a, only_b, both, touch=1.5):
     gescannt wurden. Eigene Linien mit Abstand zur gemeinsamen Linie bleiben erhalten. Gibt die Pixelzahl zurueck."""
     if not (only_a.any() or only_b.any()) or not both.any():
         return 0
-    near = cv2.distanceTransform((~both).view(np.uint8), cv2.DIST_L2, 3) <= touch
+    if touch == 1.5:        # Abstand <= 1,5 = 8er-Nachbarschaft: Dilatation, gleich wie distanceTransform, 4x schneller
+        near = cv2.dilate(both.view(np.uint8), np.ones((3, 3), np.uint8)).view(bool)
+    else:
+        near = cv2.distanceTransform((~both).view(np.uint8), cv2.DIST_L2, 3) <= touch
+    cross = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
     removed = 0
     for m in (only_a, only_b):
         if not m.any():
             continue
-        thin = cv2.distanceTransform(m.view(np.uint8), cv2.DIST_L2, 3) <= 1.0
+        thin = ~cv2.erode(m.view(np.uint8), cross).view(bool)  # Randpixel (4er-Nachbar leer) = Abstand <= 1
         bad = m & thin & near
         removed += int(bad.sum())
         m &= ~bad
@@ -1016,13 +1027,21 @@ def add_legend(img, name_a, name_b, show_moved, info=""):
     return out
 
 
+_RENDER_LUT = np.full((256, 1, 3), 255, np.uint8)             # Code je Pixel -> Farbe (BGR)
+_RENDER_LUT[1] = (150, 150, 150)    # grau: in beiden
+_RENDER_LUT[2] = (0, 170, 0)        # gruen: gleicher Inhalt, nur verschoben
+_RENDER_LUT[3] = (0, 0, 255)        # rot: nur A
+_RENDER_LUT[4] = (255, 0, 0)        # blau: nur B (geht vor rot)
+
+
 def render(only_a, only_b, both, moved=None):
-    out = np.full(only_a.shape + (3,), 255, np.uint8)       # BGR
-    out[both] = (150, 150, 150)
+    """Vergleichsbild aus den Masken. Erst ein Code je Pixel, dann Farbtabelle (viel schneller als Maskenzuweisung)."""
+    u = lambda m: m.view(np.uint8) if m.dtype == bool else (m > 0).astype(np.uint8)  # noqa: E731
+    code = u(both).copy()
     if moved is not None:
-        out[both & moved] = (0, 170, 0)     # gruen: gleicher Inhalt, nur verschoben
-    out[only_a] = (0, 0, 255)       # rot
-    out[only_b] = (255, 0, 0)       # blau
-    return out
+        code += code & u(moved)
+    np.maximum(code, u(only_a) * np.uint8(3), out=code)
+    np.maximum(code, u(only_b) * np.uint8(4), out=code)
+    return cv2.LUT(cv2.merge((code, code, code)), _RENDER_LUT)
 
 

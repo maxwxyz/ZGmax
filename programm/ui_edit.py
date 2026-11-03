@@ -176,7 +176,7 @@ class EditMixin:
             for b in rep.redaction_boxes(self.anns):
                 ink[max(0, int(b[1]) - y):max(0, int(b[3]) + 1 - y), max(0, int(b[0]) - x):max(0, int(b[2]) + 1 - x)] = 0
         else:                                              # farbige Ansicht: alles Nicht-Weisse ist Linie
-            ink = ((part.min(axis=2) < 200) * 255).astype(np.uint8)
+            ink = ((dc.darkest_channel(part) < 200) * 255).astype(np.uint8)
         dlg = CopyDialog(self, np.ascontiguousarray(part), np.ascontiguousarray(ink), c.mm_px, self.dpi_value())
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.statusBar().showMessage(tr("Auswahl kopiert ({} × {} px)").format(w, h), 5000)
@@ -611,7 +611,7 @@ class AreaMixin:
             only_lines = self.chk_float_lines.isChecked()
         if only_lines:
             plain = self.render_region(bbox, False)
-            gray = plain.min(axis=2) if plain.ndim == 3 else plain
+            gray = dc.darkest_channel(plain)
             keep = de.line_mask(((gray < 200) * 255).astype(np.uint8), 1)
             if overlays:
                 keep |= (out != plain).any(axis=2) if out.ndim == 3 else out != plain
@@ -733,7 +733,7 @@ class AdjustDialog(QDialog):
         self.setWindowTitle(tr("Helligkeit und Kontrast"))
         k = min(1.0, 520 / img.shape[1], 340 / img.shape[0])     # Vorschau passt ganz ins Fenster
         self.small = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
-        gray = img if img.ndim == 2 else img.min(axis=2)
+        gray = dc.darkest_channel(img)
         self.auto = de.auto_levels(gray)
         lay = QVBoxLayout(self)
         self.preview = QLabel()
@@ -1359,9 +1359,12 @@ class OcrPdfMixin:
         page, dpi = (self.sp_pa if side == "A" else self.sp_pb).value(), self.dpi_value()
         img = self.export_render(side, self.act_overlays.isChecked(), legend=False)
         plain = self.export_render(side, False, legend=False)   # Texterkennung auf dem Bild in Ergebnislage
-        gray = plain.min(axis=2) if plain.ndim == 3 else plain
+        gray = dc.darkest_channel(plain)
 
         boxes = rep.redaction_boxes(self.anns)
+        # Gelesener Text gilt auch fuer Textsuche und „Geaenderten Text finden“, wenn das Bild der Datei entspricht
+        reuse = self.view_only and not getattr(self, "_edit_ver", 0) and self._frame_local() is None
+        key, ox, oy = self._text_key("A")[0], *self.origin
 
         def work(ctx):
             lines = dv.text_lines(path, page, dpi) if pdf else []
@@ -1369,13 +1372,18 @@ class OcrPdfMixin:
                 ctx.progress(0.02, tr("Texterkennung"))
                 lines = rep.ocr_lines(gray, progress=lambda f: ctx.progress(0.05 + 0.85 * f, tr("Texterkennung")),
                                       cancel=ctx.cancelled)
+            all_lines = list(lines)
             ctx.progress(0.92, tr("Schreibe PDF"))
             lines = [ln for ln in lines if not any(ln[0] < b[2] and ln[2] > b[0] and ln[1] < b[3] and ln[3] > b[1]
                                                    for b in boxes)]   # kein Text unter Schwaerzungen
-            return rep.build_searchable_pdf(out, img, lines, dpi, os.path.basename(path))
-        self._run_job(work, tr("Erzeuge durchsuchbares PDF …"),
-                      lambda n: self.banner.show_msg(tr("Gespeichert: {} ({} Textzeilen durchsuchbar)").format(out, n),
-                                                     "info", timeout=12))
+            return rep.build_searchable_pdf(out, img, lines, dpi, os.path.basename(path)), all_lines
+
+        def done(res):
+            n, all_lines = res
+            if reuse and key not in self.cache:
+                self.cache[key] = [(l[0] + ox, l[1] + oy, l[2] + ox, l[3] + oy, l[4]) for l in all_lines]
+            self.banner.show_msg(tr("Gespeichert: {} ({} Textzeilen durchsuchbar)").format(out, n), "info", timeout=12)
+        self._run_job(work, tr("Erzeuge durchsuchbares PDF …"), done)
 
 
 class VectorizeDialog(QDialog):

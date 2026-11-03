@@ -421,7 +421,7 @@ class PanelsMixin:
                          (tr("Konturen und Maße"), "geo"), (tr("offen"), "open")):
             self.cb_filter.addItem(txt, key)
         self.cb_filter.setToolTip(tr("„Änderungen“ = alles außer nur verschobenen Teilen. „nur geänderte Maße“ = "
-                                  "Änderungen mit geänderter Maßzahl (nach „Geänderte Maße finden“), „Konturen und Maße“ = nur "
+                                  "Änderungen mit geänderter Maßzahl (nach „Geänderten Text finden“), „Konturen und Maße“ = nur "
                                   "Änderungen an dicken Linien (Körperkanten) oder Maßen, „offen“ = noch "
                                   "nicht geprüft. Gilt für Liste, Bild und PDF."))
         self.cb_filter.currentIndexChanged.connect(self._fill_table)
@@ -452,6 +452,12 @@ class PanelsMixin:
         sw.body.addWidget(h)
         l1.addWidget(sw)
         self.sec_regw = sw
+        b = QPushButton(tr("Geänderten Text finden"))     # Text und Masse lesen: direkt ueber der Liste
+        b.setToolTip(self.act_text.toolTip())
+        b.clicked.connect(self.act_text.trigger)
+        self.act_text.changed.connect(lambda b=b: b.setEnabled(self.act_text.isEnabled()))
+        l1.addWidget(b)
+        self.btn_text = b
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Inhalt")])
         self.table.verticalHeader().hide()
@@ -482,7 +488,7 @@ class PanelsMixin:
         for key in ("Delete", "Backspace"):            # Mac: die Taste "delete" ist Backspace
             QShortcut(QKeySequence(key), self.table, activated=self._reg_delete).setContext(
                 Qt.ShortcutContext.WidgetShortcut)
-        more = Collapsible(tr("Text und Maße"), tr("Geänderten Text, geänderte Maße, Schriftfeld-Index"))
+        more = Collapsible(tr("Weitere Prüfungen"), tr("Gruppierung, Index und Revisionstabelle"))
         self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
                                  tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
         self.s_group.changed.connect(self._group_changed)
@@ -490,14 +496,14 @@ class PanelsMixin:
         self.group_timer = QTimer(self)
         self.group_timer.setSingleShot(True)
         self.group_timer.timeout.connect(self._regroup)
-        for a in (self.act_text, self.act_dims, self.act_index):
+        for a in (self.act_index,):
             b = QPushButton(a.text())
             b.setToolTip(a.toolTip())
             b.clicked.connect(a.trigger)
             more.body.addWidget(b)
-        h = QLabel(tr("Beide lesen den Text jeder Änderung (auch senkrechte Maße) und schreiben „alt → neu“ in die "
-                   "Liste. Danach bleiben in Liste und Bild nur Änderungen mit geändertem Text bzw. geänderter "
-                   "Maßzahl – feine Strichänderungen an der Geometrie werden ausgeblendet."))
+        h = QLabel(tr("„Geänderten Text finden“ (über der Liste) liest den Text jeder Änderung, auch senkrechte Maße, "
+                   "und schreibt „alt → neu“ in die Liste; „Zeigen: nur geänderte Maße“ zeigt danach nur geänderte "
+                   "Maßzahlen."))
         h.setObjectName("hint")
         h.setWordWrap(True)
         more.body.addWidget(h)

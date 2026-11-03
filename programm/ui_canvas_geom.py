@@ -24,26 +24,41 @@ def render_crop(res, y0, y1, x0, x1):
     return out
 
 
+def _chain(first, n):
+    """Pyramide aus einer Stufe 0: n weitere Stufen, jede halb so gross."""
+    out = [first]
+    for _ in range(n):
+        x = out[-1]
+        out.append(pool_ink(x.view(np.uint8) if x.dtype == bool else x))
+    return out
+
+
 def build_pyramids(res, min_side=300):
-    pa, pb = [res.a], [res.b]
-    poa, pob = [res.oa], [res.ob]                   # Stufe 0: bool-Masken direkt (spart 2 Byte je Pixel)
-    while min(pa[-1].shape) // 2 >= min_side:
-        pa.append(pool_ink(pa[-1]))
-        pb.append(pool_ink(pb[-1]))
-        poa.append(pool_ink(poa[-1].view(np.uint8) if poa[-1].dtype == bool else poa[-1]))
-        pob.append(pool_ink(pob[-1].view(np.uint8) if pob[-1].dtype == bool else pob[-1]))
+    """Bildstufen fuer schnelles Zoomen. A, B, ihre Abweichungen und die Vergleichsansicht entstehen parallel
+    (OpenCV gibt die Python-Sperre frei); bool-Masken als Stufe 0 direkt (spart 2 Byte je Pixel)."""
+    from concurrent.futures import ThreadPoolExecutor
+    n, side = 0, min(res.a.shape)
+    while side // 2 >= min_side:
+        side //= 2
+        n += 1
     h, w = res.a.shape
-    pd = [None]
-    if len(pa) > 1:
-        h2, w2 = h // 2, w // 2
-        l1 = np.empty((h2, w2, 3), np.uint8)
-        step = 1024
-        for y in range(0, h2 * 2, step):
-            y1 = min(h2 * 2, y + step)
-            l1[y // 2:y1 // 2] = pool_color(render_crop(res, y, y1, 0, w2 * 2))
-        pd.append(l1)
-        while len(pd) < len(pa):
-            pd.append(pool_color(pd[-1]))
+
+    def compare_view():
+        pd = [None]
+        if n:
+            h2, w2 = h // 2, w // 2
+            l1 = np.empty((h2, w2, 3), np.uint8)
+            step = 1024
+            for y in range(0, h2 * 2, step):
+                y1 = min(h2 * 2, y + step)
+                l1[y // 2:y1 // 2] = pool_color(render_crop(res, y, y1, 0, w2 * 2))
+            pd.append(l1)
+            while len(pd) < n + 1:
+                pd.append(pool_color(pd[-1]))
+        return pd
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        jobs = [ex.submit(_chain, m, n) for m in (res.a, res.b, res.oa, res.ob)] + [ex.submit(compare_view)]
+        pa, pb, poa, pob, pd = (j.result() for j in jobs)
     return pa, pb, pd, (poa, pob)
 
 

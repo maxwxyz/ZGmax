@@ -469,16 +469,19 @@ The choice is saved in the project.</p>
 
 <h2 id="texts">Text and dimensions</h2>
 <figure><a href="doc_img/en/masstabelle.png" target="_blank"><img src="doc_img/en/masstabelle.png" alt="Dimension changes as table (PDF): old → new, tolerance old/new, position and status." loading="lazy"></a><figcaption>Dimension changes as table (PDF): old → new, tolerance old/new, position and status.</figcaption></figure>
-<p>In the section <i>Text and dimensions</i> (right panel, expand it; also in the <i>Compare</i> menu):</p>
+<p>The <b>Find changed text</b> button sits in the right panel (tab <i>Changes</i>) directly above the list, below
+<i>Leave out fine or thick lines</i>; also in the <i>Compare</i> menu. The other checks are at the bottom in the section
+<i>More checks</i>.</p>
 <ul>
 <li><b>Find changed text</b>: reads the text of each change – also dimensions and vertical text in both reading
-directions – and writes “old text → new text” into the list. For PDFs with real text that text is used (exact, instant),
-otherwise text recognition (German and English, also Ø, ±, °). Afterwards list, drawing and PDF show <b>only changes with
-changed text</b> (filter <i>Show: changed text only</i>).</li>
-<li><b>Find changed dimensions</b>: reads the numbers of each change and compares them (also R and M values). Afterwards
-list, drawing and PDF show <b>only changes in which a dimension value changed</b> (“12.5 → 12.8”); small line changes in
-the geometry are hidden (filter <i>Show: changed dimensions only</i>). <i>Show: Changes</i> brings everything back.
-Vertically written dimensions are read in reading direction: first the value, then the tolerance.</li>
+directions – and writes “old text → new text” into the list. At the same time the dimension values are compared (also R
+and M values, “12.5 → 12.8”); vertically written dimensions are read in reading direction, first the value, then the
+tolerance. For PDFs with real text that text is used (exact, instant), otherwise text recognition (German and English,
+also Ø, ±, °). If the drawing has already been read – for the <b>text search</b> or when saving as a <b>searchable
+PDF</b> – that text is reused; only vertical text is then recognised again. Changes already read are skipped next time.
+Afterwards list, drawing and PDF show <b>only changes with changed text</b> (filter <i>Show: changed text only</i>);
+<i>Show: changed dimensions only</i> narrows it to changed dimension values, <i>Show: Changes</i> brings everything
+back.</li>
 <li><b>Dimension changes as table</b> (<i>Compare</i> or <i>Save</i>): all changed dimensions as PDF or CSV with number,
 type, <i>dimension old → new</i>, <i>tolerance old</i> and <i>new</i> (ISO fits such as H7/g6, ±0.1 or deviations
 +0.2/−0.1; a changed tolerance in red), position in mm, review status and comment – to pass on to suppliers and
@@ -488,7 +491,7 @@ drawing changed but the index stayed the same – or the other way round. In add
 index and date, e.g. “C 20.10.2026 slot added”; for PDF from the PDF text, otherwise by text recognition in the right part
 of the sheet): shows new entries in B and warns if the drawing has changed but no new entry was added, or if the newest
 entry does not match the index in the title block.</li>
-<li><b>Grouping</b>: how close differences must be to be combined into one entry.</li>
+<li><b>Grouping</b> (under <i>More checks</i>): how close differences must be to be combined into one entry.</li>
 </ul>
 <p>Text recognition is included in the app; when running with Python the program offers to install it on first use
 (about 60 MB, internet needed).</p>
@@ -781,8 +784,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Turn rejected into zones</td><td></td><td>Stop comparing changes marked as rejected</td></tr>
 <tr><td>Complete review …</td><td></td><td>Record reviewer, result (approved, with conditions, not approved) and remark: record with checksum in the project, optionally as PDF</td></tr>
 <tr><td>Review records …</td><td></td><td>View the completed reviews of this project and save them as PDF</td></tr>
-<tr><td>Find changed text</td><td></td><td>Reads the text in each change (Old → New, also dimensions) – from the PDF if it contains real text, otherwise by text recognition in any orientation (horizontal and vertical), German and English. Afterwards list and drawing only show changes whose text changed; “Show: Changes” brings everything back.</td></tr>
-<tr><td>Find changed dimensions</td><td></td><td>Reads the numbers of each change and then shows only the changes in which a dimension value changed (e.g. 12.5 → 12.8). Purely graphical changes are hidden; “Show: Changes” brings them back.</td></tr>
+<tr><td>Find changed text</td><td></td><td>Reads the text of every change (old → new) and compares the dimension values (e.g. 12.5 → 12.8) – from the PDF if it contains real text, otherwise by text recognition in any orientation. Text already read (also by the text search) is reused. Afterwards the list shows only changes with changed text; “Show: changed dimensions only” narrows it further, “Show: Changes” brings everything back.</td></tr>
 <tr><td>Dimension changes as table …</td><td></td><td>Changed dimensions with old → new, tolerance old/new, position and review status as PDF or CSV – e.g. for suppliers and production</td></tr>
 <tr><td>Check index and revision table</td><td></td><td>Reads the index (revision) in the title block and the revision table of old and new: warns if the drawing changed but the index or revision table was not updated – or if the newest entry does not match the index.</td></tr>
 <tr><td>Compare all pages</td><td></td><td></td></tr>

@@ -298,14 +298,14 @@ def find_text(lines, query):
     return sorted(out, key=lambda r: (round(r[1] / 20), r[0]))
 
 
-def ocr_any_orientation(gray, min_score=0.55):
+def ocr_any_orientation(gray, min_score=0.55, rots=(0, 1, 3)):
     """Text in jeder Lage: waagerecht, senkrecht von unten nach oben (typische Bemassung) und von oben nach unten.
     Jede Fundstelle wird in der Drehung gelesen, in der sie am sichersten erkannt wird.
-    Rueckgabe [(x0, y0, x1, y1, text, score), ...] im Koordinatensystem von gray, in Lesereihenfolge."""
+    Rueckgabe [(x0, y0, x1, y1, text, score, Drehung), ...] im Koordinatensystem von gray, in Lesereihenfolge."""
     H, W = gray.shape[:2]
     eng = _ocr_engine()
     found = []
-    for rot in (0, 1, 3):                          # 0 Grad, 90 Grad links (unten->oben), 90 Grad rechts
+    for rot in rots:                               # 0 Grad, 90 Grad links (unten->oben), 90 Grad rechts
         img = np.ascontiguousarray(np.rot90(gray, rot)) if rot else gray
         res, _ = eng(img)
         for box, text, score in res or []:
@@ -335,10 +335,19 @@ def ocr_any_orientation(gray, min_score=0.55):
     parts = [((k[0] + k[2]) / 2, (k[1] + k[3]) / 2,
               (k[3] - k[1]) if k[6] == 0 else (k[2] - k[0]), i, dirs[k[6]]) for i, k in enumerate(keep)]
     order = dv.reading_order(parts)
-    return [keep[i][:6] for i in order]
+    return [keep[i] for i in order]                  # (x0, y0, x1, y1, text, score, Drehung 0/1/3)
 
 
-def ocr_box(ink, box, pad=15, max_area=6_000_000):
+def lines_in_box(lines, box, pad=15):
+    """Bereits gelesene Textzeilen [(x0, y0, x1, y1, text)], deren Mitte im Rechteck (x, y, w, h) liegt."""
+    x, y, w, h = box
+    return [ln for ln in lines if x - pad <= (ln[0] + ln[2]) / 2 <= x + w + pad
+            and y - pad <= (ln[1] + ln[3]) / 2 <= y + h + pad]
+
+
+def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None):
+    """Text in einer Aenderung, in jeder Lage. known: schon gelesene waagerechte Zeilen dieser Stelle (z. B. von der
+    Textsuche) - dann werden nur noch die senkrechten Lagen erkannt (schneller)."""
     x, y, w, h = box
     H, W = ink.shape
     x0, y0, x1, y1 = max(0, x - pad), max(0, y - pad), min(W, x + w + pad), min(H, y + h + pad)
@@ -346,7 +355,17 @@ def ocr_box(ink, box, pad=15, max_area=6_000_000):
         return tr("(Bereich zu gross)")
     crop = 255 - ink[y0:y1, x0:x1]
     crop = cv2.copyMakeBorder(crop, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
-    return " ".join(t[4] for t in ocr_any_orientation(crop)).strip()
+    if known is None:
+        return " ".join(t[4] for t in ocr_any_orientation(crop)).strip()
+    import diffvector as dv
+    vert = ocr_any_orientation(crop, rots=(1, 3))
+    parts = [((l[0] + l[2]) / 2, (l[1] + l[3]) / 2, l[3] - l[1], l[4], (1.0, 0.0)) for l in known]
+    dirs = {1: (0.0, -1.0), 3: (0.0, 1.0)}
+    for v in vert:                                     # senkrecht: nur echte senkrechte Fundstellen
+        if v[3] - v[1] > v[2] - v[0]:
+            cx, cy = (v[0] + v[2]) / 2 + x0 - 20, (v[1] + v[3]) / 2 + y0 - 20
+            parts.append((cx, cy, v[2] - v[0], v[4], dirs[v[6]]))
+    return " ".join(dv.reading_order(parts)).strip()
 
 
 def text_changed(r):
@@ -359,14 +378,18 @@ def _norm(s):
     return re.sub(r"\s+", " ", s).strip().casefold()
 
 
-def text_diff(res, regs, log=print, max_regions=300):
-    """Liest Text in geaenderten Bereichen aus A und B und traegt ihn in die Liste ein."""
-    todo = [r for r in regs if r["typ"] != "verschoben"][:max_regions]
+def text_diff(res, regs, log=print, max_regions=300, lines=(None, None), only_new=False):
+    """Liest Text in geaenderten Bereichen aus A und B und traegt ihn in die Liste ein.
+    lines = (Zeilen A, Zeilen B) schon gelesener Text in Ergebnis-Koordinaten (z. B. von der Textsuche) oder None.
+    only_new: Aenderungen, deren Text schon gelesen ist, nicht noch einmal lesen."""
+    todo = [r for r in regs if r["typ"] != "verschoben" and not (only_new and r.get("text_read"))][:max_regions]
     log(tr("Textvergleich (OCR) fuer {} Bereiche ...").format(len(todo)))
+    la, lb = lines
     for i, r in enumerate(todo, 1):
         box = (r["x"], r["y"], r["w"], r["h"])
-        r["text_a"] = ocr_box(res.a, box)
-        r["text_b"] = ocr_box(res.b, box)
+        r["text_a"] = ocr_box(res.a, box, known=lines_in_box(la, box) if la is not None else None)
+        r["text_b"] = ocr_box(res.b, box, known=lines_in_box(lb, box) if lb is not None else None)
+        r["text_read"] = True                          # schon gelesen: beim naechsten Mal nicht noch einmal
         if i % 20 == 0:
             log(f"  {i}/{len(todo)}")
     n = sum(1 for r in todo if _norm(r["text_a"]) != _norm(r["text_b"]))
@@ -818,9 +841,9 @@ def measure_summary(anns, mm, fmt=None):
         counts[a.get("type")] = counts.get(a.get("type"), 0) + 1
     parts = []
     if nl:
-        parts.append(tr("{} Längen: Σ {} {}").format(nl, _num(L * f, dec), unit))
+        parts.append(tr("Längen: {} (Σ {} {})").format(nl, _num(L * f, dec), unit))
     if na:
-        parts.append(tr("{} Flächen: Σ {} {}²").format(na, _num(A * f * f, max(0, dec - 1)), unit))
+        parts.append(tr("Flächen: {} (Σ {} {}²)").format(na, _num(A * f * f, max(0, dec - 1)), unit))
     return parts, counts
 
 

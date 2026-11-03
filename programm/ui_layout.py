@@ -316,15 +316,12 @@ class LayoutMixin:
         self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
                                tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
         self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
-        self.act_text = A(tr("Geänderten Text finden"), self.run_text,
-                          tip=tr("Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten "
-                                 "Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), "
-                                 "deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich "
-                                 "geändert hat; „Zeigen: Änderungen“ holt alles zurück."))
-        self.act_dims = A(tr("Geänderte Maße finden"), self.run_dims,
-                          tip=tr("Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich "
-                                 "eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden "
-                                 "ausgeblendet; „Zeigen: Änderungen“ holt sie zurück."))
+        self.act_text = A(tr("Geänderten Text finden"), lambda: self.run_text(),
+                          tip=tr("Liest den Text jeder Änderung (Alt → Neu) und vergleicht die Maßzahlen (z. B. "
+                                 "12,5 → 12,8) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in "
+                                 "jeder Lage. Schon gelesener Text (auch von der Textsuche) wird wiederverwendet. "
+                                 "Danach zeigt die Liste nur Änderungen mit geändertem Text; „Zeigen: nur geänderte "
+                                 "Maße“ engt weiter ein, „Zeigen: Änderungen“ holt alles zurück."))
         self.act_index = A(tr("Index und Revisionstabelle prüfen"), self.run_index,
                            tip=tr("Liest den Index (Revision) im Schriftfeld und die Revisionstabelle von Alt und Neu: "
                                   "warnt, wenn die Zeichnung geändert, aber Index oder Revisionstabelle nicht "
@@ -469,7 +466,7 @@ class LayoutMixin:
                   self.act_review_finish, self.act_protocols):
             m.addSeparator() if a is None else m.addAction(a)
         m.addSeparator()
-        for a in (self.act_text, self.act_dims, self.act_dim_report, self.act_index):
+        for a in (self.act_text, self.act_dim_report, self.act_index):
             m.addAction(a)
         m.addSeparator()
         for a in (self.act_pages, self.act_batch, self.act_revisions):
@@ -1456,7 +1453,7 @@ class LayoutMixin:
         pl = self.payload
         regs = bool(pl and not self.view_only and pl.get("regs"))
         for a in (self.act_next, self.act_prev, self.act_ok, self.act_reject, self.act_comment, self.act_rej_zones,
-                  self.act_text, self.act_dims, self.act_renumber):
+                  self.act_text, self.act_renumber):
             a.setEnabled(regs)
 
     def _set_view_only(self, on):

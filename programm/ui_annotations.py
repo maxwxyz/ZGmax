@@ -517,7 +517,7 @@ class AnnotationsMixin:
         parts, counts = rep.measure_summary(anns, self.canvas.mm_px)
         names = {"number": tr("Nummern"), "cloud": tr("Wolken"), "rect": tr("Rahmen"), "text": tr("Texte"),
                  "arrow": tr("Pfeile"), "approval": tr("Stempel")}
-        cnt = [f"{n} {names[t]}" for t, n in counts.items() if t in names]
+        cnt = [f"{names[t]}: {n}" for t, n in counts.items() if t in names]
         txt = " · ".join(parts + cnt)
         self.lbl_sums.setText((tr("Auswahl: ") if len(sel) > 1 else tr("Gesamt: ")) + txt if txt else "")
         self.lbl_sums.setVisible(bool(txt))

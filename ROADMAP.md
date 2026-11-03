@@ -17,7 +17,8 @@ nicht beschlossen) · ⚠️ bekanntes Problem
 0.8  26.10.2026  ✅ Bereiche zuordnen ohne Verzerren, Modus-Schild mit Zuschnitt, Über-Fenster, Werkzeuggröße
                     bleibt, Tests in 1,5 min
 0.9  in Arbeit    🔧 Scharfer PDF-Zoom ✅, Revisionstabelle prüfen ✅, große Blätter ✅, Absturz „Schriftfeld lesen“
-                    abgesichert ✅, Gerüst für echte Zeichnungen ✅ (echte Fälle fehlen noch), GitHub-Builds grün ✅;
+                    abgesichert ✅, Gerüst für echte Zeichnungen ✅ (echte Fälle fehlen noch), GitHub-Builds grün ✅,
+                    Text finden vereint + schneller ✅, Vergleich schneller ✅;
                     offen: Windows/Linux von Hand prüfen
 1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
 später           💡 3D-Modelle (eigenes Werkzeug)
@@ -38,6 +39,8 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
 | Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | ✅ |
 | Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
+| Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden und Schriftfeld | Kein Warten beim ersten Gebrauch | 💡 |
+| Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | 💡 |
 | Ordnervergleich als ein gemeinsamer PDF-Bericht | Ein Dokument statt eines je Paar | 💡 |
 | Tastenkürzel selbst belegen | Gewohnte Kürzel aus anderen Programmen | 💡 |
 | macOS-App mit Entwicklerzertifikat signieren | Keine Warnung beim ersten Start | 💡 (braucht Apple-Entwicklerkonto) |
@@ -75,7 +78,8 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Nummerierte Änderungsliste, geprüft/abgelehnt/Kommentar, Suchfeld, Filter „Zeigen“ (0.5–0.7)
 - ✅ „Prüfen starten“ als geführter Rundgang, Löschen mit Entf/Rücktaste, Rückgängig (0.7)
 - ✅ Prüfung abschließen mit Prüfprotokoll und Prüfsumme (0.7)
-- ✅ Geänderten Text und geänderte Maße finden (PDF-Text oder Texterkennung, auch senkrecht) (0.6–0.7)
+- ✅ Geänderten Text finden – Text und Maße in einem Durchgang (PDF-Text oder Texterkennung, auch senkrecht) (0.6–0.7);
+  eine Funktion über der Liste, nutzt schon gelesenen Text (Textsuche, durchsuchbares PDF) (0.9)
 - ✅ Maßänderungen als Tabelle mit Toleranzen (PDF/CSV) (0.7)
 - ✅ Index und Revisionstabelle prüfen: neuer Eintrag, fehlender Eintrag, Index passt nicht (0.9)
 
@@ -101,6 +105,8 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 ### Technik und Betrieb
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
+- ✅ Vergleich etwa ein Drittel schneller (Kanal-Minimum, Vergleichsbild und Kantensaum mit OpenCV, Bildstufen
+  parallel) (0.9)
 - ✅ Automatische Tests in 1,5 min, Stresstest über alle Befehle; Gerüst für Tests mit echten Zeichnungen (0.8–0.9)
 - ✅ Anleitungen Deutsch/Englisch mit Bildern und Menüreferenz, Änderungshistorie „Was ist neu“ (0.6–0.7)
 - ✅ Open Source unter AGPL-3.0 (0.6)

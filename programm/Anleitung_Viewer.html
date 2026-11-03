@@ -492,17 +492,19 @@ auch nicht verglichen. Die Auswahl wird im Projekt gespeichert.</p>
 
 <h2 id="texte">Text und Maße</h2>
 <figure><a href="doc_img/de/masstabelle.png" target="_blank"><img src="doc_img/de/masstabelle.png" alt="Maßänderungen als Tabelle (PDF): alt → neu, Toleranz alt/neu, Position und Status." loading="lazy"></a><figcaption>Maßänderungen als Tabelle (PDF): alt → neu, Toleranz alt/neu, Position und Status.</figcaption></figure>
-<p>Im Bereich <i>Text und Maße</i> (rechte Leiste, aufklappen; auch im Menü <i>Vergleichen</i>):</p>
+<p>Der Knopf <b>Geänderten Text finden</b> steht in der rechten Leiste (Reiter <i>Änderungen</i>) direkt über der
+Liste, unter <i>Feine oder dicke Linien ausklammern</i>; auch im Menü <i>Vergleichen</i>. Die übrigen Prüfungen stehen
+unten im Bereich <i>Weitere Prüfungen</i>.</p>
 <ul>
 <li><b>Geänderten Text finden</b>: liest den Text jeder Änderung – auch Maße und senkrecht stehende Texte, in beiden
-Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Bei PDF mit echtem Text wird dieser genommen
-(exakt, sofort), sonst die Texterkennung (deutsch und englisch, auch Ø, ±, °). Danach stehen in Liste, Bild und PDF
-<b>nur noch Änderungen mit geändertem Text</b> (Filter <i>Zeigen: nur geänderter Text</i>).</li>
-<li><b>Geänderte Maße finden</b>: liest die Zahlen jeder Änderung und vergleicht sie (auch R- und M-Angaben). Danach
-stehen in Liste, Bild und PDF <b>nur noch Änderungen, bei denen sich eine Maßzahl geändert hat</b> („12,5 → 12,8“);
-feine Strichänderungen an der Geometrie werden ausgeblendet (Filter <i>Zeigen: nur geänderte Maße</i>).
-<i>Zeigen: Änderungen</i> holt alles zurück. Senkrecht geschriebene Maße werden in Leserichtung gelesen: erst die
-Maßzahl, dann die Toleranz.</li>
+Leserichtungen – und schreibt „alter Text → neuer Text“ in die Liste. Gleichzeitig werden die Maßzahlen verglichen
+(auch R- und M-Angaben, „12,5 → 12,8“); senkrecht geschriebene Maße werden in Leserichtung gelesen, erst die Maßzahl,
+dann die Toleranz. Bei PDF mit echtem Text wird dieser genommen (exakt, sofort), sonst die Texterkennung (deutsch und
+englisch, auch Ø, ±, °). Wurde die Zeichnung schon gelesen – für die <b>Textsuche</b> oder beim Speichern als
+<b>durchsuchbares PDF</b> –, wird dieser Text wiederverwendet; neu erkannt werden dann nur noch senkrechte Texte.
+Bereits gelesene Änderungen werden beim nächsten Mal übersprungen. Danach stehen in Liste, Bild und PDF <b>nur noch
+Änderungen mit geändertem Text</b> (Filter <i>Zeigen: nur geänderter Text</i>); <i>Zeigen: nur geänderte Maße</i> engt
+auf geänderte Maßzahlen ein, <i>Zeigen: Änderungen</i> holt alles zurück.</li>
 <li><b>Maßänderungen als Tabelle</b> (<i>Vergleichen</i> oder <i>Speichern</i>): alle geänderten Maße als PDF oder CSV
 mit Nummer, Art, <i>Maß alt → neu</i>, <i>Toleranz alt</i> und <i>neu</i> (ISO-Passung wie H7/g6, ±0,1 oder Abmaße
 +0,2/−0,1; geänderte Toleranz rot), Position in mm, Prüfstatus und Kommentar – zum Weitergeben an Lieferanten und
@@ -512,7 +514,8 @@ die Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.
 mit Index und Datum, z. B. „C 20.10.2026 Nut ergänzt“; bei PDF aus dem PDF-Text, sonst per Texterkennung im rechten
 Teil des Blatts): zeigt neue Einträge in B und warnt, wenn die Zeichnung geändert ist, aber kein neuer Eintrag
 dazugekommen ist, oder wenn der neueste Eintrag nicht zum Index im Schriftfeld passt.</li>
-<li><b>Gruppierung</b>: wie nah beieinander liegende Unterschiede zu einem Eintrag zusammengefasst werden.</li>
+<li><b>Gruppierung</b> (unter <i>Weitere Prüfungen</i>): wie nah beieinander liegende Unterschiede zu einem Eintrag
+zusammengefasst werden.</li>
 </ul>
 <p>Die Texterkennung ist in der App enthalten; im Python-Betrieb bietet das Programm beim ersten Gebrauch die
 Installation an (ca. 60 MB, Internet nötig).</p>
@@ -811,8 +814,7 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <tr><td>Abgelehnte als Zonen übernehmen</td><td></td><td>Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen</td></tr>
 <tr><td>Prüfung abschließen …</td><td></td><td>Prüfer, Ergebnis (freigegeben, mit Auflagen, nicht freigegeben) und Bemerkung festhalten: Protokoll mit Prüfsumme im Projekt, auf Wunsch als PDF</td></tr>
 <tr><td>Prüfprotokolle …</td><td></td><td>Abgeschlossene Prüfungen dieses Projekts ansehen und als PDF speichern</td></tr>
-<tr><td>Geänderten Text finden</td><td></td><td>Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich geändert hat; „Zeigen: Änderungen“ holt alles zurück.</td></tr>
-<tr><td>Geänderte Maße finden</td><td></td><td>Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden ausgeblendet; „Zeigen: Änderungen“ holt sie zurück.</td></tr>
+<tr><td>Geänderten Text finden</td><td></td><td>Liest den Text jeder Änderung (Alt → Neu) und vergleicht die Maßzahlen (z. B. 12,5 → 12,8) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in jeder Lage. Schon gelesener Text (auch von der Textsuche) wird wiederverwendet. Danach zeigt die Liste nur Änderungen mit geändertem Text; „Zeigen: nur geänderte Maße“ engt weiter ein, „Zeigen: Änderungen“ holt alles zurück.</td></tr>
 <tr><td>Maßänderungen als Tabelle …</td><td></td><td>Geänderte Maße mit alt → neu, Toleranz alt/neu, Position und Prüfstatus als PDF oder CSV – z. B. für Lieferanten und Fertigung</td></tr>
 <tr><td>Index und Revisionstabelle prüfen</td><td></td><td>Liest den Index (Revision) im Schriftfeld und die Revisionstabelle von Alt und Neu: warnt, wenn die Zeichnung geändert, aber Index oder Revisionstabelle nicht nachgezogen wurden – oder der neueste Eintrag nicht zum Index passt.</td></tr>
 <tr><td>Alle Seiten vergleichen</td><td></td><td></td></tr>

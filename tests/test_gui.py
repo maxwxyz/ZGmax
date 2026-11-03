@@ -1001,7 +1001,7 @@ def test_measure_chain_sums_export_and_page_scale(app, win, pair, tmp_path):
     ms = [a for a in win.anns if a["type"] == "measure"]
     assert len(ms) == 2 and ms[0]["group"] == ms[1]["group"]          # Masskette: zwei verbundene Masse
     mm = c.mm_px
-    assert "2 Längen" in win.lbl_sums.text() and f"{350 * mm:.2f}" in win.lbl_sums.text()
+    assert "Längen: 2" in win.lbl_sums.text() and f"{350 * mm:.2f}" in win.lbl_sums.text()
     out = str(tmp_path / "m.csv")
     win._save_dialog = lambda *a: out
     win.export_measures()
@@ -2048,3 +2048,30 @@ def test_ocr_wrapper_single_threaded(monkeypatch):
     before = cv2.getNumThreads()
     eng(np.zeros((40, 80), np.uint8)[:, ::2])                     # nicht zusammenhaengend
     assert seen == [(1, True)] and cv2.getNumThreads() == before
+
+
+def test_changed_text_reuses_read_text(app, win, pair, monkeypatch):
+    """„Geaenderten Text finden“ liest Text und Masse in einem Schritt; Text der Textsuche wird wiederverwendet (nur
+    senkrechte Lagen werden noch erkannt), schon gelesene Aenderungen werden nicht erneut gelesen."""
+    import diffreport as rep
+    monkeypatch.setattr(rep, "ocr_available", lambda: True)
+    monkeypatch.setattr(win, "ensure_ocr", lambda *a: True)
+    calls = []
+    monkeypatch.setattr(rep, "ocr_any_orientation", lambda img, min_score=0.55, rots=(0, 1, 3): calls.append(rots) or [])
+    compare(app, win, *pair)
+    win.find_regs()
+    wait(app, lambda: not win.running)
+    regs = [r for r in win.payload["regs"] if r["typ"] != "verschoben"]
+    r0 = regs[0]
+    for side, txt in (("A", "Ø20 H7"), ("B", "Ø22 H7")):        # wie von der Textsuche gelesen (Datei-Koordinaten)
+        ox, oy = win.origin
+        win.cache[win._text_key(side)[0]] = [(r0["x"] + ox, r0["y"] + oy, r0["x"] + ox + 30, r0["y"] + oy + 10, txt)]
+    win.run_text()
+    wait(app, lambda: not win.running)
+    assert calls and all(c == (1, 3) for c in calls)            # waagerecht kam aus dem Cache
+    assert r0["text_a"] == "Ø20 H7" and r0["text_b"] == "Ø22 H7" and r0["dim"]
+    n = len(calls)
+    win.run_text()                                              # zweiter Lauf: nichts mehr zu lesen
+    wait(app, lambda: not win.running)
+    assert len(calls) == n
+    assert not hasattr(win, "act_dims")

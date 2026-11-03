@@ -294,8 +294,11 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             if self.path_a and self.path_b:
                 self.start_compute()
 
-    def run_text(self):
-        """Text jeder Aenderung (A -> B): exakt aus dem PDF, wenn beide echten Text haben, sonst Texterkennung."""
+    def run_text(self, then=None):
+        """Geaenderten Text finden: Text jeder Aenderung (A -> B) lesen und die Masszahlen vergleichen - exakt aus dem
+        PDF, wenn beide echten Text haben, sonst per Texterkennung. Schon Gelesenes wird wiederverwendet: Aenderungen
+        mit gelesenem Text, und der Text der Textsuche bzw. des durchsuchbaren PDF (waagerechte Zeilen; nur senkrechte
+        Masse werden dann noch einzeln erkannt). then(n_masse): danach statt des Listenfilters aufrufen."""
         if not self.payload or self.view_only:
             QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return
@@ -305,21 +308,35 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         wa, wb = (dv.pdf_words(pa, na), dv.pdf_words(pb, nb)) if pdf else ([], [])
         if not (wa or wb) and not self.ensure_ocr(tr("Text zu lesen")):
             return
+        known = (None, None)
+        if not (wa or wb):                               # Text der Textsuche / des durchsuchbaren PDF wiederverwenden
+            got = []
+            for side in ("A", "B"):
+                lines = self.cache.get(self._text_key(side)[0])
+                got.append(None if lines is None else [(*self._to_view(side, ln[:4]), ln[4]) for ln in lines])
+            known = tuple(got)
 
         def work(log):
             self._ensure_regs(log)
             if wa or wb:
                 log(tr("Text aus dem PDF (exakt) …"))
                 dv.fill_text(pl["regs"], wa, wb, dpi, log)
-                return tr("PDF-Text")
-            rep.text_diff(pl["res"], pl["regs"], log)
-            return tr("Texterkennung")
-        def done(how):
+                how = tr("PDF-Text")
+            else:
+                rep.text_diff(pl["res"], pl["regs"], log, lines=known, only_new=True)
+                how = tr("Texterkennung")
+            return how, rep.dim_changes(pl["regs"], log)
+
+        def done(res):
+            how, n_dims = res
             n = sum(1 for r in pl["regs"] if rep.text_changed(r))
             self._fill_table()
             self._commit()
-            self._busy(False, tr("Text gelesen ({}): {} Änderungen mit geändertem Text").format(how, n))
-            if n:
+            self._busy(False, tr("Text gelesen ({}): {} Änderungen mit geändertem Text, davon {} mit geändertem "
+                                 "Maß").format(how, n, n_dims))
+            if then is not None:
+                then(n_dims)
+            elif n:
                 self.cb_filter.setCurrentIndex(self.cb_filter.findData("text"))
         self._run_job(work, tr("Lese Text \u2026"), done)
 
@@ -923,7 +940,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
                 self.cache["c_" + path] = None
             else:
                 img = dc.read_image(path, page, dpi, hidden)
-                self.cache["g_" + path] = img.min(axis=2)            # dunkelster Kanal (wie load_gray)
+                self.cache["g_" + path] = dc.darkest_channel(img)    # dunkelster Kanal (wie load_gray)
                 self.cache["c_" + path] = img if dp.is_colored(img) else None   # Farbfassung nur, wenn farbig
             self.cache["gk_" + path] = key
         return self.cache["g_" + path]
@@ -1130,8 +1147,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if snap.get("single"):
             self._busy(False, tr("Bereit. Mausrad = zoomen, Ziehen = verschieben, rechte Maustaste ziehen = Zoom-Rahmen."))
         else:
-            # nur in der Statusleiste: ein Hinweisbalken nach jedem Vergleich stoert (Farben erklaert die Legende)
-            self._busy(False, tr("Fertig. „Prüfen starten“ (rechte Leiste, Strg+Umschalt+R) führt durch alle Änderungen."))
+            self._busy(False, "")                      # Ergebnis steht in Liste und Legende, kein Hinweistext noetig
         if self.pending or (self.chk_live.isChecked() and getattr(self, "_params_dirty", False)):
             self.start_compute()
 

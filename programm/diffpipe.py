@@ -66,7 +66,7 @@ class Result:
 def load_gray(path, page=1, dpi=200):
     """Dunkelster RGB-Kanal als uint8-Bild (255 = weiss). Schwelle wird spaeter angewandt."""
     img = dc.read_image(path, page, dpi)
-    return img.min(axis=2)
+    return dc.darkest_channel(img)
 
 
 def ink_from_gray(gray, thr, flatten=False):
