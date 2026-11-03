@@ -397,14 +397,31 @@ class RegionsMixin:
         self._run_job(work, tr("Installiere Texterkennung \u2026"), done)
         return False
 
+    def _pdf_text_lines(self):
+        """Textzeilen beider PDFs in Bildpixeln der aktuellen Ansicht (A: Ausschnitt abgezogen) - oder None."""
+        if not (self.path_a and self.path_b and self.path_a.lower().endswith(".pdf")
+                and self.path_b.lower().endswith(".pdf") and dv.available()):
+            return None
+        z = self.dpi_value() / 72.0
+        ox, oy = (self.crop[0], self.crop[1]) if self.crop else (0, 0)
+        out = []
+        for path, page in ((self.path_a, self.sp_pa.value()), (self.path_b, self.sp_pb.value())):
+            try:
+                words = dv.pdf_words(path, page)
+            except Exception:                                  # noqa: BLE001 - dann eben Texterkennung
+                return None
+            out.append([(w[0] * z - ox, w[1] * z - oy, w[2] * z - ox, w[3] * z - oy, w[4]) for w in words])
+        return tuple(out) if all(out) else None
+
     def run_index(self):
         if not self._need_ocr():
             return
         pl = self.payload
+        lines = self._pdf_text_lines()                  # Revisionstabelle: PDF-Text, wenn beide Dateien welchen haben
 
         def work(log):
             self._ensure_regs(log)
-            return rep.index_check(pl["res"], pl["regs"], log)
+            return rep.index_check(pl["res"], pl["regs"], log, lines=lines)
 
         def ok(info):
             self.index_info = info

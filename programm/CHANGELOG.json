@@ -1,10 +1,18 @@
 {
  "unreleased": {
   "de": [
-   "Sehr schmales Fenster: die Ansichten werden zu einem Knopf „Vergleich ▾“ zusammengefasst, statt im Überlaufmenü zu verschwinden."
+   "Sehr schmales Fenster: die Ansichten werden zu einem Knopf „Vergleich ▾“ zusammengefasst, statt im Überlaufmenü zu verschwinden.",
+   "PDF und SVG bleiben beim starken Hineinzoomen scharf: der sichtbare Ausschnitt wird direkt aus der Datei gezeichnet.",
+   "„Index und Revisionstabelle prüfen“: erkennt neue Einträge der Revisionstabelle und warnt, wenn ein Eintrag fehlt oder nicht zum Index passt.",
+   "Sehr große Blätter (z. B. A0 mit 400 dpi): Hinweis beim Öffnen, bei PDF/SVG/DXF mit Knopf für eine geringere Auflösung.",
+   "Texterkennung abgesichert gegen einen Absturz auf Macs mit Apple-Chip („Schriftfeld lesen“)."
   ],
   "en": [
-   "Very narrow window: the views are combined into one “Compare ▾” button instead of disappearing into the overflow menu."
+   "Very narrow window: the views are combined into one “Compare ▾” button instead of disappearing into the overflow menu.",
+   "PDF and SVG stay sharp when zooming in strongly: the visible section is drawn directly from the file.",
+   "“Check index and revision table”: finds new entries in the revision table and warns if an entry is missing or does not match the index.",
+   "Very large sheets (e.g. A0 at 400 dpi): note when opening, for PDF/SVG/DXF with a button for a lower resolution.",
+   "Text recognition safeguarded against a crash on Macs with Apple chips (“Read title block”)."
   ]
  },
  "releases": [

@@ -325,9 +325,10 @@ class LayoutMixin:
                           tip=tr("Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich "
                                  "eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden "
                                  "ausgeblendet; „Zeigen: Änderungen“ holt sie zurück."))
-        self.act_index = A(tr("Schriftfeld-Index prüfen"), self.run_index,
-                           tip=tr("Liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die "
-                                  "Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt."))
+        self.act_index = A(tr("Index und Revisionstabelle prüfen"), self.run_index,
+                           tip=tr("Liest den Index (Revision) im Schriftfeld und die Revisionstabelle von Alt und Neu: "
+                                  "warnt, wenn die Zeichnung geändert, aber Index oder Revisionstabelle nicht "
+                                  "nachgezogen wurden – oder der neueste Eintrag nicht zum Index passt."))
 
         self.act_help = A(tr("Anleitung"), self.open_help, "F1", ico="help")
         self.act_help_cli = A(tr("Anleitung Kommandozeile"),

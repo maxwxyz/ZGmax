@@ -32,9 +32,9 @@ jobs:
       AKTIV: ${{ inputs.plattform == 'alle' || inputs.plattform == matrix.name }}
       ZGMAX_OHNE_TESTS: ${{ inputs.tests && '0' || '1' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.AKTIV == 'true'
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: env.AKTIV == 'true'
         with:
           python-version: "3.14"    # wie beim Entwickeln getestet
@@ -62,7 +62,7 @@ jobs:
             macOS)   dist/ZGmax.app/Contents/MacOS/ZGmax --selbsttest ;;
             Linux)   dist/ZGmax/ZGmax --selbsttest ;;
           esac
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: env.AKTIV == 'true'
         with:
           name: ZGmax-${{ matrix.name }}

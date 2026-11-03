@@ -1976,3 +1976,75 @@ def test_no_banner_after_compare(app, win, pair):
         app.processEvents()
     assert not win.banner.isVisible()
     assert "Prüfen starten" in win.statusBar().currentMessage() or win.act_review_start.isEnabled()
+
+
+def test_sharp_pdf_zoom(app, win, tmp_path):
+    """Stark gezoomte PDF: sichtbarer Ausschnitt wird aus der Datei scharf nachgerendert (nur Anzeige)."""
+    import time
+    import pymupdf
+    pa = str(tmp_path / "t.pdf")
+    d = pymupdf.open()
+    pg = d.new_page(width=842, height=595)
+    for i in range(8):
+        pg.insert_text((60, 80 + i * 12), f"Hinweis {i}: Bohrung 6 H7", fontsize=6)
+    d.save(pa)
+    d.close()
+    win._set_file("A", pa)
+    wait(app, lambda: win.payload is not None and not win.running)
+    c = win.canvas
+    assert c.vector_src and c.vector_src["path"] == pa
+    c.zoom_to(6.0, 300, 220)
+    t0 = time.time()
+    while c._sharp is None and time.time() - t0 < 5:
+        app.processEvents()
+        time.sleep(0.02)
+    assert c._sharp is not None and c._sharp["S"] >= 1.25
+    assert c._sharp["img"].width() > 1000                          # Bildschirmaufloesung, nicht die 200 dpi
+    win.cb_lines.setCurrentIndex(win.cb_lines.findData("contours"))
+    win.start_compute()
+    wait(app, lambda: not win.running)
+    assert c.vector_src is None                                    # Linienfilter: Bild weicht von der PDF ab
+
+
+def test_revision_table_check():
+    """Revisionstabelle: neuer Eintrag erkannt, fehlender Eintrag und unpassender Index als Warnung."""
+    import diffreport as rep
+    A = [(100, 50, 140, 60, "A"), (150, 50, 230, 60, "01.02.2025"), (240, 50, 400, 60, "Erstausgabe"),
+         (100, 70, 140, 80, "B"), (150, 70, 230, 80, "10.06.2026 Bohrung geändert")]
+    B = A + [(100, 90, 140, 100, "C"), (150, 90, 230, 100, "20.10.2026"), (240, 90, 400, 100, "Nut ergänzt")]
+    ea, eb = rep.revision_entries(A), rep.revision_entries(B)
+    assert [e["index"] for e in ea] == ["A", "B"] and eb[-1]["text"] == "Nut ergänzt"
+    new, notes = rep.revision_check(ea, eb, "B", "C", 3)
+    assert [e["index"] for e in new] == ["C"] and not any("WARNUNG" in n for n in notes)
+    new, notes = rep.revision_check(ea, ea, "B", "B", 3)            # geaendert, aber kein neuer Eintrag
+    assert not new and any("keinen neuen Eintrag" in n for n in notes)
+    new, notes = rep.revision_check(ea, eb, "B", "B", 3)            # neuester Eintrag C, Schriftfeld noch B
+    assert any("passt nicht" in n for n in notes)
+    assert rep.revision_check([], [], "?", "?", 0)[1] == [rep.tr("Keine Revisionstabelle erkannt.")]
+
+
+def test_big_sheet_hint(app, win, tmp_path):
+    """Sehr grosses Blatt: Hinweis mit Knopf fuer geringere Aufloesung (PDF), Neuberechnung mit dieser dpi."""
+    import pymupdf
+    import diffpipe as dp
+    pa = str(tmp_path / "a0.pdf")
+    d = pymupdf.open()
+    d.new_page(width=3370, height=2384).insert_text((100, 100), "A0", fontsize=40)
+    d.save(pa)
+    d.close()
+    assert dp.lighter_dpi(pa, 1, 400) == 200 and dp.lighter_dpi(pa, 1, 200) is None
+    win.sp_dpi.setValue(400)
+    win._set_file("A", pa, compute=False)
+    assert win.banner.isVisible() and win.banner.btn_action.isVisible() and "200" in win.banner.btn_action.text()
+
+
+def test_ocr_wrapper_single_threaded(monkeypatch):
+    """Texterkennung laeuft mit einfaedigem OpenCV und zusammenhaengendem Bild (Absturz auf Apple-Chip)."""
+    import cv2
+    import numpy as np
+    import diffreport as rep
+    seen = []
+    eng = rep._SafeOcr(lambda img: (seen.append((cv2.getNumThreads(), img.flags["C_CONTIGUOUS"])), (None, 0))[1])
+    before = cv2.getNumThreads()
+    eng(np.zeros((40, 80), np.uint8)[:, ::2])                     # nicht zusammenhaengend
+    assert seen == [(1, True)] and cv2.getNumThreads() == before

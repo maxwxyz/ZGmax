@@ -375,8 +375,34 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.canvas.reset_rotation()
         self._setup_pages(which, path)
         self.page_regs, self._regs_stale = {}, True       # Pruefstand je Seite gilt nur fuer dieses Zeichnungspaar
+        self._big_sheet_hint(which, path)
         if compute:
             self.start_compute()
+
+    def _big_sheet_hint(self, which, path):
+        """Sehr grosses Blatt (z. B. A0 mit 400-600 dpi): Hinweis, bei PDF/SVG/DXF mit Knopf fuer geringere Aufloesung."""
+        page = (self.sp_pa if which == "A" else self.sp_pb).value()
+        dpi = self.dpi_value()
+        wh = dp.sheet_pixels(path, page, dpi)
+        if not wh or wh[0] * wh[1] <= dp.BIG_SHEET_PX:
+            return
+        mp = wh[0] * wh[1] / 1e6
+        if dp.is_vector(path):
+            d = dp.lighter_dpi(path, page, dpi)
+            if d:
+                self.banner.show_msg(tr("Großes Blatt: {} × {} px ({:.0f} Mio. Pixel bei {} dpi) – das braucht viel "
+                                        "Speicher und Zeit. Mit {} dpi geht es deutlich schneller.").format(
+                                     wh[0], wh[1], mp, dpi, d), "warn",
+                                     action=(tr("Mit {} dpi").format(d), lambda d=d: self._use_dpi(d)), timeout=30)
+                return
+        self.banner.show_msg(tr("Großes Bild: {} × {} px ({:.0f} Mio. Pixel) – Vergleichen und Anzeigen brauchen "
+                                "viel Speicher und Zeit. Beim Ansehen lässt es sich unter Bearbeiten → Zeichnung "
+                                "bearbeiten → Bildgröße verkleinern.").format(wh[0], wh[1], mp), "warn", timeout=30)
+
+    def _use_dpi(self, d):
+        """Knopf im Hinweis: geringere Aufloesung uebernehmen und gleich neu laden (auch beim Ansehen)."""
+        self.sp_dpi.setValue(int(d))
+        self.start_compute()
 
     def _detect_dpi(self, path):
         if dp.is_vector(path):
@@ -1018,6 +1044,18 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return None
         return de.geometry_width_from_strokes(hist)
 
+    def _sharp_source(self, snap):
+        """Quelle fuer scharfes Nachrendern beim starken Hineinzoomen (Zeichnung A bzw. die Einzelzeichnung), nur wenn
+        das angezeigte Bild genau die PDF/SVG-Seite ist: keine Bearbeitung, kein Linienfilter, kein Vektorfilter."""
+        path = snap.get("pa")
+        if not path or os.path.splitext(path)[1].lower() not in dc.VECTOR_EXT or snap.get("vec"):
+            return None
+        if getattr(self, "_edit_ver", 0) or snap["params"].lines != "all" or snap.get("vf") not in (None, (None, None)):
+            return None
+        crop = snap.get("crop") if not snap.get("single") else None
+        return dict(path=path, page=snap["page_a"], dpi=snap["dpi"], off=(crop[0], crop[1]) if crop else (0, 0),
+                    hidden=tuple(snap.get("pdf_off", ())))
+
     def _scan_hint(self):
         """Einmal je Datei beim Ansehen einer Rasterzeichnung: schiefer Scan oder Foto eines Blatts? Dann Hinweis mit
         Knopf zur passenden Aufbereitung (nichts geschieht von selbst)."""
@@ -1049,6 +1087,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._set_origin(snap["origin"])           # Anmerkungen/Zonen haften am Blatt, nicht am Ausschnitt
         self.canvas.set_data(r["res"], r["pa"], r["pb"], r["pd"], r["regs"], keep_view=keep, po=r["po"],
                              pc=r.get("pc"))
+        self.canvas.set_vector_src(self._sharp_source(snap))
         self._crop_seen = snap["crop"]
         self.canvas.zones = self._local_zones()
         self._refresh_frame()

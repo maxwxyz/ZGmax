@@ -144,7 +144,10 @@ Zeile um.</td></tr>
 Ausschnitt/Zonen, Vektordaten, erweiterte Optionen und das Protokoll ein.</p>
 
 <h2 id="navigation">Zoomen und Verschieben</h2>
-<p>Das geht <b>immer</b>, egal welches Werkzeug gewählt ist:</p>
+<p>Das geht <b>immer</b>, egal welches Werkzeug gewählt ist. <b>PDF und SVG bleiben beim starken Hineinzoomen
+scharf:</b> nach einem kurzen Moment wird der sichtbare Ausschnitt direkt aus der Datei in Bildschirmauflösung
+gezeichnet (Einzelansicht und Ansicht <i>Alt</i>, Originalfarben, ohne Bearbeitung und Linienfilter). Vergleich und
+Messen arbeiten weiter mit der eingestellten Auflösung.</p>
 <table>
 <tr><th>Aktion</th><th>Wirkung</th></tr>
 <tr><td>Mausrad</td><td>Zoomen an der Mausposition</td></tr>
@@ -504,8 +507,11 @@ Maßzahl, dann die Toleranz.</li>
 mit Nummer, Art, <i>Maß alt → neu</i>, <i>Toleranz alt</i> und <i>neu</i> (ISO-Passung wie H7/g6, ±0,1 oder Abmaße
 +0,2/−0,1; geänderte Toleranz rot), Position in mm, Prüfstatus und Kommentar – zum Weitergeben an Lieferanten und
 Fertigung. Sind die Maße noch nicht gelesen, geschieht das vorher automatisch.</li>
-<li><b>Schriftfeld-Index prüfen</b>: liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die
-Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</li>
+<li><b>Index und Revisionstabelle prüfen</b>: liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn
+die Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt. Dazu die <b>Revisionstabelle</b> (Zeilen
+mit Index und Datum, z. B. „C 20.10.2026 Nut ergänzt“; bei PDF aus dem PDF-Text, sonst per Texterkennung im rechten
+Teil des Blatts): zeigt neue Einträge in B und warnt, wenn die Zeichnung geändert ist, aber kein neuer Eintrag
+dazugekommen ist, oder wenn der neueste Eintrag nicht zum Index im Schriftfeld passt.</li>
 <li><b>Gruppierung</b>: wie nah beieinander liegende Unterschiede zu einem Eintrag zusammengefasst werden.</li>
 </ul>
 <p>Die Texterkennung ist in der App enthalten; im Python-Betrieb bietet das Programm beim ersten Gebrauch die
@@ -569,7 +575,9 @@ ziehen = verschieben, Ecken = Größe ändern, <kbd>Entf</kbd> oder Rechtsklick 
 schwarz auf weiß aus dem Modellbereich gezeichnet (Einheit mm; sehr große Zeichnungen werden auf A0 verkleinert).
 DWG kann nicht direkt gelesen werden – im CAD-Programm als DXF oder PDF speichern. Durchsichtige Flächen (PNG mit
 Transparenz) gelten als weißes Papier; 16-Bit- und CMYK-Bilder werden umgerechnet. Bei einer <b>passwortgeschützten
-PDF</b> fragt das Programm nach dem Passwort; es gilt bis zum Beenden und wird nicht gespeichert.</p>
+PDF</b> fragt das Programm nach dem Passwort; es gilt bis zum Beenden und wird nicht gespeichert. <b>Sehr große
+Blätter</b> (über etwa 150 Mio. Pixel, z. B. A0 mit 400 dpi) brauchen viel Speicher und Zeit: das Programm meldet das
+beim Öffnen und bietet bei PDF/SVG/DXF einen Knopf für eine geringere Auflösung an (z. B. 200 dpi).</p>
 <p><b>Vektordaten (PDF):</b> Enthalten beide PDF echte Linien und Text (aus dem CAD-System), erscheint links der Bereich
 <i>Vektordaten (PDF)</i>: <b>Vektorvergleich</b> vergleicht Linie gegen Linie und Text gegen Text, ohne Rastern
 (Toleranz Standard 0,05 mm; beide Zeichnungen brauchen denselben Blattursprung). <b>Ebenen und Farben …</b> wählt aus,
@@ -806,7 +814,7 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <tr><td>Geänderten Text finden</td><td></td><td>Liest den Text in jeder Änderung (Alt → Neu, auch Maße) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in jeder Lage (waagerecht und senkrecht), deutsch und englisch. Danach zeigen Liste und Bild nur Änderungen, deren Text sich geändert hat; „Zeigen: Änderungen“ holt alles zurück.</td></tr>
 <tr><td>Geänderte Maße finden</td><td></td><td>Liest die Zahlen jeder Änderung und zeigt danach nur die Änderungen, bei denen sich eine Maßzahl geändert hat (z. B. 12,5 → 12,8). Rein grafische Änderungen werden ausgeblendet; „Zeigen: Änderungen“ holt sie zurück.</td></tr>
 <tr><td>Maßänderungen als Tabelle …</td><td></td><td>Geänderte Maße mit alt → neu, Toleranz alt/neu, Position und Prüfstatus als PDF oder CSV – z. B. für Lieferanten und Fertigung</td></tr>
-<tr><td>Schriftfeld-Index prüfen</td><td></td><td>Liest den Index (Revision) im Schriftfeld von Alt und Neu und warnt, wenn die Zeichnung geändert, der Index aber gleich geblieben ist – oder umgekehrt.</td></tr>
+<tr><td>Index und Revisionstabelle prüfen</td><td></td><td>Liest den Index (Revision) im Schriftfeld und die Revisionstabelle von Alt und Neu: warnt, wenn die Zeichnung geändert, aber Index oder Revisionstabelle nicht nachgezogen wurden – oder der neueste Eintrag nicht zum Index passt.</td></tr>
 <tr><td>Alle Seiten vergleichen</td><td></td><td></td></tr>
 <tr><td>Ordner vergleichen (Stapel) …</td><td></td><td>Alle passenden Zeichnungen zweier Ordner vergleichen, z. B. eigenen Stand gegen Lieferanten-Datensatz: Übersicht, welche Blätter geändert sind oder fehlen</td></tr>
 <tr><td>Revisionen vergleichen (A → B → C) …</td><td></td><td></td></tr>

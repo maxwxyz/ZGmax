@@ -311,6 +311,8 @@ class CanvasPaintMixin:
             qi = QImage(img.data, dw, dh, img.strides[0], QImage.Format.Format_BGR888)
             qi.setDevicePixelRatio(dpr)
             p.drawImage(QPointF(px, py), qi)
+            if m != "S":
+                self._sharp_paint(p, m, S, (x0, y0, x1, y1))          # PDF stark gezoomt: scharf nachrendern
 
     def _paint_legend(self, p):
         if not self.show_legend:

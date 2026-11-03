@@ -123,6 +123,39 @@ def page_count(path):
     return 1
 
 
+BIG_SHEET_PX = 150_000_000      # ab hier (z. B. A0 mit 400 dpi) wird es langsam und braucht viel Speicher
+TARGET_PX = 60_000_000          # Vorschlag fuer eine geringere Aufloesung (A0 mit etwa 250 dpi)
+
+
+def sheet_pixels(path, page=1, dpi=200):
+    """Geschaetzte Pixelzahl (Breite, Hoehe) einer Seite beim Laden, ohne sie zu rendern bzw. zu dekodieren."""
+    import os
+    ext = os.path.splitext(path)[1].lower()
+    try:
+        if ext in dc.VECTOR_EXT:
+            from pdfopen import open_doc
+            with open_doc(path) as d:
+                r = d[max(0, min(page, d.page_count) - 1)].rect
+                return int(r.width * dpi / 72), int(r.height * dpi / 72)
+        if ext in dc.CAD_EXT:                                  # DXF wird auf hoechstens A0 gezeichnet
+            return int(1189 * dpi / 25.4), int(841 * dpi / 25.4)
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = None
+        with Image.open(path) as im:
+            return im.size
+    except Exception:                                          # noqa: BLE001 - nur fuer einen Hinweis
+        return None
+
+
+def lighter_dpi(path, page, dpi):
+    """Kleinere dpi (in 50er-Schritten, mindestens 100), mit der die Seite etwa TARGET_PX hat - oder None."""
+    wh = sheet_pixels(path, page, dpi)
+    if not wh or wh[0] * wh[1] <= BIG_SHEET_PX:
+        return None
+    d = int(round(dpi * (TARGET_PX / (wh[0] * wh[1])) ** 0.5 / 50)) * 50
+    return max(100, d) if d < dpi else None
+
+
 def file_dpi(path):
     """Aufloesung (dpi) aus den Bilddaten, sonst None. Werte <= 96 gelten als nicht aussagekraeftig."""
     if is_vector(path):

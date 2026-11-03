@@ -7,24 +7,15 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` geprüft (2026-10-26): Stand 0.8 vollständig unter „Umgesetzt“, GitHub-Builds aller Systeme grün ✅;
-  als Nächstes **0.9 Stabilität** (echte Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Dateitypen auf
-  Windows/Linux prüfen,
-  Actions-Versionen, Sichtprüfung am Mac), dann **1.0 erste stabile Version**. Ideen (noch nicht beschlossen): scharfer
-  PDF-Zoom, Revisionstabelle prüfen, große Blätter, 3D-Modelle. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
-- GitHub-Lauf 40354924834 (alle Plattformen, mit Tests) schlug fehl: (1) `test_whats_new_after_update` setzte
-  „1.0“ als alte Version – seit der Umstellung auf 0.8 neuer → Test versionsunabhängig; (2) Windows-Absturz in
-  `test_print_area_to_scale`: Zeilenabstand vom nicht zusammenhängenden Array, Daten von der Kopie → Lesen außerhalb
-  (gleiches Muster in `ui_features.py` RegionPickDialog behoben). Lokal 106 grün in 1:28; Workflow neu gestartet.
-- Lauf 40357927325: **macOS und Linux grün**, Windows 3 Fehler (erstmals alle Tests auf Windows): Leiste oben bei
-  1100 px zu breit (→ letzter Schritt in `_fit_toolbar`: Ansichten als ein Knopf „Vergleich ▾“; Test meldet jetzt die
-  Breite jedes Knopfs), Drucktest (Windows schreibt die Schrift im PDF als Umrisse → Textprüfung nur, wenn Text da),
-  Menüreferenz (Ausgabe cp1252 → UTF-8 erzwungen). Danach nur Windows neu gestartet.
-- Lauf 40359482979 (Windows): Leiste und Drucktest jetzt grün; nur Menüreferenz wich ab (Windows-Befehl
-  „Desktop-Verknüpfung erstellen“) → Befehle mit Eigenschaft `platform_only` stehen nicht in der Referenz; `--check`
-  zeigt jetzt die ersten abweichenden Zeilen. Windows erneut gestartet.
-- **Lauf 40360683020: Windows grün.** Damit sind alle drei Systeme mit allen Tests auf GitHub grün (macOS/Linux im Lauf
-  40357927325). ROADMAP.md entsprechend abgehakt.
+- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – erledigt: scharfer PDF-Zoom (`ui_canvas_sharp.py`),
+  Index und Revisionstabelle prüfen (`rep.revision_entries/revision_check`), Hinweis bei großen Blättern
+  (`dp.sheet_pixels/lighter_dpi`), Texterkennung einfädig (`rep._SafeOcr`, GCD braucht `setNumThreads(0)`),
+  Gerüst für echte Zeichnungen (`tests/real/`, `tests/test_real.py`, ein synthetisches Beispiel), Actions v7.
+  Offen für 0.9: echte Fälle in `tests/real/` (Dateien vom Nutzer), Windows/Linux von Hand prüfen (Dateitypen),
+  Bestätigung des Absturz-Fixes mit der Originaldatei. Ideen: eine Instanz, Ordnervergleich als ein PDF,
+  Tastenkürzel belegen, macOS-Signatur. Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
+- Nächste Aufgabe (Nutzer, 2026-11-03): OCR-Ergebnis der Textsuche für Text/Maße wiederverwenden, „Geänderten Text“
+  und „Geänderte Maße finden“ zusammenlegen (Knopf über der Tabelle), Tempo (Start, Laden, Vergleich), UI/UX-Review.
 
 ## Inhalt des Branches
 1. **Funktionen** (Commit 523eb3e):

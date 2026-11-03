@@ -187,6 +187,30 @@ def ocr_available():
 OCR_DIR = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "ocr")
 
 
+class _SafeOcr:
+    """Huelle um die Texterkennung gegen einen Absturz auf Macs mit Apple-Chip: OpenCVs beschleunigtes, mehrfaediges
+    cv2.resize (KleidiCV) las waehrend der Texterkennung ueber das Bild hinaus (SIGSEGV). Darum je Aufruf: Bild
+    zusammenhaengend, nur eine Erkennung zur Zeit und OpenCV dabei einfaedig (der parallele Pfad wird nicht benutzt)."""
+    import threading
+    _lock = threading.Lock()
+
+    def __init__(self, eng):
+        self.eng = eng
+
+    def __getattr__(self, name):
+        return getattr(self.eng, name)
+
+    def __call__(self, img, *a, **k):
+        img = np.ascontiguousarray(img)
+        with self._lock:
+            n = cv2.getNumThreads()
+            cv2.setNumThreads(0)               # 0 = ohne Parallelisierung (das Mac-Backend GCD ignoriert die 1)
+            try:
+                return self.eng(img, *a, **k)
+            finally:
+                cv2.setNumThreads(n if n > 1 else -1)
+
+
 def _ocr_engine():
     """Texterkennung: Fundstellen wie im Paket rapidocr-onnxruntime, Zeichen mit dem lateinischen Modell
     (Deutsch, Englisch, Umlaute, ß, °, ±), falls vorhanden; sonst das mitgelieferte Modell des Pakets."""
@@ -202,7 +226,7 @@ def _ocr_engine():
             from rapidocr_onnxruntime.ch_ppocr_v3_rec import TextRecognizer
             eng.text_recognizer = TextRecognizer({"use_cuda": False, "model_path": model, "keys_path": keys,
                                                   "rec_img_shape": [3, 48, 320], "rec_batch_num": 6})
-        _engine = eng
+        _engine = _SafeOcr(eng)
     return _engine
 
 
@@ -402,11 +426,14 @@ def _index_candidates(items):
     return sorted(set(c), key=lambda s: (len(s), s))
 
 
-def index_check(res, regs, log=print, box=(0.45, 0.70)):
-    """Vergleicht das Schriftfeld (rechts unten) per OCR und prueft die Aenderungen auf Plausibilitaet.
+def index_check(res, regs, log=print, box=(0.45, 0.70), lines=None):
+    """Vergleicht das Schriftfeld (rechts unten) per OCR und prueft die Aenderungen auf Plausibilitaet; dazu die
+    Revisionstabelle (neuer Eintrag? passt er zum Index?).
 
     box = (Anteil Breite, Anteil Hoehe) des Schriftfeld-Bereichs rechts unten.
     Der Index wird heuristisch bestimmt (hoechster Grossbuchstaben-Index im Bereich).
+    lines = (Textzeilen A, Textzeilen B) [(x0, y0, x1, y1, text)] in Bildpixeln fuer die Revisionstabelle, z. B. aus
+    dem PDF-Text; ohne: Texterkennung im rechten Teil des Blatts.
     """
     H, W = res.a.shape
     x0, y0 = int(W * (1 - box[0])), int(H * box[1])
@@ -425,14 +452,74 @@ def index_check(res, regs, log=print, box=(0.45, 0.70)):
         notes.append(tr("WARNUNG: Zeichnung ist geaendert, aber der Index im Schriftfeld ist gleich geblieben."))
     if idx_a != idx_b and n_chg == 0:
         notes.append(tr("WARNUNG: Index hat sich geaendert, aber im Zeichnungsfeld wurden keine Aenderungen gefunden."))
-    if not notes:
+    if lines is None:                                  # Revisionstabelle: rechter Teil des Blatts per Texterkennung
+        xr = int(W * 0.5)
+        log(tr("  Lese Revisionstabelle (Texterkennung) …"))
+        lines = tuple([(l[0] + xr, l[1], l[2] + xr, l[3], l[4]) for l in ocr_lines(255 - ink[:, xr:])]
+                      for ink in (res.a, res.b))
+    ea, eb = revision_entries(lines[0]), revision_entries(lines[1])
+    new_rev, rev_notes = revision_check(ea, eb, idx_a, idx_b, n_chg)
+    if not notes and not any(n.startswith("WARNUNG") for n in rev_notes):
         notes.append(tr("Index und erkannte Aenderungen sind plausibel."))
-    out = dict(index_a=idx_a, index_b=idx_b, only_a=only_a, only_b=only_b, changes=n_chg, notes=notes)
+    notes += rev_notes
+    out = dict(index_a=idx_a, index_b=idx_b, only_a=only_a, only_b=only_b, changes=n_chg, notes=notes,
+               revisions_a=ea, revisions_b=eb, revisions_new=new_rev)
     log(tr("Index-Abgleich: A={}  B={}  Aenderungen ausserhalb Schriftfeld: {}").format(idx_a, idx_b, n_chg))
     for n in notes:
         log("  " + n)
     log(tr("  Schriftfeld: {} Texte nur in A, {} Texte nur in B").format(len(only_a), len(only_b)))
     return out
+
+
+# ----------------------------------------------------------------- Revisionstabelle
+_REV_ROW = re.compile(r"^\s*([A-Z]{1,2}|\d{1,2})\b[\s|:.;-]+(\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{4}-\d{2}-\d{2})\b"
+                      r"[\s|:;-]*(.*)$")
+
+
+def revision_entries(lines):
+    """Zeilen der Revisionstabelle aus Textzeilen [(x0, y0, x1, y1, text)]: Teile auf gleicher Hoehe werden zu einer
+    Zeile zusammengesetzt; Eintrag = Index (A, B, AB oder 1, 2 ...) gefolgt von einem Datum.
+    Rueckgabe [dict(index, date, text, y)] von oben nach unten."""
+    rows = []
+    for x0, y0, x1, y1, t in sorted(lines, key=lambda l: ((l[1] + l[3]) / 2, l[0])):
+        cy, h = (y0 + y1) / 2, max(1.0, y1 - y0)
+        if rows and abs(rows[-1]["cy"] - cy) < 0.5 * max(h, rows[-1]["h"]):
+            rows[-1]["parts"].append((x0, str(t)))
+        else:
+            rows.append(dict(cy=cy, h=h, parts=[(x0, str(t))]))
+    out = []
+    for r in rows:
+        text = " ".join(t for _x, t in sorted(r["parts"])).strip()
+        m = _REV_ROW.match(text)
+        if m:
+            out.append(dict(index=m.group(1), date=m.group(2), text=m.group(3).strip(), y=r["cy"]))
+    return out
+
+
+def _rev_order(idx):
+    """Reihenfolge eines Index: A < B < ... < Z < AA; Zahlen nach Wert."""
+    return (0, int(idx), "") if idx.isdigit() else (1, len(idx), idx)
+
+
+def revision_check(entries_a, entries_b, index_a, index_b, n_changes):
+    """Revisionstabelle von A und B gegen Aenderungen und Schriftfeld-Index pruefen. Rueckgabe (neue Eintraege in B,
+    Hinweise)."""
+    known = {e["index"] for e in entries_a}
+    new = [e for e in entries_b if e["index"] not in known]
+    notes = []
+    if not entries_a and not entries_b:
+        notes.append(tr("Keine Revisionstabelle erkannt."))
+        return new, notes
+    for e in new:
+        notes.append(tr("Neuer Revisionseintrag in B: {} vom {} – {}").format(e["index"], e["date"], e["text"] or "–"))
+    if n_changes > 0 and not new:
+        notes.append(tr("WARNUNG: Zeichnung ist geändert, aber die Revisionstabelle hat keinen neuen Eintrag."))
+    if entries_b and index_b not in ("?", None, ""):
+        newest = max(entries_b, key=lambda e: _rev_order(e["index"]))["index"]
+        if newest != index_b:
+            notes.append(tr("WARNUNG: Index im Schriftfeld (B = {}) passt nicht zum neuesten Eintrag der "
+                            "Revisionstabelle ({}).").format(index_b, newest))
+    return new, notes
 
 
 # ----------------------------------------------------------------- Anmerkungen

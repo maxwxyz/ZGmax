@@ -1,0 +1,8 @@
+{
+  "_hinweis": "Synthetisches Beispiel (Zeichnung aus packaging/doc_screenshots.py), prueft nur das Testgeruest. Echte Faelle daneben anlegen.",
+  "dpi": 150,
+  "aenderungen": {"min": 2, "max": 3},
+  "bereiche": [[300, 220, 120, 360], [580, 650, 90, 35]],
+  "ohne_aenderung": [[1300, 100, 400, 300]],
+  "max_sekunden": 30
+}

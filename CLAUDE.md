@@ -22,7 +22,7 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   lokal und auf GitHub löschen (vorher mit `git log main..origin/<branch>` prüfen, ob dort noch Commits fehlen).
 - Hilfsskripte dürfen nie die echten Nutzereinstellungen berühren: `QSettings.setDefaultFormat(IniFormat)` +
   `QSettings.setPath(IniFormat, UserScope, <tmp>)` und `ZV_DATA_DIR=<tmp>` setzen. Nie `QSettings.clear()` (macOS).
-- Tests: `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` (ca. 20 min; `tests/test_stress.py` klickt alle
+- Tests: `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` (ca. 1,5 min; `tests/test_stress.py` klickt alle
   Aktionen durch). Einzelne: `-k name`. Vor dem Bauen alle Tests grün.
 - Bauen: `packaging/build_mac.sh` / `build_windows.bat` / `build_linux.sh`, danach `ZGmax --selbsttest`.
   Schneller Probebau ohne Tests: `--ohne-tests` (Windows: `ohne-tests`) oder `ZGMAX_OHNE_TESTS=1`.

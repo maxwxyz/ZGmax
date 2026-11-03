@@ -6,10 +6,11 @@ from ui_theme import *  # noqa: F401,F403
 from ui_canvas_geom import *  # noqa: F401,F403
 from ui_canvas_snap import CanvasSnapMixin
 from ui_canvas_paint import CanvasPaintMixin
+from ui_canvas_sharp import CanvasSharpMixin
 
 
 # ----------------------------------------------------------------- Zeichenflaeche
-class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
+class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
     cursor = Signal(int, int, float)
     zoneDrawn = Signal(int, int, int, int)
     cropDrawn = Signal(int, int, int, int)
@@ -98,6 +99,7 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
         self.show_overview = True            # Uebersichtsfenster unten rechts (nur wenn hineingezoomt)
         self.reg_clouds = False              # nummerierte Aenderungen als Revisionswolke statt Rahmen
         self.pc = (None, None)
+        self._sharp_init()                   # PDF beim starken Hineinzoomen scharf nachrendern
         self.show_color = True               # Alt/Neu in Farbe zeigen, wenn die Datei farbig ist
         self.invert = False                  # helle Linien auf dunklem Grund (nur Anzeige)
         self.show_legend = True
@@ -234,6 +236,7 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, QWidget):
         self.crop_frame = None
         self.res = self.pa = self.pb = self.pd = self.po = None
         self.pc = (None, None)
+        self.set_vector_src(None)
         self.regs, self.measure, self.zones = [], [], []
         self.selected = self.ann_selected = None
         self.preview = None

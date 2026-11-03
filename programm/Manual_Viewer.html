@@ -140,7 +140,9 @@ e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for ma
 advanced options and the log.</p>
 
 <h2 id="navigation">Zooming and panning</h2>
-<p>This works <b>always</b>, whichever tool is active:</p>
+<p>This works <b>always</b>, whichever tool is active. <b>PDF and SVG stay sharp when zooming in strongly:</b> after a
+short moment the visible section is drawn directly from the file at screen resolution (single view and the <i>Old</i>
+view, original colors, without editing or line filter). Comparing and measuring keep working at the set resolution.</p>
 <table>
 <tr><th>Action</th><th>Effect</th></tr>
 <tr><td>Mouse wheel</td><td>Zoom at the mouse position</td></tr>
@@ -481,8 +483,11 @@ Vertically written dimensions are read in reading direction: first the value, th
 type, <i>dimension old → new</i>, <i>tolerance old</i> and <i>new</i> (ISO fits such as H7/g6, ±0.1 or deviations
 +0.2/−0.1; a changed tolerance in red), position in mm, review status and comment – to pass on to suppliers and
 production. If the dimensions have not been read yet, this happens automatically first.</li>
-<li><b>Check title block revision</b>: reads the revision index in the title block of Old and New and warns if the drawing
-changed but the index stayed the same – or the other way round.</li>
+<li><b>Check index and revision table</b>: reads the revision index in the title block of Old and New and warns if the
+drawing changed but the index stayed the same – or the other way round. In addition the <b>revision table</b> (rows with
+index and date, e.g. “C 20.10.2026 slot added”; for PDF from the PDF text, otherwise by text recognition in the right part
+of the sheet): shows new entries in B and warns if the drawing has changed but no new entry was added, or if the newest
+entry does not match the index in the title block.</li>
 <li><b>Grouping</b>: how close differences must be to be combined into one entry.</li>
 </ul>
 <p>Text recognition is included in the app; when running with Python the program offers to install it on first use
@@ -544,7 +549,9 @@ sheet border.</li>
 black on white from model space (unit mm; very large drawings are reduced to A0). DWG cannot be read directly – save it as
 DXF or PDF in your CAD program. Transparent areas (PNG with transparency) count as white paper; 16-bit and CMYK images
 are converted. For a <b>password-protected PDF</b> the program asks for the password; it applies until you quit and is
-not saved.</p>
+not saved. <b>Very large sheets</b> (more than about 150 million pixels, e.g. A0 at 400 dpi) need a lot of memory and
+time: the program reports this when opening and, for PDF/SVG/DXF, offers a button for a lower resolution (e.g. 200
+dpi).</p>
 <p><b>Vector data (PDF):</b> if both PDFs contain real lines and text (from the CAD system), the section <i>Vector data
 (PDF)</i> appears on the left: <b>Vector comparison</b> compares line against line and text against text without
 rasterizing (tolerance 0.05 mm by default; both drawings need the same sheet origin). <b>Layers and colors …</b> chooses
@@ -777,7 +784,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Find changed text</td><td></td><td>Reads the text in each change (Old → New, also dimensions) – from the PDF if it contains real text, otherwise by text recognition in any orientation (horizontal and vertical), German and English. Afterwards list and drawing only show changes whose text changed; “Show: Changes” brings everything back.</td></tr>
 <tr><td>Find changed dimensions</td><td></td><td>Reads the numbers of each change and then shows only the changes in which a dimension value changed (e.g. 12.5 → 12.8). Purely graphical changes are hidden; “Show: Changes” brings them back.</td></tr>
 <tr><td>Dimension changes as table …</td><td></td><td>Changed dimensions with old → new, tolerance old/new, position and review status as PDF or CSV – e.g. for suppliers and production</td></tr>
-<tr><td>Check title block revision</td><td></td><td>Reads the revision index in the title block of Old and New and warns if the drawing changed but the index stayed the same – or the other way round.</td></tr>
+<tr><td>Check index and revision table</td><td></td><td>Reads the index (revision) in the title block and the revision table of old and new: warns if the drawing changed but the index or revision table was not updated – or if the newest entry does not match the index.</td></tr>
 <tr><td>Compare all pages</td><td></td><td></td></tr>
 <tr><td>Compare folders (batch) …</td><td></td><td>Compare all matching drawings of two folders, e.g. your own release against a supplier data set: overview of which sheets changed or are missing</td></tr>
 <tr><td>Compare revisions (A → B → C) …</td><td></td><td></td></tr>

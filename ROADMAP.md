@@ -16,37 +16,45 @@ nicht beschlossen) · ⚠️ bekanntes Problem
                     Dateitypen zuordnen
 0.8  26.10.2026  ✅ Bereiche zuordnen ohne Verzerren, Modus-Schild mit Zuschnitt, Über-Fenster, Werkzeuggröße
                     bleibt, Tests in 1,5 min
-0.9  geplant     🟡 Stabilität: echte Zeichnungen als feste Tests, Absturz „Schriftfeld lesen“, Windows/Linux
-                    vollständig geprüft (GitHub-Builds mit allen Tests sind grün ✅)
+0.9  in Arbeit    🔧 Scharfer PDF-Zoom ✅, Revisionstabelle prüfen ✅, große Blätter ✅, Absturz „Schriftfeld lesen“
+                    abgesichert ✅, Gerüst für echte Zeichnungen ✅ (echte Fälle fehlen noch), GitHub-Builds grün ✅;
+                    offen: Windows/Linux von Hand prüfen
 1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
-später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Blätter (A0), 3D-Modelle (eigenes Werkzeug)
+später           💡 3D-Modelle (eigenes Werkzeug)
 ```
 
 ## Geplant
 
 | Thema | Nutzen | Status |
 |---|---|---|
-| Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🟡 0.9 |
-| Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🟡 0.9 |
+| Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🔧 Gerüst fertig (`tests/real/`), echte Fälle fehlen |
+| Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🔧 abgesichert, Bestätigung mit der Originaldatei offen |
 | Dateitypen zuordnen auf Windows und Linux ausprobieren | Doppelklick öffnet PDF/TIFF/… in ZGmax | 🟡 0.9 |
 | GitHub-Builds für Windows, macOS, Linux einmal komplett grün (mit allen Tests) | Fertige Apps für alle Systeme aus einer Hand | ✅ 26.10.2026 |
-| GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | 🟡 0.9 |
+| GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | ✅ v7 (Node 24) |
 | Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 0.9 |
 | Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
-| PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | 💡 |
-| Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | 💡 |
-| Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | 💡 |
+| PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | ✅ |
+| Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
+| Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | ✅ |
+| Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
+| Ordnervergleich als ein gemeinsamer PDF-Bericht | Ein Dokument statt eines je Paar | 💡 |
+| Tastenkürzel selbst belegen | Gewohnte Kürzel aus anderen Programmen | 💡 |
+| macOS-App mit Entwicklerzertifikat signieren | Keine Warnung beim ersten Start | 💡 (braucht Apple-Entwicklerkonto) |
 | 3D-Modelle mit PMI (STEP AP242, JT, 3D-PDF) vergleichen – eigenes Werkzeug | Gleiche Prüfung für 3D-Daten (Vorlage: [docs/Prompt_3D_PMI_Viewer.md](docs/Prompt_3D_PMI_Viewer.md)) | 💡 |
 
 ## Bekannte Probleme
 
-- ⚠️ **„Schriftfeld lesen“ kann auf Macs mit Apple-Chip abstürzen:** Absturz in OpenCVs beschleunigter
-  Größenänderung (KleidiCV) während der Texterkennung. Mit Testdateien nicht nachstellbar. Lösungsideen in HANDOFF.md.
+- 🔧 **„Schriftfeld lesen“ konnte auf Macs mit Apple-Chip abstürzen** (OpenCVs mehrfädige Größenänderung während der
+  Texterkennung). Seit 0.9 läuft die Texterkennung einfädig und nacheinander; ob das den Absturz ganz verhindert, zeigt
+  erst die Originaldatei.
 - 🔧 **Dateitypen zuordnen** ist auf Windows und Linux noch nicht ausprobiert (macOS: Lesen geprüft).
 
 ## Umgesetzt
 
 ### Öffnen und Anzeigen
+- ✅ PDF/SVG beim starken Hineinzoomen scharf (sichtbarer Ausschnitt aus der Datei) (0.9)
+- ✅ Hinweis bei sehr großen Blättern mit Knopf für geringere Auflösung (0.9)
 - ✅ Formate: PDF, TIFF (mehrseitig), PNG, JPG, BMP, WebP, JP2, GIF, SVG, XPS, DXF; Transparenz, 16 Bit, CMYK (0.6)
 - ✅ Passwortgeschützte PDF mit Passwortabfrage; verständliche Meldungen bei leeren/beschädigten Dateien (0.6)
 - ✅ Startseite mit Einführung, zuletzt verwendet, „Zurück zur Zeichnung“ (0.5–0.7)
@@ -69,6 +77,7 @@ später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Bl
 - ✅ Prüfung abschließen mit Prüfprotokoll und Prüfsumme (0.7)
 - ✅ Geänderten Text und geänderte Maße finden (PDF-Text oder Texterkennung, auch senkrecht) (0.6–0.7)
 - ✅ Maßänderungen als Tabelle mit Toleranzen (PDF/CSV) (0.7)
+- ✅ Index und Revisionstabelle prüfen: neuer Eintrag, fehlender Eintrag, Index passt nicht (0.9)
 
 ### Markieren und Messen
 - ✅ Text, Wolke, Rahmen, Ellipse, Linie, Linienzug, Polygon, Pfeil, Stift, Marker, Nummer, Haken, Stempel (0.6–0.7)
@@ -92,6 +101,6 @@ später           💡 Scharfer Zoom in PDF, Revisionstabelle prüfen, große Bl
 ### Technik und Betrieb
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
-- ✅ 106 automatische Tests in 1,5 min, Stresstest über alle Befehle (0.8)
+- ✅ Automatische Tests in 1,5 min, Stresstest über alle Befehle; Gerüst für Tests mit echten Zeichnungen (0.8–0.9)
 - ✅ Anleitungen Deutsch/Englisch mit Bildern und Menüreferenz, Änderungshistorie „Was ist neu“ (0.6–0.7)
 - ✅ Open Source unter AGPL-3.0 (0.6)
