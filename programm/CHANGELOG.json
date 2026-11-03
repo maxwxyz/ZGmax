@@ -20,7 +20,8 @@
    "Rechte Leiste aufgeräumt: Vorige/Nächste/Geprüft/Abgelehnt/Kommentar erscheinen erst nach „Prüfen starten“; kurze, einheitliche Hinweise in allen Reitern.",
    "Beim Ansehen kein eigener Knopf „Vergleichen mit …“ mehr – das steht im Schild „Ansehen: datei ▾“.",
    "Neues Fenster „Einstellungen …“ (Strg+,): Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen.",
-   "Behoben: Beim Start kam manchmal die Frage nach dem Wiederherstellen, obwohl das Programm normal geschlossen wurde (vor allem unter Windows)."
+   "Behoben: Beim Start kam manchmal die Frage nach dem Wiederherstellen, obwohl das Programm normal geschlossen wurde (vor allem unter Windows).",
+   "Werkzeugleiste links kürzer: Wolke, Rahmen, Ellipse, Linie, Linienzug und Polygon teilen sich einen Knopf; er zeigt das zuletzt gewählte Werkzeug, auch nach dem Neustart."
   ],
   "en": [
    "Very narrow window: the views are combined into one “Compare ▾” button instead of disappearing into the overflow menu.",
@@ -42,7 +43,8 @@
    "Right panel tidied up: Previous/Next/Checked/Rejected/Comment only appear after “Start review”; short, consistent hints in all tabs.",
    "When viewing, no separate “Compare with …” button any more – it is in the “Viewing: file ▾” chip.",
    "New “Settings …” window (Ctrl+,): appearance, language, size, name, background text recognition, all settings.",
-   "Fixed: on start the program sometimes asked to restore a session although it had been closed normally (especially on Windows)."
+   "Fixed: on start the program sometimes asked to restore a session although it had been closed normally (especially on Windows).",
+   "Shorter tool bar on the left: cloud, box, ellipse, line, polyline and polygon share one button; it shows the last tool chosen, also after a restart."
   ]
  },
  "releases": [

@@ -2174,3 +2174,13 @@ def test_settings_dialog(app, win):
 def tr_(s):
     from i18n import tr
     return tr(s)
+
+
+def test_cloud_and_shapes_share_button(app, win):
+    """Wolke, Rahmen, Ellipse ... teilen sich einen Knopf; er zeigt das zuletzt gewaehlte Werkzeug und merkt es sich."""
+    b = win.group_buttons["cloud"]
+    assert all(win.group_buttons[k] is b for k in ("rect", "ellipse", "line", "polyline", "polygon"))
+    win._set_tool("ellipse")
+    assert b.defaultAction() is win.tool_actions["ellipse"]
+    assert win.settings.value("palette_cloud") == "ellipse"
+    win._set_tool("cloud")

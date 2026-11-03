@@ -11,8 +11,13 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   in der Statusleiste, filter_small 5x schneller, rechte Leiste aufgeräumt, Einstellungsfenster, falsche
   Wiederherstellen-Frage behoben (Abschnitt „Bedienung“ neu). Offen für 0.9: echte Fälle in `tests/real/`,
   Windows/Linux von Hand prüfen (Dateitypen, Hintergrundprozess, Wiederherstellen-Fix), Absturz-Fix mit Originaldatei.
-  Offene Fragen an den Nutzer: Werkzeuge in der linken Leiste gruppieren (Wolke/Formen), Öffnen-Knopf behalten.
+  Entschieden: Wolke + Formen in einem Knopf (umgesetzt); Öffnen-Knopf bleibt (Projekt, Zuletzt verwendet,
+  Zwischenablage, Startseite gibt es im Schild nicht – nichts doppelt ins Schild).
   Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur. Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-03 (fünfter Commit)
+- `PALETTE_GROUPS[0]` = Wolke + `SHAPES`; Gruppenknopf merkt das letzte Werkzeug in `palette_<erstes>` (Einstellung),
+  Test `test_cloud_and_shapes_share_button`. 116 Tests grün, Mac-Bau + Selbsttest OK.
 
 ## Erledigt 2026-11-03 (vierter Commit)
 - Hintergrund: zweiter Auftrag je Seite `ocrservice.vkey(key)` mit `rep.ocr_vertical` (Seite um 90° links/rechts

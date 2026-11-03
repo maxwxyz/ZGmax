@@ -51,7 +51,8 @@ TOOLS = (("hand", tr("Auswahl"), "select", "V", tr("Anklicken und verschieben. L
 SHAPES = ("rect", "ellipse", "line", "polyline", "polygon")
 FILL_TYPES = ("rect", "ellipse", "polygon")                   # koennen gefuellt werden
 CHECK_COLOR = "#16a34a"                                       # Haken: gruen, solange keine eigene Farbe gewaehlt ist   # in der Palette unter "Formen" (Pfeil eigener Knopf)
-PALETTE_GROUPS = (SHAPES, ("redact", "pixelate"), ("number", "check", "approval"))   # je ein Knopf, Auswahl ueber das Dreieck
+# je ein Knopf, Auswahl ueber das Dreieck; der Knopf zeigt das zuletzt gewaehlte Werkzeug (bleibt gespeichert)
+PALETTE_GROUPS = (("cloud",) + SHAPES, ("redact", "pixelate"), ("number", "check", "approval"))
 NAV_TOOLS = ("hand", "area", "zoom", "measure")              # Doppelklick hier: "Werkzeug behalten" aus
 
 
@@ -738,7 +739,8 @@ class LayoutMixin:
                 for k2 in group:
                     menu.addAction(self.tool_actions[k2])
                 b.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-                b.setDefaultAction(self.tool_actions[key])
+                last = self.settings.value("palette_" + group[0], key)
+                b.setDefaultAction(self.tool_actions[last if last in group else key])
                 b.setMenu(menu)
                 for k2 in group:
                     self.group_buttons[k2] = b

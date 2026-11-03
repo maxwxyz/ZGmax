@@ -104,6 +104,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Projekte (.zgmax, auch mit eingebetteten Zeichnungen), gemerkte Ausschnitte, automatische Sicherung (0.6–0.7)
 
 ### Bedienung
+- ✅ Wolke und Formen in einem Knopf der Werkzeugleiste, merkt das zuletzt gewählte Werkzeug (0.9)
 - ✅ Einstellungsfenster (Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen) (0.9)
 - ✅ Rechte Leiste: Prüfknöpfe nur während der Prüfung, kurze Hinweise mit Tooltip; „Vergleichen mit …“ nur im Schild (0.9)
 - ✅ Keine falsche Wiederherstellen-Frage mehr beim Start (Windows-Prozessprüfung, nur bei echtem Inhalt) (0.9)

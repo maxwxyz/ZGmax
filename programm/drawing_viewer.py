@@ -1348,6 +1348,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             m = b.menu()                                   # Gruppenknopf zeigt das zuletzt gewaehlte Werkzeug
             b.setDefaultAction(self.tool_actions[t])
             b.setMenu(m)
+            first = m.actions()[0] if m.actions() else None
+            g0 = next((k for k, a in self.tool_actions.items() if a is first), None)
+            if g0:
+                self.settings.setValue("palette_" + g0, t)
         if t in self.tool_actions:
             self.tool_actions[t].setChecked(True)
         else:                                  # Zone/Ausschnitt/Zoom: kein Knopf in der Palette
