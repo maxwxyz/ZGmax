@@ -1,5 +1,20 @@
 # ZGmax – Änderungshistorie
 
+## Version 0.9 vom 3.11.2026
+
+- Texterkennung im Hintergrund: Nach dem Öffnen liest ein eigener Prozess mit niedriger Priorität den Text in allen Lagen (auch senkrechte Maße), auch bei ausgeblendeten PDF-Ebenen. Textsuche, „Geänderten Text finden“ sowie „Index und Revisionstabelle prüfen“ sind danach sofort bereit und erkennen nichts mehr selbst; unten rechts zeigt „Text: 60 %“ den Fortschritt. Abschaltbar in den Einstellungen.
+- Texterkennung ganzer Seiten schneller (mehrere Kacheln gleichzeitig, Kacheln ohne Text werden übersprungen); ein Absturz der Texterkennung beendet das Programm nicht mehr.
+- „Geänderten Text finden“ und „Geänderte Maße finden“ sind eine Funktion: Text und Maßzahlen in einem Durchgang, Knopf direkt über der Änderungsliste. Schon gelesener Text wird wiederverwendet, schon gelesene Änderungen nicht erneut gelesen.
+- Vergleich schneller: A1 mit 200 dpi 2,2 s → 1,45 s, A0 mit 300 dpi 3,8 s → 2,2 s (bessere Verteilung auf alle Rechenkerne, schnellere Filter).
+- PDF und SVG bleiben beim starken Hineinzoomen scharf: der sichtbare Ausschnitt wird direkt aus der Datei gezeichnet.
+- „Index und Revisionstabelle prüfen“: erkennt neue Einträge der Revisionstabelle und warnt, wenn ein Eintrag fehlt oder nicht zum Index passt.
+- Sehr große Blätter (z. B. A0 mit 400 dpi): Hinweis beim Öffnen, bei PDF/SVG/DXF mit Knopf für eine geringere Auflösung.
+- Neues Fenster „Einstellungen …“ (Strg+,): Darstellung, Sprache, Größe, Name, Text im Hintergrund und alle Einstellungen an einer Stelle.
+- Aufgeräumte Oberfläche: Prüfknöpfe erst nach „Prüfen starten“, kurze einheitliche Hinweise in der rechten Leiste, Wolke und Formen teilen sich einen Knopf der Werkzeugleiste, „Vergleichen mit …“ steht im Schild „Ansehen: datei ▾“, sehr schmale Fenster fassen die Ansichten zu „Vergleich ▾“ zusammen.
+- Kleinigkeiten: kein Hinweistext mehr in der Statusleiste nach dem Vergleich, kürzere Summenzeile, lesbarere Summen der Markierungen („Längen: 2 (Σ 350 mm) · Wolken: 1“).
+- Behoben: Beim Start kam manchmal die Frage nach dem Wiederherstellen, obwohl das Programm normal geschlossen wurde (vor allem unter Windows).
+- Texterkennung abgesichert gegen einen Absturz auf Macs mit Apple-Chip („Schriftfeld lesen“).
+
 ## Version 0.8 vom 26.10.2026
 
 - Bereiche zuordnen (A ↔ B): Der Rahmen in B muss nur ungefähr passen; das Programm sucht die Stelle selbst – zuerst bei gleichem Maßstab (Verschiebung, kleine Drehung), nur bei Bedarf mit anderem Maßstab. Keine verzerrten Ergebnisse mehr.

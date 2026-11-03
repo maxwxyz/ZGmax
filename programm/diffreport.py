@@ -525,14 +525,22 @@ def index_check(res, regs, log=print, box=(0.45, 0.70), lines=None):
 
     box = (Anteil Breite, Anteil Hoehe) des Schriftfeld-Bereichs rechts unten.
     Der Index wird heuristisch bestimmt (hoechster Grossbuchstaben-Index im Bereich).
-    lines = (Textzeilen A, Textzeilen B) [(x0, y0, x1, y1, text)] in Bildpixeln fuer die Revisionstabelle, z. B. aus
-    dem PDF-Text; ohne: Texterkennung im rechten Teil des Blatts.
+    lines = (Textzeilen A, Textzeilen B) [(x0, y0, x1, y1, text)] in Bildpixeln des Ergebnisses, z. B. aus dem
+    PDF-Text oder schon gelesen (Hintergrund, Textsuche) - dann wird gar nichts mehr erkannt; ohne: Texterkennung
+    im Schriftfeld und im rechten Teil des Blatts.
     """
     H, W = res.a.shape
     x0, y0 = int(W * (1 - box[0])), int(H * box[1])
-    sub = (slice(y0, H), slice(x0, W))
-    ia = ocr_image(255 - res.a[sub])
-    ib = ocr_image(255 - res.b[sub])
+    if lines is not None:                              # Schriftfeld aus dem schon gelesenen Text
+        def items(ln):
+            return sorted(((l[0] - x0, l[1] - y0, l[3] - l[1], str(l[4]).strip()) for l in ln
+                           if (l[0] + l[2]) / 2 >= x0 and (l[1] + l[3]) / 2 >= y0),
+                          key=lambda t: (round(t[1] / max(10, t[2])), t[0]))
+        ia, ib = items(lines[0]), items(lines[1])
+    else:
+        sub = (slice(y0, H), slice(x0, W))
+        ia = ocr_image(255 - res.a[sub])
+        ib = ocr_image(255 - res.b[sub])
     ta, tb = {_norm(t[3]) for t in ia}, {_norm(t[3]) for t in ib}
     only_a = sorted(t for t in ta - tb if t)
     only_b = sorted(t for t in tb - ta if t)

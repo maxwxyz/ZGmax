@@ -1,6 +1,6 @@
 # ZGmax – Roadmap und Funktionsstand
 
-Stand: Version **0.8** (26.10.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
+Stand: Version **0.9** (3.11.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
 technische Übergabe zwischen Sitzungen in [HANDOFF.md](HANDOFF.md). Diese Datei wird bei jeder neuen Funktion und jedem
 Release mit gepflegt.
 
@@ -16,12 +16,11 @@ nicht beschlossen) · ⚠️ bekanntes Problem
                     Dateitypen zuordnen
 0.8  26.10.2026  ✅ Bereiche zuordnen ohne Verzerren, Modus-Schild mit Zuschnitt, Über-Fenster, Werkzeuggröße
                     bleibt, Tests in 1,5 min
-0.9  in Arbeit    🔧 Scharfer PDF-Zoom ✅, Revisionstabelle prüfen ✅, große Blätter ✅, Absturz „Schriftfeld lesen“
-                    abgesichert ✅, Gerüst für echte Zeichnungen ✅ (echte Fälle fehlen noch), GitHub-Builds grün ✅,
-                    Text finden vereint + schneller ✅, Vergleich schneller ✅, Texterkennung im
-                    Hintergrund ✅;
-                    offen: Windows/Linux von Hand prüfen
-1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
+0.9  3.11.2026   ✅ Texterkennung im Hintergrund (alle Lagen, eigener Prozess), Text finden vereint, Vergleich
+                    schneller, scharfer PDF-Zoom, Index und Revisionstabelle prüfen, große Blätter, Einstellungsfenster,
+                    aufgeräumte Oberfläche, Wiederherstellen-Fehlalarm behoben
+1.0  geplant     🟡 Erste stabile Version: Windows/Linux von Hand geprüft, echte Testzeichnungen, Rückmeldungen aus
+                    der Nutzung eingearbeitet
 später           💡 3D-Modelle (eigenes Werkzeug)
 ```
 
@@ -31,16 +30,16 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 |---|---|---|
 | Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🔧 Gerüst fertig (`tests/real/`), echte Fälle fehlen |
 | Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🔧 abgesichert, Bestätigung mit der Originaldatei offen |
-| Dateitypen zuordnen auf Windows und Linux ausprobieren | Doppelklick öffnet PDF/TIFF/… in ZGmax | 🟡 0.9 |
+| Dateitypen zuordnen, Texterkennung im Hintergrund und Wiederherstellen auf Windows und Linux ausprobieren | Alles läuft auf allen Systemen | 🟡 1.0 |
 | GitHub-Builds für Windows, macOS, Linux einmal komplett grün (mit allen Tests) | Fertige Apps für alle Systeme aus einer Hand | ✅ 26.10.2026 |
 | GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | ✅ v7 (Node 24) |
-| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 0.9 |
+| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 1.0 |
 | Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
 | PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | ✅ |
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
 | Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | ✅ |
 | Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
-| Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden und Schriftfeld | Kein Warten beim ersten Gebrauch | ✅ (eigener Prozess, 0.9) |
+| Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden, Index und Revisionstabelle | Kein Warten beim ersten Gebrauch | ✅ (eigener Prozess, 0.9) |
 | Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | ✅ 0.9 |
 | Ordnervergleich als ein gemeinsamer PDF-Bericht | Ein Dokument statt eines je Paar | 💡 |
 | Tastenkürzel selbst belegen | Gewohnte Kürzel aus anderen Programmen | 💡 |

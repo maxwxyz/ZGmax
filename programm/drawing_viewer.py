@@ -294,6 +294,25 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             if self.path_a and self.path_b:
                 self.start_compute()
 
+    def _known_lines(self, retry, vertical=False):
+        """Schon gelesener Text beider Zeichnungen (Hintergrund, Textsuche, durchsuchbares PDF) in Koordinaten des
+        Ergebnisses: (Zeilen A, Zeilen B) bzw. mit vertical ((A, B), (senkrecht A, senkrecht B)); fehlt eine Seite,
+        steht dort None. Liest der Hintergrund gerade, kommt "wait" und retry() laeuft kurz darauf erneut."""
+        self._bg_text_poll()
+        keys = [self._text_key(s)[0] for s in ("A", "B")]
+        if any(ocrservice.busy(k) or (vertical and ocrservice.busy(ocrservice.vkey(k))) for k in keys):
+            self.lbl_status.setText(tr("Warte auf die Texterkennung im Hintergrund …"))
+            QTimer.singleShot(400, self, retry)
+            return "wait"
+        got, vgot = [], []
+        for side, k in zip(("A", "B"), keys):
+            lines, vl = self.cache.get(k), self.cache.get(ocrservice.vkey(k))
+            got.append(None if lines is None else [(*self._to_view(side, ln[:4]), ln[4]) for ln in lines])
+            vgot.append(None if vl is None else [(*self._to_view(side, ln[:4]), ln[4], ln[5]) for ln in vl])
+        if not vertical:
+            return tuple(got) if all(g is not None for g in got) else None
+        return tuple(got), tuple(vgot)
+
     def run_text(self, then=None):
         """Geaenderten Text finden: Text jeder Aenderung (A -> B) lesen und die Masszahlen vergleichen - exakt aus dem
         PDF, wenn beide echten Text haben, sonst per Texterkennung. Schon Gelesenes wird wiederverwendet: Aenderungen
@@ -310,18 +329,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return
         known = vknown = (None, None)
         if not (wa or wb):                               # Text der Textsuche / des durchsuchbaren PDF wiederverwenden
-            self._bg_text_poll()
-            keys = [self._text_key(s)[0] for s in ("A", "B")]
-            if any(ocrservice.busy(k) or ocrservice.busy(ocrservice.vkey(k)) for k in keys):   # darauf warten
-                self.lbl_status.setText(tr("Warte auf die Texterkennung im Hintergrund …"))
-                QTimer.singleShot(400, self, lambda: self.run_text(then))
+            got = self._known_lines(lambda: self.run_text(then), vertical=True)
+            if got == "wait":
                 return
-            got, vgot = [], []
-            for side, k in zip(("A", "B"), keys):
-                lines, vl = self.cache.get(k), self.cache.get(ocrservice.vkey(k))
-                got.append(None if lines is None else [(*self._to_view(side, ln[:4]), ln[4]) for ln in lines])
-                vgot.append(None if vl is None else [(*self._to_view(side, ln[:4]), ln[4], ln[5]) for ln in vl])
-            known, vknown = tuple(got), tuple(vgot)
+            known, vknown = got
 
         def work(log):
             self._ensure_regs(log)

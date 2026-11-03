@@ -496,8 +496,8 @@ type, <i>dimension old → new</i>, <i>tolerance old</i> and <i>new</i> (ISO fit
 production. If the dimensions have not been read yet, this happens automatically first.</li>
 <li><b>Check index and revision table</b>: reads the revision index in the title block of Old and New and warns if the
 drawing changed but the index stayed the same – or the other way round. In addition the <b>revision table</b> (rows with
-index and date, e.g. “C 20.10.2026 slot added”; for PDF from the PDF text, otherwise by text recognition in the right part
-of the sheet): shows new entries in B and warns if the drawing has changed but no new entry was added, or if the newest
+index and date, e.g. “C 20.10.2026 slot added”). Title block and table come from the PDF text for PDFs, otherwise from the
+text already read in the background; only if that is missing is text recognised. The check shows new entries in B and warns if the drawing has changed but no new entry was added, or if the newest
 entry does not match the index in the title block.</li>
 <li><b>Grouping</b> (under <i>More checks</i>): how close differences must be to be combined into one entry.</li>
 </ul>

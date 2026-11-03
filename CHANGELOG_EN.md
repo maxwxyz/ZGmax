@@ -1,5 +1,20 @@
 # ZGmax – Change history
 
+## Version 0.9 of 2026-11-03
+
+- Text recognition in the background: after opening, a separate low-priority process reads the text in all orientations (including vertical dimensions), also with hidden PDF layers. Text search, “Find changed text” and “Check index and revision table” are then ready immediately and recognise nothing themselves; “Text: 60 %” at the bottom right shows the progress. Can be switched off in the settings.
+- Faster text recognition of whole pages (several tiles at once, tiles without text are skipped); a crash of the text recognition no longer closes the program.
+- “Find changed text” and “Find changed dimensions” are one function: text and dimension values in one pass, button directly above the list of changes. Text already read is reused, changes already read are not read again.
+- Faster comparison: A1 at 200 dpi 2.2 s → 1.45 s, A0 at 300 dpi 3.8 s → 2.2 s (better use of all processor cores, faster filters).
+- PDF and SVG stay sharp when zooming in strongly: the visible section is drawn directly from the file.
+- “Check index and revision table”: finds new entries in the revision table and warns if an entry is missing or does not match the index.
+- Very large sheets (e.g. A0 at 400 dpi): note when opening, for PDF/SVG/DXF with a button for a lower resolution.
+- New “Settings …” window (Ctrl+,): appearance, language, size, name, background text recognition and all settings in one place.
+- Tidier interface: review buttons only after “Start review”, short consistent hints in the right panel, cloud and shapes share one tool button, “Compare with …” is in the “Viewing: file ▾” chip, very narrow windows combine the views into “Compare ▾”.
+- Small things: no hint in the status bar after a comparison, shorter summary line, easier-to-read markup totals (“Lengths: 2 (Σ 350 mm) · Clouds: 1”).
+- Fixed: on start the program sometimes asked to restore a session although it had been closed normally (especially on Windows).
+- Text recognition safeguarded against a crash on Macs with Apple chips (“Read title block”).
+
 ## Version 0.8 of 2026-10-26
 
 - Match areas (A ↔ B): the frame in B only has to fit roughly; the program finds the spot itself – first at the same scale (shift, small rotation), a different scale only if needed. No more distorted results.

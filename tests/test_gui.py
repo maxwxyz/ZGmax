@@ -2210,3 +2210,25 @@ def test_search_reads_in_process_without_touching_compare_image(app, win, pair):
         assert win.cache["gk_" + str(pair[1])] == ("andere Fassung",)
     finally:
         ocrservice.stop()
+
+
+def test_index_check_uses_read_text(app, win, pair, monkeypatch):
+    """„Index und Revisionstabelle pruefen“ nimmt den schon gelesenen Text (Hintergrund, Textsuche) und erkennt
+    nichts mehr selbst."""
+    import diffreport as rep
+    monkeypatch.setattr(rep, "ocr_available", lambda: True)
+    monkeypatch.setattr(win, "ensure_ocr", lambda *a: True)
+    for name in ("ocr_image", "ocr_lines", "ocr_any_orientation"):
+        monkeypatch.setattr(rep, name, lambda *a, **k: (_ for _ in ()).throw(AssertionError("Texterkennung")))
+    compare(app, win, *pair)
+    ox, oy = win.origin
+    for side, idx, rows in (("A", "A", ["A 01.10.2026 Erstausgabe"]),
+                            ("B", "B", ["A 01.10.2026 Erstausgabe", "B 20.10.2026 Kreis ergaenzt"])):
+        ln = [(1400 + ox, 1000 + oy, 1420 + ox, 1020 + oy, idx)]
+        ln += [(900 + ox, 800 + i * 30 + oy, 1300 + ox, 820 + i * 30 + oy, t) for i, t in enumerate(rows)]
+        win.cache[win._text_key(side)[0]] = ln
+    win.run_index()
+    wait(app, lambda: not win.running)
+    info = win.index_info
+    assert info["index_a"] == "A" and info["index_b"] == "B"
+    assert [e["index"] for e in info["revisions_new"]] == ["B"]

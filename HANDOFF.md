@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-11-03, lokal) – alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-03, lokal) – **Version 0.9** (Tag `v0.9`), alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -7,13 +7,20 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – dazu erledigt: Hintergrund liest alle Lagen, Fortschritt
+- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 veröffentlicht**; offen für 1.0: Windows/Linux von Hand prüfen,
+  echte Testzeichnungen, Absturz-Fix mit Originaldatei, Rückmeldungen. In 0.9 u. a.: Hintergrund liest alle Lagen, Fortschritt
   in der Statusleiste, filter_small 5x schneller, rechte Leiste aufgeräumt, Einstellungsfenster, falsche
   Wiederherstellen-Frage behoben (Abschnitt „Bedienung“ neu). Offen für 0.9: echte Fälle in `tests/real/`,
   Windows/Linux von Hand prüfen (Dateitypen, Hintergrundprozess, Wiederherstellen-Fix), Absturz-Fix mit Originaldatei.
   Entschieden: Wolke + Formen in einem Knopf (umgesetzt); Öffnen-Knopf bleibt (Projekt, Zuletzt verwendet,
   Zwischenablage, Startseite gibt es im Schild nicht – nichts doppelt ins Schild).
   Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur. Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-03 (Release 0.9)
+- `rep.index_check(lines=...)` nimmt Schriftfeld und Revisionstabelle aus vorhandenen Zeilen (PDF-Text oder
+  `MainWindow._known_lines`, gemeinsam mit `run_text`; wartet auf den Hintergrund). Test `test_index_check_uses_read_text`.
+- Release 0.9: Einträge für „Was ist neu“ zusammengefasst (12 statt 23), `release.py minor` (ohne `--git`, Commit mit
+  Co-Authored-By von Hand), Tag `v0.9`. ROADMAP: 0.9 fertig, offene Punkte nach 1.0.
 
 ## Erledigt 2026-11-03 (sechster Commit)
 - Erkennungsprozess lädt die Seite selbst: `ocrservice.submit(key, vertical=, src=ocrservice.source(path, page, dpi))`

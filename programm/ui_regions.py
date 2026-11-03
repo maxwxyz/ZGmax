@@ -385,7 +385,11 @@ class RegionsMixin:
         if not self._need_ocr():
             return
         pl = self.payload
-        lines = self._pdf_text_lines()                  # Revisionstabelle: PDF-Text, wenn beide Dateien welchen haben
+        lines = self._pdf_text_lines()                  # PDF-Text, wenn beide Dateien welchen haben
+        if lines is None:                               # sonst schon gelesener Text (Hintergrund, Textsuche)
+            lines = self._known_lines(lambda: self.run_index())
+            if lines == "wait":
+                return
 
         def work(log):
             self._ensure_regs(log)
