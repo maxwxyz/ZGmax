@@ -1518,7 +1518,7 @@ def selftest():
     def ocr_process():                           # eigener Prozess (Hintergrund): startet er auch in der App?
         if not rep.ocr_available():
             return tr("nicht enthalten")
-        fut = ocrservice.submit(("selbsttest",), img)
+        fut = ocrservice.submit(("selbsttest",), src=ocrservice.source(pa, 1, 200))   # laedt die Seite selbst
         r = fut.result(timeout=120)
         ocrservice.stop()
         return " ".join(t[-1] for t in r)

@@ -108,6 +108,7 @@ class SearchMixin:
                     self.lbl_search.setText(tr("Ohne Texterkennung nur in PDF mit Text möglich."))
                     return
             dpi = self.dpi_value()
+            src = ocrservice.source(path, page, dpi)     # der Erkennungsprozess laedt die Seite selbst
 
             def work(ctx):
                 found = dv.text_lines(path, page, dpi) if pdf else []
@@ -115,8 +116,7 @@ class SearchMixin:
                     if not rep.ocr_available():
                         return []
                     ctx.progress(0.02, tr("Lese Text in der Zeichnung"))
-                    g = self._gray(path, page, dpi, ctx)
-                    found = ocrservice.lines(key, g, cancel=ctx.cancelled,   # wartet ggf. auf den Hintergrund
+                    found = ocrservice.lines(key, src=src, cancel=ctx.cancelled,   # wartet ggf. auf den Hintergrund
                                              progress=lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung")))
                 return found
 
@@ -183,12 +183,10 @@ class SearchMixin:
                 if found:                                # PDF-Text: senkrechte Masse liest „Geaenderten Text
                     self.cache[key] = found              # finden“ direkt aus dem PDF
                     continue
-            g = self.cache.get("g_" + path)
-            if g is None or self.cache.get("gk_" + path) != self._gray_key(path, page, self.dpi_value())[0]:
-                continue                                 # angezeigtes Bild ist eine andere Fassung: nicht raten
+            src = ocrservice.source(path, page, self.dpi_value())   # Prozess laedt die Seite selbst (alle Ebenen)
             for k, vert in ((key, False), (vk, True)):   # erst waagerecht (Suche), dann senkrecht (Masse)
                 if not have(k):
-                    ocrservice.submit(k, g, vertical=vert)
+                    ocrservice.submit(k, vertical=vert, src=src)
                     self._bg_keys.add(k)
                     self._bg_all.add(k)
         if self._bg_keys:

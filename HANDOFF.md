@@ -15,6 +15,14 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Zwischenablage, Startseite gibt es im Schild nicht – nichts doppelt ins Schild).
   Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur. Keine Firma/Zielgruppe nennen.
 
+## Erledigt 2026-11-03 (sechster Commit)
+- Erkennungsprozess lädt die Seite selbst: `ocrservice.submit(key, vertical=, src=ocrservice.source(path, page, dpi))`
+  (Passwort der PDF wird mitgegeben, nur im Speicher), `page_gray(src)` = `dc.read_image` + dunkelster Kanal, im Kind
+  für waagerecht + senkrecht nur einmal geladen (`_last`). Hintergrund prüft kein Graubild mehr (lief bei
+  ausgeblendeten PDF-Ebenen/Vektorfilter nicht); `run_search` ruft nicht mehr `self._gray` (verdrängte das
+  Vergleichsbild). Scheitert nur ein Auftrag (z. B. Datei), bleibt der Prozess; Rückfall im Programm per `page_gray`.
+  Tests: `test_background_text_recognition` (mit fremder Fassung im Cache), `test_search_reads_in_process_...`.
+
 ## Erledigt 2026-11-03 (fünfter Commit)
 - `PALETTE_GROUPS[0]` = Wolke + `SHAPES`; Gruppenknopf merkt das letzte Werkzeug in `palette_<erstes>` (Einstellung),
   Test `test_cloud_and_shapes_share_button`. 116 Tests grün, Mac-Bau + Selbsttest OK.

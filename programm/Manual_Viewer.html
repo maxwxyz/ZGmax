@@ -388,6 +388,7 @@ In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hi
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
 <p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): right after opening, a separate
 process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions).
+It loads the page itself from the file, with all layers – no matter which PDF layers are hidden in the comparison.
 <i>Text: 60 %</i> at the bottom right shows the progress. It uses at most half of the processor cores and reads several tiles at once –
 viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> (then reads nothing
 itself) and the searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. An error

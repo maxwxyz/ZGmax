@@ -1,6 +1,8 @@
 """Texterkennung ganzer Seiten in einem eigenen Prozess.
 
-Der Prozess laeuft mit niedriger Prioritaet: Ansehen, Bearbeiten und Vergleichen im Programm bleiben fluessig, die
+Der Prozess laedt die Seite selbst aus der Datei (normale Fassung: alle Ebenen, ohne Filter) - unabhaengig davon, wie
+sie im Programm gerade gezeigt oder verglichen wird; nichts Grosses muss zwischen den Prozessen kopiert werden und das
+Bild im Programm bleibt unberuehrt. Der Prozess laeuft mit niedriger Prioritaet: Ansehen, Bearbeiten und Vergleichen im Programm bleiben fluessig, die
 Texterkennung nimmt sich nur freie Rechenzeit. Darin werden mehrere Kacheln gleichzeitig gelesen (schneller als
 nacheinander) und OpenCV laeuft einfaedig (siehe diffreport._SafeOcr). Stuerzt die Erkennung ab, bleibt das Programm
 offen; dann wird im Programm selbst gelesen. Ein Auftrag je Schluessel (Datei, Seite, Aufloesung): wer denselben Text
@@ -61,9 +63,33 @@ def vkey(key):
     return ("vert",) + tuple(key)
 
 
-def _child_lines(key, gray, workers, vertical=False):
+_last = None                     # im Erkennungsprozess: (Quelle, Graubild) der zuletzt geladenen Seite
+
+
+def page_gray(src):
+    """Graubild einer Seite wie beim normalen Laden (dunkelster Kanal). src = (Pfad, Seite, dpi, Passwort oder None)."""
+    import diffcore as dc
+    path, page, dpi, pw = src
+    if pw:
+        import pdfopen
+        pdfopen.PASSWORDS[pdfopen._key(path)] = pw
+    return dc.darkest_channel(dc.read_image(path, page, dpi))
+
+
+def source(path, page, dpi):
+    """Quelle fuer submit/lines: Datei, Seite, Aufloesung und ggf. das Passwort der PDF (nur im Speicher)."""
+    import pdfopen
+    return (path, page, dpi, pdfopen.PASSWORDS.get(pdfopen._key(path)))
+
+
+def _child_lines(key, gray, workers, vertical=False, src=None):
+    global _last
     import diffreport as rep
     eng = rep._ocr_engine().eng                  # ohne Sperre: OpenCV ist in diesem Prozess ohnehin einfaedig
+    if gray is None:                             # Seite selbst laden (waagerecht und senkrecht nur einmal)
+        if _last is None or _last[0] != src:
+            _last = (src, page_gray(src))
+        gray = _last[1]
 
     def progress(f):
         try:
@@ -95,15 +121,17 @@ def _drain():
         _prog[k] = f
 
 
-def submit(key, gray, vertical=False):
-    """Auftrag starten (oder den laufenden fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier.
+def submit(key, gray=None, vertical=False, src=None):
+    """Auftrag starten (oder den laufenden fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier, oder None
+    und src (siehe source): dann laedt der Prozess die Seite selbst.
     vertical: nur die senkrechten Texte lesen (ocr_vertical), sonst die waagerechten (ocr_lines)."""
     import numpy as np
     with _lock:
         fut = _jobs.get(key)
         if fut is not None and not fut.cancelled() and (not fut.done() or fut.exception() is None):
             return fut
-        fut = _get_pool().submit(_child_lines, key, np.ascontiguousarray(gray), TILE_WORKERS, vertical)
+        g = None if gray is None else np.ascontiguousarray(gray)
+        fut = _get_pool().submit(_child_lines, key, g, TILE_WORKERS, vertical, src)
         _jobs[key] = fut
         _prog[key] = 0.0
         return fut
@@ -131,13 +159,14 @@ def result(key):
     return None
 
 
-def lines(key, gray, progress=None, cancel=None):
+def lines(key, gray=None, progress=None, cancel=None, src=None):
     """Textzeilen der Seite wie diffreport.ocr_lines - im Erkennungsprozess; wartet darauf (Fortschritt, Abbruch).
-    Faellt der Prozess aus, wird im Programm selbst gelesen."""
+    gray oder src wie bei submit. Faellt der Prozess aus, wird im Programm selbst gelesen."""
     import diffcore as dc
     import diffreport as rep
+    from concurrent.futures.process import BrokenProcessPool
     try:
-        fut = submit(key, gray)
+        fut = submit(key, gray, src=src)
         while True:
             try:
                 return fut.result(timeout=0.15)
@@ -151,10 +180,14 @@ def lines(key, gray, progress=None, cancel=None):
                 progress(_prog.get(key, 0.0))
     except dc.Cancelled:
         raise
-    except Exception:                            # noqa: BLE001 - Prozess nicht verfuegbar oder abgestuerzt
+    except Exception as e:                       # noqa: BLE001 - Prozess nicht verfuegbar oder abgestuerzt
         log.exception("Texterkennung im eigenen Prozess")
-        reset()
-        return rep.ocr_lines(gray, progress=progress, cancel=cancel)
+        if isinstance(e, (BrokenProcessPool, OSError, RuntimeError)) or _pool is None:
+            reset()                              # Prozess kaputt: beim naechsten Mal neu starten
+        else:
+            with _lock:
+                _jobs.pop(key, None)             # nur dieser Auftrag gescheitert (z. B. Datei): nicht festhalten
+        return rep.ocr_lines(gray if gray is not None else page_gray(src), progress=progress, cancel=cancel)
 
 
 def reset():

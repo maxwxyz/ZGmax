@@ -2090,6 +2090,8 @@ def test_background_text_recognition(app, win, pair):
         pytest.skip("Texterkennung nicht installiert")
     compare(app, win, *pair)
     win.settings.setValue("bg_text", True)
+    for p in pair:                                               # wie mit ausgeblendeten PDF-Ebenen: andere Fassung
+        win.cache["gk_" + str(p)] = ("andere Fassung",)
     try:
         win._bg_text_start()
         keys = set(win._bg_keys)
@@ -2106,6 +2108,7 @@ def test_background_text_recognition(app, win, pair):
         win.ed_search.setText("MASS")
         win.run_search()
         assert not win.running and win.canvas.search_hits         # sofort, ohne Lesen im Programm
+        assert all(win.cache["gk_" + str(p)] == ("andere Fassung",) for p in pair)   # Vergleichsbild unberuehrt
         win.find_regs()
         wait(app, lambda: not win.running)
         calls = []
@@ -2184,3 +2187,26 @@ def test_cloud_and_shapes_share_button(app, win):
     assert b.defaultAction() is win.tool_actions["ellipse"]
     assert win.settings.value("palette_cloud") == "ellipse"
     win._set_tool("cloud")
+
+
+def test_search_reads_in_process_without_touching_compare_image(app, win, pair):
+    """Ohne Hintergrund: die Suche laesst den Erkennungsprozess die Seite selbst laden (nur waagerecht, einmal) und
+    ersetzt das Bild des Vergleichs nicht."""
+    import diffreport as rep
+    import ocrservice
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    compare(app, win, *pair)
+    for p in pair:
+        win.cache["gk_" + str(p)] = ("andere Fassung",)
+    try:
+        win.open_search()
+        win.cb_search_in.setCurrentIndex(win.cb_search_in.findData("B"))
+        win.ed_search.setText("MASS")
+        win.run_search()
+        wait(app, lambda: not win.running and win.canvas.search_hits, timeout=120)
+        key = win._text_key("B")[0]
+        assert key in win.cache and ocrservice.vkey(key) not in win.cache      # nur waagerecht
+        assert win.cache["gk_" + str(pair[1])] == ("andere Fassung",)
+    finally:
+        ocrservice.stop()
