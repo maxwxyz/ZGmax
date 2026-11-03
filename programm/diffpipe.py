@@ -383,14 +383,43 @@ def filter_small(oa, ob, min_area, merge=25, both=None):
     if min_area <= 0:
         return 0
     n, lab, s = _group(oa | ob, merge)
-    parts = [_pix_labels(m, lab, s) for m in (oa, ob)]
-    tot = sum(np.bincount(l, minlength=n) for _, _, l in parts)
-    removed = int(((tot > 0) & (tot < min_area)).sum())
-    for m, (ys, xs, l) in zip((oa, ob), parts):
-        bad = tot[l] < min_area
-        m[ys[bad], xs[bad]] = False
+    hs, ws = lab.shape
+    H, W = oa.shape
+    if H < s or W < s:                               # winziges Bild: einfach Pixel fuer Pixel
+        parts = [_pix_labels(m, lab, s) for m in (oa, ob)]
+        tot = sum(np.bincount(l, minlength=n) for _, _, l in parts)
+        for m, (ys, xs, l) in zip((oa, ob), parts):
+            bad = tot[l] < min_area
+            m[ys[bad], xs[bad]] = False
+            if both is not None:
+                both[ys[bad], xs[bad]] = True
+        return int(((tot > 0) & (tot < min_area)).sum())
+
+    def cells(m):
+        """Pixel je Gruppenzelle (s x s; Reste am Rand zaehlen zur letzten Zelle wie in _pix_labels).
+        INTER_AREA mittelt; mit s*s multipliziert ergibt das genau die Anzahl (viel schneller als np.nonzero)."""
+        m8 = m.view(np.uint8) if m.dtype == bool else (m > 0).astype(np.uint8)
+        c = cv2.resize(m8[:hs * s, :ws * s] * np.uint8(s * s), (ws, hs), interpolation=cv2.INTER_AREA).astype(np.int64)
+        if H > hs * s:
+            c[-1, :] += m8[hs * s:, :ws * s].reshape(H - hs * s, ws, s).sum(axis=(0, 2), dtype=np.int64)
+        if W > ws * s:
+            c[:, -1] += m8[:hs * s, ws * s:].reshape(hs, s, W - ws * s).sum(axis=(1, 2), dtype=np.int64)
+        if H > hs * s and W > ws * s:
+            c[-1, -1] += int(m8[hs * s:, ws * s:].sum())
+        return c
+    tot = np.bincount(lab.ravel(), weights=(cells(oa) + cells(ob)).ravel(), minlength=n)
+    badl = (tot > 0) & (tot < min_area)
+    removed = int(badl.sum())
+    if not removed:
+        return 0
+    full = cv2.resize(badl[lab].astype(np.uint8), (ws * s, hs * s), interpolation=cv2.INTER_NEAREST)
+    if full.shape != (H, W):
+        full = cv2.copyMakeBorder(full, 0, H - hs * s, 0, W - ws * s, cv2.BORDER_REPLICATE)
+    bad = full.view(bool)
+    for m in (oa, ob):
         if both is not None:
-            both[ys[bad], xs[bad]] = True
+            both |= m & bad                          # entfernte Pixel bleiben als graue Linie sichtbar
+        m &= ~bad
     return removed
 
 

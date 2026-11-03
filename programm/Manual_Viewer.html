@@ -117,8 +117,8 @@ review, text and dimensions, batch and revisions), <i>Window</i>, <i>Help</i>. W
 is grayed out.</td></tr>
 <tr><td>Top bar</td><td><i>Open</i> and the <b>mode chip</b>: <i>Viewing: file</i> (gray, one drawing) or <i>Comparing:
 old → new</i> (blue). Clicking it shows what you can do – in a comparison <i>Compare</i> (recalculate), <i>Swap A and B</i>,
-choose another old or new drawing. If settings have changed, the chip shows ● and a blue border. When viewing, <i>Compare
-with …</i> next to it opens a second drawing. In a comparison the view switch follows (Old, New, Compare, Overlay, Side by
+choose another old or new drawing. If settings have changed, the chip shows ● and a blue border. When viewing, the chip offers <i>Compare
+with another drawing …</i> and <i>View another drawing …</i>. In a comparison the view switch follows (Old, New, Compare, Overlay, Side by
 side, Slider, Blink); then zoom (−, zoom level, +, Whole drawing), <i>Save</i> and the toggles for the two side panels
 <i>Options</i> (settings, left) and <i>Items</i> (markups, changes, layers – right). In a narrow window the buttons lose
 their text step by step (name in the tooltip); narrower still, <i>Overlay</i>, <i>Slider</i> and <i>Blink</i> are only in
@@ -136,7 +136,7 @@ e.g. measuring mode, snapping, scale and <i>Calibrate</i>; color and size for ma
 <tr><td>Status bar (bottom)</td><td>What is happening, progress in percent with <i>Cancel</i>, mouse position in px and mm.</td></tr>
 </table>
 <p>Rarely used things are hidden at first. The checkbox <i>All settings</i> at the bottom of the <i>Options</i> panel
-(or <i>View → Show all settings</i>) also shows region/zones, vector data,
+(or <i>View → Settings …</i>) also shows region/zones, vector data,
 advanced options and the log.</p>
 
 <h2 id="navigation">Zooming and panning</h2>
@@ -187,14 +187,14 @@ white (red/blue/gray). The comparison itself always uses the black-and-white ver
 <i>View → Show original (color, grayscale)</i>.</p>
 <p><b>Invert colors</b> (<kbd>I</kbd>, <i>View → Invert colors</i>): light lines on a dark background – pleasant in the
 dark or during long screen work. In Compare only the paper turns dark; red/blue/green stay. Display only; saved images and
-prints stay normal. Separately, <i>View → Appearance</i> (Automatic, Light, Dark) sets the look of the user interface.</p>
+prints stay normal. Separately, <i>View → Settings … → Appearance</i> (Automatic, Light, Dark) sets the look of the user interface.</p>
 
 <h2 id="viewing">Viewing only, several windows, closing</h2>
 <ul>
 <li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → Open single drawing …</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
-saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. <i>Compare with …</i> (top
-bar or side panel) opens a second drawing and compares.</li>
+saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. Click the chip → <i>Compare with another
+drawing …</i> (or the side panel) opens a second drawing and compares.</li>
 <li><b>Each document in its own window:</b> if something is already open, <i>Open single drawing</i>, <i>Recently used</i>,
 <i>Open project</i> and dropped files open a <b>new window</b> – markups and review state of different documents never
 mix. Only <i>Open old/new drawing</i> deliberately replaces one side of the current comparison. The <i>Window</i> menu
@@ -342,7 +342,8 @@ empties the list). <kbd>H</kbd> hides all markups, numbers and zones – hidden 
 <ol>
 <li><b>Start review</b> (button at the top of the <i>Changes</i> tab, <i>Compare → Start review</i> or
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>): finds the changes if not done yet, opens the list, shows the first open
-change and shows the keys at the top. Each change gets a number and a frame (as a revision cloud if you like:
+change and shows the keys at the top. Only now the tab shows the buttons <i>Previous</i>, <i>Next</i>,
+<i>Checked</i>, <i>Rejected</i> and <i>Comment</i> (the keys always work). Each change gets a number and a frame (as a revision cloud if you like:
 <i>View → Changes as revision clouds</i>). Only find, without the walk-through: <i>Compare → Find changes</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>).</li>
 <li><b>Next</b> (<kbd>N</kbd>) jumps to the next open change and zooms to it; <b>Previous</b> (<kbd>P</kbd>) goes back.</li>
@@ -385,10 +386,11 @@ the PDF report and the PDF with annotations – that is your review record.</p>
 In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.</p>
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
-<p><b>Read text in the background</b> (<i>View</i>, on by default): right after opening, a separate process with low
-priority reads the text of Old and New. It uses at most half of the processor cores and reads several tiles at once –
-viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> and the
-searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. An error
+<p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): right after opening, a separate
+process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions).
+<i>Text: 60 %</i> at the bottom right shows the progress. It uses at most half of the processor cores and reads several tiles at once –
+viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> (then reads nothing
+itself) and the searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. An error
 in the text recognition can no longer close the program.</p>
 
 <h2 id="copy">Region selection, copy, paste</h2>
@@ -595,7 +597,8 @@ again.</td></tr>
 </table>
 <p>Markups alone: <i>File → Markups → Save markups as XFDF …</i> (see <a href="#comments">Comments</a>).</p>
 <p><b>Autosave:</b> unsaved markups and review results are backed up every minute. If the program crashes, it offers to
-restore them on the next start.</p>
+restore them on the next start – only if there really are markups or review results and the program was not closed
+normally.</p>
 
 <h2 id="batch">Batch and revisions</h2>
 <p><b>Compare folders</b> (<i>Compare → Compare folders (batch) …</i>): compares all matching drawings of two folders, every
@@ -610,12 +613,15 @@ sheet. <i>Compare → Compare revisions</i>: several revisions of a drawing in o
 
 <h2 id="ui">Language and interface size</h2>
 <ul>
-<li><b>Language:</b> <i>View → Sprache / Language</i>: Automatic (system language; German on a German system, otherwise
+<li><b>Language:</b> <i>View → Settings … → Sprache / Language</i>: Automatic (system language; German on a German system, otherwise
 English), Deutsch or English. This manual also opens in the chosen language.</li>
-<li><b>Size:</b> <i>View → Interface size</i>: 90 % to 150 % – larger text and buttons, e.g. on large screens.</li>
+<li><b>Size:</b> <i>View → Settings … → Interface size</i>: 90 % to 150 % – larger text and buttons, e.g. on large screens.</li>
 </ul>
 <p>Both take effect after a restart, which the program offers right away (open work is saved first).</p>
-<p><b>Reset all settings</b> (<i>Help</i>): appearance, language, size, comparison values, tool options and window position
+<p><b>Settings</b> (<i>View → Settings …</i>, <kbd>Ctrl</kbd>+<kbd>,</kbd>; on the Mac in the application menu) brings
+everything together: appearance, language, size, name (for comments, stamps and review record), read text in the
+background, show all settings, plus file types and reset.</p>
+<p><b>Reset all settings</b> (<i>Help</i> or in the settings window): appearance, language, size, comparison values, tool options and window position
 back to defaults; optionally the <i>Recently used</i> list is kept. Files, projects and markups stay unchanged.</p>
 <p><b>Version and what's new:</b> <i>Help → What's new …</i> shows the change history in the interface language. After an
 update the program points this out at the first start. The version number is shown under <i>About ZGmax</i> (Mac: program
@@ -737,22 +743,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Invert colors</td><td>I</td><td>Light lines on a dark background (display only; saved images stay normal). Key I</td></tr>
 <tr><td>Options</td><td></td><td>Show/hide the side panel with the comparison settings</td></tr>
 <tr><td>Items</td><td></td><td>Side panel with everything that lies on the drawing: changes, markups and (via View → Layers) layers</td></tr>
-<tr><td>Show all settings</td><td></td><td>Also show rarely used settings, vector data, zones and the log</td></tr>
-<tr><td>Read text in the background</td><td></td><td>After opening, recognise the text of the drawing in the background (separate process with low priority). Text search, “Find changed text” and searchable PDF are then ready immediately.</td></tr>
-</table>
-<h3>View → Appearance</h3>
-<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
-<tr><td>Automatic (like system)</td><td></td><td></td></tr>
-<tr><td>Light</td><td></td><td></td></tr>
-<tr><td>Dark</td><td></td><td></td></tr>
-</table>
-<h3>View → Interface size</h3>
-<table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
-<tr><td>90 %</td><td></td><td></td></tr>
-<tr><td>100 %  (default)</td><td></td><td></td></tr>
-<tr><td>115 %</td><td></td><td></td></tr>
-<tr><td>130 %</td><td></td><td></td></tr>
-<tr><td>150 %</td><td></td><td></td></tr>
+<tr><td>Settings …</td><td>Ctrl+,</td><td>Appearance, language, interface size, name, text recognition in the background</td></tr>
 </table>
 <h3>Tools</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>

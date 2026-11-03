@@ -56,7 +56,12 @@ def _limit_ort_threads():
         pass
 
 
-def _child_lines(key, gray, workers):
+def vkey(key):
+    """Schluessel fuer die senkrechten Texte derselben Seite."""
+    return ("vert",) + tuple(key)
+
+
+def _child_lines(key, gray, workers, vertical=False):
     import diffreport as rep
     eng = rep._ocr_engine().eng                  # ohne Sperre: OpenCV ist in diesem Prozess ohnehin einfaedig
 
@@ -65,6 +70,8 @@ def _child_lines(key, gray, workers):
             _queue.put_nowait((key, f))
         except Exception:                        # noqa: BLE001
             pass
+    if vertical:
+        return rep.ocr_vertical(gray, progress=progress, workers=workers, eng=eng)
     return rep.ocr_lines(gray, progress=progress, workers=workers, eng=eng)
 
 
@@ -88,14 +95,15 @@ def _drain():
         _prog[k] = f
 
 
-def submit(key, gray):
-    """Auftrag starten (oder den laufenden fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier."""
+def submit(key, gray, vertical=False):
+    """Auftrag starten (oder den laufenden fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier.
+    vertical: nur die senkrechten Texte lesen (ocr_vertical), sonst die waagerechten (ocr_lines)."""
     import numpy as np
     with _lock:
         fut = _jobs.get(key)
         if fut is not None and not fut.cancelled() and (not fut.done() or fut.exception() is None):
             return fut
-        fut = _get_pool().submit(_child_lines, key, np.ascontiguousarray(gray), TILE_WORKERS)
+        fut = _get_pool().submit(_child_lines, key, np.ascontiguousarray(gray), TILE_WORKERS, vertical)
         _jobs[key] = fut
         _prog[key] = 0.0
         return fut
@@ -104,6 +112,15 @@ def submit(key, gray):
 def busy(key):
     fut = _jobs.get(key)
     return fut is not None and not fut.done()
+
+
+def progress(key):
+    """Fortschritt 0..1 des Auftrags key (None = keiner bekannt)."""
+    _drain()
+    fut = _jobs.get(key)
+    if fut is None:
+        return None
+    return 1.0 if fut.done() else _prog.get(key, 0.0)
 
 
 def result(key):

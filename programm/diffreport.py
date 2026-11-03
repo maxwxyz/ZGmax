@@ -246,15 +246,28 @@ def ocr_image(gray):
     return items
 
 
-def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None):
+def _may_hold_text(part, line=80):
+    """Kann in der Kachel Text stehen? Nein, wenn sie leer ist oder nur lange gerade Linien enthaelt (Rahmen,
+    Kanten) - Schrift besteht aus kleinen Teilen. Spart die Erkennung solcher Kacheln, das Ergebnis bleibt gleich."""
+    if part.min() > 200:
+        return False
+    ink = (part < 160).astype(np.uint8)
+    if not ink.any():
+        return True                                # nur blasse Schrift: lieber lesen
+    lines = cv2.morphologyEx(ink, cv2.MORPH_OPEN, np.ones((1, line), np.uint8)) | \
+        cv2.morphologyEx(ink, cv2.MORPH_OPEN, np.ones((line, 1), np.uint8))
+    return bool((ink & ~lines).any())
+
+
+def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None, scores=False):
     """Texterkennung der ganzen Zeichnung in Kacheln: Liste (x0, y0, x1, y1, text) je Textzeile in Bildpixeln.
     gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst.
     workers > 1: mehrere Kacheln gleichzeitig (nur mit eng ohne Sperre sinnvoll, siehe ocrservice); das Ergebnis ist
-    dasselbe wie nacheinander."""
+    dasselbe wie nacheinander. scores: je Zeile zusaetzlich die Sicherheit (6. Wert)."""
     H, W = gray.shape
     eng = eng or _ocr_engine()
     tiles = [(x, y) for y in range(0, max(1, H - overlap), tile - overlap) for x in range(0, max(1, W - overlap), tile - overlap)]
-    tiles = [(x, y) for x, y in tiles if gray[y:y + tile, x:x + tile].min() <= 200]     # leere Kacheln weglassen
+    tiles = [(x, y) for x, y in tiles if _may_hold_text(gray[y:y + tile, x:x + tile])]
     done = [0]
 
     def read(xy):
@@ -266,7 +279,7 @@ def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=
         if progress:
             progress(done[0] / max(1, len(tiles)))
         return [(x + min(p[0] for p in box), y + min(p[1] for p in box), x + max(p[0] for p in box),
-                 y + max(p[1] for p in box), str(text).strip()) for box, text, score in res or []]
+                 y + max(p[1] for p in box), str(text).strip(), float(score)) for box, text, score in res or []]
     if progress:
         progress(0.0)
     if workers > 1 and len(tiles) > 1:
@@ -282,7 +295,35 @@ def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=
         if any(u[4] == b[4] and abs((u[0] + u[2]) / 2 - cx) < 15 and abs((u[1] + u[3]) / 2 - cy) < 15 for u in uniq[-50:]):
             continue
         uniq.append(b)
-    return uniq
+    return uniq if scores else [b[:5] for b in uniq]
+
+
+def ocr_vertical(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.55):
+    """Senkrechte Texte der ganzen Zeichnung (von unten nach oben und von oben nach unten), wie ocr_any_orientation,
+    aber fuer die ganze Seite: Liste (x0, y0, x1, y1, text, Drehung 1/3) in Bildpixeln der ungedrehten Seite."""
+    H, W = gray.shape
+    found = []
+    for k, rot in enumerate((1, 3)):
+        sub_prog = (lambda f, k=k: progress((k + f) / 2)) if progress else None
+        for x0, y0, x1, y1, text, score in ocr_lines(np.ascontiguousarray(np.rot90(gray, rot)), progress=sub_prog,
+                                                     cancel=cancel, workers=workers, eng=eng, scores=True):
+            if not text or score < min_score:
+                continue
+            if rot == 1:                               # np.rot90(k=1): (x, y) -> (y, W-1-x)
+                box = (W - 1 - y1, x0, W - 1 - y0, x1)
+            else:                                      # np.rot90(k=3): (x, y) -> (H-1-y, x)
+                box = (y0, H - 1 - x1, y1, H - 1 - x0)
+            if box[3] - box[1] > box[2] - box[0]:      # nur echte senkrechte Fundstellen
+                found.append((*box, text, score * len(text), rot))
+    found.sort(key=lambda t: -t[5])                    # sicherste zuerst; Ueberschneidungen nur einmal
+    keep = []
+    for f in found:
+        area = max(1.0, (f[2] - f[0]) * (f[3] - f[1]))
+        if any(min(f[2], k[2]) - max(f[0], k[0]) > 0 and min(f[3], k[3]) - max(f[1], k[1]) > 0 and
+               (min(f[2], k[2]) - max(f[0], k[0])) * (min(f[3], k[3]) - max(f[1], k[1])) > 0.3 * area for k in keep):
+            continue
+        keep.append(f)
+    return [(k[0], k[1], k[2], k[3], k[4], k[6]) for k in sorted(keep, key=lambda t: (t[0], t[1]))]
 
 
 def find_text(lines, query):
@@ -356,9 +397,10 @@ def lines_in_box(lines, box, pad=15):
             and y - pad <= (ln[1] + ln[3]) / 2 <= y + h + pad]
 
 
-def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None):
+def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None, known_v=None):
     """Text in einer Aenderung, in jeder Lage. known: schon gelesene waagerechte Zeilen dieser Stelle (z. B. von der
-    Textsuche) - dann werden nur noch die senkrechten Lagen erkannt (schneller)."""
+    Textsuche) - dann werden nur noch die senkrechten Lagen erkannt (schneller). known_v: dazu schon gelesene
+    senkrechte Zeilen (x0, y0, x1, y1, text, Drehung) - dann wird gar nichts mehr erkannt."""
     x, y, w, h = box
     H, W = ink.shape
     x0, y0, x1, y1 = max(0, x - pad), max(0, y - pad), min(W, x + w + pad), min(H, y + h + pad)
@@ -369,14 +411,25 @@ def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None):
     if known is None:
         return " ".join(t[4] for t in ocr_any_orientation(crop)).strip()
     import diffvector as dv
-    vert = ocr_any_orientation(crop, rots=(1, 3))
-    parts = [((l[0] + l[2]) / 2, (l[1] + l[3]) / 2, l[3] - l[1], l[4], (1.0, 0.0)) for l in known]
     dirs = {1: (0.0, -1.0), 3: (0.0, 1.0)}
-    for v in vert:                                     # senkrecht: nur echte senkrechte Fundstellen
-        if v[3] - v[1] > v[2] - v[0]:
-            cx, cy = (v[0] + v[2]) / 2 + x0 - 20, (v[1] + v[3]) / 2 + y0 - 20
-            parts.append((cx, cy, v[2] - v[0], v[4], dirs[v[6]]))
+    if known_v is None:
+        known_v = []
+        for v in ocr_any_orientation(crop, rots=(1, 3)):   # senkrecht: nur echte senkrechte Fundstellen
+            if v[3] - v[1] > v[2] - v[0]:
+                known_v.append((v[0] + x0 - 20, v[1] + y0 - 20, v[2] + x0 - 20, v[3] + y0 - 20, v[4], v[6]))
+    # die waagerechte Erkennung liest senkrechte Texte teils mit: dieselbe Stelle nur einmal (senkrecht gilt)
+    known = [l for l in known if not any(_overlap(l, v) > 0.5 for v in known_v)]
+    parts = [((l[0] + l[2]) / 2, (l[1] + l[3]) / 2, l[3] - l[1], l[4], (1.0, 0.0)) for l in known]
+    for v in known_v:
+        parts.append(((v[0] + v[2]) / 2, (v[1] + v[3]) / 2, v[2] - v[0], v[4], dirs[v[5]]))
     return " ".join(dv.reading_order(parts)).strip()
+
+
+def _overlap(a, b):
+    """Anteil der Flaeche von a (x0, y0, x1, y1, ...), der in b liegt."""
+    w = min(a[2], b[2]) - max(a[0], b[0])
+    h = min(a[3], b[3]) - max(a[1], b[1])
+    return w * h / max(1.0, (a[2] - a[0]) * (a[3] - a[1])) if w > 0 and h > 0 else 0.0
 
 
 def text_changed(r):
@@ -389,17 +442,23 @@ def _norm(s):
     return re.sub(r"\s+", " ", s).strip().casefold()
 
 
-def text_diff(res, regs, log=print, max_regions=300, lines=(None, None), only_new=False):
+def text_diff(res, regs, log=print, max_regions=300, lines=(None, None), only_new=False, vlines=(None, None)):
     """Liest Text in geaenderten Bereichen aus A und B und traegt ihn in die Liste ein.
-    lines = (Zeilen A, Zeilen B) schon gelesener Text in Ergebnis-Koordinaten (z. B. von der Textsuche) oder None.
+    lines = (Zeilen A, Zeilen B) schon gelesener Text in Ergebnis-Koordinaten (z. B. von der Textsuche) oder None;
+    vlines = dazu schon gelesene senkrechte Zeilen (Hintergrund-Erkennung) oder None.
     only_new: Aenderungen, deren Text schon gelesen ist, nicht noch einmal lesen."""
     todo = [r for r in regs if r["typ"] != "verschoben" and not (only_new and r.get("text_read"))][:max_regions]
     log(tr("Textvergleich (OCR) fuer {} Bereiche ...").format(len(todo)))
     la, lb = lines
+    va, vb = vlines
+
+    def read(ink, box, ln, vl):
+        return ocr_box(ink, box, known=lines_in_box(ln, box) if ln is not None else None,
+                       known_v=lines_in_box(vl, box) if ln is not None and vl is not None else None)
     for i, r in enumerate(todo, 1):
         box = (r["x"], r["y"], r["w"], r["h"])
-        r["text_a"] = ocr_box(res.a, box, known=lines_in_box(la, box) if la is not None else None)
-        r["text_b"] = ocr_box(res.b, box, known=lines_in_box(lb, box) if lb is not None else None)
+        r["text_a"] = read(res.a, box, la, va)
+        r["text_b"] = read(res.b, box, lb, vb)
         r["text_read"] = True                          # schon gelesen: beim naechsten Mal nicht noch einmal
         if i % 20 == 0:
             log(f"  {i}/{len(todo)}")

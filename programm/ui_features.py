@@ -549,12 +549,25 @@ class FeaturesMixin:
             self._autosave_name = f"wiederherstellen-{os.getpid()}-{FeaturesMixin._win_counter}{PROJECT_EXT}"
         return os.path.join(app_data_dir(), self._autosave_name)
 
+    @staticmethod
+    def _worth_restoring(data):
+        """Lohnt sich das Wiederherstellen? Nur bei Markierungen, Zonen oder Pruefergebnissen (wie beim Schliessen
+        gefragt wird); Ansicht, Zoom oder Einstellungen allein nicht."""
+        regs = data.get("regions") or []
+        return bool(data.get("annotations") or data.get("zones") or any(data.get("page_annotations", {}).values())
+                    or any(r.get("status") or r.get("comment") for r in regs))
+
     def autosave(self):
         """Sichert ungespeicherte Markierungen/Pruefung jede Minute (fuer den Fall eines Absturzes)."""
+        if getattr(self, "_closed", False):                  # Fenster zu: nichts mehr sichern (sonst bleibt Datei)
+            return
         if not getattr(self, "_dirty", False) or not (self.path_a or self.path_b):
             return
         try:
             data = self._project_data()
+            if not self._worth_restoring(data):
+                self.clear_autosave()
+                return
             data["autosave_of"] = self.project_path
             tmp = self._autosave_path() + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
@@ -570,9 +583,33 @@ class FeaturesMixin:
             pass
 
     @staticmethod
+    def clear_process_autosaves():
+        """Beim normalen Beenden: alle Sicherungen dieses Programmlaufs loeschen (auch die geschlossener Fenster)."""
+        import glob
+        for path in glob.glob(os.path.join(app_data_dir(), f"wiederherstellen-{os.getpid()}-*")):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    @staticmethod
     def _pid_alive(pid):
         if pid == os.getpid():
             return True
+        if pid <= 0:
+            return False
+        if os.name == "nt":
+            # Nicht os.kill(pid, 0): das beendet unter Windows den Prozess (TerminateProcess)!
+            import ctypes
+            k = ctypes.windll.kernel32
+            h = k.OpenProcess(0x1000, False, pid)        # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                return ctypes.GetLastError() == 5        # Zugriff verweigert = laeuft (anderer Benutzer)
+            try:
+                code = ctypes.c_ulong()
+                return bool(k.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259   # STILL_ACTIVE
+            finally:
+                k.CloseHandle(h)
         try:
             os.kill(pid, 0)
             return True
@@ -591,8 +628,20 @@ class FeaturesMixin:
         for path in glob.glob(os.path.join(app_data_dir(), "wiederherstellen*" + PROJECT_EXT)):
             parts = os.path.basename(path).split("-")
             pid = int(parts[1]) if len(parts) > 2 and parts[1].isdigit() else -1
-            if not self._pid_alive(pid):
+            if self._pid_alive(pid):
+                continue
+            try:                                             # alte Sicherung ohne Markierungen/Pruefung: weg damit
+                with open(path, encoding="utf-8") as f:
+                    worth = self._worth_restoring(json.load(f))
+            except (OSError, ValueError):
+                worth = False
+            if worth:
                 leftovers.append(path)
+            else:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
         if not leftovers:
             return
         r = QMessageBox.question(self, APP, tr("Das Programm wurde beim letzten Mal nicht normal beendet. "

@@ -308,18 +308,20 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         wa, wb = (dv.pdf_words(pa, na), dv.pdf_words(pb, nb)) if pdf else ([], [])
         if not (wa or wb) and not self.ensure_ocr(tr("Text zu lesen")):
             return
-        known = (None, None)
+        known = vknown = (None, None)
         if not (wa or wb):                               # Text der Textsuche / des durchsuchbaren PDF wiederverwenden
             self._bg_text_poll()
-            if any(ocrservice.busy(self._text_key(s)[0]) for s in ("A", "B")):   # gleich fertig: darauf warten
+            keys = [self._text_key(s)[0] for s in ("A", "B")]
+            if any(ocrservice.busy(k) or ocrservice.busy(ocrservice.vkey(k)) for k in keys):   # darauf warten
                 self.lbl_status.setText(tr("Warte auf die Texterkennung im Hintergrund …"))
                 QTimer.singleShot(400, self, lambda: self.run_text(then))
                 return
-            got = []
-            for side in ("A", "B"):
-                lines = self.cache.get(self._text_key(side)[0])
+            got, vgot = [], []
+            for side, k in zip(("A", "B"), keys):
+                lines, vl = self.cache.get(k), self.cache.get(ocrservice.vkey(k))
                 got.append(None if lines is None else [(*self._to_view(side, ln[:4]), ln[4]) for ln in lines])
-            known = tuple(got)
+                vgot.append(None if vl is None else [(*self._to_view(side, ln[:4]), ln[4], ln[5]) for ln in vl])
+            known, vknown = tuple(got), tuple(vgot)
 
         def work(log):
             self._ensure_regs(log)
@@ -328,7 +330,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
                 dv.fill_text(pl["regs"], wa, wb, dpi, log)
                 how = tr("PDF-Text")
             else:
-                rep.text_diff(pl["res"], pl["regs"], log, lines=known, only_new=True)
+                rep.text_diff(pl["res"], pl["regs"], log, lines=known, only_new=True, vlines=vknown)
                 how = tr("Texterkennung")
             return how, rep.dim_changes(pl["regs"], log)
 
@@ -1137,7 +1139,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.banner.show_msg(tr("Linienfilter wirkt hier nicht: Die Zeichnung hat keine deutlich "
                                     "unterschiedlichen Strichstärken. Es werden alle Linien gezeigt."), "info",
                                  timeout=12)
-        self._regs_stale = self._reviewing = False
+        self._regs_stale = False
+        self._set_reviewing(False)
         if snap.get("crop_b") and snap["crop"] and self.cache.get("region_score", 1.0) < 0.35:
             self.banner.show_msg(tr("Die zugeordneten Bereiche passen kaum zusammen. Ergebnis prüfen oder in B einen "
                                     "größeren Bereich um dieselbe Stelle wählen."), "warn", timeout=15)
@@ -1582,6 +1585,7 @@ def main():
     if proj:
         QTimer.singleShot(0, lambda: w.project_open(proj[0]))
     app.aboutToQuit.connect(ocrservice.stop)
+    app.aboutToQuit.connect(MainWindow.clear_process_autosaves)   # normales Ende: keine Wiederherstellen-Frage
     sys.exit(app.exec())
 
 

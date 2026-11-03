@@ -36,8 +36,16 @@ class ReviewMixin:
             return
         self.canvas.selected = None
         self.review_step(1)
-        self._reviewing = True
+        self._set_reviewing(True)
         self._review_hint()
+
+    def _set_reviewing(self, on):
+        """Pruefknoepfe (Vorige, Naechste, Geprueft, Abgelehnt, Kommentar) nur waehrend der Pruefung, sonst nur
+        „Pruefen starten“ - die Leiste bleibt aufgeraeumt. Tasten (N, G, X, C, P) gehen immer."""
+        self._reviewing = bool(on)
+        if hasattr(self, "review_bar"):
+            self.review_bar.setVisible(self._reviewing)
+            self.btn_regs.setVisible(not self._reviewing)
 
     def _review_progress(self):
         """Nach jedem Status: Fortschritt in der Hinweisleiste nachfuehren (nur waehrend des Rundgangs)."""
@@ -132,6 +140,7 @@ class ReviewMixin:
                 self._saved(path)
         self.banner.show_msg(msg + tr(" – im Projekt gespeichert (Projekt speichern nicht vergessen)."), "info",
                              timeout=12)
+        self._set_reviewing(False)
 
     def _make_protocol(self, name, result, remark):
         files = []

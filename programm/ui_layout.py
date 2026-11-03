@@ -261,6 +261,9 @@ class LayoutMixin:
                                     "Prozess mit niedriger Priorität). Textsuche, „Geänderten Text finden“ und "
                                     "durchsuchbares PDF sind dann sofort bereit."))
         self.act_bg_text.setChecked(self._bg_text_on())
+        self.act_settings = A(tr("Einstellungen …"), self.show_settings, "Ctrl+,",
+                              tr("Darstellung, Sprache, Größe der Oberfläche, Name, Texterkennung im Hintergrund"))
+        self.act_settings.setMenuRole(QAction.MenuRole.PreferencesRole)
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
         self.act_space.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
 
@@ -424,34 +427,7 @@ class LayoutMixin:
         for a in (self.act_left, self.act_right):
             m.addAction(a)
         m.addSeparator()
-        look = m.addMenu(tr("Darstellung"))
-        self.theme_actions = {}
-        tg = QActionGroup(self)
-        for key, txt in (("auto", tr("Automatisch (wie System)")), ("light", tr("Hell")), ("dark", tr("Dunkel"))):
-            act = look.addAction(txt, lambda k=key: self.set_theme(k))
-            act.setCheckable(True)
-            tg.addAction(act)
-            self.theme_actions[key] = act
-        self.theme_actions[self.theme_mode].setChecked(True)
-        lang = m.addMenu(tr("Sprache") + " / Language")
-        lg = QActionGroup(self)
-        cur_lang = i18n.setting()
-        for key, txt in (("auto", tr("Automatisch (wie System)")), ("de", "Deutsch"), ("en", "English")):
-            act = lang.addAction(txt, lambda k=key: self.set_language(k))
-            act.setCheckable(True)
-            act.setChecked(key == cur_lang)
-            lg.addAction(act)
-        size = m.addMenu(tr("Größe der Oberfläche"))
-        sg = QActionGroup(self)
-        cur = ui_scale_setting(self.settings)
-        for v in UI_SCALES:
-            act = size.addAction(f"{v * 100:.0f} %" + (tr("  (Standard)") if v == 1.0 else ""),
-                                 lambda v=v: self.set_ui_scale(v))
-            act.setCheckable(True)
-            act.setChecked(abs(v - cur) < 0.01)
-            sg.addAction(act)
-        m.addAction(self.act_expert)
-        m.addAction(self.act_bg_text)
+        m.addAction(self.act_settings)                 # Darstellung, Sprache, Groesse, ... in einem Fenster
 
         m = mb.addMenu(tr("&Werkzeuge"))
         for key, *_ in TOOLS:
@@ -1207,7 +1183,13 @@ class LayoutMixin:
         self.btn_cancel.hide()
         self.lbl_pos = QLabel("")
         self.lbl_pos.setObjectName("hint")
+        self.lbl_bg_text = QLabel("")                    # Texterkennung im Hintergrund: „Text: 60 %“
+        self.lbl_bg_text.setObjectName("hint")
+        self.lbl_bg_text.setToolTip(tr("Der Text der Zeichnung wird im Hintergrund gelesen. Danach sind Textsuche und "
+                                       "„Geänderten Text finden“ sofort bereit."))
+        self.lbl_bg_text.hide()
         sb.addWidget(self.lbl_status, 1)
+        sb.addPermanentWidget(self.lbl_bg_text)
         sb.addPermanentWidget(self.progress)
         sb.addPermanentWidget(self.btn_cancel)
         sb.addPermanentWidget(self.lbl_pos)
@@ -1225,6 +1207,10 @@ class LayoutMixin:
         self.settings.setValue("ui_scale", v)
         self.banner.show_msg(tr("Die Oberfläche wird nach einem Neustart auf {:.0f} % gestellt.").format(v * 100), "info",
                              action=(tr("Jetzt neu starten"), self.restart_app))
+
+    def show_settings(self):
+        from ui_dialogs import SettingsDialog
+        SettingsDialog(self).exec()
 
     def set_language(self, lang):
         if lang == i18n.setting():
@@ -1264,7 +1250,6 @@ class LayoutMixin:
             if act.isChecked() != on:
                 act.trigger()
         self.set_theme("auto")
-        self.theme_actions["auto"].setChecked(True)
         self.banner.show_msg(tr("Einstellungen zurückgesetzt. Sprache und Größe der Oberfläche gelten nach einem "
                                 "Neustart."), "info", action=(tr("Jetzt neu starten"), self.restart_app), timeout=20)
 
@@ -1401,8 +1386,8 @@ class LayoutMixin:
         dirty = getattr(self, "_params_dirty", False) and not self.view_only
         if self.view_only:                      # Modus bleibt immer lesbar, nur die Dateinamen werden gekuerzt
             text = tr("Ansehen: {}").format(name(self.path_a or self.path_b, 2 * self._chip_room))
-            tip = tr("Einzelansicht: eine Zeichnung ansehen, messen und markieren. Zum Vergleichen eine zweite "
-                     "Zeichnung öffnen („Vergleichen mit …“).")
+            tip = tr("Einzelansicht: eine Zeichnung ansehen, messen und markieren. Klick → „Mit anderer Zeichnung "
+                     "vergleichen …“.")
         else:
             text = tr("Vergleich: {} → {}").format(name(self.path_a, self._chip_room), name(self.path_b, self._chip_room))
             tip = tr("Vergleich: A (alt) und B (neu) übereinander; Unterschiede sind farbig. Klick: neu "
@@ -1465,7 +1450,7 @@ class LayoutMixin:
     def _set_view_only(self, on):
         """Nur eine Datei: Vergleichsfunktionen ausblenden (reines Ansehen)."""
         self.view_only = on
-        self.act_compare_with_tb.setVisible(on)
+        self.act_compare_with_tb.setVisible(False)              # steht im Schild-Menue („Ansehen: datei ▾“)
         self.act_save_drawing.setVisible(on)                    # Zeichnung bearbeiten gibt es nur beim Ansehen
         for key, *_ in VIEWS + MORE_VIEWS:                       # Vergleichsansichten auch im Menue weg
             self.mode_actions[key].setVisible(not on)

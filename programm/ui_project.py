@@ -383,6 +383,8 @@ class ProjectMixin:
             if hasattr(job, "cancel"):
                 job.cancel()
             job.wait(15000)
+        self._closed = True                            # Fenster bleibt im Speicher: Sicherung darf nicht wiederkommen
+        self.autosave_timer.stop()
         self.clear_autosave()
         import drawing_viewer
         if self in drawing_viewer.WINDOWS:

@@ -401,8 +401,9 @@ class PanelsMixin:
             self._review_buttons.append((b, act))
         for c in range(3):
             nav.setColumnStretch(c, 1)
-        self.review_bar = QWidget()
+        self.review_bar = QWidget()                  # nur waehrend der Pruefung sichtbar (_set_reviewing)
         self.review_bar.setLayout(nav)
+        self.review_bar.hide()
         l1.addWidget(self.review_bar)
         self.lbl_summary = QLabel("")
         self.lbl_summary.setObjectName("hint")
@@ -501,12 +502,6 @@ class PanelsMixin:
             b.setToolTip(a.toolTip())
             b.clicked.connect(a.trigger)
             more.body.addWidget(b)
-        h = QLabel(tr("„Geänderten Text finden“ (über der Liste) liest den Text jeder Änderung, auch senkrechte Maße, "
-                   "und schreibt „alt → neu“ in die Liste; „Zeigen: nur geänderte Maße“ zeigt danach nur geänderte "
-                   "Maßzahlen."))
-        h.setObjectName("hint")
-        h.setWordWrap(True)
-        more.body.addWidget(h)
         l1.addWidget(more)
         self.tab_regs = t1
 
@@ -514,10 +509,11 @@ class PanelsMixin:
         t2.setObjectName("panel")
         l2 = QVBoxLayout(t2)
         l2.setContentsMargins(0, 6, 0, 0)
-        h = QLabel(tr("Werkzeug links wählen (Text, Wolke, Pfeil …) und ins Bild klicken. Mit „Auswahl“ "
-                   "anklicken, verschieben und an den Ecken die Größe ändern. Doppelklick = bearbeiten, "
-                   "Rechtsklick = Menü, Entf = löschen. Mehrere: Strg/Umschalt + Klick oder Umschalt + Rahmen ziehen."))
-        h.setObjectName("hint")
+        h = self._tab_hint(tr("Doppelklick = bearbeiten · Rechtsklick = Menü · Entf = löschen"),
+                           tr("Werkzeug links wählen (Text, Wolke, Pfeil …) und ins Bild klicken. Mit „Auswahl“ "
+                              "anklicken, verschieben und an den Ecken die Größe ändern. Doppelklick = bearbeiten, "
+                              "Rechtsklick = Menü, Entf = löschen. Mehrere: Strg/Umschalt + Klick oder Umschalt + "
+                              "Rahmen ziehen."))
         h.setWordWrap(True)
         ann_hint = h                                  # Hinweis unter der Liste (wie bei den Ebenen)
         self.list_anns = QListWidget()
@@ -563,6 +559,16 @@ class PanelsMixin:
         lay.addWidget(self.log)
         self.expert_widgets.append(self.log)
         self._fill_table()
+
+    @staticmethod
+    def _tab_hint(short, full):
+        """Kurzer Hinweis unten im Reiter (eine Zeile), die ausfuehrliche Erklaerung als Tooltip - gleich in allen
+        Reitern der rechten Leiste."""
+        h = QLabel(short + "  ⓘ")
+        h.setObjectName("hint")
+        h.setWordWrap(True)
+        h.setToolTip(full)
+        return h
 
     def _search_field(self, placeholder, fn):
         """Suchfeld ueber einer Liste: filtert beim Tippen, Esc/Kreuz leert es."""
@@ -614,13 +620,12 @@ class PanelsMixin:
         pl.addLayout(self.pdf_layer_rows)
         self.pdf_layer_box.hide()
         l.addWidget(self.pdf_layer_box)
-        h = QLabel(tr("Ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder Kopieren – "
-                   "außer Schwärzungen: Die werden immer eingebrannt. Gesperrte Ebenen lassen sich nicht auswählen "
-                   "oder ändern. „PDF mit Anmerkungen“ und „Als SVG mit Ebenen“ speichern die sichtbaren Ebenen als "
-                   "echte Ebenen."))
-        h.setObjectName("hint")
-        h.setWordWrap(True)
-        l.addWidget(h)
+        l.addWidget(self._tab_hint(tr("Ausgeblendet = nicht im Bild, nicht gespeichert, gedruckt oder kopiert "
+                                      "(Schwärzung immer). Schloss = gesperrt."),
+                                   tr("Ausgeblendete Ebenen erscheinen weder im Bild noch beim Speichern, Drucken oder "
+                                      "Kopieren – außer Schwärzungen: Die werden immer eingebrannt. Gesperrte Ebenen "
+                                      "lassen sich nicht auswählen oder ändern. „PDF mit Anmerkungen“ und „Als SVG mit "
+                                      "Ebenen“ speichern die sichtbaren Ebenen als echte Ebenen.")))
         l.addStretch()
         return t
 

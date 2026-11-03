@@ -3,6 +3,7 @@ from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import Job
+import i18n
 import csv
 
 
@@ -498,6 +499,77 @@ class BatchDialog(QDialog):
 
 
 # ----------------------------------------------------------------- Dateitypen zuordnen
+class SettingsDialog(QDialog):
+    """Alle Programm-Einstellungen an einer Stelle (statt verteilter Menuepunkte). Gilt mit OK."""
+
+    def __init__(self, win):
+        super().__init__(win)
+        self.win = win
+        self.setWindowTitle(tr("Einstellungen"))
+        lay = QVBoxLayout(self)
+        form = QFormLayout()
+        self.cb_theme = QComboBox()
+        for key, txt in (("auto", tr("Automatisch (wie System)")), ("light", tr("Hell")), ("dark", tr("Dunkel"))):
+            self.cb_theme.addItem(txt, key)
+        self.cb_theme.setCurrentIndex(max(0, self.cb_theme.findData(win.theme_mode)))
+        form.addRow(tr("Darstellung"), self.cb_theme)
+        self.cb_lang = QComboBox()
+        for key, txt in (("auto", tr("Automatisch (wie System)")), ("de", "Deutsch"), ("en", "English")):
+            self.cb_lang.addItem(txt, key)
+        self.cb_lang.setCurrentIndex(max(0, self.cb_lang.findData(i18n.setting())))
+        form.addRow(tr("Sprache") + " / Language", self.cb_lang)
+        self.cb_scale = QComboBox()
+        cur = ui_scale_setting(win.settings)
+        for v in UI_SCALES:
+            self.cb_scale.addItem(f"{v * 100:.0f} %" + (tr("  (Standard)") if v == 1.0 else ""), v)
+            if abs(v - cur) < 0.01:
+                self.cb_scale.setCurrentIndex(self.cb_scale.count() - 1)
+        form.addRow(tr("Größe der Oberfläche"), self.cb_scale)
+        self.ed_name = QLineEdit(win.settings.value("user_name", "") or win.settings.value("approval_name", ""))
+        self.ed_name.setPlaceholderText(tr("für Kommentare, Stempel und Prüfprotokoll"))
+        form.addRow(tr("Name"), self.ed_name)
+        lay.addLayout(form)
+        self.chk_bg = QCheckBox(win.act_bg_text.text())
+        self.chk_bg.setToolTip(win.act_bg_text.toolTip())
+        self.chk_bg.setChecked(win.act_bg_text.isChecked())
+        self.chk_expert = QCheckBox(win.act_expert.text())
+        self.chk_expert.setToolTip(win.act_expert.toolTip())
+        self.chk_expert.setChecked(win.act_expert.isChecked())
+        for c in (self.chk_bg, self.chk_expert):
+            lay.addWidget(c)
+        h = QLabel(tr("Sprache und Größe gelten nach einem Neustart."))
+        h.setObjectName("hint")
+        lay.addWidget(h)
+        row = QHBoxLayout()
+        for txt, fn in ((win.act_fileassoc.text(), win.file_types), (win.act_reset_settings.text(), self._reset)):
+            b = QPushButton(txt)
+            b.clicked.connect(fn)
+            row.addWidget(b)
+        lay.addLayout(row)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+
+    def _reset(self):
+        self.reject()
+        self.win.reset_all_settings()
+
+    def accept(self):
+        w = self.win
+        if self.cb_theme.currentData() != w.theme_mode:
+            w.set_theme(self.cb_theme.currentData())
+        name = self.ed_name.text().strip()
+        if name != (w.settings.value("user_name", "") or ""):
+            w.settings.setValue("user_name", name)
+        for chk, act in ((self.chk_bg, w.act_bg_text), (self.chk_expert, w.act_expert)):
+            if chk.isChecked() != act.isChecked():
+                act.setChecked(chk.isChecked())
+        w.set_ui_scale(self.cb_scale.currentData())
+        w.set_language(self.cb_lang.currentData())
+        super().accept()
+
+
 class FileTypesDialog(QDialog):
     """Hilfe -> Dateitypen mit ZGmax öffnen: Haken je Typ; Doppelklick auf so eine Datei öffnet sie in ZGmax."""
 

@@ -650,7 +650,11 @@ def test_mode_ui(app, win, pair, tmp_path):
     win._set_file("A", str(p))
     wait(app, lambda: win.payload is not None and not win.running)
     assert win.act_mode_chip.isVisible() and win.mode_chip.text().startswith("Ansehen:")
-    assert win.act_compare_with_tb.isVisible() and not win.mode_actions["D"].isVisible()
+    assert not win.act_compare_with_tb.isVisible() and not win.mode_actions["D"].isVisible()   # steht im Schild-Menue
+    from PySide6.QtWidgets import QMenu
+    m = QMenu()
+    win._fill_chip_menu(m)
+    assert any("vergleichen" in a.text() for a in m.actions())
     assert win.sec_sens.isHidden() and win.btn_swap.isHidden() and not win.btn_add_b.isHidden()
     assert win.act_straighten.isEnabled() and not win.act_find.isEnabled()
     win._set_file("B", pair[1])
@@ -1092,6 +1096,7 @@ def test_toolchest_and_custom_stamps(app, win, pair, monkeypatch):
     win._set_tool("hand")
     win._set_color_btn("#e11d48")
     win.canvas.ann_size = 2.0
+    from PySide6.QtWidgets import QMenu
     m = QMenu()
     win._fill_toolchest(m)
     act = next(a for a in m.actions() if a.text() == "Wolke grün dick")
@@ -2088,8 +2093,12 @@ def test_background_text_recognition(app, win, pair):
     try:
         win._bg_text_start()
         keys = set(win._bg_keys)
-        assert len(keys) == 2                                     # Alt und Neu
-        wait(app, lambda: (win._bg_text_poll() or True) and not win._bg_keys, timeout=120)
+        assert len(keys) == 4                                     # Alt und Neu, je waagerecht und senkrecht
+        assert win.lbl_bg_text.isVisibleTo(win) and "%" in win.lbl_bg_text.text()
+        wait(app, lambda: (win._bg_text_poll() or True) and not win._bg_keys, timeout=180)
+        assert not win.lbl_bg_text.isVisibleTo(win)
+        for side in ("A", "B"):
+            assert ocrservice.vkey(win._text_key(side)[0]) in win.cache
         for side in ("A", "B"):
             lines = win.cache[win._text_key(side)[0]]
             assert any("MASS" in l[4].upper() for l in lines), lines
@@ -2097,6 +2106,71 @@ def test_background_text_recognition(app, win, pair):
         win.ed_search.setText("MASS")
         win.run_search()
         assert not win.running and win.canvas.search_hits         # sofort, ohne Lesen im Programm
+        win.find_regs()
+        wait(app, lambda: not win.running)
+        calls = []
+        orig = rep.ocr_any_orientation
+        rep.ocr_any_orientation = lambda *a, **k: calls.append(1) or orig(*a, **k)
+        try:
+            win.run_text()                                        # alles schon gelesen: keine eigene Erkennung
+            wait(app, lambda: not win.running)
+        finally:
+            rep.ocr_any_orientation = orig
+        assert not calls
     finally:
         win.settings.setValue("bg_text", False)
         ocrservice.stop()
+
+
+def test_autosave_no_false_restore_prompt(app, win, pair, monkeypatch):
+    """Keine Wiederherstellen-Frage ohne Grund: ohne Markierungen keine Sicherung, nach dem Schliessen kommt keine
+    zurueck, alte Sicherungen ohne Inhalt werden still entfernt, beim Beenden verschwinden alle dieses Laufs."""
+    import glob
+    import json as _json
+    import ui_features
+    from ui_common import app_data_dir
+    compare(app, win, *pair)
+    win._dirty = True
+    win.autosave()
+    assert not os.path.exists(win._autosave_path())               # nur Ansicht geaendert: nichts zu sichern
+    win.anns.append({"type": "text", "x": 10, "y": 10, "text": "Hinweis"})
+    win.autosave()
+    assert os.path.exists(win._autosave_path())
+    win._closed = True                                             # wie nach closeEvent
+    win.clear_autosave()
+    win.autosave()
+    assert not os.path.exists(win._autosave_path())
+    win._closed = False
+    win.autosave()
+    ui_features.FeaturesMixin.clear_process_autosaves()             # normales Beenden
+    assert not glob.glob(os.path.join(app_data_dir(), f"wiederherstellen-{os.getpid()}-*"))
+    empty = os.path.join(app_data_dir(), "wiederherstellen-999999999-1.zgmax")   # Prozess laeuft nicht mehr
+    with open(empty, "w", encoding="utf-8") as f:
+        _json.dump({"annotations": [], "zones": [], "regions": None}, f)
+    asked = []
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a) or QMessageBox.StandardButton.No)
+    monkeypatch.setattr(ui_features.FeaturesMixin, "_autosave_checked", False, raising=False)
+    win.check_autosave()
+    assert not asked and not os.path.exists(empty)
+
+
+def test_settings_dialog(app, win):
+    """Einstellungen an einer Stelle: Darstellung, Name, Texterkennung im Hintergrund, alle Einstellungen."""
+    from ui_dialogs import SettingsDialog
+    d = SettingsDialog(win)
+    d.cb_theme.setCurrentIndex(d.cb_theme.findData("dark"))
+    d.ed_name.setText("Erika Muster")
+    d.chk_expert.setChecked(not win.act_expert.isChecked())
+    want = d.chk_expert.isChecked()
+    d.accept()
+    assert win.theme_mode == "dark" and win.settings.value("user_name") == "Erika Muster"
+    assert win.act_expert.isChecked() == want
+    win.set_theme("auto")
+    win.act_expert.setChecked(False)
+    texts = [a.text() for m in win.menuBar().actions() for a in m.menu().actions()]
+    assert tr_("Einstellungen …") in texts and tr_("Darstellung") not in texts
+
+
+def tr_(s):
+    from i18n import tr
+    return tr(s)

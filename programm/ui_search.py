@@ -160,32 +160,40 @@ class SearchMixin:
         durchsuchbares PDF. Laeuft im eigenen Prozess mit niedriger Prioritaet (ocrservice); bei PDF mit echtem Text
         wird gleich dieser genommen."""
         if not hasattr(self, "_bg_keys"):
-            self._bg_keys = set()
+            self._bg_keys, self._bg_all = set(), set()
             self._bg_timer = QTimer(self)
             self._bg_timer.setInterval(500)
             self._bg_timer.timeout.connect(self._bg_text_poll)
         if self.payload is None or not self._bg_text_on() or not rep.ocr_available():
             return
+        if not self._bg_keys:
+            self._bg_all = set()                         # neue Runde fuer die Fortschrittsanzeige
         sides = ["A"] if self.view_only or not self.path_b else ["B", "A"]
         for side in sides:
             key, path, page = self._text_key(side)
-            if key in self.cache or ocrservice.busy(key):
+            vk = ocrservice.vkey(key)
+            have = lambda k: k in self.cache or ocrservice.busy(k)      # noqa: E731
+            if have(key) and have(vk):
                 continue
-            if path.lower().endswith(".pdf") and dv.available():
+            if key not in self.cache and path.lower().endswith(".pdf") and dv.available():
                 try:
                     found = dv.text_lines(path, page, self.dpi_value())      # echter PDF-Text: schnell, gleich hier
                 except Exception:                        # noqa: BLE001
                     found = []
-                if found:
-                    self.cache[key] = found
+                if found:                                # PDF-Text: senkrechte Masse liest „Geaenderten Text
+                    self.cache[key] = found              # finden“ direkt aus dem PDF
                     continue
             g = self.cache.get("g_" + path)
             if g is None or self.cache.get("gk_" + path) != self._gray_key(path, page, self.dpi_value())[0]:
                 continue                                 # angezeigtes Bild ist eine andere Fassung: nicht raten
-            ocrservice.submit(key, g)
-            self._bg_keys.add(key)
+            for k, vert in ((key, False), (vk, True)):   # erst waagerecht (Suche), dann senkrecht (Masse)
+                if not have(k):
+                    ocrservice.submit(k, g, vertical=vert)
+                    self._bg_keys.add(k)
+                    self._bg_all.add(k)
         if self._bg_keys:
             self._bg_timer.start()
+        self._bg_text_status()
 
     def _bg_text_poll(self):
         for key in list(getattr(self, "_bg_keys", ())):
@@ -197,6 +205,22 @@ class SearchMixin:
                 self._bg_keys.discard(key)
         if hasattr(self, "_bg_timer") and not self._bg_keys:
             self._bg_timer.stop()
+        self._bg_text_status()
+
+    def _bg_text_status(self):
+        """Kleine Anzeige unten rechts: „Text: 60 %“, solange im Hintergrund gelesen wird."""
+        lbl = getattr(self, "lbl_bg_text", None)
+        if lbl is None:
+            return
+        keys = list(getattr(self, "_bg_keys", ()))
+        if not keys:
+            lbl.hide()
+            return
+        weight = lambda k: 2.0 if k[0] == "vert" else 1.0       # noqa: E731 - senkrecht = zwei Drehungen
+        allk = self._bg_all
+        done = sum(weight(k) * (ocrservice.progress(k) or 0.0 if k in self._bg_keys else 1.0) for k in allk)
+        lbl.setText(tr("Text: {} %").format(int(100 * done / max(1.0, sum(weight(k) for k in allk)))))
+        lbl.show()
 
     def _to_view(self, side, r):
         """Rechteck aus Original-Pixeln der Datei in die Koordinaten des angezeigten Ergebnisses."""

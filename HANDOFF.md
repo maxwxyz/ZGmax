@@ -7,13 +7,29 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – erledigt: scharfer PDF-Zoom, Index und
-  Revisionstabelle prüfen, Hinweis bei großen Blättern, Texterkennung einfädig, Gerüst für echte Zeichnungen,
-  Actions v7, Text finden vereint und schneller, Vergleich schneller, **Texterkennung im Hintergrund**, **große Blätter
-  auf allen Kernen**. Offen für 0.9: echte Fälle in `tests/real/` (Dateien vom Nutzer), Windows/Linux von Hand prüfen
-  (Dateitypen, Hintergrundprozess startet dort – GitHub-Build mit Selbsttest prüft das), Bestätigung des Absturz-Fixes
-  mit der Originaldatei. Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur.
-  Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
+- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – dazu erledigt: Hintergrund liest alle Lagen, Fortschritt
+  in der Statusleiste, filter_small 5x schneller, rechte Leiste aufgeräumt, Einstellungsfenster, falsche
+  Wiederherstellen-Frage behoben (Abschnitt „Bedienung“ neu). Offen für 0.9: echte Fälle in `tests/real/`,
+  Windows/Linux von Hand prüfen (Dateitypen, Hintergrundprozess, Wiederherstellen-Fix), Absturz-Fix mit Originaldatei.
+  Offene Fragen an den Nutzer: Werkzeuge in der linken Leiste gruppieren (Wolke/Formen), Öffnen-Knopf behalten.
+  Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur. Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-03 (vierter Commit)
+- Hintergrund: zweiter Auftrag je Seite `ocrservice.vkey(key)` mit `rep.ocr_vertical` (Seite um 90° links/rechts
+  gedreht, nur senkrechte Funde, Überschneidungen nach Sicherheit); `run_text` wartet auf beide und gibt `vlines` an
+  `rep.text_diff` → `ocr_box(known_v=...)` erkennt nichts mehr. Doppelte Funde (waagerechte Erkennung liest senkrechte
+  Texte teils mit) per `_overlap` entfernt. `rep._may_hold_text` überspringt Kacheln mit nur langen Linien. Feinere
+  Kacheln/Regionen ausprobiert: kein Zeitgewinn auf dichten Zeichnungen, Ergebnis ändert sich → verworfen.
+- Statusleiste `lbl_bg_text` „Text: N %“ (`_bg_text_status`, gewichtet: senkrecht = 2).
+- `dp.filter_small` zählt je Gruppenzelle per `cv2.resize(INTER_AREA)` × s² (bitgleich, 0,53 → 0,11 s auf A0).
+- Rechte Leiste: `_set_reviewing(on)` zeigt Prüfknöpfe nur im Rundgang; `_tab_hint(kurz, lang)` für Markierungen und
+  Ebenen; langer Hinweis in „Weitere Prüfungen“ entfernt. `act_compare_with_tb` immer unsichtbar (Schild-Menü).
+- `SettingsDialog` (ui_dialogs) über `act_settings` (Strg+,, PreferencesRole); Menüs Darstellung/Sprache/Größe/
+  Alle Einstellungen/Text im Hintergrund aus „Ansicht“ entfernt (`theme_actions` gibt es nicht mehr).
+- Wiederherstellen-Fehlalarm: `_pid_alive` unter Windows per OpenProcess/GetExitCodeProcess (os.kill(pid, 0) beendet
+  dort den Prozess!), Sicherung nur mit Inhalt (`_worth_restoring`), geschlossenes Fenster sichert nicht mehr
+  (`_closed`, Timer gestoppt), `aboutToQuit → clear_process_autosaves`, alte leere Sicherungen werden still gelöscht.
+- 115 Tests grün, Mac-Bau + Selbsttest OK.
 
 ## Erledigt 2026-11-03 (dritter Commit)
 - **Texterkennung im Hintergrund** (`programm/ocrservice.py`): `ProcessPoolExecutor(1)` mit `spawn`, Kindprozess mit

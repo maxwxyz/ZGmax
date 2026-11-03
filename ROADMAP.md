@@ -103,11 +103,18 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Drucken im Maßstab, Kopieren wie angezeigt (0.6–0.7)
 - ✅ Projekte (.zgmax, auch mit eingebetteten Zeichnungen), gemerkte Ausschnitte, automatische Sicherung (0.6–0.7)
 
+### Bedienung
+- ✅ Einstellungsfenster (Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen) (0.9)
+- ✅ Rechte Leiste: Prüfknöpfe nur während der Prüfung, kurze Hinweise mit Tooltip; „Vergleichen mit …“ nur im Schild (0.9)
+- ✅ Keine falsche Wiederherstellen-Frage mehr beim Start (Windows-Prozessprüfung, nur bei echtem Inhalt) (0.9)
+
 ### Technik und Betrieb
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
 - ✅ Texterkennung im Hintergrund (eigener Prozess, niedrige Priorität, halbe Kerne), ganze Seiten 30–40 % schneller,
-  Absturz der Erkennung beendet das Programm nicht mehr (0.9)
+  Absturz der Erkennung beendet das Programm nicht mehr (0.9); liest auch senkrechte Texte, Fortschritt „Text: %“ in der Statusleiste,
+  Kacheln ohne Text werden übersprungen (0.9)
+- ✅ „Kleine Unterschiede ausfiltern“ 5x schneller (bitgleich), A0/300 dpi 2,8 s → 2,2 s (0.9)
 - ✅ Große Blätter: verschobene Objekte besser auf alle Kerne verteilt (A0/300 dpi 3,8 s → 2,8 s) (0.9)
 - ✅ Vergleich etwa ein Drittel schneller (Kanal-Minimum, Vergleichsbild und Kantensaum mit OpenCV, Bildstufen
   parallel) (0.9)
