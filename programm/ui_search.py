@@ -95,6 +95,7 @@ class SearchMixin:
             return
         side = self._search_side()
         key, path, page = self._text_key(side)
+        self._bg_text_poll()                             # im Hintergrund fertig geworden?
         lines = self.cache.get(key)
         if lines is None:
             if self.running:
@@ -115,8 +116,8 @@ class SearchMixin:
                         return []
                     ctx.progress(0.02, tr("Lese Text in der Zeichnung"))
                     g = self._gray(path, page, dpi, ctx)
-                    found = rep.ocr_lines(g, progress=lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung")),
-                                          cancel=ctx.cancelled)
+                    found = ocrservice.lines(key, g, cancel=ctx.cancelled,   # wartet ggf. auf den Hintergrund
+                                             progress=lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung")))
                 return found
 
             def done(found):
@@ -138,6 +139,64 @@ class SearchMixin:
         if hits:
             self._show_hit()
         self.canvas.update()
+
+    # --- Texterkennung im Hintergrund
+    def _bg_text_on(self):
+        return self.settings.value("bg_text", os.environ.get("ZGMAX_BG_OCR", "1") != "0", type=bool)
+
+    def _set_bg_text(self, on):
+        self.settings.setValue("bg_text", bool(on))
+        if on:
+            self._bg_text_start()
+        else:
+            for key in list(getattr(self, "_bg_keys", ())):
+                if not ocrservice.result(key):
+                    ocrservice.stop()
+                    break
+            self._bg_keys = set()
+
+    def _bg_text_start(self):
+        """Nach dem Laden: Text der Zeichnung(en) im Hintergrund lesen, fuer Textsuche, „Geaenderten Text finden“ und
+        durchsuchbares PDF. Laeuft im eigenen Prozess mit niedriger Prioritaet (ocrservice); bei PDF mit echtem Text
+        wird gleich dieser genommen."""
+        if not hasattr(self, "_bg_keys"):
+            self._bg_keys = set()
+            self._bg_timer = QTimer(self)
+            self._bg_timer.setInterval(500)
+            self._bg_timer.timeout.connect(self._bg_text_poll)
+        if self.payload is None or not self._bg_text_on() or not rep.ocr_available():
+            return
+        sides = ["A"] if self.view_only or not self.path_b else ["B", "A"]
+        for side in sides:
+            key, path, page = self._text_key(side)
+            if key in self.cache or ocrservice.busy(key):
+                continue
+            if path.lower().endswith(".pdf") and dv.available():
+                try:
+                    found = dv.text_lines(path, page, self.dpi_value())      # echter PDF-Text: schnell, gleich hier
+                except Exception:                        # noqa: BLE001
+                    found = []
+                if found:
+                    self.cache[key] = found
+                    continue
+            g = self.cache.get("g_" + path)
+            if g is None or self.cache.get("gk_" + path) != self._gray_key(path, page, self.dpi_value())[0]:
+                continue                                 # angezeigtes Bild ist eine andere Fassung: nicht raten
+            ocrservice.submit(key, g)
+            self._bg_keys.add(key)
+        if self._bg_keys:
+            self._bg_timer.start()
+
+    def _bg_text_poll(self):
+        for key in list(getattr(self, "_bg_keys", ())):
+            r = ocrservice.result(key)
+            if r is not None:
+                self.cache.setdefault(key, r)
+                self._bg_keys.discard(key)
+            elif not ocrservice.busy(key):               # abgebrochen oder fehlgeschlagen
+                self._bg_keys.discard(key)
+        if hasattr(self, "_bg_timer") and not self._bg_keys:
+            self._bg_timer.stop()
 
     def _to_view(self, side, r):
         """Rechteck aus Original-Pixeln der Datei in die Koordinaten des angezeigten Ergebnisses."""

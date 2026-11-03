@@ -13,6 +13,7 @@ EXAMPLES = os.path.join(os.path.dirname(ROOT), "Beispiele")
 import tempfile  # noqa: E402
 os.environ.setdefault("ZV_LANG", "de")                                    # Tests deutsch, unabhaengig vom System
 os.environ.setdefault("ZV_DATA_DIR", tempfile.mkdtemp(prefix="zv-test-"))   # Tests nie in echte Programmdaten
+os.environ.setdefault("ZGMAX_BG_OCR", "0")      # Texterkennung im Hintergrund nur im eigenen Test (gleiche Laufzeit)
 
 
 def draw_sheet(changed=False):

@@ -385,6 +385,11 @@ the PDF report and the PDF with annotations – that is your review record.</p>
 In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.</p>
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
+<p><b>Read text in the background</b> (<i>View</i>, on by default): right after opening, a separate process with low
+priority reads the text of Old and New. It uses at most half of the processor cores and reads several tiles at once –
+viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> and the
+searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. An error
+in the text recognition can no longer close the program.</p>
 
 <h2 id="copy">Region selection, copy, paste</h2>
 <p>Tool <b>Region</b> (<kbd>B</kbd>): drag a rectangle; add more with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>. The selection
@@ -733,6 +738,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Options</td><td></td><td>Show/hide the side panel with the comparison settings</td></tr>
 <tr><td>Items</td><td></td><td>Side panel with everything that lies on the drawing: changes, markups and (via View → Layers) layers</td></tr>
 <tr><td>Show all settings</td><td></td><td>Also show rarely used settings, vector data, zones and the log</td></tr>
+<tr><td>Read text in the background</td><td></td><td>After opening, recognise the text of the drawing in the background (separate process with low priority). Text search, “Find changed text” and searchable PDF are then ready immediately.</td></tr>
 </table>
 <h3>View → Appearance</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>

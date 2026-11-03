@@ -2075,3 +2075,28 @@ def test_changed_text_reuses_read_text(app, win, pair, monkeypatch):
     wait(app, lambda: not win.running)
     assert len(calls) == n
     assert not hasattr(win, "act_dims")
+
+
+def test_background_text_recognition(app, win, pair):
+    """Nach dem Laden liest ein eigener Prozess den Text beider Zeichnungen; die Textsuche nimmt ihn ohne neuen Lauf."""
+    import diffreport as rep
+    import ocrservice
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    compare(app, win, *pair)
+    win.settings.setValue("bg_text", True)
+    try:
+        win._bg_text_start()
+        keys = set(win._bg_keys)
+        assert len(keys) == 2                                     # Alt und Neu
+        wait(app, lambda: (win._bg_text_poll() or True) and not win._bg_keys, timeout=120)
+        for side in ("A", "B"):
+            lines = win.cache[win._text_key(side)[0]]
+            assert any("MASS" in l[4].upper() for l in lines), lines
+        win.open_search()
+        win.ed_search.setText("MASS")
+        win.run_search()
+        assert not win.running and win.canvas.search_hits         # sofort, ohne Lesen im Programm
+    finally:
+        win.settings.setValue("bg_text", False)
+        ocrservice.stop()

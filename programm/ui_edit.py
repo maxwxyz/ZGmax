@@ -1366,12 +1366,17 @@ class OcrPdfMixin:
         reuse = self.view_only and not getattr(self, "_edit_ver", 0) and self._frame_local() is None
         key, ox, oy = self._text_key("A")[0], *self.origin
 
+        known = self.cache.get(key) if reuse else None             # schon gelesen (Hintergrund, Textsuche)
+
         def work(ctx):
             lines = dv.text_lines(path, page, dpi) if pdf else []
+            if not lines and known is not None:
+                lines = [(l[0] - ox, l[1] - oy, l[2] - ox, l[3] - oy, l[4]) for l in known]
             if not lines:
                 ctx.progress(0.02, tr("Texterkennung"))
-                lines = rep.ocr_lines(gray, progress=lambda f: ctx.progress(0.05 + 0.85 * f, tr("Texterkennung")),
-                                      cancel=ctx.cancelled)
+                lines = ocrservice.lines(key if reuse else ("export", out, id(gray)), gray,
+                                         progress=lambda f: ctx.progress(0.05 + 0.85 * f, tr("Texterkennung")),
+                                         cancel=ctx.cancelled)
             all_lines = list(lines)
             ctx.progress(0.92, tr("Schreibe PDF"))
             lines = [ln for ln in lines if not any(ln[0] < b[2] and ln[2] > b[0] and ln[1] < b[3] and ln[3] > b[1]

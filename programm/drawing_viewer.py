@@ -310,6 +310,11 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return
         known = (None, None)
         if not (wa or wb):                               # Text der Textsuche / des durchsuchbaren PDF wiederverwenden
+            self._bg_text_poll()
+            if any(ocrservice.busy(self._text_key(s)[0]) for s in ("A", "B")):   # gleich fertig: darauf warten
+                self.lbl_status.setText(tr("Warte auf die Texterkennung im Hintergrund …"))
+                QTimer.singleShot(400, self, lambda: self.run_text(then))
+                return
             got = []
             for side in ("A", "B"):
                 lines = self.cache.get(self._text_key(side)[0])
@@ -924,7 +929,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._run_job(lambda ctx: self._compute(snap, ctx),
                       tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap))
 
-    def _gray(self, path, page, dpi, log, vf=(None, None), hidden=()):
+    @staticmethod
+    def _gray_key(path, page, dpi, vf=(None, None), hidden=()):
         filt = vf if (path.lower().endswith(".pdf") and vf != (None, None)) else (None, None)
         hidden = tuple(sorted(hidden)) if path.lower().endswith(".pdf") else ()
         try:                                         # Datei auf der Platte geaendert -> neu laden
@@ -932,7 +938,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             stamp = (stt.st_mtime_ns, stt.st_size)
         except OSError:
             stamp = None
-        key = ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt), hidden)
+        return ("gray", path, stamp, page, dpi if dp.is_vector(path) else 0, repr(filt), hidden), filt, hidden
+
+    def _gray(self, path, page, dpi, log, vf=(None, None), hidden=()):
+        key, filt, hidden = self._gray_key(path, page, dpi, vf, hidden)
         if self.cache.get("gk_" + path) != key:
             log(tr("Lade {} …").format(os.path.basename(path)))
             if filt != (None, None):
@@ -1139,6 +1148,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._refresh_pdf_layers()
         QTimer.singleShot(0, self, self._auto_import_pdf_comments)
         QTimer.singleShot(400, self, self._scan_hint)
+        QTimer.singleShot(1500, self, self._bg_text_start)  # Text schon mal lesen (eigener Prozess, niedrige Prioritaet)
         if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
             QTimer.singleShot(0, self, self.run_search)
         self._fill_table()
@@ -1497,10 +1507,19 @@ def selftest():
         if not rep.ocr_available():
             return tr("nicht enthalten")
         return " ".join(t[-1] for t in rep.ocr_image(img))
+
+    def ocr_process():                           # eigener Prozess (Hintergrund): startet er auch in der App?
+        if not rep.ocr_available():
+            return tr("nicht enthalten")
+        fut = ocrservice.submit(("selbsttest",), img)
+        r = fut.result(timeout=120)
+        ocrservice.stop()
+        return " ".join(t[-1] for t in r)
     step(tr("Vergleich"), compare)
     step("PDF", pdf)
     step("DXF", dxf)
     step(tr("Texterkennung"), ocr)
+    step(tr("Texterkennung im Hintergrund"), ocr_process)
     step(tr("Schrift"), lambda: os.path.basename(str(dc._font_path())))
     text = tr("{} {} Selbsttest\n").format(APP, VERSION) + "\n".join(out)
     log.info(text)
@@ -1523,6 +1542,8 @@ def install_qt_translations(app):
 
 
 def main():
+    import multiprocessing
+    multiprocessing.freeze_support()             # Texterkennung im eigenen Prozess (ocrservice), auch in der App
     if "--selbsttest" in sys.argv:
         setup_logging()
         sys.exit(selftest())
@@ -1560,6 +1581,7 @@ def main():
     w.show()
     if proj:
         QTimer.singleShot(0, lambda: w.project_open(proj[0]))
+    app.aboutToQuit.connect(ocrservice.stop)
     sys.exit(app.exec())
 
 

@@ -400,6 +400,11 @@ Im Vergleich wählt man, ob in <i>Neu</i> oder <i>Alt</i> gesucht wird; die Tref
 <p>Bei PDF mit echtem Text wird dieser genutzt (sofort, exakt). Bei Scans und Bildern liest die <b>Texterkennung</b> den
 Text einmal ein (je nach Größe einige Sekunden bis eine Minute, mit Fortschritt). Groß-/Kleinschreibung spielt keine
 Rolle.</p>
+<p><b>Text im Hintergrund lesen</b> (<i>Ansicht</i>, standardmäßig an): Gleich nach dem Öffnen liest ein eigener
+Prozess mit niedriger Priorität den Text von Alt und Neu. Er nutzt höchstens die Hälfte der Rechenkerne und liest
+mehrere Kacheln gleichzeitig – Ansehen, Markieren und Vergleichen bleiben flüssig. Ist er fertig, sind Textsuche,
+<i>Geänderten Text finden</i> und das durchsuchbare PDF ohne Wartezeit bereit; läuft er noch, warten sie auf ihn statt
+neu zu lesen. Ein Fehler in der Texterkennung kann das Programm nicht mehr beenden.</p>
 
 <h2 id="kopieren">Bereich auswählen, kopieren, einfügen</h2>
 <p>Werkzeug <b>Bereich</b> (<kbd>B</kbd>): Rechteck aufziehen; mit <kbd>Umschalt</kbd> oder <kbd>Strg</kbd> weitere
@@ -763,6 +768,7 @@ danach neu. Beim Ansehen einer einzelnen Zeichnung wirkt alles sofort. Feinausri
 <tr><td>Optionen</td><td></td><td>Seitenleiste mit den Einstellungen des Vergleichs ein-/ausblenden</td></tr>
 <tr><td>Elemente</td><td></td><td>Seitenleiste mit allem, was auf der Zeichnung liegt: Änderungen, Markierungen und (über Ansicht → Ebenen) Ebenen</td></tr>
 <tr><td>Alle Einstellungen zeigen</td><td></td><td>Auch selten gebrauchte Einstellungen, Vektordaten, Zonen und das Protokoll zeigen</td></tr>
+<tr><td>Text im Hintergrund lesen</td><td></td><td>Nach dem Öffnen den Text der Zeichnung schon im Hintergrund erkennen (eigener Prozess mit niedriger Priorität). Textsuche, „Geänderten Text finden“ und durchsuchbares PDF sind dann sofort bereit.</td></tr>
 </table>
 <h3>Ansicht → Darstellung</h3>
 <table class="menus"><tr><th>Befehl</th><th>Taste</th><th>Wirkung</th></tr>

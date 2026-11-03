@@ -246,25 +246,36 @@ def ocr_image(gray):
     return items
 
 
-def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None):
+def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None):
     """Texterkennung der ganzen Zeichnung in Kacheln: Liste (x0, y0, x1, y1, text) je Textzeile in Bildpixeln.
-    gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst."""
+    gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst.
+    workers > 1: mehrere Kacheln gleichzeitig (nur mit eng ohne Sperre sinnvoll, siehe ocrservice); das Ergebnis ist
+    dasselbe wie nacheinander."""
     H, W = gray.shape
-    eng = _ocr_engine()
+    eng = eng or _ocr_engine()
     tiles = [(x, y) for y in range(0, max(1, H - overlap), tile - overlap) for x in range(0, max(1, W - overlap), tile - overlap)]
-    out = []
-    for k, (x, y) in enumerate(tiles):
+    tiles = [(x, y) for x, y in tiles if gray[y:y + tile, x:x + tile].min() <= 200]     # leere Kacheln weglassen
+    done = [0]
+
+    def read(xy):
         if cancel is not None and cancel():
             raise dc.Cancelled()
+        x, y = xy
+        res, _ = eng(np.ascontiguousarray(gray[y:y + tile, x:x + tile]))
+        done[0] += 1
         if progress:
-            progress(k / len(tiles))
-        part = gray[y:y + tile, x:x + tile]
-        if part.min() > 200:                     # leere Kachel
-            continue
-        res, _ = eng(np.ascontiguousarray(part))
-        for box, text, score in res or []:
-            xs, ys = [p[0] for p in box], [p[1] for p in box]
-            out.append((x + min(xs), y + min(ys), x + max(xs), y + max(ys), str(text).strip()))
+            progress(done[0] / max(1, len(tiles)))
+        return [(x + min(p[0] for p in box), y + min(p[1] for p in box), x + max(p[0] for p in box),
+                 y + max(p[1] for p in box), str(text).strip()) for box, text, score in res or []]
+    if progress:
+        progress(0.0)
+    if workers > 1 and len(tiles) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(workers) as ex:
+            found = list(ex.map(read, tiles))
+    else:
+        found = [read(t) for t in tiles]
+    out = [b for f in found for b in f]
     uniq = []
     for b in sorted(out, key=lambda t: (t[1], t[0])):    # gleiche Zeile aus zwei Kacheln nur einmal
         cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2

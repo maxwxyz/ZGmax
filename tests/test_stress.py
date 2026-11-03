@@ -12,7 +12,7 @@ import pytest
 from test_gui import app, wait  # noqa: F401  (Fixture und Hilfsfunktion)
 
 TIMES = [] if os.environ.get("ZV_STRESS_TIMES") else None   # Laufzeit je Befehl messen (Ausgabe am Ende)
-SKIP = {"act_quit", "act_close", "act_new_window", "act_shortcut", "act_help", "act_help_cli", "act_logfile",
+SKIP = {"act_bg_text", "act_quit", "act_close", "act_new_window", "act_shortcut", "act_help", "act_help_cli", "act_logfile",
         "act_reset_settings", "act_cli"}
 
 

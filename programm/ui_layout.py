@@ -256,6 +256,11 @@ class LayoutMixin:
         self.act_right.setIconText(tr("Elemente"))
         self.act_expert = A(tr("Alle Einstellungen zeigen"), self._set_expert, tip=tr("Auch selten gebrauchte Einstellungen, "
                             "Vektordaten, Zonen und das Protokoll zeigen"), checkable=True)
+        self.act_bg_text = A(tr("Text im Hintergrund lesen"), self._set_bg_text, checkable=True,
+                             tip=tr("Nach dem Öffnen den Text der Zeichnung schon im Hintergrund erkennen (eigener "
+                                    "Prozess mit niedriger Priorität). Textsuche, „Geänderten Text finden“ und "
+                                    "durchsuchbares PDF sind dann sofort bereit."))
+        self.act_bg_text.setChecked(self._bg_text_on())
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
         self.act_space.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
 
@@ -446,6 +451,7 @@ class LayoutMixin:
             act.setChecked(abs(v - cur) < 0.01)
             sg.addAction(act)
         m.addAction(self.act_expert)
+        m.addAction(self.act_bg_text)
 
         m = mb.addMenu(tr("&Werkzeuge"))
         for key, *_ in TOOLS:

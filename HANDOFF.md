@@ -7,13 +7,29 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – erledigt: scharfer PDF-Zoom (`ui_canvas_sharp.py`),
-  Index und Revisionstabelle prüfen, Hinweis bei großen Blättern, Texterkennung einfädig (`rep._SafeOcr`), Gerüst für
-  echte Zeichnungen (`tests/real/`), Actions v7, **Text finden vereint und schneller**, **Vergleich schneller**.
-  Offen für 0.9: echte Fälle in `tests/real/` (Dateien vom Nutzer), Windows/Linux von Hand prüfen (Dateitypen),
-  Bestätigung des Absturz-Fixes mit der Originaldatei. Neue Ideen: Texterkennung im Hintergrund nach dem Laden,
-  matchTemplate je Kachel parallel; dazu eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur.
+- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 in Arbeit** – erledigt: scharfer PDF-Zoom, Index und
+  Revisionstabelle prüfen, Hinweis bei großen Blättern, Texterkennung einfädig, Gerüst für echte Zeichnungen,
+  Actions v7, Text finden vereint und schneller, Vergleich schneller, **Texterkennung im Hintergrund**, **große Blätter
+  auf allen Kernen**. Offen für 0.9: echte Fälle in `tests/real/` (Dateien vom Nutzer), Windows/Linux von Hand prüfen
+  (Dateitypen, Hintergrundprozess startet dort – GitHub-Build mit Selbsttest prüft das), Bestätigung des Absturz-Fixes
+  mit der Originaldatei. Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur.
   Im Repo keine Firma, Zielgruppe oder Pilotgruppe nennen.
+
+## Erledigt 2026-11-03 (dritter Commit)
+- **Texterkennung im Hintergrund** (`programm/ocrservice.py`): `ProcessPoolExecutor(1)` mit `spawn`, Kindprozess mit
+  `os.nice(10)` bzw. BELOW_NORMAL (Windows), OpenCV einfädig, ORT je Sitzung `cpu // (2 * TILE_WORKERS)` Threads
+  (zusammen halbe Kerne), `rep.ocr_lines(..., workers=3, eng=raw)` liest 3 Kacheln gleichzeitig. Ein Auftrag je
+  Text-Schlüssel (`_text_key`); Textsuche (`ui_search.run_search`) und durchsuchbares PDF warten über
+  `ocrservice.lines` auf denselben Auftrag; `run_text` wartet per Timer. Start 1,5 s nach dem Laden
+  (`_bg_text_start`, nur wenn das gecachte Graubild zur Seite passt, `_gray_key`); PDF mit Text direkt
+  `dv.text_lines`. Einstellung `bg_text` (Ansicht → „Text im Hintergrund lesen“), Tests mit `ZGMAX_BG_OCR=0`
+  (conftest), eigener Test `test_background_text_recognition`; Stresstest überspringt `act_bg_text`.
+  `multiprocessing.freeze_support()` am Anfang von `main()`, `aboutToQuit → ocrservice.stop`. Selbsttest prüft den
+  Prozess („Texterkennung im Hintergrund“) – auf dem Mac in der App OK.
+  Messung (Testseite 7000×9900): im Programm 5,4 s, im Prozess 4,2 s; Hauptthread unter Volllast nur ~15 % langsamer.
+- **Große Blätter:** `refine_objects` startet große Objekte zuerst und sucht die Drehungen großer Objekte
+  (`_BIG_OBJ` = 250 000 px) parallel (Ergebnis gleich). A0/300 dpi: Vergleich 3,8 s → 2,8 s.
+- 113 Tests grün, Mac-Bau + Selbsttest OK.
 
 ## Erledigt 2026-11-03 (zweiter Commit)
 - **Geänderten Text finden** = eine Funktion (`MainWindow.run_text(then=None)`), `act_dims` entfernt, `run_dims` ruft

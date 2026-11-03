@@ -18,7 +18,8 @@ nicht beschlossen) · ⚠️ bekanntes Problem
                     bleibt, Tests in 1,5 min
 0.9  in Arbeit    🔧 Scharfer PDF-Zoom ✅, Revisionstabelle prüfen ✅, große Blätter ✅, Absturz „Schriftfeld lesen“
                     abgesichert ✅, Gerüst für echte Zeichnungen ✅ (echte Fälle fehlen noch), GitHub-Builds grün ✅,
-                    Text finden vereint + schneller ✅, Vergleich schneller ✅;
+                    Text finden vereint + schneller ✅, Vergleich schneller ✅, Texterkennung im
+                    Hintergrund ✅;
                     offen: Windows/Linux von Hand prüfen
 1.0  geplant     🟡 Erste stabile Version: Rückmeldungen aus der Nutzung eingearbeitet, alle Systeme geprüft
 später           💡 3D-Modelle (eigenes Werkzeug)
@@ -39,8 +40,8 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
 | Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | ✅ |
 | Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
-| Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden und Schriftfeld | Kein Warten beim ersten Gebrauch | 💡 |
-| Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | 💡 |
+| Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden und Schriftfeld | Kein Warten beim ersten Gebrauch | ✅ (eigener Prozess, 0.9) |
+| Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | ✅ 0.9 |
 | Ordnervergleich als ein gemeinsamer PDF-Bericht | Ein Dokument statt eines je Paar | 💡 |
 | Tastenkürzel selbst belegen | Gewohnte Kürzel aus anderen Programmen | 💡 |
 | macOS-App mit Entwicklerzertifikat signieren | Keine Warnung beim ersten Start | 💡 (braucht Apple-Entwicklerkonto) |
@@ -105,6 +106,9 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 ### Technik und Betrieb
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
+- ✅ Texterkennung im Hintergrund (eigener Prozess, niedrige Priorität, halbe Kerne), ganze Seiten 30–40 % schneller,
+  Absturz der Erkennung beendet das Programm nicht mehr (0.9)
+- ✅ Große Blätter: verschobene Objekte besser auf alle Kerne verteilt (A0/300 dpi 3,8 s → 2,8 s) (0.9)
 - ✅ Vergleich etwa ein Drittel schneller (Kanal-Minimum, Vergleichsbild und Kantensaum mit OpenCV, Bildstufen
   parallel) (0.9)
 - ✅ Automatische Tests in 1,5 min, Stresstest über alle Befehle; Gerüst für Tests mit echten Zeichnungen (0.8–0.9)

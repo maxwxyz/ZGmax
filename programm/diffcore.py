@@ -653,6 +653,9 @@ def glyph_check(a, b, only_a, only_b, both, moved, max_h=60, search=2, min_core=
     return hits
 
 
+_BIG_OBJ = 250_000      # ab dieser Flaeche (px) werden die Drehungen eines Objekts parallel gesucht
+
+
 def refine_objects(a, b, only_a, only_b, both, moved, tol, max_shift, max_rot,
                    grow=20, accept=0.5, step=0.5, rot_gain=0.7, tick=None):
     """Sucht fuer jedes verbliebene Unterschieds-Objekt eine kleine Verschiebung und Drehung.
@@ -699,8 +702,8 @@ def refine_objects(a, b, only_a, only_b, both, moved, tol, max_shift, max_rot,
         rb0[sy0 - (y - pad):sy1 - (y - pad), sx0 - (x - pad):sx1 - (x - pad)] = b[sy0:sy1, sx0:sx1]
         fa = cv2.GaussianBlur(ta.astype(np.float32) / 255, (0, 0), 1.0)
         mask = comp.astype(np.float32)
-        best, best0, c0 = None, None, None
-        for ang in angles:
+
+        def match(ang):
             if ang == 0.0:
                 rb = rb0
             else:
@@ -708,19 +711,29 @@ def refine_objects(a, b, only_a, only_b, both, moved, tol, max_shift, max_rot,
                 rb = cv2.warpAffine(rb0, Mr, (rb0.shape[1], rb0.shape[0]), flags=cv2.INTER_LINEAR)
             fb = cv2.GaussianBlur(rb.astype(np.float32) / 255, (0, 0), 1.0)
             res = cv2.matchTemplate(fb, fa, cv2.TM_SQDIFF, mask=mask)
-            res = np.nan_to_num(res, nan=1e30, posinf=1e30, neginf=1e30)
-            if c0 is None:
-                c0 = float(res[pad, pad])
-                if c0 <= 0:
-                    break
+            return np.nan_to_num(res, nan=1e30, posinf=1e30, neginf=1e30), rb
+
+        def cost(ang, res, rb):
             # kleine Verschiebungen/Drehungen leicht bevorzugen
             res = res + 0.02 * c0 * ((xx ** 2 + yy ** 2) / float(pad * pad) + (ang / max(max_rot, 1)) ** 2)
             iy, ix = np.unravel_index(int(res.argmin()), res.shape)
-            cost = (float(res[iy, ix]), ang, ix, iy, rb)
-            if ang == 0.0:
-                best0 = cost
-            if best is None or cost[0] < best[0]:
-                best = cost
+            return float(res[iy, ix]), ang, ix, iy, rb
+
+        res0, _ = match(0.0)
+        c0 = float(res0[pad, pad])
+        if c0 <= 0:
+            return False
+        best = best0 = cost(0.0, res0, rb0)
+        rest = angles[1:]
+        if rest and w * h >= _BIG_OBJ and WORKERS > 1:
+            # grosses Objekt: Drehungen parallel, sonst bestimmt es allein die Laufzeit (die kleinen sind laengst fertig)
+            with ThreadPoolExecutor(min(len(rest), WORKERS)) as ex:
+                tries = list(ex.map(lambda g: cost(g, *match(g)), rest))
+        else:
+            tries = [cost(g, *match(g)) for g in rest]
+        for c in tries:                               # gleiche Reihenfolge wie seriell -> gleiches Ergebnis
+            if c[0] < best[0]:
+                best = c
         if best is None:
             return False
         # Eine Drehung nur, wenn sie deutlich besser ist als reine Verschiebung
@@ -738,9 +751,12 @@ def refine_objects(a, b, only_a, only_b, both, moved, tol, max_shift, max_rot,
             return False
         return comp, na, nb, nboth, (x, y, w, h, ix - pad, iy - pad, ang, before, after)
 
-    # Objekte sind disjunkt (je eigenes Label) -> Eintragen in fester Reihenfolge, Ergebnis wie seriell
+    # Objekte sind disjunkt (je eigenes Label) -> Eintragen in fester Reihenfolge, Ergebnis wie seriell.
+    # Grosse Objekte zuerst starten (laengste Aufgaben vorn verteilt die Arbeit besser auf die Kerne).
+    order = sorted(range(1, n), key=lambda i: -int(st[i, 2]) * int(st[i, 3]))
+    results = dict(zip(order, _pmap(search, order)))
     checked = accepted = only_shift = rotated = 0
-    for k, r in enumerate(_pmap(search, range(1, n))):
+    for k, r in enumerate(results[i] for i in range(1, n)):
         _tick(tick, k + 1, n - 1)
         if r is None:
             continue
