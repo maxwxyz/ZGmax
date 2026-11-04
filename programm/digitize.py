@@ -11,6 +11,7 @@ Pixeln des Diagrammbilds (Spalte, Zeile; y nach unten).
 """
 import math
 import re
+import statistics
 
 import cv2
 import numpy as np
@@ -75,6 +76,16 @@ class Calib:
         d = self.minv @ (self.py1 - self.px1)               # Y1 - X1 = d0*u + d1*v
         return self.px1 + np.outer(s, self.m[:, 0]) + np.outer(t + d[1], self.m[:, 1])
 
+    @property
+    def x_reversed(self):
+        """x-Werte fallen im Bild von links nach rechts (z. B. 7 -> 5)."""
+        return (self.ax.v2 - self.ax.v1) * (self.px2[0] - self.px1[0]) < 0
+
+    @property
+    def y_reversed(self):
+        """y-Werte fallen im Bild von unten nach oben (Bildzeilen wachsen nach unten)."""
+        return (self.ay.v2 - self.ay.v1) * (self.py2[1] - self.py1[1]) > 0
+
 
 def to_values(points, calib):
     """Pixelpunkte -> Werte (N, 2); leere Liste bleibt leer."""
@@ -111,6 +122,122 @@ def line_masks(ink, frac=0.25, min_len=30):
     return mh, mv
 
 
+def _dash_chains(lab, st, cand, min_chain=3):
+    """Striche gestrichelter oder strichpunktierter Linien unter den kleinen Teilen finden.
+
+    lab, st: Ergebnis von connectedComponentsWithStats, cand: bool je Teil (kleine Teile). Ein Teil ist ein Strich,
+    wenn er laenglich ist; zwei Striche gehoeren zusammen, wenn der naechste in Verlaengerung (Richtung des Strichs)
+    nach einer Luecke von hoechstens etwa zwei Strichlaengen folgt und aehnlich gerichtet ist (je Strich und Seite
+    der naechste). Ketten aus mindestens min_chain Strichen sind Linien. Liefert (Kurvenstriche, Gitterstriche) als
+    bool je Teil und die Bruecken der Kurvenstriche als Liste ((x0, y0), (x1, y1), Strichstaerke); Gitterstriche
+    liegen in langen, exakt waagerechten oder senkrechten Ketten (gestricheltes Gitter)."""
+    n = len(st)
+    keep, grid = np.zeros(n, bool), np.zeros(n, bool)
+    idx = np.flatnonzero(cand)
+    if len(idx) < min_chain or len(idx) > 20000:
+        return keep, grid, []
+    sel = np.zeros(n, bool)
+    sel[idx] = True
+    ys, xs = np.nonzero(sel[lab])
+    ls = lab[ys, xs]
+    xs, ys = xs.astype(float), ys.astype(float)
+    cnt = np.maximum(np.bincount(ls, minlength=n), 1).astype(float)
+    mx, my = np.bincount(ls, xs, n) / cnt, np.bincount(ls, ys, n) / cnt      # Schwerpunkte je Teil
+    dx, dy = xs - mx[ls], ys - my[ls]
+    mxx, myy, mxy = (np.bincount(ls, w, n)[idx] / cnt[idx] for w in (dx * dx, dy * dy, dx * dy))
+    half = 0.5 * (mxx + myy)
+    root = np.sqrt(0.25 * (mxx - myy) ** 2 + mxy ** 2)
+    l1, l2 = half + root, np.maximum(half - root, 1.0 / 12)
+    ang = 0.5 * np.arctan2(2 * mxy, mxx - myy)
+    length = np.sqrt(12 * l1) + 1                          # gleichmaessig belegte Strecke: Varianz = L^2 / 12
+    ok = (length >= 4) & (l1 / l2 >= 4)                    # laenglich (Seitenverhaeltnis etwa 2:1 und mehr)
+    sx, sy, ang, length, idx = mx[idx][ok], my[idx][ok], ang[ok], length[ok], idx[ok]
+    m = len(idx)
+    if m < min_chain:
+        return keep, grid, []
+    thick = np.maximum(1.0, cnt[idx] / length)
+    ux, uy = np.cos(ang), np.sin(ang)
+    order = np.argsort(sx)
+    sxs = sx[order]
+    rmax = float(4 * length.max() + 4 + length.max())
+
+    def neighbours(ends, factor, min_cos, min_along):
+        """Je (Strich, Seite) aus ends den naechsten passenden Strich auf dieser Seite: dict -> (Luecke, Nachbar)."""
+        best = {}
+        for i in sorted({e[0] for e in ends}):
+            lo, hi = np.searchsorted(sxs, [sx[i] - rmax, sx[i] + rmax])
+            j = order[lo:hi]
+            j = j[j != i]
+            if not len(j):
+                continue
+            ddx, ddy = sx[j] - sx[i], sy[j] - sy[i]
+            dist = np.hypot(ddx, ddy)
+            gap = dist - 0.5 * (length[i] + length[j])
+            along = ddx * ux[i] + ddy * uy[i]
+            same = np.abs(ux[i] * ux[j] + uy[i] * uy[j]) >= min_cos
+            reach = factor * np.maximum(length[i], length[j]) + 4
+            good = (gap >= -2) & (gap <= reach) & same & (np.abs(along) >= min_along * dist)
+            for side in (1, -1):
+                if (i, side) not in ends:
+                    continue
+                g = good & (np.sign(along) == side)
+                if g.any():
+                    k = int(np.argmin(np.where(g, gap, np.inf)))
+                    best[(i, side)] = (float(gap[k]), int(j[k]))
+        return best
+
+    def mutual(best):
+        """Nur gegenseitige Nachbarn verbinden: Kanten (i, k) und die dabei belegten Seiten."""
+        edges, used = set(), set()
+        for (i, side), (_, k) in best.items():
+            back = [(k, sd) for sd in (1, -1) if best.get((k, sd), (0, -1))[1] == i]
+            if back:
+                edges.add((min(i, k), max(i, k)))
+                used.add((i, side))
+                used.add(back[0])
+        return edges, used
+    # Luecke hoechstens etwa zwei Strichlaengen; danach freie Kettenenden noch einmal weiter (etwa vier
+    # Strichlaengen, z. B. ueber eine Kreuzung mit einer anderen Kurve), dafuer genauer in Verlaengerung
+    allends = {(i, sd) for i in range(m) for sd in (1, -1)}
+    edges, used = mutual(neighbours(allends, 2.0, np.cos(np.radians(35)), 0.85))
+    more, _ = mutual(neighbours(allends - used, 4.0, np.cos(np.radians(15)), 0.97))
+    edges |= more
+    parent = np.arange(m)
+
+    def root_of(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for i, k in edges:
+        a, b = root_of(i), root_of(k)
+        if a != b:
+            parent[a] = b
+    roots = np.array([root_of(i) for i in range(m)])
+    size = np.bincount(roots, minlength=m)
+    chain = size[roots] >= min_chain
+    hw = float(lab.shape[1]), float(lab.shape[0])
+    curve = np.zeros(m, bool)
+    for r in np.unique(roots[chain]):
+        mem = roots == r
+        a = np.abs(np.degrees(ang[mem]))
+        flat = (a <= 2).all() and np.ptp(sy[mem]) <= 2 and np.ptp(sx[mem]) >= 0.3 * hw[0]
+        steep = (np.abs(a - 90) <= 2).all() and np.ptp(sx[mem]) <= 2 and np.ptp(sy[mem]) >= 0.3 * hw[1]
+        (grid if flat or steep else keep)[idx[mem]] = True
+        curve |= mem & (not (flat or steep))
+    bridges = []
+    for i, k in edges:
+        if not (curve[i] and curve[k]):
+            continue
+        ends = []
+        for q in (i, k):
+            h = 0.5 * length[q] - 1
+            ends.append([(sx[q] + h * ux[q], sy[q] + h * uy[q]), (sx[q] - h * ux[q], sy[q] - h * uy[q])])
+        p, q = min(((p, q) for p in ends[0] for q in ends[1]), key=lambda t: math.dist(*t))
+        bridges.append((p, q, float(min(thick[i], thick[k]))))
+    return keep, grid, bridges
+
+
 def remove_small(ink, size):
     """Zusammenhaengende Teile, deren Rahmen in beiden Richtungen hoechstens size px misst (Text, Ziffern, Punkte),
     entfernen."""
@@ -124,24 +251,61 @@ def remove_small(ink, size):
     return out
 
 
+def dash_masks(free, size):
+    """Striche gestrichelter Kurven in der Tinte ohne lange Linien (free): (Kurvenstriche, Gitterstriche) als
+    Masken. Beruecksichtigt werden nur kleine Teile (hoechstens size px), siehe _dash_chains. Die Luecken zwischen
+    den Strichen einer Kurve werden in der Kurvenmaske geschlossen."""
+    keep = np.zeros_like(free)
+    grid = np.zeros_like(free)
+    if size <= 0:
+        return keep, grid
+    n, lab, st, _ = cv2.connectedComponentsWithStats((free > 0).astype(np.uint8), connectivity=8)
+    small = (st[:, cv2.CC_STAT_WIDTH] <= size) & (st[:, cv2.CC_STAT_HEIGHT] <= size)
+    small[0] = False
+    k, g, bridges = _dash_chains(lab, st, small)
+    keep[k[lab]] = 255
+    grid[g[lab]] = 255
+    for p, q, t in bridges:                               # Luecken schliessen: Kurve wie durchgezogen verfolgen
+        cv2.line(keep, (int(round(p[0] * 4)), int(round(p[1] * 4))), (int(round(q[0] * 4)), int(round(q[1] * 4))),
+                 255, max(1, int(round(t))), cv2.LINE_8, shift=2)
+    return keep, grid
+
+
 def default_text_size(shape):
     """Vorschlag fuer die Textgroesse: etwa 3 % der laengeren Seite, mindestens 6 px."""
     return max(6, int(round(0.03 * max(shape[:2]))))
 
 
-def clean_ink(img, thr=None, text_size=None, line_frac=0.25):
+def clean_from(ink, masks, text_size, dashes=True):
+    """Wie clean_ink, aber aus fertiger Tintenmaske und Linienmasken (mh, mv) von line_masks - beim Aendern der
+    Textgroesse muss nicht neu binarisiert und nach Linien gesucht werden."""
+    mh, mv = masks
+    lines = mh | mv
+    # Text zuerst entfernen (solange Kurvenstuecke zwischen Gitterlinien noch am Gitter haengen), dann die Linien;
+    # danach nur noch Krumen (Reste von Teilstrichen und Kreuzungspunkten). Striche gestrichelter Kurven werden
+    # ohne die Linien gesucht (dort von Gitterlinien getrennt) und bleiben; ein gestricheltes Gitter zaehlt zu den
+    # Linien.
+    keep = None
+    if dashes and text_size > 0:
+        free = ink & ~lines
+        free |= lines & cv2.dilate(free, np.ones((5, 5), np.uint8))   # von Gitterlinien zerschnittene Striche
+        keep, grid = dash_masks(free, text_size)
+        lines = lines | grid
+    out = remove_small(ink, text_size) & ~lines
+    if keep is not None:
+        out |= keep & ~lines
+    out = remove_small(out, 3)
+    return out, lines
+
+
+def clean_ink(img, thr=None, text_size=None, line_frac=0.25, dashes=True):
     """Tinte ohne Gitter, Achsen, Rahmen und Text: (bereinigte Maske, Linienmaske). img Grau oder BGR.
-    text_size=None: Vorschlag aus der Bildgroesse, 0 = Text behalten."""
+    text_size=None: Vorschlag aus der Bildgroesse, 0 = Text behalten. dashes: Striche gestrichelter Kurven nicht
+    als Text entfernen."""
     ink = binarize(img, thr)
     if text_size is None:
         text_size = default_text_size(ink.shape)
-    # Text zuerst entfernen (solange Kurvenstuecke zwischen Gitterlinien noch am Gitter haengen), dann die Linien;
-    # danach nur noch Krumen (Reste von Teilstrichen und Kreuzungspunkten)
-    mh, mv = line_masks(ink, line_frac)
-    lines = mh | mv
-    out = remove_small(ink, text_size) & ~lines
-    out = remove_small(out, 3)
-    return out, lines
+    return clean_from(ink, line_masks(ink, line_frac), text_size, dashes)
 
 
 # ---------------------------------------------------------------------------------------------- Achsen
@@ -169,11 +333,12 @@ def _line_list(mask, axis):
     return out
 
 
-def find_axes(ink):
+def find_axes(ink, masks=None):
     """Achsen und Gitter in der Tintenmaske (binarize) erkennen. Liefert dict mit
     x_axis=(y, x0, x1) oder None (unterste lange waagerechte Linie), y_axis=(x, y0, y1) oder None (linkeste lange
-    senkrechte Linie), hlines=[y, ...], vlines=[x, ...] (alle langen Linien, Mitte)."""
-    mh, mv = line_masks(ink)
+    senkrechte Linie), hlines=[y, ...], vlines=[x, ...] (alle langen Linien, Mitte). masks: fertige Linienmasken
+    (mh, mv) von line_masks(ink), sonst werden sie hier gesucht."""
+    mh, mv = masks if masks is not None else line_masks(ink)
     hl, vl = _line_list(mh, 1), _line_list(mv, 0)
     res = dict(x_axis=None, y_axis=None, hlines=[c for c, *_ in hl], vlines=[c for c, *_ in vl])
     if hl:
@@ -187,6 +352,20 @@ def find_axes(ink):
         c, a, b, _ = min(cand, key=lambda l: l[0])
         res["y_axis"] = (c, a, b)
     return res
+
+
+def line_band(mask, pos, horizontal):
+    """Zeilen (horizontal) bzw. Spalten einer Linie in der Linienmaske um Position pos: (Anfang, Ende inklusive)."""
+    prof = (mask > 0).sum(axis=1 if horizontal else 0)
+    i = int(np.clip(round(pos), 0, len(prof) - 1))
+    if prof[i] == 0:
+        return i, i
+    a, b = i, i
+    while a > 0 and prof[a - 1] > 0:
+        a -= 1
+    while b < len(prof) - 1 and prof[b + 1] > 0:
+        b += 1
+    return a, b
 
 
 def snap_line(centers, p, radius=12):
@@ -277,10 +456,19 @@ def _predictor(xs, ys, deg, slope):
     return np.polyfit(np.asarray(xs) - xs[-1], ys, deg), xs[-1]
 
 
+def _slope(xs, ys):
+    """Steigung der Ausgleichsgeraden (wie np.polyfit(xs, ys, 1)[0], aber ohne dessen Aufwand je Spalte)."""
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx if sxx > 0 else 0.0
+
+
 def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, max_contact=150, seed=()):
     """Eine Richtung (step +1/-1) spaltenweise verfolgen; liefert Liste (x, y) ohne den Startpunkt.
 
-    ink: bereinigte Tinte, full: dazu die entfernten Gitterlinien. Gelaeufe werden in full gebildet, damit eine
+    ink: bereinigte Tinte, full: dazu die entfernten Gitterlinien, beide transponiert (Zeile = Bildspalte, damit
+    der Zugriff je Spalte schnell ist). Gelaeufe werden in full gebildet, damit eine
     Kurve, die auf einer Gitterlinie liegt oder sie kreuzt, wie an einer Kreuzung behandelt wird (Vorhersage statt
     abgeschnittener Mitte); ein Lauf zaehlt aber nur, wenn er auch bereinigte Tinte enthaelt (nie einer Gitterlinie
     allein folgen). seed: Punkte von der anderen Seite des Starts (in Laufrichtung vor dem Start) fuer die
@@ -303,6 +491,8 @@ def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, 
     on_line = 0                                         # Spalten, in denen die Kurve ganz auf einer Gitterlinie liegt
     last_strong = 0                                     # Anzahl Punkte bis zum letzten mit eigener Tinte
     curve_contact = False                               # Kreuzung mit einer anderen Kurve (nicht nur Gitterlinie)
+    run_cols = 99                                       # Spalten mit Tinte seit der letzten Luecke
+    fresh = 0                                           # davon in lens eingetragen
     while True:
         x += step
         if x < x_lo or x > x_hi:
@@ -312,14 +502,14 @@ def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, 
             pred = float(np.polyval(c, x - xr))
         else:
             n = min(window, len(hx))
-            if n >= 3 and np.ptp(hx[-n:]) > 0:
-                slope = float(np.polyfit(hx[-n:], hy[-n:], 1)[0])
+            if n >= 3 and hx[-1] != hx[-n]:
+                slope = _slope(hx[-n:], hy[-n:])
             pred = hy[-1] + slope * (x - hx[-1])
-        runs = _runs(full[:, x] > 0)
+        runs = _runs(full[x] > 0)
         t = tol + 0.1 * gap
         best, bd, weak = None, None, False
         for k, (a, b) in enumerate(runs):
-            w = full is not ink and not ink[a:b + 1, x].any()     # nur Gitterlinie
+            w = full is not ink and not ink[x, a:b + 1].any()     # nur Gitterlinie
             if w and (gap or on_line >= 4 * lens[0] + 10):
                 continue
             d = 0.0 if a <= pred <= b else min(abs(a - pred), abs(b - pred))
@@ -327,13 +517,17 @@ def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, 
                 best, bd, weak = k, d, w
         on_line = on_line + 1 if weak else 0
         if best is None:
+            if gap == 0 and fresh and len(lens) > 2:     # Strichende (gestrichelt): Laeufe dort duenner, vergessen
+                del lens[-min(2, fresh, len(lens) - 1):]
             gap += 1
+            run_cols = fresh = 0
             if gap > max_gap:
                 break
             continue
         gap = 0
+        run_cols += 1
         a, b = runs[best]
-        L = float(np.median(lens[-40:]))
+        L = float(statistics.median(lens[-40:]))
         near = 2 * L + 2                                # Abstand (Kante zu Kante), ab dem eine Nachbarkurve stoert
         nd = min([a - runs[k][1] - 1 for k in range(best)] + [runs[k][0] - b - 1 for k in range(best + 1, len(runs))],
                  default=1e9)
@@ -343,7 +537,7 @@ def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, 
         if weak:
             by_curve = False
         else:                                           # eigene Tinte allein zu lang: zweite Kurve, nicht Gitter
-            ys = np.flatnonzero(ink[a:b + 1, x])
+            ys = np.flatnonzero(ink[x, a:b + 1])
             by_curve = ys[-1] - ys[0] + 1 > long_run
         if frozen is None:
             ambiguous = merged or (touching and alone)
@@ -370,7 +564,9 @@ def _trace_dir(ink, full, x0, y0, step, run0, tol, max_gap, x_lo, x_hi, window, 
         frozen, contact = None, 0                       # eindeutig: Mitte des Laufs
         touching = nd <= 2
         y = (a + b) / 2.0
-        lens.append(float(b - a + 1))
+        if run_cols > 2:                                # Strichanfang (duenner) nicht als uebliche Lauflaenge
+            lens.append(float(b - a + 1))
+            fresh += 1
         hx.append(float(x))
         hy.append(y)
         out.append((float(x), y))
@@ -394,8 +590,9 @@ def trace_curve(ink, start_xy, lines=None, bounds=None, max_gap=None, tol=None, 
     full = ink if lines is None else cv2.bitwise_or(ink, lines)
     if tol is None:
         tol = max(4.0, 2.5 * stroke_width(ink, x0, y0))
-    # Startspalte: naechste Spalte nahe am Klick, in der die Kurve frei liegt (nicht auf einer Gitterlinie)
-    start = None
+    # Startspalte: naechste Spalte nahe am Klick, in der die Kurve frei liegt (nicht auf einer Gitterlinie); bei
+    # gestrichelten Kurven nicht am duennen Ende eines Strichs (Lauf mindestens so lang wie ueblich in der Naehe)
+    found = []
     for dx in sorted(range(-12, 13), key=abs):
         x = x0 + dx
         if not 0 <= x < w:
@@ -404,18 +601,24 @@ def trace_curve(ink, start_xy, lines=None, bounds=None, max_gap=None, tol=None, 
                 and (a <= y0 <= b or min(abs(a - y0), abs(b - y0)) <= tol + abs(dx))]
         if len(cand) == 1 and np.array_equal(ink[cand[0][0]:cand[0][1] + 1, x] > 0,
                                              np.ones(cand[0][1] - cand[0][0] + 1, bool)):
-            start = (x, cand[0])
-            break
+            found.append((x, cand[0]))
+    start = None
+    if found:
+        usual = float(np.median([b - a + 1 for _, (a, b) in found]))
+        start = next(f for f in found if f[1][1] - f[1][0] + 1 >= usual)
     if start is None:
         col = _runs(ink[:, x0] > 0)
         start = (x0, min(col, key=lambda r: 0 if r[0] <= y0 <= r[1] else min(abs(r[0] - y0), abs(r[1] - y0))))
+        usual = 0
     x0, (a, b) = start
-    run0 = b - a + 1
+    run0 = max(b - a + 1, usual)
     yc = (a + b) / 2.0
     if max_gap is None:
         max_gap = max(30, int(0.05 * w))
     x_lo, x_hi = (0, w - 1) if bounds is None else (max(0, int(bounds[0])), min(w - 1, int(bounds[1])))
-    args = (ink, full, x0, yc)
+    args = (np.ascontiguousarray(ink.T), np.ascontiguousarray(full.T) if lines is not None else None, x0, yc)
+    if args[1] is None:
+        args = (args[0], args[0], x0, yc)
     rest = (run0, tol, max_gap, x_lo, x_hi, window)
     # zuerst rechts, dann links mit der Anfangsrichtung von rechts, dann rechts noch einmal mit der von links
     right = _trace_dir(*args, 1, *rest)
@@ -641,7 +844,8 @@ def auto_axes(ink, ocr_items, axes=None):
             if ya and x1 < ya[0] - 2:                    # links neben der y-Achse: gehoert zur y-Achse
                 continue
             r = max(6.0, 0.5 * tw + 4)
-            px = snap_line(axes["vlines"], cx, r) or snap_tick(ink, ay, None, cx, True, radius=r)
+            px = snap_line(axes["vlines"], cx, r)
+            px = px if px is not None else snap_tick(ink, ay, None, cx, True, radius=r)
             pos.append(px)
             vals.append(v)
         f = _fit_axis(pos, vals) if len(pos) >= 2 else None
@@ -661,7 +865,8 @@ def auto_axes(ink, ocr_items, axes=None):
             if xa and y0 > xa[0] + 2:                    # unter der x-Achse: gehoert zur x-Achse
                 continue
             r = max(6.0, 0.5 * th + 4)
-            py = snap_line(axes["hlines"], cy, r) or snap_tick(ink, axx, None, cy, False, radius=r)
+            py = snap_line(axes["hlines"], cy, r)
+            py = py if py is not None else snap_tick(ink, axx, None, cy, False, radius=r)
             pos.append(py)
             vals.append(v)
         f = _fit_axis(pos, vals) if len(pos) >= 2 else None
@@ -821,24 +1026,72 @@ def r2_of(y, fit):
 # ---------------------------------------------------------------------------------------------- Excel
 
 def to_xlsx(path, xs, table, header, sheet="Werte", chart_title="", x_title="", y_title="", xlog=False,
-            ylog=False, notes=(), notes_sheet="Funktionen", colors=None):
+            ylog=False, notes=(), notes_sheet="Funktionen", colors=None, polys=None, xrev=False, yrev=False,
+            labels=("Polynom", "Kurve", "von x", "bis x")):
     """Wertetabelle als Excel-Datei mit eingebettetem Punktdiagramm (je Kurve eine Linie). openpyxl wird erst hier
-    geladen. notes: Textzeilen (z. B. Funktionen) auf einem zweiten Blatt; colors: Linienfarben 'RRGGBB'."""
+    geladen. notes: Textzeilen (z. B. Funktionen) auf einem zweiten Blatt; colors: Linienfarben 'RRGGBB'.
+
+    polys: je Kurve (Koeffizienten hoechste Potenz zuerst, R^2, x von, x bis) oder None. Dann stehen oben die
+    Koeffizienten a0, a1, ... je Kurve in Zellen und neben den gemessenen Werten je Kurve eine Spalte mit der Formel
+    (z. B. =$B$2+$C$2*A5+$D$2*A5^2) - Aendern von x oder eines Koeffizienten rechnet sofort neu. labels: Texte
+    (Polynom, Kurve, von x, bis x). xrev/yrev: Achse faellt im Bild (z. B. 7 -> 5); das Diagramm zeigt sie ebenso
+    umgekehrt."""
     from openpyxl import Workbook
     from openpyxl.chart import Reference, ScatterChart, Series
     from openpyxl.styles import Font
-    from openpyxl.utils import get_column_letter
+    from openpyxl.utils import get_column_letter as col
     wb = Workbook()
     ws = wb.active
     ws.title = sheet[:31]
-    ws.append([str(h) for h in header])
-    for c in ws[1]:
-        c.font = Font(bold=True)
+    bold = Font(bold=True)
+    names = [str(h) for h in header[1:]]
+    polys = list(polys or [])
+    fits = [(k, p) for k, p in enumerate(polys[:len(names)]) if p is not None and len(p[0])]
+    widths = {}
+
+    def put(r, c, v, b=False):
+        cell = ws.cell(row=r, column=c, value=v)
+        if b:
+            cell.font = bold
+        if isinstance(v, str) and not v.startswith("="):
+            widths[c] = max(widths.get(c, 10), min(40, len(v) + 4))
+        return cell
+    top = 1                                               # Zeile der Tabellenkoepfe
+    coef_row = {}
+    if fits:
+        deg = max(len(p[0]) for _, p in fits) - 1
+        put(1, 1, labels[1], True)
+        for i in range(deg + 1):
+            put(1, 2 + i, f"a{i}", True)
+        for j, t in enumerate(("R²", labels[2], labels[3])):
+            put(1, deg + 3 + j, t, True)
+        for row, (k, (co, r2, lo, hi)) in enumerate(fits, start=2):
+            coef_row[k] = row
+            put(row, 1, names[k])
+            for i, a in enumerate(np.asarray(co, float)[::-1]):         # a0 zuerst
+                put(row, 2 + i, float(a))
+            for j, v in enumerate((r2, lo, hi)):
+                put(row, deg + 3 + j, float(v) if np.isfinite(v) else None)
+        top = len(fits) + 3                               # eine Zeile Abstand
+    head = [str(header[0])] + names + [f"{names[k]} ({labels[0]})" for k, _ in fits]
+    for c, h in enumerate(head, start=1):
+        put(top, c, h, True)
     for i, x in enumerate(xs):
-        ws.append([float(x)] + [None if not np.isfinite(v) else float(v) for v in table[i]])
-    for k, h in enumerate(header):
-        ws.column_dimensions[get_column_letter(k + 1)].width = max(10, min(40, len(str(h)) + 4))
-    ws.freeze_panes = "A2"
+        r = top + 1 + i
+        put(r, 1, float(x))
+        for k, v in enumerate(table[i]):
+            put(r, 2 + k, None if not np.isfinite(v) else float(v))
+        for j, (k, (co, *_)) in enumerate(fits):
+            if not np.isfinite(table[i][k]):
+                continue                                  # nur wo die Kurve gemessen ist
+            cr = coef_row[k]
+            terms = [f"${col(2 + p)}${cr}" + ("" if p == 0 else f"*A{r}" + ("" if p == 1 else f"^{p}"))
+                     for p in range(len(co))]
+            put(r, 2 + len(names) + j, "=" + "+".join(terms))
+    for c, w in widths.items():
+        ws.column_dimensions[col(c)].width = w
+    ws.freeze_panes = f"A{top + 1}"
+    wb.calculation.fullCalcOnLoad = True                  # Formeln beim Oeffnen berechnen
     n = len(xs)
     ch = ScatterChart()
     if chart_title:
@@ -853,10 +1106,16 @@ def to_xlsx(path, xs, table, header, sheet="Werte", chart_title="", x_title="", 
         ch.x_axis.scaling.logBase = 10
     if ylog:
         ch.y_axis.scaling.logBase = 10
+    if xrev:                                              # wie im Bild: Werte fallen nach rechts, y-Achse bleibt links
+        ch.x_axis.scaling.orientation = "maxMin"
+        ch.y_axis.crosses = "max"
+    if yrev:                                              # Werte fallen nach oben, x-Achse bleibt unten
+        ch.y_axis.scaling.orientation = "maxMin"
+        ch.x_axis.crosses = "max"
     ch.display_blanks = "gap"
-    xref = Reference(ws, min_col=1, min_row=2, max_row=n + 1)
+    xref = Reference(ws, min_col=1, min_row=top + 1, max_row=top + n)
     for k in range(1, len(header)):
-        yref = Reference(ws, min_col=k + 1, min_row=1, max_row=n + 1)
+        yref = Reference(ws, min_col=k + 1, min_row=top, max_row=top + n)
         s = Series(yref, xref, title_from_data=True)
         s.marker.symbol = "none"
         s.smooth = False
@@ -865,7 +1124,7 @@ def to_xlsx(path, xs, table, header, sheet="Werte", chart_title="", x_title="", 
         s.graphicalProperties.line.width = 22000          # EMU, etwa 1,7 pt
         ch.series.append(s)
     ch.width, ch.height = 18, 11
-    ws.add_chart(ch, f"{get_column_letter(len(header) + 2)}2")
+    ws.add_chart(ch, f"{col(len(head) + 2)}{top + 1}")
     if notes:
         ws2 = wb.create_sheet(notes_sheet[:31])
         for line in notes:
