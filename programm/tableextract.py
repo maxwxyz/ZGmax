@@ -1,10 +1,11 @@
 """Tabelle aus einem Bereich der Zeichnung lesen (ohne Qt): Zellraster aus Tabellenlinien oder aus der Lage der
-Woerter, Text je Zelle, Ausgabe als CSV.
+Woerter, Text je Zelle, Ausgabe als CSV oder Excel.
 
 Eingabe sind Textteile (x0, y0, x1, y1, text) - Woerter, PDF-Textstuecke oder Zeilen der Texterkennung - in
 Pixeln des Bereichs (links oben = 0, 0) und wahlweise das Graubild des Bereichs (dunkle Linien auf hellem Papier)."""
 import csv
 import io
+import re
 
 import cv2
 import numpy as np
@@ -216,3 +217,62 @@ def to_csv(rows, sep=";", newline="\r\n"):
     for r in rows:
         wr.writerow([("" if v is None else str(v)) for v in r] + [""] * (n - len(r)))
     return buf.getvalue()
+
+
+def _norm(v):
+    """Zelltext zum Vergleichen: ohne Leerraum am Rand, mehrfache Leerzeichen zu einem, Gross/Klein egal."""
+    return " ".join(str(v or "").split()).casefold()
+
+
+def append_rows(rows, more):
+    """Zweite Tabelle (andere Seite, anderer Bereich) unten anhaengen. Eine wiederholte Kopfzeile (erste Zeile wie
+    die erste Zeile der bisherigen Tabelle) faellt weg; alle Zeilen werden auf die groesste Spaltenzahl aufgefuellt."""
+    rows = [list(r) for r in rows]
+    more = [list(r) for r in more]
+    if rows and more and any(rows[0]) and [_norm(v) for v in rows[0] if _norm(v)] == \
+            [_norm(v) for v in more[0] if _norm(v)]:
+        more = more[1:]
+    out = rows + more
+    n = max((len(r) for r in out), default=0)
+    return [r + [""] * (n - len(r)) for r in out]
+
+
+_NUM = re.compile(r"^[+\-−]?(\d+)([.,](\d+))?$")
+
+
+def as_number(v):
+    """Zelltext als Zahl (int/float), wenn er eine ist - Dezimalkomma oder -punkt; sonst None. Fuehrende Nullen
+    (Sachnummern wie 007) und Tausenderpunkte bleiben Text."""
+    s = str(v or "").strip().replace("−", "-")
+    m = _NUM.match(s)
+    if not m or (len(m.group(1)) > 1 and m.group(1).startswith("0")):
+        return None
+    if m.group(2) is None:
+        return int(s)
+    return float(s.replace(",", "."))
+
+
+def to_xlsx(rows, path, sheet="Tabelle"):
+    """Zeilen als Excel-Datei (.xlsx): Zahlen als Zahl, sonst Text; erste Zeile fett; Spaltenbreite nach Inhalt."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet
+    n = max((len(r) for r in rows), default=0)
+    widths = [0] * n
+    bold = Font(bold=True)
+    for i, r in enumerate(rows, 1):
+        for j, v in enumerate(list(r) + [""] * (n - len(r)), 1):
+            v = "" if v is None else str(v)
+            num = as_number(v)
+            c = ws.cell(row=i, column=j, value=num if num is not None else (v or None))
+            if i == 1:
+                c.font = bold
+            longest = max((len(t) for t in v.split("\n")), default=0)
+            widths[j - 1] = max(widths[j - 1], longest)
+    for j, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(j)].width = min(60, max(6, w + 2))
+    wb.save(path)
+    return path

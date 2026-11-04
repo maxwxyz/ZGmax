@@ -1,4 +1,5 @@
-"""Hauptfenster: Tabelle aus der Bereichsauswahl lesen und als CSV kopieren oder speichern."""
+"""Hauptfenster: Tabelle aus der Bereichsauswahl lesen (auch ueber mehrere Seiten), als CSV kopieren oder
+als CSV/Excel speichern; Text der Auswahl pruefen und kopieren."""
 from i18n import tr
 from ui_common import *  # noqa: F401,F403
 import diffedit as de
@@ -8,28 +9,33 @@ SEPS = ((";", tr("Semikolon (;)")), (",", tr("Komma (,)")), ("\t", tr("Tabulator
 
 
 class TableDialog(QDialog):
-    """Vorschau der gelesenen Tabelle (Zellen bearbeitbar), Trennzeichen waehlen, kopieren oder speichern."""
+    """Vorschau der gelesenen Tabelle (Zellen bearbeitbar), Trennzeichen waehlen, kopieren oder speichern (CSV oder
+    Excel). Bleibt offen (nicht modal): auf einer anderen Seite oder an anderer Stelle einen Bereich waehlen und mit
+    „Auswahl anhaengen“ unten anfuegen (Tabellen ueber mehrere Seiten)."""
 
     def __init__(self, win, rows, source):
         super().__init__(win)
         self.win = win
         self.setWindowTitle(tr("Tabelle aus Auswahl"))
+        self.setModal(False)
         self.resize(820, 520)
         lay = QVBoxLayout(self)
-        nr, nc = len(rows), max((len(r) for r in rows), default=0)
-        h = QLabel(tr("{} Zeilen × {} Spalten ({}). Zellen lassen sich vor dem Kopieren bearbeiten.").format(
-            nr, nc, source))
-        h.setWordWrap(True)
-        h.setObjectName("hint")
-        lay.addWidget(h)
-        self.table = QTableWidget(nr, nc)
-        for i, r in enumerate(rows):
-            for j, v in enumerate(r):
-                self.table.setItem(i, j, QTableWidgetItem(v))
+        self.sources = [source]
+        self.hint = QLabel("")
+        self.hint.setWordWrap(True)
+        self.hint.setObjectName("hint")
+        lay.addWidget(self.hint)
+        self.table = QTableWidget(0, 0)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.table.resizeColumnsToContents()
         lay.addWidget(self.table, 1)
+        self._fill(rows)
         row = QHBoxLayout()
+        self.btn_append = QPushButton(tr("Auswahl anhängen"))
+        self.btn_append.setToolTip(tr("Tabelle geht auf einer anderen Seite weiter: Seite wechseln, mit „Bereich“ "
+                                      "den Teil wählen und hier anhängen. Eine wiederholte Kopfzeile fällt weg."))
+        self.btn_append.clicked.connect(lambda: self.win._table_append(self))
+        row.addWidget(self.btn_append)
+        row.addSpacing(12)
         row.addWidget(QLabel(tr("Trennzeichen")))
         self.cb_sep = QComboBox()
         for sep, name in SEPS:
@@ -45,12 +51,42 @@ class TableDialog(QDialog):
         self.btn_copy.clicked.connect(self.copy)
         row.addWidget(self.btn_copy)
         self.btn_save = QPushButton(tr("Speichern …"))
-        self.btn_save.clicked.connect(self.save)
+        self.btn_save.setToolTip(tr("Als CSV- oder Excel-Datei speichern (Dateityp im Dialog wählen)."))
+        self.btn_save.clicked.connect(lambda: self.save())
         row.addWidget(self.btn_save)
+        self.btn_xlsx = QPushButton(tr("Als Excel speichern …"))
+        self.btn_xlsx.setToolTip(tr("Excel-Datei (.xlsx): Zahlen als Zahl, Kopfzeile fett."))
+        self.btn_xlsx.clicked.connect(lambda: self.save("xlsx"))
+        row.addWidget(self.btn_xlsx)
         close = QPushButton(tr("Schließen"))
         close.clicked.connect(self.accept)
         row.addWidget(close)
         lay.addLayout(row)
+
+    def _fill(self, rows):
+        nr, nc = len(rows), max((len(r) for r in rows), default=0)
+        t = self.table
+        t.clear()
+        t.setRowCount(nr)
+        t.setColumnCount(nc)
+        for i, r in enumerate(rows):
+            for j, v in enumerate(r):
+                t.setItem(i, j, QTableWidgetItem(v))
+        t.resizeColumnsToContents()
+        self.hint.setText(tr("{} Zeilen × {} Spalten ({}). Zellen lassen sich vor dem Kopieren bearbeiten.").format(
+            nr, nc, ", ".join(dict.fromkeys(self.sources))))
+
+    def append(self, rows, source):
+        """Weitere gelesene Zeilen unten anfuegen (wiederholte Kopfzeile weg, Spalten auffuellen)."""
+        before = self.table.rowCount()
+        self.sources.append(source)
+        self._fill(te.append_rows(self.rows(), rows))
+        self.table.scrollToBottom()
+        n = self.table.rowCount() - before
+        self.win.statusBar().showMessage(tr("{} Zeilen angehängt").format(n), 5000)
+        self.raise_()
+        self.activateWindow()
+        return n
 
     def sep(self):
         return self.cb_sep.currentData()
@@ -68,15 +104,62 @@ class TableDialog(QDialog):
         QGuiApplication.clipboard().setText(self.text())
         self.win.statusBar().showMessage(tr("Tabelle kopiert ({} Zeilen)").format(self.table.rowCount()), 5000)
 
-    def save(self):
-        base = os.path.splitext(os.path.basename(self.win.path_a or self.win.path_b or "Tabelle"))[0] + "_Tabelle.csv"
-        path = self.win._save_dialog(tr("Tabelle speichern"), tr("CSV (*.csv);;Text (*.txt)"), base)
+    def save(self, fmt="csv"):
+        """Speichern; fmt gibt den vorgeschlagenen Dateityp an, die Endung der gewaehlten Datei entscheidet."""
+        stem = os.path.splitext(os.path.basename(self.win.path_a or self.win.path_b or "Tabelle"))[0] + "_Tabelle"
+        csv_f, xlsx_f = tr("CSV (*.csv)"), tr("Excel (*.xlsx)")
+        flt = ";;".join([xlsx_f, csv_f] if fmt == "xlsx" else [csv_f, xlsx_f]) + ";;" + tr("Text (*.txt)")
+        path = self.win._save_dialog(tr("Tabelle speichern"), flt, stem + (".xlsx" if fmt == "xlsx" else ".csv"))
         if not path:
             return None
-        with open(path, "w", encoding="utf-8-sig", newline="") as f:     # mit BOM: Excel erkennt die Umlaute
-            f.write(self.text("\r\n"))
+        if not os.path.splitext(path)[1]:
+            path += ".xlsx" if fmt == "xlsx" else ".csv"
+        try:
+            if os.path.splitext(path)[1].lower() == ".xlsx":
+                te.to_xlsx(self.rows(), path)
+            else:
+                with open(path, "w", encoding="utf-8-sig", newline="") as f:     # mit BOM: Excel erkennt Umlaute
+                    f.write(self.text("\r\n"))
+        except (OSError, ImportError) as e:
+            QMessageBox.warning(self, tr("Tabelle speichern"), tr("Speichern fehlgeschlagen: {}").format(e))
+            return None
         self.win.banner.show_msg(tr("Gespeichert: {}").format(path), "info", timeout=8)
         return path
+
+
+class TextDialog(QDialog):
+    """Gelesener Text des Bereichs zum Pruefen und Bearbeiten, dann kopieren."""
+
+    def __init__(self, win, text, source):
+        super().__init__(win)
+        self.win = win
+        self.setWindowTitle(tr("Text aus Auswahl"))
+        self.setModal(False)
+        self.resize(560, 380)
+        lay = QVBoxLayout(self)
+        h = QLabel(tr("{} Zeilen ({}). Der Text lässt sich vor dem Kopieren bearbeiten.").format(
+            text.count("\n") + 1, source))
+        h.setWordWrap(True)
+        h.setObjectName("hint")
+        lay.addWidget(h)
+        self.edit = QPlainTextEdit(text)
+        lay.addWidget(self.edit, 1)
+        row = QHBoxLayout()
+        row.addStretch()
+        self.btn_copy = QPushButton(tr("Kopieren"))
+        self.btn_copy.setDefault(True)
+        self.btn_copy.clicked.connect(self.copy)
+        row.addWidget(self.btn_copy)
+        close = QPushButton(tr("Schließen"))
+        close.clicked.connect(self.reject)
+        row.addWidget(close)
+        lay.addLayout(row)
+
+    def copy(self):
+        text = self.edit.toPlainText()
+        QGuiApplication.clipboard().setText(text)
+        self.win.statusBar().showMessage(tr("Text kopiert ({} Zeilen)").format(text.count("\n") + 1), 6000)
+        self.accept()
 
 
 class TableMixin:
@@ -132,17 +215,17 @@ class TableMixin:
         gray[~region.astype(bool)] = 255
         return gray
 
-    def area_table(self):
-        """Tabelle im gewaehlten Bereich lesen (Zellraster aus Linien oder aus der Lage des Texts) und als CSV
-        anbieten: Vorschau, kopieren, speichern."""
+    def _read_table(self, done):
+        """Tabelle im gewaehlten Bereich lesen (Zellraster aus Linien oder aus der Lage des Texts) im Hintergrund;
+        done(rows, quelle), nur wenn Text gefunden wurde. False, wenn nichts gestartet wurde."""
         bbox = self._area_bbox()
         if self.payload is None or bbox is None:
-            return
+            return False
         side = self._table_side()
         gray = self._table_gray(side, bbox)
         words, source = self._table_words(side, bbox)
         if words is None and not self.ensure_ocr(tr("Text der Tabelle zu lesen")):
-            return
+            return False
 
         def work(ctx):
             w, src = words, source
@@ -155,23 +238,41 @@ class TableMixin:
             ctx.progress(0.9, tr("Zellen bestimmen"))
             return te.extract_table(w, gray), src
 
-        def done(res):
+        def fin(res):
             rows, src = res
             if not rows:
                 self.banner.show_msg(tr("Im Bereich wurde kein Text gefunden."), "info", timeout=8)
                 return
+            done(rows, src)
+        return self._run_job(work, tr("Lese Tabelle …"), fin)
+
+    def area_table(self):
+        """Tabelle im gewaehlten Bereich lesen und in einem Fenster anbieten (Vorschau, kopieren, speichern,
+        weitere Bereiche anhaengen)."""
+        def done(rows, src):
+            old = getattr(self, "_table_dlg", None)
+            if old is not None:
+                old.close()
             self._table_dlg = TableDialog(self, rows, src)
-            self._table_dlg.exec()
-        self._run_job(work, tr("Lese Tabelle …"), done)
+            self._table_dlg.show()
+        self._read_table(done)
+
+    def _table_append(self, dlg):
+        """Knopf „Auswahl anhaengen“ im Tabellenfenster: aktuellen Bereich lesen und unten anfuegen."""
+        if self.payload is None or self._area_bbox() is None:
+            self.banner.show_msg(tr("Bitte zuerst mit „Bereich“ den weiteren Teil der Tabelle wählen (auch auf einer "
+                                    "anderen Seite)."), "info", timeout=10)
+            return False
+        return self._read_table(lambda rows, src: dlg.append(rows, src))
 
     def area_text(self):
-        """Text im gewaehlten Bereich in Lesereihenfolge in die Zwischenablage - exakt aus dem PDF, sonst schon
-        gelesener Text, sonst Texterkennung des Bereichs (in jeder Lage)."""
+        """Text im gewaehlten Bereich in Lesereihenfolge - exakt aus dem PDF, sonst schon gelesener Text, sonst
+        Texterkennung des Bereichs (in jeder Lage). Erst in einem Fenster zeigen (bearbeitbar), dann kopieren."""
         bbox = self._area_bbox()
         if self.payload is None or bbox is None:
             return
         side = self._table_side()
-        words, _src = self._table_words(side, bbox)
+        words, src = self._table_words(side, bbox)
         if words is None and not self.ensure_ocr(tr("Text im Bereich zu lesen")):
             return
         gray = self._table_gray(side, bbox) if words is None else None
@@ -189,8 +290,11 @@ class TableMixin:
             if not text:
                 self.banner.show_msg(tr("Im Bereich wurde kein Text gefunden."), "info", timeout=8)
                 return
-            QApplication.clipboard().setText(text)
-            self.statusBar().showMessage(tr("Text kopiert ({} Zeilen)").format(text.count("\n") + 1), 6000)
+            old = getattr(self, "_text_dlg", None)
+            if old is not None:
+                old.close()
+            self._text_dlg = TextDialog(self, text, src or tr("Texterkennung"))
+            self._text_dlg.show()
         self._run_job(work, tr("Lese Text …"), done)
 
 
