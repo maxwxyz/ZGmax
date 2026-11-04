@@ -95,18 +95,60 @@ def test_csv_quoting():
     assert te.to_csv([]) == ""
 
 
+def test_append_rows_header_and_padding():
+    """Tabelle ueber mehrere Seiten: wiederholte Kopfzeile faellt weg (auch mit anderem Leerraum), fehlende Spalten
+    werden aufgefuellt; eine andere erste Zeile bleibt."""
+    a = [["Pos", "Benennung", "Menge"], ["1", "Schraube", "4"]]
+    b = [["Pos ", "benennung", "Menge"], ["2", "Mutter", "2", "extra"]]
+    assert te.append_rows(a, b) == [["Pos", "Benennung", "Menge", ""], ["1", "Schraube", "4", ""],
+                                    ["2", "Mutter", "2", "extra"]]
+    assert te.append_rows(a, [["3", "Scheibe"]]) == a + [["3", "Scheibe", ""]]
+    assert te.append_rows([], [["x"]]) == [["x"]]
+
+
+def test_as_number():
+    assert te.as_number("2,5") == 2.5 and te.as_number("2.5") == 2.5 and te.as_number("-3") == -3
+    assert te.as_number("0,5") == 0.5 and te.as_number("0") == 0 and te.as_number(" 12 ") == 12
+    for t in ("007", "1.000,5", "M6", "", "2,5 mm", "1,2,3"):
+        assert te.as_number(t) is None, t
+
+
+def test_to_xlsx(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    out = tmp_path / "t.xlsx"
+    te.to_xlsx(DATA + [["4", "Stift", "007"]], str(out))
+    ws = openpyxl.load_workbook(str(out)).active
+    assert [c.value for c in ws[1]] == ["Pos", "Benennung", "Menge"] and ws["A1"].font.bold
+    assert ws["A2"].value == 1 and ws["C3"].value == 2.5 and ws["B3"].value == "Mutter"
+    assert ws["B4"].value is None and ws["C5"].value == "007" and not ws["A2"].font.bold
+    assert ws.column_dimensions["B"].width > ws.column_dimensions["A"].width
+
+
 # --- Hauptfenster
 @pytest.fixture
 def twin(win, monkeypatch):
+    """Tabellenfenster (nicht modal) abfangen: got["dlg"], got["rows"] beim Oeffnen."""
     import ui_table
     got = {}
 
-    def fake_exec(dlg):
+    def fake_show(dlg):
         got["dlg"] = dlg
         got["rows"] = dlg.rows()
-        return 0
-    monkeypatch.setattr(ui_table.TableDialog, "exec", fake_exec)
+    monkeypatch.setattr(ui_table.TableDialog, "show", fake_show)
     return win, got
+
+
+def pdf_table(pg, data):
+    """Tabelle mit Linien und Text auf eine PDF-Seite (wie test_gui_pdf_table)."""
+    xs, ys = (50, 110, 250, 330), tuple(50 + 30 * i for i in range(len(data) + 1))
+    for x in xs:
+        pg.draw_line((x, ys[0]), (x, ys[-1]), width=0.8)
+    for y in ys:
+        pg.draw_line((xs[0], y), (xs[-1], y), width=0.8)
+    for r, row in enumerate(data):
+        for c, t in enumerate(row):
+            if t:
+                pg.insert_text((xs[c] + 5, ys[r] + 20), t, fontsize=10)
 
 
 def test_gui_pdf_table(app, twin, tmp_path, monkeypatch):
@@ -117,16 +159,7 @@ def test_gui_pdf_table(app, twin, tmp_path, monkeypatch):
     win, got = twin
     p = tmp_path / "tabelle.pdf"
     doc = pymupdf.open()
-    pg = doc.new_page(width=400, height=300)
-    xs, ys = (50, 110, 250, 330), (50, 80, 110, 140, 170)
-    for x in xs:
-        pg.draw_line((x, ys[0]), (x, ys[-1]), width=0.8)
-    for y in ys:
-        pg.draw_line((xs[0], y), (xs[-1], y), width=0.8)
-    for r, row in enumerate(DATA):
-        for c, t in enumerate(row):
-            if t:
-                pg.insert_text((xs[c] + 5, ys[r] + 20), t, fontsize=10)
+    pdf_table(doc.new_page(width=400, height=300), DATA)
     doc.save(str(p))
     doc.close()
     win._set_file("A", str(p))
@@ -148,6 +181,49 @@ def test_gui_pdf_table(app, twin, tmp_path, monkeypatch):
     assert dlg.save() == str(out)
     raw = out.read_bytes()
     assert raw.startswith(b"\xef\xbb\xbf") and b"2\tMutter\t2,5\r\n" in raw
+    openpyxl = pytest.importorskip("openpyxl")
+    seen = {}
+    out2 = tmp_path / "t.xlsx"
+
+    def fake_dialog(title, flt, default):
+        seen.update(flt=flt, default=default)
+        return str(tmp_path / "t")                                # ohne Endung: Excel wie gewaehlt
+    monkeypatch.setattr(win, "_save_dialog", fake_dialog)
+    dlg.btn_xlsx.click()
+    assert seen["flt"].startswith("Excel") and seen["default"].endswith("_Tabelle.xlsx")
+    ws = openpyxl.load_workbook(str(out2)).active
+    assert ws["A1"].value == "Pos" and ws["A1"].font.bold and ws["C3"].value == 2.5
+
+
+def test_gui_table_over_pages(app, twin, tmp_path):
+    """Tabelle ueber zwei Seiten: zweite Auswahl auf Seite 2 anhaengen, wiederholte Kopfzeile faellt weg."""
+    import diffvector as dv
+    if not dv.available():
+        pytest.skip("PyMuPDF fehlt")
+    import pymupdf
+    win, got = twin
+    p = tmp_path / "lang.pdf"
+    doc = pymupdf.open()
+    pdf_table(doc.new_page(width=400, height=300), DATA[:3])
+    pdf_table(doc.new_page(width=400, height=300), [DATA[0], DATA[3], ["4", "Stift", "8"]])
+    doc.save(str(p))
+    doc.close()
+    win._set_file("A", str(p))
+    wait(app, lambda: win.payload is not None and not win.running)
+    z = win.dpi_value() / 72.0
+    win.canvas.sel_rects = [(int(40 * z), int(40 * z), int(340 * z), int(150 * z))]
+    win.area_table()
+    wait(app, lambda: not win.running and "rows" in got)
+    dlg = got["dlg"]
+    assert got["rows"] == DATA[:3]
+    win.sp_pa.setValue(2)
+    wait(app, lambda: not win.running and not win.page_timer.isActive() and win.payload is not None)
+    win.canvas.sel_rects = []
+    assert win._table_append(dlg) is False                       # ohne Auswahl nur ein Hinweis
+    win.canvas.sel_rects = [(int(40 * z), int(40 * z), int(340 * z), int(150 * z))]
+    dlg.btn_append.click()
+    wait(app, lambda: not win.running and dlg.table.rowCount() > 3)
+    assert dlg.rows() == DATA + [["4", "Stift", "8"]]
 
 
 def test_gui_bitmap_known_text(app, twin, tmp_path):
@@ -183,10 +259,14 @@ def test_gui_no_text(app, twin, tmp_path, monkeypatch):
     assert "rows" not in got
 
 
-def test_gui_copy_text(app, twin, tmp_path):
-    """Text kopieren: Text im Bereich in Lesereihenfolge (Zeilen von oben, Teile von links) in die Zwischenablage."""
-    from PySide6.QtWidgets import QApplication
+def test_gui_copy_text(app, twin, tmp_path, monkeypatch):
+    """Text kopieren: Text im Bereich in Lesereihenfolge (Zeilen von oben, Teile von links) erst im Fenster zeigen
+    (bearbeitbar, mit Quelle), dann in die Zwischenablage."""
+    from PySide6.QtWidgets import QApplication, QLabel
+    import ui_table
     win, _got = twin
+    shown = {}
+    monkeypatch.setattr(ui_table.TextDialog, "show", lambda dlg: shown.setdefault("dlg", dlg))
     img, words = draw_table(True)
     sheet = np.full((600, 900), 255, np.uint8)
     sheet[100:400, 100:720] = img
@@ -196,7 +276,16 @@ def test_gui_copy_text(app, twin, tmp_path):
     wait(app, lambda: win.payload is not None and not win.running)
     win.cache[win._text_key("A")[0]] = [(w[0] + 100, w[1] + 100, w[2] + 100, w[3] + 100, w[4]) for w in words]
     win.canvas.sel_rects = [(110, 110, 700, 200)]                # nur die ersten Zeilen
+    QApplication.clipboard().setText("vorher")
     win.area_text()
-    wait(app, lambda: not win.running)
-    lines = QApplication.clipboard().text().splitlines()
+    wait(app, lambda: not win.running and "dlg" in shown)
+    dlg = shown["dlg"]
+    assert QApplication.clipboard().text() == "vorher"           # noch nichts kopiert
+    lines = dlg.edit.toPlainText().splitlines()
     assert lines[0] == " ".join(t for t in DATA[0] if t)
+    assert "gelesener Text" in dlg.findChild(QLabel, "hint").text()
+    dlg.edit.setPlainText(dlg.edit.toPlainText() + "\nergaenzt")
+    dlg.btn_copy.click()
+    txt = QApplication.clipboard().text()
+    assert txt.splitlines()[0] == lines[0] and txt.endswith("ergaenzt")
+

@@ -2254,3 +2254,78 @@ def test_drop_targets_when_open(app, win, pair, tmp_path):
     wait(app, lambda: win.path_a == pair[1] and not win.running)
     assert win.path_b == str(c)
     assert [t[0] for t in win._drop_targets([pair[0], pair[1]])] == ["window", "replace"]
+
+
+def test_text_search_all_pages(app, win, tmp_path, monkeypatch):
+    """Suche ueber alle Seiten eines PDFs (4 Seiten): Treffer aller Seiten zaehlen (PDF-Text, Seite ohne Text ueber die
+    Texterkennung), F3/Enter springt ueber Seitengrenzen, rueckwaerts auf den letzten Treffer der Seite."""
+    import pymupdf
+    import diffreport as rep
+    import ocrservice
+    p = str(tmp_path / "drei.pdf")
+    d = pymupdf.open()
+    for i, texts in enumerate((["Bohrung 25 H7", "Bohrung entgratet"], [], ["Schnitt A-A"], ["Bohrung 8"])):
+        pg = d.new_page(width=600, height=400)
+        for k in range(10):
+            pg.draw_line((20 + k * 40, 30), (20 + k * 40, 350))
+        for j, t in enumerate(texts):
+            pg.insert_text((100 + 200 * j, 200), t, fontsize=14)
+    d.save(p)
+    d.close()
+    win.settings.setValue("bg_text", False)                    # kein Lesen im Hintergrund
+    monkeypatch.setattr(rep, "ocr_available", lambda: True)
+    asked = []
+
+    def fake_lines(key, src=None, **k):                         # Seite 2 hat keinen PDF-Text: „Texterkennung“
+        asked.append(key[2])
+        return [(300, 300, 500, 340, "Bohrung aus Scan")] if key[2] == 2 else []
+    monkeypatch.setattr(ocrservice, "lines", fake_lines)
+    win._set_file("A", p)
+    wait(app, lambda: win.payload is not None and not win.running)
+    win.open_search()
+    assert not win.chk_search_all.isHidden()
+    win.chk_search_all.setChecked(True)
+    win.ed_search.setText("bohrung")
+    win.run_search()
+    wait(app, lambda: not win.running and win._search_counts is not None and win.canvas.search_hits)
+    assert asked == [2]
+    assert win._search_counts == {1: 2, 2: 1, 3: 0, 4: 1}
+    assert win.lbl_search.text() == "1 von 2 auf Seite 1 · 4 auf 3 Seiten"
+    win.search_step(1)
+    assert win.canvas.search_cur == 1 and win.sp_pa.value() == 1
+    win.search_step(1)                                          # Ende der Seite: weiter auf Seite 2
+    wait(app, lambda: win.sp_pa.value() == 2 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    assert win.lbl_search.text() == "1 von 1 auf Seite 2 · 4 auf 3 Seiten"
+    win.search_step(1)                                          # Seite 3 ohne Treffer wird uebersprungen
+    wait(app, lambda: win.sp_pa.value() == 4 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    win.search_step(1)                                          # im Kreis zurueck auf Seite 1
+    wait(app, lambda: win.sp_pa.value() == 1 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    assert win.canvas.search_cur == 0
+    win.search_step(-1)                                         # rueckwaerts: letzter Treffer von Seite 4
+    wait(app, lambda: win.sp_pa.value() == 4 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    win.search_step(-1)                                         # Seite 4 hat nur einen Treffer -> Seite 2
+    wait(app, lambda: win.sp_pa.value() == 2 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    win.search_step(-1)
+    wait(app, lambda: win.sp_pa.value() == 1 and not win.running and not win.page_timer.isActive()
+         and win.canvas.search_hits)
+    assert win.canvas.search_cur == 1                           # letzter Treffer der Seite
+    win.chk_search_all.setChecked(False)                        # nur die Seite: Treffer im Kreis auf Seite 1
+    win.canvas.search_cur = 1
+    win.search_step(1)
+    assert win.canvas.search_cur == 0 and win.sp_pa.value() == 1
+    assert win.lbl_search.text() == "1 von 2"
+    win.close_search()
+    one = str(tmp_path / "eine.pdf")                            # einseitige Datei: kein Haken
+    d = pymupdf.open()
+    d.new_page().insert_text((100, 100), "Bohrung", fontsize=14)
+    d.save(one)
+    d.close()
+    win._set_file("A", one)
+    wait(app, lambda: win.path_a == one and win.payload is not None and not win.running)
+    win.open_search()
+    assert win.chk_search_all.isHidden()
