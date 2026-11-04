@@ -22,6 +22,8 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   (`ocrservice`: eigene Warteschlange, FOREGROUND/HORIZONTAL/VERTICAL/SKEW, unterbricht lange Durchläufe),
   schräge Texte (`rep.ocr_skew`, `skey`, Rückfall in `ocr_box`).
 - openpyxl 3.1.5 in requirements.txt. `.claude/worktrees/` in `.gitignore`.
+- 160 Tests grün, Mac-Bau + Selbsttest OK (neu: Schritt „Excel“). GitHub-Lauf „Apps bauen“ (alle, mit Tests) gestartet:
+  Run 41803038113 – Ergebnis beim nächsten Mal prüfen.
 
 ## Erledigt 2026-11-03 (Release 0.9)
 - `rep.index_check(lines=...)` nimmt Schriftfeld und Revisionstabelle aus vorhandenen Zeilen (PDF-Text oder
