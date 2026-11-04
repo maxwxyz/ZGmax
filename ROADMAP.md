@@ -1,6 +1,6 @@
 # ZGmax – Roadmap und Funktionsstand
 
-Stand: Version **0.9** (3.11.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
+Stand: Version **1.0** (4.11.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
 technische Übergabe zwischen Sitzungen in [HANDOFF.md](HANDOFF.md). Diese Datei wird bei jeder neuen Funktion und jedem
 Release mit gepflegt.
 
@@ -19,8 +19,10 @@ nicht beschlossen) · ⚠️ bekanntes Problem
 0.9  3.11.2026   ✅ Texterkennung im Hintergrund (alle Lagen, eigener Prozess), Text finden vereint, Vergleich
                     schneller, scharfer PDF-Zoom, Index und Revisionstabelle prüfen, große Blätter, Einstellungsfenster,
                     aufgeräumte Oberfläche, Wiederherstellen-Fehlalarm behoben
-1.0  geplant     🟡 Erste stabile Version: Windows/Linux von Hand geprüft, echte Testzeichnungen, Rückmeldungen aus
-                    der Nutzung eingearbeitet
+1.0  4.11.2026   ✅ Digitalisieren: Diagramme (Kurven → Wertetabelle/Excel), Tabellen (CSV/Excel), Text kopieren;
+                    Suche über alle Seiten, schräge Texte, Kreise/Bögen beim Vektorisieren, Pfeilspitzen, Drag & Drop
+                    mit Zielen
+1.1  geplant     🟡 Windows/Linux von Hand geprüft, echte Testzeichnungen, Prüfplan mit Ballonnummern
 später           💡 3D-Modelle (eigenes Werkzeug)
 ```
 
@@ -30,10 +32,10 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 |---|---|---|
 | Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🔧 Gerüst fertig (`tests/real/`), echte Fälle fehlen |
 | Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🔧 abgesichert, Bestätigung mit der Originaldatei offen |
-| Dateitypen zuordnen, Texterkennung im Hintergrund und Wiederherstellen auf Windows und Linux ausprobieren | Alles läuft auf allen Systemen | 🟡 1.0 |
+| Dateitypen zuordnen, Texterkennung im Hintergrund und Wiederherstellen auf Windows und Linux ausprobieren | Alles läuft auf allen Systemen | 🟡 1.1 |
 | GitHub-Builds für Windows, macOS, Linux einmal komplett grün (mit allen Tests) | Fertige Apps für alle Systeme aus einer Hand | ✅ 26.10.2026 |
 | GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | ✅ v7 (Node 24) |
-| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 1.0 |
+| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 1.1 |
 | Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
 | PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | ✅ |
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
@@ -41,6 +43,8 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 | Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
 | Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden, Index und Revisionstabelle | Kein Warten beim ersten Gebrauch | ✅ (eigener Prozess, 0.9) |
 | Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | ✅ 0.9 |
+| Prüfplan mit Ballonnummern (alle Maße nummeriert, Nenn-/Grenzmaße, Spalte „Ist“), Passungen nach ISO 286 | Erstmuster- und Prüfberichte ohne Abtippen | 💡 |
+| Schriftfeld als Daten (Benennung, Nummer, Index, Werkstoff …), Stückliste gegen Positionsnummern | Strukturierte Daten aus der Zeichnung | 💡 |
 | Ordnervergleich als ein gemeinsamer PDF-Bericht | Ein Dokument statt eines je Paar | 💡 |
 | Tastenkürzel selbst belegen | Gewohnte Kürzel aus anderen Programmen | 💡 |
 | macOS-App mit Entwicklerzertifikat signieren | Keine Warnung beim ersten Start | 💡 (braucht Apple-Entwicklerkonto) |
@@ -102,7 +106,15 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Drucken im Maßstab, Kopieren wie angezeigt (0.6–0.7)
 - ✅ Projekte (.zgmax, auch mit eingebetteten Zeichnungen), gemerkte Ausschnitte, automatische Sicherung (0.6–0.7)
 
+### Digitalisieren
+- ✅ Diagramm digitalisieren: Achsen per Texterkennung, Kurven verfolgen (Kreuzungen), farbige Kurven trennen, Polynom,
+  glatte Kurve, CSV und Excel mit Diagramm (1.0)
+- ✅ Tabelle aus Auswahl (Linien oder Textlage), CSV/Excel, über mehrere Seiten; Text kopieren mit Bearbeitungsfenster (1.0)
+- ✅ Vektorisieren mit echten Kreisen und Bögen (DXF, SVG, PDF) (1.0)
+- ✅ Textsuche über alle Seiten; schräge und kopfstehende Texte; Vorrang in der Hintergrund-Erkennung (1.0)
+
 ### Bedienung
+- ✅ Pfeilspitzen wählbar (Ende, Anfang, beide, keine); Drag & Drop mit Zielen bei offener Zeichnung (1.0)
 - ✅ Wolke und Formen in einem Knopf der Werkzeugleiste, merkt das zuletzt gewählte Werkzeug (0.9)
 - ✅ Einstellungsfenster (Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen) (0.9)
 - ✅ Rechte Leiste: Prüfknöpfe nur während der Prüfung, kurze Hinweise mit Tooltip; „Vergleichen mit …“ nur im Schild (0.9)

@@ -1588,6 +1588,14 @@ def selftest():
     step("DXF", dxf)
     step(tr("Texterkennung"), ocr)
     step(tr("Texterkennung im Hintergrund"), ocr_process)
+    def excel():                                 # Tabelle/Diagramm als Excel (openpyxl)
+        import openpyxl
+        wb = openpyxl.Workbook()
+        wb.active.append(["x", 1.5])
+        f = os.path.join(tmp, "t.xlsx")
+        wb.save(f)
+        return f"openpyxl {openpyxl.__version__}"
+    step("Excel", excel)
     step(tr("Schrift"), lambda: os.path.basename(str(dc._font_path())))
     text = tr("{} {} Selbsttest\n").format(APP, VERSION) + "\n".join(out)
     log.info(text)

@@ -1,31 +1,33 @@
 {
  "unreleased": {
-  "de": [
-   "Pfeil: Spitze am Ende (Standard), am Anfang, an beiden Enden oder ohne Spitze – auch in PDF, SVG und XFDF.",
-   "Datei in ein offenes Fenster ziehen zeigt Ziele: in neuem Fenster, stattdessen öffnen, Alt (A) oder Neu (B) ersetzen bzw. damit vergleichen.",
-   "Text kopieren: Text einer Auswahl in Lesereihenfolge in die Zwischenablage (PDF-Text, schon gelesener Text oder Texterkennung).",
-   "Als Tabelle (CSV): Tabelle in einer Auswahl lesen (aus Linien oder Textlage), Zellen bearbeiten, kopieren (auch für Excel) oder speichern.",
-   "Texterkennung im Hintergrund: eine zweite Zeichnung und die Textsuche warten nicht mehr hinter den senkrechten Texten der ersten.",
-   "Schräge und kopfstehende Texte: zusätzlicher Durchlauf im Hintergrund (±45°, 180°) und Rückfall, wenn in einer Änderung sonst nichts erkannt wird.",
-   "Tabelle: als Excel-Datei speichern und Tabellen über mehrere Seiten zusammenfügen.",
-   "Text kopieren zeigt den Text erst in einem kleinen Fenster zum Bearbeiten.",
-   "Textsuche über alle Seiten eines PDFs oder mehrseitigen TIFFs; Enter/F3 springt auf die nächste Seite mit Treffer.",
-   "Diagramm digitalisieren: Kurven eines Diagramms (z. B. Federkennlinien) mit automatischer Achsenkalibrierung per Texterkennung verfolgen, auch über Kreuzungen; farbige Kurven werden getrennt; Wertetabelle, Polynom oder glatte Kurve als CSV oder Excel mit Diagramm."
-  ],
-  "en": [
-   "Arrow: arrowhead at the end (default), at the start, at both ends or none – also in PDF, SVG and XFDF.",
-   "Dragging a file into an open window shows targets: new window, open instead, replace Old (A) or New (B) or compare with it.",
-   "Copy text: the text of a selection in reading order to the clipboard (PDF text, text already read or text recognition).",
-   "As table (CSV): read a table in a selection (from lines or text position), edit cells, copy (also for Excel) or save.",
-   "Background text recognition: a second drawing and the text search no longer wait behind the vertical text of the first.",
-   "Skewed and upside-down text: extra background pass (±45°, 180°) and fallback when nothing else is recognised in a change.",
-   "Table: save as Excel file and join tables across several pages.",
-   "Copy text first shows the text in a small window for editing.",
-   "Text search across all pages of a PDF or multi-page TIFF; Enter/F3 jumps to the next page with a hit.",
-   "Digitise chart: trace the curves of a diagram (e.g. spring curves) with automatic axis calibration by text recognition, also across crossings; coloured curves are separated; value table, polynomial or smooth curve as CSV or Excel with chart."
-  ]
+  "de": [],
+  "en": []
  },
  "releases": [
+  {
+   "version": "1.0",
+   "date": "2026-11-04",
+   "de": [
+    "Diagramm digitalisieren: Kurven eines Diagramms (z. B. Federkennlinien) als Wertetabelle und Funktion – Achsen kalibrieren sich per Texterkennung, Kurven werden auch über Kreuzungen verfolgt, farbige Kurven getrennt; Ausgabe als CSV oder Excel mit fertigem Diagramm, als Polynom oder glatte Kurve.",
+    "Tabelle aus einer Auswahl: Zellen aus Linien oder Textlage, bearbeitbar, kopieren (direkt für Excel), als CSV oder Excel speichern, auch über mehrere Seiten zusammenfügen.",
+    "Text kopieren: Text einer Auswahl in Lesereihenfolge, erst in einem kleinen Fenster zum Bearbeiten.",
+    "Textsuche über alle Seiten eines PDFs oder mehrseitigen TIFFs; Enter/F3 springt auf die nächste Seite mit Treffer.",
+    "Texterkennung robuster: zusätzlich schräge und kopfstehende Texte; eine zweite Zeichnung und die Suche warten nicht mehr hinter langen Durchläufen der ersten.",
+    "Vektorisieren: Kreise und Kreisbögen als echte Kreise und Bögen (DXF, SVG, PDF) – im CAD maßlich nutzbar.",
+    "Pfeil: Spitze am Ende (Standard), am Anfang, an beiden Enden oder ohne Spitze – auch in PDF, SVG und XFDF.",
+    "Datei in ein offenes Fenster ziehen zeigt Ziele: in neuem Fenster, stattdessen öffnen, Alt (A) oder Neu (B) ersetzen bzw. damit vergleichen."
+   ],
+   "en": [
+    "Digitise chart: the curves of a diagram (e.g. spring curves) as a value table and function – axes calibrate themselves by text recognition, curves are traced across crossings, coloured curves separated; output as CSV or Excel with a ready-made chart, as polynomial or smooth curve.",
+    "Table from a selection: cells from lines or text position, editable, copy (directly for Excel), save as CSV or Excel, also joined across several pages.",
+    "Copy text: the text of a selection in reading order, first shown in a small window for editing.",
+    "Text search across all pages of a PDF or multi-page TIFF; Enter/F3 jumps to the next page with a hit.",
+    "More robust text recognition: also skewed and upside-down text; a second drawing and the search no longer wait behind long passes of the first.",
+    "Vectorise: circles and arcs as true circles and arcs (DXF, SVG, PDF) – dimensionally usable in CAD.",
+    "Arrow: arrowhead at the end (default), at the start, at both ends or none – also in PDF, SVG and XFDF.",
+    "Dragging a file into an open window shows targets: new window, open instead, replace Old (A) or New (B) or compare with it."
+   ]
+  },
   {
    "version": "0.9",
    "date": "2026-11-03",

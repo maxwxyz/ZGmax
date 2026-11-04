@@ -1,5 +1,16 @@
 # ZGmax – Change history
 
+## Version 1.0 of 2026-11-04
+
+- Digitise chart: the curves of a diagram (e.g. spring curves) as a value table and function – axes calibrate themselves by text recognition, curves are traced across crossings, coloured curves separated; output as CSV or Excel with a ready-made chart, as polynomial or smooth curve.
+- Table from a selection: cells from lines or text position, editable, copy (directly for Excel), save as CSV or Excel, also joined across several pages.
+- Copy text: the text of a selection in reading order, first shown in a small window for editing.
+- Text search across all pages of a PDF or multi-page TIFF; Enter/F3 jumps to the next page with a hit.
+- More robust text recognition: also skewed and upside-down text; a second drawing and the search no longer wait behind long passes of the first.
+- Vectorise: circles and arcs as true circles and arcs (DXF, SVG, PDF) – dimensionally usable in CAD.
+- Arrow: arrowhead at the end (default), at the start, at both ends or none – also in PDF, SVG and XFDF.
+- Dragging a file into an open window shows targets: new window, open instead, replace Old (A) or New (B) or compare with it.
+
 ## Version 0.9 of 2026-11-03
 
 - Text recognition in the background: after opening, a separate low-priority process reads the text in all orientations (including vertical dimensions), also with hidden PDF layers. Text search, “Find changed text” and “Check index and revision table” are then ready immediately and recognise nothing themselves; “Text: 60 %” at the bottom right shows the progress. Can be switched off in the settings.

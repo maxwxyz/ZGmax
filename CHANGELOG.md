@@ -1,5 +1,16 @@
 # ZGmax – Änderungshistorie
 
+## Version 1.0 vom 4.11.2026
+
+- Diagramm digitalisieren: Kurven eines Diagramms (z. B. Federkennlinien) als Wertetabelle und Funktion – Achsen kalibrieren sich per Texterkennung, Kurven werden auch über Kreuzungen verfolgt, farbige Kurven getrennt; Ausgabe als CSV oder Excel mit fertigem Diagramm, als Polynom oder glatte Kurve.
+- Tabelle aus einer Auswahl: Zellen aus Linien oder Textlage, bearbeitbar, kopieren (direkt für Excel), als CSV oder Excel speichern, auch über mehrere Seiten zusammenfügen.
+- Text kopieren: Text einer Auswahl in Lesereihenfolge, erst in einem kleinen Fenster zum Bearbeiten.
+- Textsuche über alle Seiten eines PDFs oder mehrseitigen TIFFs; Enter/F3 springt auf die nächste Seite mit Treffer.
+- Texterkennung robuster: zusätzlich schräge und kopfstehende Texte; eine zweite Zeichnung und die Suche warten nicht mehr hinter langen Durchläufen der ersten.
+- Vektorisieren: Kreise und Kreisbögen als echte Kreise und Bögen (DXF, SVG, PDF) – im CAD maßlich nutzbar.
+- Pfeil: Spitze am Ende (Standard), am Anfang, an beiden Enden oder ohne Spitze – auch in PDF, SVG und XFDF.
+- Datei in ein offenes Fenster ziehen zeigt Ziele: in neuem Fenster, stattdessen öffnen, Alt (A) oder Neu (B) ersetzen bzw. damit vergleichen.
+
 ## Version 0.9 vom 3.11.2026
 
 - Texterkennung im Hintergrund: Nach dem Öffnen liest ein eigener Prozess mit niedriger Priorität den Text in allen Lagen (auch senkrechte Maße), auch bei ausgeblendeten PDF-Ebenen. Textsuche, „Geänderten Text finden“ sowie „Index und Revisionstabelle prüfen“ sind danach sofort bereit und erkennen nichts mehr selbst; unten rechts zeigt „Text: 60 %“ den Fortschritt. Abschaltbar in den Einstellungen.

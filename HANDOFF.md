@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-11-03, lokal) – **Version 0.9** (Tag `v0.9`), alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-04, lokal) – **Version 1.0** (Tag `v1.0`), alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -7,14 +7,21 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-03): **0.9 veröffentlicht**; offen für 1.0: Windows/Linux von Hand prüfen,
-  echte Testzeichnungen, Absturz-Fix mit Originaldatei, Rückmeldungen. In 0.9 u. a.: Hintergrund liest alle Lagen, Fortschritt
-  in der Statusleiste, filter_small 5x schneller, rechte Leiste aufgeräumt, Einstellungsfenster, falsche
-  Wiederherstellen-Frage behoben (Abschnitt „Bedienung“ neu). Offen für 0.9: echte Fälle in `tests/real/`,
-  Windows/Linux von Hand prüfen (Dateitypen, Hintergrundprozess, Wiederherstellen-Fix), Absturz-Fix mit Originaldatei.
-  Entschieden: Wolke + Formen in einem Knopf (umgesetzt); Öffnen-Knopf bleibt (Projekt, Zuletzt verwendet,
-  Zwischenablage, Startseite gibt es im Schild nicht – nichts doppelt ins Schild).
-  Ideen: eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel, macOS-Signatur. Keine Firma/Zielgruppe nennen.
+- `ROADMAP.md` abgeglichen (2026-11-04): **1.0 veröffentlicht** (Tag `v1.0`). Offen für 1.1: Windows/Linux von Hand
+  prüfen (Dateitypen, Hintergrund-Erkennung, Wiederherstellen, Drag & Drop), echte Testzeichnungen in `tests/real/`,
+  Absturz-Fix „Schriftfeld lesen“ mit Originaldatei. Ideen: Prüfplan mit Ballonnummern + ISO-286-Passungen,
+  Schriftfeld als Daten, Stückliste gegen Positionsnummern, eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel,
+  macOS-Signatur. Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-04 (Release 1.0)
+- Agenten in Worktrees, Ergebnisse zusammengeführt: `tableextract.py` + `ui_table.py` (Tabelle CSV/Excel, mehrere
+  Seiten, `area_text` mit Fenster), `digitize.py` + `ui_digitize.py` (Diagramm), Kreise/Bögen in `diffedit.py`
+  (`vectorize(curves=True)`, Option `vec_curves`), Suche über alle Seiten (`ui_search.py`, `_text_key(side, page)`).
+- Selbst: Pfeilspitzen (`a["heads"]`, `rep.arrow_parts`, PDF/SVG/XFDF hin und zurück), Drag & Drop
+  (`ui_start.DropOverlay`, `MainWindow._drop_targets/_drop_chosen`), Vorrang im Erkennungsprozess
+  (`ocrservice`: eigene Warteschlange, FOREGROUND/HORIZONTAL/VERTICAL/SKEW, unterbricht lange Durchläufe),
+  schräge Texte (`rep.ocr_skew`, `skey`, Rückfall in `ocr_box`).
+- openpyxl 3.1.5 in requirements.txt. `.claude/worktrees/` in `.gitignore`.
 
 ## Erledigt 2026-11-03 (Release 0.9)
 - `rep.index_check(lines=...)` nimmt Schriftfeld und Revisionstabelle aus vorhandenen Zeilen (PDF-Text oder
