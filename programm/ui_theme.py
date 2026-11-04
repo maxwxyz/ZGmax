@@ -32,6 +32,8 @@ THEME = dict(THEMES["light"])           # aktuelles Schema; wird von apply_theme
 def make_qss(t):
     return f"""
 * {{ font-family: "{UI_FONT}", Arial; font-size: 10pt; color: {t['text']}; }}
+*:disabled {{ color: {t['disabled']}; }}
+QMenu::item:disabled {{ color: {t['disabled']}; }}
 QMainWindow, QWidget#panel {{ background: {t['window']}; }}
 QToolBar {{ background: {t['surface']}; border: none; border-bottom: 1px solid {t['border']}; spacing: 4px; padding: 4px 10px; }}
 QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 12px; }}

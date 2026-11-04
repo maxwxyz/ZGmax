@@ -13,6 +13,11 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Schriftfeld als Daten, Stückliste gegen Positionsnummern, eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel,
   macOS-Signatur. Keine Firma/Zielgruppe nennen.
 
+## Erledigt 2026-11-04 (nach 1.0)
+- Windows/Linux: deaktivierte Menüeinträge waren nicht grau – `* { color }` im Stylesheet überschrieb die Palette.
+  Jetzt `*:disabled` und `QMenu::item:disabled` in `ui_theme.make_qss`; Test `test_disabled_menu_items_greyed`.
+  Am Mac zeichnet das System die Menüleiste (deshalb dort schon grau). 161 Tests grün, Mac-Bau OK.
+
 ## Erledigt 2026-11-04 (Release 1.0)
 - Agenten in Worktrees, Ergebnisse zusammengeführt: `tableextract.py` + `ui_table.py` (Tabelle CSV/Excel, mehrere
   Seiten, `area_text` mit Fenster), `digitize.py` + `ui_digitize.py` (Diagramm), Kreise/Bögen in `diffedit.py`

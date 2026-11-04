@@ -1,7 +1,11 @@
 {
  "unreleased": {
-  "de": [],
-  "en": []
+  "de": [
+   "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac)."
+  ],
+  "en": [
+   "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac)."
+  ]
  },
  "releases": [
   {

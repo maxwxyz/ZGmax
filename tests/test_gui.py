@@ -2329,3 +2329,29 @@ def test_text_search_all_pages(app, win, tmp_path, monkeypatch):
     wait(app, lambda: win.path_a == one and win.payload is not None and not win.running)
     win.open_search()
     assert win.chk_search_all.isHidden()
+
+
+def test_disabled_menu_items_greyed(app):
+    """Windows/Linux zeichnen Menues selbst (nicht das System wie am Mac): deaktivierte Eintraege muessen grau sein,
+    in beiden Farbschemata."""
+    from PySide6.QtWidgets import QMenu
+    from ui_theme import apply_theme
+    try:
+        for mode in ("light", "dark"):
+            apply_theme(app, mode)
+            m = QMenu()
+            on, off = m.addAction("Aktiv XXXX"), m.addAction("Inaktiv XXXX")
+            off.setEnabled(False)
+            m.popup(m.pos())
+            app.processEvents()
+            img = m.grab().toImage()
+
+            def ink(act):
+                g = m.actionGeometry(act)
+                vals = [img.pixelColor(x, y).lightness() for x in range(g.left() + 5, g.right() - 5)
+                        for y in range(g.top() + 2, g.bottom() - 2)]
+                return min(vals) if mode == "light" else max(vals)     # Schrift: dunkelster bzw. hellster Punkt
+            assert abs(ink(on) - ink(off)) > 60, (mode, ink(on), ink(off))
+            m.close()
+    finally:
+        apply_theme(app, "auto")
