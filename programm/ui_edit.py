@@ -1392,7 +1392,7 @@ class OcrPdfMixin:
 
 
 class VectorizeDialog(QDialog):
-    def __init__(self, parent, has_area):
+    def __init__(self, parent, has_area, curves=True):
         super().__init__(parent)
         self.setWindowTitle(tr("Vektorisieren"))
         lay = QVBoxLayout(self)
@@ -1420,6 +1420,13 @@ class VectorizeDialog(QDialog):
         self.sp_eps.setToolTip(tr("Wie weit eine Linie vom Pixelverlauf abweichen darf. Größer = weniger Punkte, "
                                   "glattere Linien; kleiner = genauer"))
         form.addRow(tr("Vereinfachen"), self.sp_eps)
+        self.chk_curves = QCheckBox(tr("Kreise und Bögen erkennen"))
+        self.chk_curves.setChecked(curves)
+        self.chk_curves.setToolTip(tr("Runde Linien werden als echte Kreise und Kreisbögen gespeichert (Mittelpunkt "
+                                      "und Radius, im CAD maßlich nutzbar) statt als viele kurze Linien"))
+        form.addRow("", self.chk_curves)
+        self.cb_mode.currentIndexChanged.connect(
+            lambda: self.chk_curves.setEnabled(self.cb_mode.currentData() == "center"))
         self.cb_fmt = QComboBox()
         for txt, ext in ((tr("SVG (Grafikprogramme, Browser)"), ".svg"), (tr("PDF (Vektor)"), ".pdf"),
                          (tr("DXF (CAD, Maße in mm)"), ".dxf")):
@@ -1439,9 +1446,11 @@ class VectorizeMixin:
         if not self._need_result():
             return
         c = self.canvas
-        dlg = VectorizeDialog(self, bool(c.sel_rects))
+        dlg = VectorizeDialog(self, bool(c.sel_rects), self.settings.value("vec_curves", "true") == "true")
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
+        curves = dlg.chk_curves.isChecked()
+        self.settings.setValue("vec_curves", "true" if curves else "false")
         ext = dlg.cb_fmt.currentData()
         name = os.path.splitext(os.path.basename(self.path_a or self.path_b or "zeichnung"))[0] + "_vektor" + ext
         out = self._save_dialog(tr("Vektoren speichern"), dlg.cb_fmt.currentText().split(" (")[0] + f" (*{ext})", name)
@@ -1469,7 +1478,7 @@ class VectorizeMixin:
         def work(ctx):
             ctx.progress(0.02, tr("Vektorisiere"))
             vec = de.vectorize(part, vmode, eps, progress=lambda f: ctx.progress(0.02 + 0.9 * f, tr("Vektorisiere")),
-                               cancel=ctx.cancelled)
+                               cancel=ctx.cancelled, curves=curves)
             ctx.progress(0.95, tr("Schreibe Datei"))
             return de.write_vectors(out, vec, (x1 - x0, y1 - y0), dpi, mm)
         self._run_job(work, tr("Vektorisiere …"),

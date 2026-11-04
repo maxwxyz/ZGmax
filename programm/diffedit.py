@@ -540,9 +540,327 @@ def thin(ink, progress=None, cancel=None):
 _N8 = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 
 
-def trace_skeleton(skel, eps=1.0, min_len=1, progress=None):
+def fit_circle(pts):
+    """Kreis durch Punkte (algebraisch nach Taubin, auch fuer kurze Boegen kaum verzerrt): (cx, cy, r) oder None."""
+    p = np.asarray(pts, np.float64)
+    if len(p) < 3:
+        return None
+    m = p.mean(axis=0)
+    u, v = p[:, 0] - m[0], p[:, 1] - m[1]
+    z = u * u + v * v
+    zm = z.mean()
+    if zm <= 1e-12:
+        return None
+    z0 = (z - zm) / (2 * np.sqrt(zm))
+    try:
+        _, _, vt = np.linalg.svd(np.column_stack([z0, u, v]), full_matrices=False)
+    except np.linalg.LinAlgError:
+        return None
+    a = vt[2].copy()
+    a[0] /= 2 * np.sqrt(zm)
+    a3 = -zm * a[0]
+    if abs(a[0]) < 1e-12:                             # Gerade (unendlicher Radius)
+        return None
+    cx, cy = -a[1] / a[0] / 2 + m[0], -a[2] / a[0] / 2 + m[1]
+    r2 = a[1] * a[1] + a[2] * a[2] - 4 * a[0] * a3
+    if r2 <= 0:
+        return None
+    return float(cx), float(cy), float(np.sqrt(r2) / abs(a[0]) / 2)
+
+
+def _arc_of(p, eps=1.0):
+    """Liegen die Punkte p (N x 2, in Laufrichtung) auf einem Kreisbogen? Rueckgabe (cx, cy, r, a0, sweep) mit
+    Winkeln in Grad im Bild (y nach unten), sweep mit Vorzeichen der Laufrichtung; sonst None."""
+    if len(p) < 8:
+        return None
+    q = p[2:-2] if len(p) >= 14 else p                # Enden am Knoten sind vom Ausduennen verzogen
+    c = fit_circle(q)
+    if c is None:
+        return None
+    cx, cy, r = c
+    ext = float(np.ptp(p, axis=0).max())
+    if r < 4 or r > 50 * max(ext, 1.0):
+        return None
+    d = np.hypot(q[:, 0] - cx, q[:, 1] - cy) - r
+    tol = max(1.0, eps) + 0.01 * r                   # Pixelraster des Skeletts: knapp 1 px Abweichung
+    if np.abs(d).max() > tol or np.sqrt(np.mean(d * d)) > 0.45 * tol:
+        return None
+    a = np.arctan2(p[:, 1] - cy, p[:, 0] - cx)
+    da = np.diff(a)
+    da = (da + np.pi) % (2 * np.pi) - np.pi
+    tot = float(da.sum())
+    if np.any(np.sign(tot) * da < -1.5 / r):          # laeuft zurueck: kein Bogen
+        return None
+    idx = _dp_index(p, max(1.0, eps))                 # keine Ecke im Bogen (Spitze eines A, Rechteckecke)
+    if len(idx) > 2:
+        v = np.diff(p[idx], axis=0)
+        h = np.arctan2(v[:, 1], v[:, 0])
+        if np.hypot(*(p[-1] - p[0])) < 1.5:            # geschlossen: auch die Naht ist eine Ecke
+            h = np.append(h, h[0])
+        turn = np.abs((np.diff(h) + np.pi) % (2 * np.pi) - np.pi)
+        lim = 2 * np.arccos(max(-1.0, 1 - 1.2 * max(1.0, eps) / r)) + np.radians(10)
+        if turn.max() > lim:
+            return None
+    sw = abs(tot)
+    if sw < np.radians(20) or r * (1 - np.cos(min(sw, np.pi) / 2)) < 1.5:   # zu flach: Linie
+        return None
+    return cx, cy, r, float(np.degrees(a[0])), float(np.degrees(tot))
+
+
+def _dp_index(p, eps):
+    """Douglas-Peucker auf einem offenen Linienzug: Indizes der behaltenen Punkte (aufsteigend)."""
+    n = len(p)
+    if n <= 2:
+        return list(range(n))
+    keep = np.zeros(n, bool)
+    keep[0] = keep[-1] = True
+    stack = [(0, n - 1)]
+    while stack:
+        i, j = stack.pop()
+        if j - i < 2:
+            continue
+        a, b = p[i], p[j]
+        q = p[i + 1:j]
+        ab = b - a
+        L = float(np.hypot(*ab))
+        if L < 1e-9:
+            dist = np.hypot(q[:, 0] - a[0], q[:, 1] - a[1])
+        else:
+            dist = np.abs(ab[0] * (q[:, 1] - a[1]) - ab[1] * (q[:, 0] - a[0])) / L
+        k = int(np.argmax(dist))
+        if dist[k] > eps:
+            k += i + 1
+            keep[k] = True
+            stack.append((i, k))
+            stack.append((k, j))
+    return [int(i) for i in np.nonzero(keep)[0]]
+
+
+def _arc_point(cx, cy, r, deg):
+    t = np.radians(deg)
+    return (cx + r * float(np.cos(t)), cy + r * float(np.sin(t)))
+
+
+def _segment(p, eps):
+    """Offenen Linienzug (Bildpixel, N x 2) gierig in Linien und Kreisboegen zerlegen: ["L", i0, i1] oder
+    ["A", i0, i1, bogen] mit Indizes in p."""
+    bp = _dp_index(p, eps)
+    parts, i = [], 0                                   # ["L", k0, k1] oder ["A", k0, k1, bogen], k = Index in bp
+    while i < len(bp) - 1:
+        best, miss = None, 0
+        for j in range(i + 2, len(bp)):
+            arc = _arc_of(p[bp[i]:bp[j] + 1], eps)
+            if arc is None:
+                miss += 1
+                if (best is not None and miss > 2) or (best is None and j - i >= 6):   # passt nicht (mehr)
+                    break
+                continue
+            best, miss = (j, arc), 0
+        if best is None:
+            if parts and parts[-1][0] == "L":
+                parts[-1][2] = i + 1
+            else:
+                parts.append(["L", i, i + 1])
+            i += 1
+        else:
+            j, arc = best
+            k = i
+            while parts and parts[-1][0] == "L" and k > parts[-1][1]:   # Bogen nach hinten in die Linie verlaengern
+                a2 = _arc_of(p[bp[k - 1]:bp[j] + 1], eps)
+                if a2 is None:
+                    break
+                k, arc = k - 1, a2
+                parts[-1][2] = k
+                if parts[-1][1] == k:
+                    parts.pop()
+            parts.append(["A", k, j, arc])
+            i = j
+    return [[q[0], bp[q[1]], bp[q[2]]] + q[3:] for q in parts]
+
+
+def _curves_of(pts, closed, eps=1.0):
+    """Ein verfolgter Linienzug (Bildpixel) -> (Linienzuege, Boegen, Kreise). Bogen = (cx, cy, r, a0, a1) in Grad,
+    im Bild (y nach unten) von a0 aufsteigend bis a1; Kreis = (cx, cy, r). Gerade Abschnitte bleiben Linienzuege."""
+    p = np.asarray(pts, np.float64)
+    if closed:
+        pc = np.vstack([p, p[:1]])
+        arc = _arc_of(pc, eps)
+        if arc is not None and abs(arc[4]) > 340:
+            return [], [], [arc[:3]]
+        idx = _dp_index(pc, eps)                       # Start an die schaerfste Ecke legen (nicht mitten im Bogen)
+        if len(idx) > 3:
+            best, k0 = -1.0, 0
+            for k in range(len(idx) - 1):
+                a = pc[idx[k - 1] if k else idx[-2]]
+                b, c = pc[idx[k]], pc[idx[k + 1]]
+                v1, v2 = b - a, c - b
+                n1, n2 = np.hypot(*v1), np.hypot(*v2)
+                if n1 > 0 and n2 > 0:
+                    t = 1 - float(np.dot(v1, v2) / (n1 * n2))
+                    if t > best:
+                        best, k0 = t, idx[k]
+            p = np.roll(p, -k0, axis=0)
+        p = np.vstack([p, p[:1]])
+    parts = _segment(p, eps)
+    if closed and any(q[0] == "L" for q in parts) and "A" in (parts[0][0], parts[-1][0]):
+        q = max((q for q in parts if q[0] == "L"), key=lambda q: q[2] - q[1])   # Naht in die Mitte einer Linie
+        m = (q[1] + q[2]) // 2
+        p = np.roll(p[:-1], -m, axis=0)
+        p = np.vstack([p, p[:1]])
+        parts = _segment(p, eps)
+    items = []                                         # ["L", punkte] oder ["A", cx, cy, r, winkel_anfang, winkel_ende]
+    for pt in parts:
+        if pt[0] == "A":
+            cx, cy, r, a0, sw = pt[3]
+            items.append(["A", cx, cy, r, a0, a0 + sw])
+        else:
+            seg = p[pt[1]:pt[2] + 1]
+            items.append(["L", [tuple(map(float, seg[k])) for k in _dp_index(seg, eps)]])
+    pairs = [(k, k + 1) for k in range(len(items) - 1)] + ([(len(items) - 1, 0)] if closed and len(items) > 1 else [])
+    for k, m in pairs:                                 # Uebergang Bogen <-> Linie: tangential oder am Bogenende
+        x, y = items[k], items[m]
+        if x[0] == y[0] == "A":                        # zwei Boegen: am Schnittpunkt der Kreise verbinden
+            q = _circle_cut(x, y, _arc_point(x[1], x[2], x[3], x[5]), 3.5 * max(1.0, eps))
+            if q is not None:
+                for arc, slot in ((x, 5), (y, 4)):
+                    t = float(np.degrees(np.arctan2(q[1] - arc[2], q[0] - arc[1])))
+                    t = arc[slot] + (t - arc[slot] + 180) % 360 - 180
+                    other = arc[9 - slot]
+                    if (t - other) * (arc[slot] - other) > 0:   # Laufrichtung bleibt
+                        arc[slot] = t
+            continue
+        if x[0] == y[0]:
+            continue
+        arc, ln, at_end = (x, y[1], True) if x[0] == "A" else (y, x[1], False)
+        near, far = (ln[0], ln[1]) if at_end else (ln[-1], ln[-2])
+        slot = 5 if at_end else 4
+        t = _tangent_angle(arc, near, far, arc[slot], eps)
+        if t is not None and (arc[5] - arc[4]) * ((t if at_end else arc[5]) - (arc[4] if at_end else t)) > 0:
+            arc[slot] = t
+        q = _arc_point(arc[1], arc[2], arc[3], arc[slot])
+        if at_end:
+            ln[0] = q
+        else:
+            ln[-1] = q
+    if closed and len(items) > 1 and items[0][0] == items[-1][0] == "L":   # Naht mitten in einer Linie
+        ln = items[-1][1] + items[0][1][1:]
+        items[0][1] = [ln[k] for k in _dp_index(np.asarray(ln, np.float64), eps)]
+        items.pop()
+    lines = [it[1] for it in items if it[0] == "L"]
+    arcs = [(it[1], it[2], it[3], min(it[4], it[5]), max(it[4], it[5])) for it in items if it[0] == "A"]
+    return lines, arcs, []
+
+
+def _circle_cut(a, b, near, dist):
+    """Schnittpunkt der Kreise zweier Boegen ["A", cx, cy, r, ..], der near am naechsten liegt (hoechstens dist
+    entfernt), sonst None."""
+    (x0, y0, r0), (x1, y1, r1) = a[1:4], b[1:4]
+    d = float(np.hypot(x1 - x0, y1 - y0))
+    if d < 1e-6 or d > r0 + r1 or d < abs(r0 - r1):
+        return None
+    t = (d * d + r0 * r0 - r1 * r1) / (2 * d)
+    h = float(np.sqrt(max(0.0, r0 * r0 - t * t)))
+    ux, uy = (x1 - x0) / d, (y1 - y0) / d
+    px, py = x0 + t * ux, y0 + t * uy
+    q = min(((px - h * uy, py + h * ux), (px + h * uy, py - h * ux)),
+            key=lambda c: np.hypot(c[0] - near[0], c[1] - near[1]))
+    return q if np.hypot(q[0] - near[0], q[1] - near[1]) <= dist else None
+
+
+def _tangent_angle(arc, near, far, cur, eps=1.0):
+    """Laeuft die Strecke far -> near tangential in den Bogen? Dann Winkel (Grad) des Beruehrpunkts, sonst None."""
+    _, cx, cy, r = arc[:4]
+    ax, ay = far
+    dx, dy = near[0] - ax, near[1] - ay
+    L2 = dx * dx + dy * dy
+    if L2 < 4:
+        return None
+    t = ((cx - ax) * dx + (cy - ay) * dy) / L2
+    fx, fy = ax + t * dx, ay + t * dy
+    if t < 0.3 or abs(np.hypot(cx - fx, cy - fy) - r) > max(1.0, eps, 0.02 * r) \
+            or np.hypot(fx - near[0], fy - near[1]) > 0.5 * r + 3:
+        return None
+    a = float(np.degrees(np.arctan2(fy - cy, fx - cx)))
+    a = cur + (a - cur + 180) % 360 - 180
+    return a if abs(a - cur) <= 45 else None
+
+
+def merge_arcs(arcs, circles):
+    """Boegen desselben Kreises (an Knoten zerteilt, z. B. von Mittellinien gekreuzt) zusammenfassen: luecken-
+    lose Boegen werden ein Bogen, rundum ein Vollkreis. Rueckgabe (boegen, kreise)."""
+    arcs = list(arcs)
+    out_a, out_c = [], list(circles)
+    used = [False] * len(arcs)
+    cell = 8.0                                         # Raster der Mittelpunkte: nur Nachbarzellen vergleichen
+    grid = {}
+    for i, a in enumerate(arcs):
+        grid.setdefault((int(a[0] // cell), int(a[1] // cell)), []).append(i)
+    for i, a in enumerate(arcs):
+        if used[i]:
+            continue
+        grp = [a]
+        used[i] = True
+        tol = min(cell, max(1.5, 0.03 * a[2]))
+        gx, gy = int(a[0] // cell), int(a[1] // cell)
+        for j in sorted(j for ix in (gx - 1, gx, gx + 1) for iy in (gy - 1, gy, gy + 1) for j in grid.get((ix, iy), ())):
+            b = arcs[j]
+            if not used[j] and abs(b[2] - a[2]) <= tol and np.hypot(b[0] - a[0], b[1] - a[1]) <= tol:
+                grp.append(b)
+                used[j] = True
+        if len(grp) == 1:
+            out_a.append(a)
+            continue
+        w = np.array([g[4] - g[3] for g in grp])
+        cx, cy, r = (float(np.dot(w, [g[k] for g in grp]) / w.sum()) for k in range(3))
+        gap = min(30.0, np.degrees(12.0 / r) + 2.0)       # Luecke am Knoten (kreuzende Linie) ueberbruecken
+        iv = sorted(((g[3] % 360, g[3] % 360 + g[4] - g[3]) for g in grp))
+        merged = [list(iv[0])]
+        for s, e in iv[1:]:
+            if s <= merged[-1][1] + gap:
+                merged[-1][1] = max(merged[-1][1], e)
+            else:
+                merged.append([s, e])
+        if len(merged) > 1 and merged[0][0] + 360 <= merged[-1][1] + gap:   # ueber 0 Grad hinweg
+            merged[0] = [merged[-1][0], max(merged[-1][1], merged[0][1] + 360)]
+            merged.pop()
+        if len(merged) == 1 and merged[0][1] - merged[0][0] >= 360 - gap:
+            out_c.append((cx, cy, r))
+        else:
+            out_a.extend((cx, cy, r, s, e) for s, e in merged)
+    return out_a, out_c
+
+
+def snap_ends(lines, arcs, dist=1.5):
+    """Linienenden, die fast auf einem Bogenende liegen, genau dorthin setzen (geschlossener Zug im CAD)."""
+    pts = [_arc_point(a[0], a[1], a[2], a[3]) for a in arcs] + [_arc_point(a[0], a[1], a[2], a[4]) for a in arcs]
+    if not pts or not lines:
+        return lines
+    grid = {}
+    for q in pts:
+        grid.setdefault((int(q[0] // dist), int(q[1] // dist)), []).append(q)
+    out = []
+    for ln in lines:
+        ln = list(ln)
+        for k in (0, -1):
+            x, y = ln[k]
+            gx, gy = int(x // dist), int(y // dist)
+            best, bd = None, dist
+            for ix in (gx - 1, gx, gx + 1):
+                for iy in (gy - 1, gy, gy + 1):
+                    for q in grid.get((ix, iy), ()):
+                        d = np.hypot(q[0] - x, q[1] - y)
+                        if d <= bd:
+                            best, bd = q, d
+            if best is not None:
+                ln[k] = best
+        out.append(ln)
+    return out
+
+
+def trace_skeleton(skel, eps=1.0, min_len=1, progress=None, curves=False):
     """Skelett -> Linienzuege [(x, y), ...]. Knoten (3+ Nachbarn) verbinden die Zuege; Zuege werden mit
-    eps Pixeln Toleranz vereinfacht."""
+    eps Pixeln Toleranz vereinfacht. curves=True: Kreise und Kreisboegen erkennen, Rueckgabe dann
+    (linienzuege, boegen, kreise) wie bei _curves_of."""
     sk = (skel > 0).astype(np.uint8)
     nb = cv2.filter2D(sk, cv2.CV_16S, np.ones((3, 3), np.float32)) - sk
     junction = (sk == 1) & (nb >= 3)
@@ -562,7 +880,7 @@ def trace_skeleton(skel, eps=1.0, min_len=1, progress=None):
     ys, xs, ls = ys[order], xs[order], lab[ys, xs][order]
     bounds = np.searchsorted(ls, np.arange(1, n + 1))
     H, W = sk.shape
-    paths = []
+    paths, raw = [], []
     for i in range(1, n):
         if progress and i % 2000 == 0:
             progress(0.5 + 0.45 * i / n)
@@ -586,35 +904,106 @@ def trace_skeleton(skel, eps=1.0, min_len=1, progress=None):
         closed = len(line) > 3 and max(abs(line[0][0] - line[-1][0]), abs(line[0][1] - line[-1][1])) <= 1 \
             and len(nbrs(start)) >= 2
         pts = [(float(x), float(y)) for x, y in line]
+        jn = [None, None]                               # Knoten an Anfang/Ende (Nummer)
         for end, at in ((line[0], 0), (line[-1], -1)):   # an Knoten anschliessen
             if closed:
                 break
-            for dy, dx in _N8:
-                x, y = end[0] + dx, end[1] + dy
-                if 0 <= x < W and 0 <= y < H and jlab[y, x]:
-                    c = jcent[jlab[y, x]]
-                    if at == 0:
-                        pts.insert(0, c)
-                    else:
-                        pts.append(c)
-                    break
+            cand = [int(jlab[end[1] + dy, end[0] + dx]) for dy, dx in _N8
+                    if 0 <= end[0] + dx < W and 0 <= end[1] + dy < H and jlab[end[1] + dy, end[0] + dx]]
+            if at and len(cand) > 1 and cand[0] == jn[0]:     # kurzer Zug zwischen zwei Knoten: nicht zweimal
+                cand = [j for j in cand if j != jn[0]] + cand  # an denselben anschliessen
+            if cand:
+                if at == 0:
+                    pts.insert(0, jcent[cand[0]])
+                else:
+                    pts.append(jcent[cand[0]])
+                jn[at] = cand[0]
         if len(pts) < min_len and not any(p in jcent for p in (pts[0], pts[-1])):
             continue
-        if len(pts) == 1:                              # Punkt (z. B. Dezimalpunkt): kurzer Strich, runde Enden
-            pts = [pts[0], (pts[0][0] + 0.01, pts[0][1])]
-        arr = np.float32(pts).reshape(-1, 1, 2)
-        simp = cv2.approxPolyDP(arr, eps, closed).reshape(-1, 2)
-        paths.append(([(float(a), float(b)) for a, b in simp] + ([(float(simp[0][0]), float(simp[0][1]))] if closed else [])))
-    return paths
+        if curves:
+            raw.append([pts, jn[0], jn[1], closed])
+            continue
+        paths.append(_simplify(pts, closed, eps))
+    if not curves:
+        return paths
+    arcs, circles = [], []
+    for pts, _, _, closed in _join_chains(raw):
+        if len(pts) >= 8:
+            ln, ar, ci = _curves_of(pts, closed, eps)
+            paths.extend(ln)
+            arcs.extend(ar)
+            circles.extend(ci)
+        else:
+            paths.append(_simplify(pts, closed, eps))
+    arcs, circles = merge_arcs(arcs, circles)
+    return snap_ends(paths, arcs), arcs, circles
 
 
-def vectorize(ink, mode="center", eps=1.0, progress=None, cancel=None):
+def _simplify(pts, closed, eps):
+    """Linienzug mit eps Pixeln Toleranz vereinfachen (geschlossen: Anfangspunkt am Ende wiederholt)."""
+    if len(pts) == 1:                                  # Punkt (z. B. Dezimalpunkt): kurzer Strich, runde Enden
+        pts = [pts[0], (pts[0][0] + 0.01, pts[0][1])]
+    arr = np.float32(pts).reshape(-1, 1, 2)
+    simp = cv2.approxPolyDP(arr, eps, closed).reshape(-1, 2)
+    return [(float(a), float(b)) for a, b in simp] + ([(float(simp[0][0]), float(simp[0][1]))] if closed else [])
+
+
+def _join_chains(raw):
+    """Zuege an Knoten mit genau zwei Anschluessen verbinden: das Skelett hat an Treppenstufen schraeger und
+    runder Linien Schein-Knoten, die einen Kreis sonst in viele Stuecke teilen; kurze Stummel an Knoten fallen
+    weg (Schleife zurueck zum selben Knoten, einzelnes Pixel mit freiem Ende). raw = [[pts, j0, j1, closed]]."""
+    deg = {}
+    for _, a, b, _ in raw:
+        for j in (a, b):
+            if j is not None:
+                deg[j] = deg.get(j, 0) + 1
+    raw = [c for c in raw if not ((len(c[0]) <= 4 and c[1] is not None and c[1] == c[2]) or
+                                  (len(c[0]) <= 2 and (c[1] is None) != (c[2] is None)
+                                   and deg.get(c[1] if c[1] is not None else c[2], 0) >= 3))]   # Stummel
+    att = {}
+    for i, (_, a, b, _) in enumerate(raw):
+        for j in (a, b):
+            if j is not None:
+                att.setdefault(j, []).append(i)
+    ch = [list(c) for c in raw]
+    to = list(range(len(ch)))                          # Verweis auf den Zug, in dem ein Zug aufgegangen ist
+
+    def cur(i):
+        while to[i] != i:
+            i = to[i]
+        return i
+    for node, lst in att.items():
+        if len(lst) != 2:
+            continue
+        i, k = cur(lst[0]), cur(lst[1])
+        a, b = ch[i], ch[k]
+        if i == k:                                     # beide Enden am selben Knoten: geschlossener Zug
+            if a[1] == node and a[2] == node and not a[3]:
+                a[0] = a[0][:-1] if len(a[0]) > 1 and a[0][0] == a[0][-1] else a[0]
+                a[1] = a[2] = None
+                a[3] = True
+            continue
+        if a[2] != node:
+            a[0], a[1], a[2] = a[0][::-1], a[2], a[1]
+        if b[1] != node:
+            b[0], b[1], b[2] = b[0][::-1], b[2], b[1]
+        if a[2] != node or b[1] != node:
+            continue
+        a[0] = a[0] + b[0][1:]
+        a[2] = b[2]
+        to[k] = i
+        ch[k] = None
+    return [c for c in ch if c is not None]
+
+
+def vectorize(ink, mode="center", eps=1.0, progress=None, cancel=None, curves=True):
     """Pixelzeichnung -> Vektoren. mode 'center': Mittellinien (fuer CAD) plus gefuellte Flaechen fuer alles, was
     deutlich dicker als ein Strich ist (Masspfeile, Punkte, Balken); 'outline': nur gefuellte Umrisse (sieht genau
-    aus wie das Original). Rueckgabe dict(lines, fills, width)."""
+    aus wie das Original). curves: Kreise und Kreisboegen als solche erkennen (nur Mittellinien).
+    Rueckgabe dict(lines, fills, width, arcs, circles); Bogen (cx, cy, r, a0, a1) in Grad im Bild (y nach unten)."""
     m = (ink > 0).astype(np.uint8)
     if mode == "outline":
-        return dict(lines=[], fills=outline_paths(m, min(eps, 0.7)), width=1.0)
+        return dict(lines=[], fills=outline_paths(m, min(eps, 0.7)), width=1.0, arcs=[], circles=[])
     sk = thin(m, progress, cancel)
     sw = stroke_width(m, sk)
     k = int(round(2.2 * sw)) | 1                      # Flaechen: dicker als ~2 Striche
@@ -625,7 +1014,11 @@ def vectorize(ink, mode="center", eps=1.0, progress=None, cancel=None):
         blobs = cv2.dilate(blobs, np.ones((3, 3), np.uint8)) & m
         fills = outline_paths(blobs, 0.7)
         sk = thin(m & ~blobs, None, cancel) if fills else sk
-    return dict(lines=trace_skeleton(sk, eps, progress=progress), fills=fills, width=sw)
+    if curves:
+        lines, arcs, circles = trace_skeleton(sk, eps, progress=progress, curves=True)
+    else:
+        lines, arcs, circles = trace_skeleton(sk, eps, progress=progress), [], []
+    return dict(lines=lines, fills=fills, width=sw, arcs=arcs, circles=circles)
 
 
 def outline_paths(ink, eps=0.7):
@@ -650,10 +1043,12 @@ def stroke_width(ink, skel=None):
 
 
 def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
-    """Ergebnis von vectorize() als SVG, PDF oder DXF: Linien mit Strichstaerke, Flaechen gefuellt.
+    """Ergebnis von vectorize() als SVG, PDF oder DXF: Linien mit Strichstaerke, Flaechen gefuellt, erkannte Kreise
+    und Boegen als echte Kreise/Boegen (SVG circle/Bogenpfad, PDF Kreis/Bogen, DXF CIRCLE/ARC).
     DXF: Koordinaten in mm (mm_px = mm je Pixel inkl. Massstab), y nach oben; Linien und Flaechen auf eigenen Layern."""
     W, H = size
     lines, fills, width = vec["lines"], vec["fills"], vec["width"]
+    arcs, circles = vec.get("arcs", []), vec.get("circles", [])
     ext = os.path.splitext(path)[1].lower()
     hexcol = "#%02x%02x%02x" % color
     if ext == ".svg":
@@ -663,10 +1058,14 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
         if fills:
             d = " ".join("M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in p) + " Z" for p in fills)
             out.append(f'<path d="{d}" fill="{hexcol}" fill-rule="evenodd" stroke="none"/>')
-        if lines:
+        if lines or arcs or circles:
             out.append(f'<g fill="none" stroke="{hexcol}" stroke-width="{width:.2f}" stroke-linecap="round" '
                        f'stroke-linejoin="round">')
             out.extend('<polyline points="' + " ".join(f"{x:.1f},{y:.1f}" for x, y in p) + '"/>' for p in lines)
+            out.extend(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r:.2f}"/>' for cx, cy, r in circles)
+            for cx, cy, r, a0, a1 in arcs:             # Bild und SVG: y nach unten, Winkel steigend = sweep 1
+                (xa, ya), (xb, yb) = _arc_point(cx, cy, r, a0), _arc_point(cx, cy, r, a1)
+                out.append(f'<path d="M{xa:.2f},{ya:.2f} A{r:.2f},{r:.2f} 0 {int(a1 - a0 > 180)} 1 {xb:.2f},{yb:.2f}"/>')
             out.append("</g>")
         out.append("</svg>\n")
         with open(path, "w", encoding="utf-8") as f:
@@ -682,9 +1081,14 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
             for p in fills:
                 sh.draw_polyline([pymupdf.Point(x * k, y * k) for x, y in p] + [pymupdf.Point(p[0][0] * k, p[0][1] * k)])
             sh.finish(color=None, fill=col, even_odd=True, closePath=True)
-        if lines:
+        if lines or arcs or circles:
             for p in lines:
                 sh.draw_polyline([pymupdf.Point(x * k, y * k) for x, y in p])
+            for cx, cy, r in circles:
+                sh.draw_circle(pymupdf.Point(cx * k, cy * k), r * k)
+            for cx, cy, r, a0, a1 in arcs:             # draw_sector: positiver Winkel = gegen den Uhrzeigersinn
+                xa, ya = _arc_point(cx, cy, r, a0)
+                sh.draw_sector(pymupdf.Point(cx * k, cy * k), pymupdf.Point(xa * k, ya * k), -(a1 - a0), fullSector=False)
             sh.finish(color=col, width=max(0.1, width * k), lineCap=1, lineJoin=1, closePath=False)
         sh.commit()
         doc.save(path, deflate=True)
@@ -699,6 +1103,10 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
         msp = doc.modelspace()
         for p in lines:
             msp.add_lwpolyline([(x * f, (H - y) * f) for x, y in p], dxfattribs={"layer": "LINIEN"})
+        for cx, cy, r in circles:
+            msp.add_circle((cx * f, (H - cy) * f), r * f, dxfattribs={"layer": "LINIEN"})
+        for cx, cy, r, a0, a1 in arcs:                 # y gespiegelt: Bildwinkel a -> -a, Bogen laeuft dann von -a1 bis -a0
+            msp.add_arc((cx * f, (H - cy) * f), r * f, (-a1) % 360, (-a0) % 360, dxfattribs={"layer": "LINIEN"})
         for p in fills:                              # Flaechen als Schraffur SOLID mit Umriss
             pts = [(x * f, (H - y) * f) for x, y in p]
             hatch = msp.add_hatch(color=7, dxfattribs={"layer": "FLAECHEN"})
@@ -706,4 +1114,4 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
         doc.saveas(path)
     else:
         raise ValueError(ext)
-    return len(lines) + len(fills)
+    return len(lines) + len(fills) + len(arcs) + len(circles)
