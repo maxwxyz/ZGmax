@@ -14,6 +14,13 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   macOS-Signatur. Keine Firma/Zielgruppe nennen.
 
 ## Erledigt 2026-11-04 (nach 1.0)
+- Zweite Runde nach 1.0 (Agenten + selbst): Tempo – Hintergrund-Erkennung startet erst im Ruhezustand
+  (`_bg_idle_start`), pausiert während Laden/Vergleich (`_run_job(..., pause_ocr=True)` → `ocrservice.pause(job)`,
+  Prozess per SIGSTOP/NtSuspendProcess eingefroren, gilt nur solange der Job läuft), schlanker Einstieg
+  `programm/zgmax_start.py` (Spec, Launcher, Dateitypen) – der Erkennungsprozess lädt keine Oberfläche mehr.
+  Diagramm (Dialog sofort offen, Zoom um Maus, scharfe PDF-Ansicht, Gitter ausblenden, umgekehrte Achsen, y2-Fehler,
+  gestrichelt, Excel-Formeln), Tabellen mit verbundenen Zellen (`spans`), Anfasser: Größen-Cursor, Seitenmitten,
+  Drehen (`rot`, überall in der Ausgabe). 190 Tests grün, Mac-Bau + Selbsttest OK.
 - Windows/Linux: deaktivierte Menüeinträge waren nicht grau – `* { color }` im Stylesheet überschrieb die Palette.
   Jetzt `*:disabled` und `QMenu::item:disabled` in `ui_theme.make_qss`; Test `test_disabled_menu_items_greyed`.
   Am Mac zeichnet das System die Menüleiste (deshalb dort schon grau). 161 Tests grün, Mac-Bau OK.

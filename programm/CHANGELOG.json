@@ -5,14 +5,16 @@
    "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche.",
    "Tabelle aus Auswahl erkennt verbundene Zellen (waagerecht, senkrecht, gemischt); Vorschau und Excel zeigen sie verbunden.",
    "Markierungen: passende Größen-Mauszeiger an den Anfassern, Anfasser in den Seitenmitten (nur in eine Richtung skalieren) und Drehanfasser (Umschalt = 15°-Schritte) – auch im Bild-, PDF-, SVG- und XFDF-Export.",
-   "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab."
+   "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab.",
+   "Diagramm digitalisieren: Fenster sofort offen (Analyse im Hintergrund), Zoom um die Maus wie im Hauptfenster, scharfe Ansicht bei PDF, Gitter ausblendbar, gestrichelte und strichpunktierte Kurven, umgekehrte Achsen (z. B. 7 → 5) richtig auch im Excel, Excel mit Live-Formeln der Polynome; behoben: zweiter Punkt der y-Achse wurde nicht übernommen."
   ],
   "en": [
    "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
    "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface.",
    "Table from selection recognises merged cells (horizontal, vertical, mixed); preview and Excel show them merged.",
    "Markups: matching resize cursors on the handles, handles at the side midpoints (scale in one direction only) and a rotation handle (Shift = 15° steps) – also in image, PDF, SVG and XFDF export.",
-   "Fixed: stamps aborted the “PDF with annotations” export."
+   "Fixed: stamps aborted the “PDF with annotations” export.",
+   "Digitise chart: window opens at once (analysis in the background), zoom around the mouse as in the main window, sharp view for PDF, grid can be hidden, dashed and dash-dot curves, reversed axes (e.g. 7 → 5) correct also in Excel, Excel with live polynomial formulas; fixed: the second point of the y axis was not taken."
   ]
  },
  "releases": [
