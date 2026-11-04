@@ -9,7 +9,8 @@
    "Schräge und kopfstehende Texte: zusätzlicher Durchlauf im Hintergrund (±45°, 180°) und Rückfall, wenn in einer Änderung sonst nichts erkannt wird.",
    "Tabelle: als Excel-Datei speichern und Tabellen über mehrere Seiten zusammenfügen.",
    "Text kopieren zeigt den Text erst in einem kleinen Fenster zum Bearbeiten.",
-   "Textsuche über alle Seiten eines PDFs oder mehrseitigen TIFFs; Enter/F3 springt auf die nächste Seite mit Treffer."
+   "Textsuche über alle Seiten eines PDFs oder mehrseitigen TIFFs; Enter/F3 springt auf die nächste Seite mit Treffer.",
+   "Diagramm digitalisieren: Kurven eines Diagramms (z. B. Federkennlinien) mit automatischer Achsenkalibrierung per Texterkennung verfolgen, auch über Kreuzungen; farbige Kurven werden getrennt; Wertetabelle, Polynom oder glatte Kurve als CSV oder Excel mit Diagramm."
   ],
   "en": [
    "Arrow: arrowhead at the end (default), at the start, at both ends or none – also in PDF, SVG and XFDF.",
@@ -20,7 +21,8 @@
    "Skewed and upside-down text: extra background pass (±45°, 180°) and fallback when nothing else is recognised in a change.",
    "Table: save as Excel file and join tables across several pages.",
    "Copy text first shows the text in a small window for editing.",
-   "Text search across all pages of a PDF or multi-page TIFF; Enter/F3 jumps to the next page with a hit."
+   "Text search across all pages of a PDF or multi-page TIFF; Enter/F3 jumps to the next page with a hit.",
+   "Digitise chart: trace the curves of a diagram (e.g. spring curves) with automatic axis calibration by text recognition, also across crossings; coloured curves are separated; value table, polynomial or smooth curve as CSV or Excel with chart."
   ]
  },
  "releases": [

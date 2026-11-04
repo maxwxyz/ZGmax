@@ -15,6 +15,7 @@ from ui_dialogs import BatchDialog, RevisionDialog, VectorFilterDialog
 from ui_widgets import Job, SafeStream, WheelGuard
 from ui_regions import RegionsMixin
 from ui_table import TableMixin
+from ui_digitize import DigitizeMixin
 from ui_annotations import AnnotationsMixin
 from ui_project import ProjectMixin
 from ui_export import ExportMixin
@@ -43,7 +44,8 @@ def hide_filtered(img, ink_all, ink_kept):
 
 
 class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
-                 VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, TableMixin, QMainWindow):
+                 VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, TableMixin,
+                 DigitizeMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)

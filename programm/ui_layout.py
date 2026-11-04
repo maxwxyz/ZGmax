@@ -955,6 +955,9 @@ class LayoutMixin:
                 ("table", tr("Als Tabelle (CSV) …"), lambda: self.area_table(),
                  tr("Tabelle im Bereich lesen (Zellen aus Linien oder Textlage) und als CSV kopieren oder speichern"),
                  False),
+                ("diagram", tr("Diagramm digitalisieren …"), lambda: self.area_diagram(),
+                 tr("Kurven eines Diagramms im Bereich als Wertetabelle und Funktion erfassen (CSV, Excel mit "
+                    "Diagramm)"), False),
                 ("cut", tr("Ausschneiden"), lambda: self.area_cut(), tr("Strg+X"), False),
                 ("delete", tr("Markierungen entfernen"), lambda: self.area_delete(),
                  tr("Markierungen, Änderungen und Zonen in der Auswahl löschen (Entf). Die Zeichnung selbst bleibt; "

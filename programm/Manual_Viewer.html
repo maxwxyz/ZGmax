@@ -62,7 +62,7 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <a href="#quick">Quick start</a><a href="#start">Starting the program</a><a href="#window">The window</a>
 <a href="#navigation">Zooming and panning</a><a href="#views">Views</a><a href="#viewing">Viewing only, windows, closing</a>
 <a href="#sensitivity">Sensitivity, Auto-adjust</a><a href="#measure">Measuring and calibrating</a>
-<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#copy">Region selection, copy, paste</a><a href="#edit">Editing the drawing</a><a href="#layers">Layers</a><a href="#texts">Text and dimensions</a>
+<a href="#markup">Markups</a><a href="#review">Reviewing changes</a><a href="#search">Finding text</a><a href="#copy">Region selection, copy, paste</a><a href="#edit">Editing the drawing</a><a href="#layers">Layers</a><a href="#texts">Text and dimensions</a><a href="#digitize">Digitising diagrams</a>
 <a href="#comments">Importing comments (XFDF, PDF)</a><a href="#align">Aligning manually</a>
 <a href="#pages">Multi-page files</a><a href="#regions">Region, matching areas, zones</a>
 <a href="#formats">PDF vector data, DXF</a><a href="#save">Saving and printing</a>
@@ -521,6 +521,23 @@ entry does not match the index in the title block.</li>
 </ul>
 <p>Text recognition is included in the app; when running with Python the program offers to install it on first use
 (about 60 MB, internet needed).</p>
+
+<h2 id="digitize">Digitising diagrams</h2>
+<p>Curves from a diagram in the drawing as a value table and function – e.g. the force-travel curves of a spring. Drag
+a frame around the diagram with <b>Region</b> (<kbd>B</kbd>), then <i>More ▾ → Digitize chart …</i>:</p>
+<ol>
+<li><b>Calibrate axes:</b> if text recognition is available, the dialog reads the numbers on the axes and calibrates by
+itself (please check). Otherwise, or to correct it, click two points each on the x and y axis (they snap to axis, tick or
+grid line) and enter their values; axis names with unit, logarithmic if needed.</li>
+<li><b>Curves:</b> with <i>Trace</i>, click a curve where it runs free – it is followed in both directions, also across
+crossings and grid lines. <i>New curve</i> for each further curve. Coloured curves are separated by colour automatically
+(<i>Take colored curves</i>). Rework with <i>Set point</i>, <i>Erase</i> and <i>Undo</i>; double-click renames a curve.</li>
+<li><b>Value table and functions:</b> points by count or step, values measured, as a smooth curve (spline) or as a
+polynomial (degree 1–3, with R²); decimal comma or point. <i>Copy table</i> (for pasting into Excel), <i>Save CSV</i>,
+<i>Save Excel</i> (with a ready-made chart) and <i>Copy functions</i>.</li>
+</ol>
+<p class="muted">Limits: one y per x (click loops and hysteresis as separate branches); dashed curves: set <i>Ignore text
+up to</i> below the dash length.</p>
 
 <h2 id="comments">Importing and passing on comments (XFDF, PDF)</h2>
 <p><b>Opening a PDF with comments:</b> the comments are not drawn into the image but taken over automatically as

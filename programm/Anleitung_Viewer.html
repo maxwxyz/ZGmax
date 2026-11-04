@@ -62,7 +62,7 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
 <a href="#schnell">Schnellstart</a><a href="#start">Programm starten</a><a href="#fenster">Das Fenster</a>
 <a href="#navigation">Zoomen und Verschieben</a><a href="#ansichten">Ansichten</a><a href="#ansehen">Nur ansehen, Fenster, Schließen</a>
 <a href="#empfindlich">Empfindlichkeit, Automatisch einstellen</a><a href="#messen">Messen und Kalibrieren</a>
-<a href="#markieren">Markieren</a><a href="#pruefen">Änderungen prüfen</a><a href="#suchen">Text suchen</a><a href="#kopieren">Bereich auswählen, kopieren, einfügen</a><a href="#bearbeiten">Zeichnung bearbeiten</a><a href="#ebenen">Ebenen</a><a href="#texte">Text und Maße</a>
+<a href="#markieren">Markieren</a><a href="#pruefen">Änderungen prüfen</a><a href="#suchen">Text suchen</a><a href="#kopieren">Bereich auswählen, kopieren, einfügen</a><a href="#bearbeiten">Zeichnung bearbeiten</a><a href="#ebenen">Ebenen</a><a href="#texte">Text und Maße</a><a href="#digitalisieren">Diagramm digitalisieren</a>
 <a href="#kommentare">Kommentare einlesen (XFDF, PDF)</a><a href="#ausrichten">Von Hand ausrichten</a>
 <a href="#seiten">Mehrseitige Dateien</a><a href="#bereiche">Ausschnitt, Zuordnen, Zonen</a>
 <a href="#formate">PDF-Vektordaten, DXF</a><a href="#speichern">Speichern und Drucken</a>
@@ -546,6 +546,24 @@ zusammengefasst werden.</li>
 </ul>
 <p>Die Texterkennung ist in der App enthalten; im Python-Betrieb bietet das Programm beim ersten Gebrauch die
 Installation an (ca. 60 MB, Internet nötig).</p>
+
+<h2 id="digitalisieren">Diagramm digitalisieren</h2>
+<p>Kurven aus einem Diagramm der Zeichnung als Wertetabelle und Funktion – z. B. die Kraft-Weg-Kennlinien einer Feder.
+Mit <b>Bereich</b> (<kbd>B</kbd>) das Diagramm aufziehen, dann <i>Mehr ▾ → Diagramm digitalisieren …</i>:</p>
+<ol>
+<li><b>Achsen kalibrieren:</b> Ist die Texterkennung da, liest der Dialog die Zahlen an den Achsen selbst und
+kalibriert (bitte prüfen). Sonst oder zur Korrektur je zwei Punkte auf der x- und y-Achse anklicken (sie rasten an Achse,
+Teilstrich oder Gitterlinie ein) und die Werte eintragen; Achsennamen mit Einheit, auf Wunsch logarithmisch.</li>
+<li><b>Kurven:</b> mit <i>Verfolgen</i> eine Kurve dort anklicken, wo sie frei liegt – sie wird nach beiden Seiten
+verfolgt, auch über Kreuzungen und Gitterlinien. Für jede weitere Kurve <i>Neue Kurve</i>. Farbige Kurven werden
+automatisch je Farbe getrennt (<i>Farbige Kurven übernehmen</i>). Nacharbeiten mit <i>Punkt setzen</i>, <i>Radieren</i>
+und <i>Rückgängig</i>; Doppelklick benennt eine Kurve um.</li>
+<li><b>Wertetabelle und Funktionen:</b> Stützstellen nach Anzahl oder Schrittweite, Werte gemessen, als glatte Kurve
+(Spline) oder als Polynom (Grad 1–3, mit R²); Dezimalkomma oder -punkt. <i>Tabelle kopieren</i> (zum Einfügen in Excel),
+<i>CSV speichern</i>, <i>Excel speichern</i> (mit fertigem Diagramm) und <i>Funktionen kopieren</i>.</li>
+</ol>
+<p class="muted">Grenzen: je x nur ein y (Schleifen und Hysterese als getrennte Äste anklicken); gestrichelte Kurven:
+<i>Text ignorieren bis</i> kleiner als die Strichlänge stellen.</p>
 
 <h2 id="kommentare">Kommentare einlesen und weitergeben (XFDF, PDF)</h2>
 <p><b>PDF mit Kommentaren öffnen:</b> Die Kommentare werden nicht ins Bild gezeichnet, sondern automatisch als
