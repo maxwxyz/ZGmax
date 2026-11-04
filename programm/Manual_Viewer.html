@@ -387,7 +387,9 @@ the PDF report and the PDF with annotations – that is your review record.</p>
 <p><kbd>Ctrl</kbd>+<kbd>F</kbd> (<i>Edit → Find text …</i>) opens the search bar above the drawing. Enter a term, e.g.
 <code>H7</code>, <code>bore</code> or an item number; all hits get a yellow frame, the current one a stronger one.
 <kbd>Enter</kbd> or <kbd>F3</kbd> = next hit, <kbd>Shift</kbd>+<kbd>F3</kbd> = previous, <kbd>Esc</kbd> closes.
-In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.</p>
+In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hits are placed correctly on the result.
+For multi-page files the <i>All pages</i> box counts the hits on all pages (“1 of 2 on page 1 · 4 on 3 pages”);
+<kbd>Enter</kbd>/<kbd>F3</kbd> then also jumps to the next page with a hit.</p>
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
 <p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): right after opening, a separate
@@ -420,11 +422,14 @@ drawing, <i>Apply crop permanently</i> crops the drawing itself.</td></tr>
 <tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Copy text</i>, <i>As table (CSV) …</i>,
 <i>Digitise diagram …</i>, <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>) and <i>Clear drawing in region</i> (when viewing a
 drawing).</td></tr>
-<tr><td>Copy text</td><td>Copies the text in the area in reading order – from the PDF (exact), from text already read or
-by text recognition (any orientation).</td></tr>
+<tr><td>Copy text</td><td>The text in the area in reading order – from the PDF (exact), from text already read or by
+text recognition (any orientation). It first appears in a small window for checking and editing; <i>Copy</i> puts it on
+the clipboard.</td></tr>
 <tr><td>As table (CSV) …</td><td>Reads a table in the area: cells from the table lines, without lines from the position
 of the text. Preview with editable cells; separator semicolon, comma or tab (for pasting directly into Excel); copy or
-save as CSV.</td></tr>
+save as CSV or as an <b>Excel file</b> (numbers as numbers, bold header row). If the table continues on another page:
+leave the window open, change the page, select the part with <i>Region</i> and click <i>Append selection</i> – a repeated
+header row is dropped.</td></tr>
 <tr><td>Digitise diagram …</td><td>See <a href="#digitize">Digitising diagrams</a>.</td></tr>
 </table>
 <p><kbd>Esc</kbd> clears the selection. All edits of the drawing can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>

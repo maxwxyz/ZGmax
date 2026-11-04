@@ -402,7 +402,9 @@ erscheinen in CSV, PDF-Bericht und PDF mit Anmerkungen – das ist das Prüfprot
 <p><kbd>Strg</kbd>+<kbd>F</kbd> (<i>Bearbeiten → Text suchen …</i>) öffnet die Suchleiste über dem Bild. Suchbegriff eingeben,
 z. B. <code>H7</code>, <code>Bohrung</code> oder eine Positionsnummer; alle Treffer werden gelb umrahmt, der aktuelle kräftiger.
 <kbd>Enter</kbd> oder <kbd>F3</kbd> = nächster Treffer, <kbd>Umschalt</kbd>+<kbd>F3</kbd> = voriger, <kbd>Esc</kbd> schließt.
-Im Vergleich wählt man, ob in <i>Neu</i> oder <i>Alt</i> gesucht wird; die Treffer liegen passend auf dem Ergebnis.</p>
+Im Vergleich wählt man, ob in <i>Neu</i> oder <i>Alt</i> gesucht wird; die Treffer liegen passend auf dem Ergebnis.
+Bei mehrseitigen Dateien zählt der Haken <i>Alle Seiten</i> die Treffer aller Seiten („1 von 2 auf Seite 1 · 4 auf 3
+Seiten“); <kbd>Enter</kbd>/<kbd>F3</kbd> springt dann auch auf die nächste Seite mit Treffer.</p>
 <p>Bei PDF mit echtem Text wird dieser genutzt (sofort, exakt). Bei Scans und Bildern liest die <b>Texterkennung</b> den
 Text einmal ein (je nach Größe einige Sekunden bis eine Minute, mit Fortschritt). Groß-/Kleinschreibung spielt keine
 Rolle.</p>
@@ -439,11 +441,14 @@ anwenden</i> die Zeichnung selbst zu.</td></tr>
 <tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Text kopieren</i>, <i>Als Tabelle
 (CSV) …</i>, <i>Diagramm digitalisieren …</i>, <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>) und <i>Zeichnung im
 Bereich leeren</i> (beim Ansehen einer Zeichnung).</td></tr>
-<tr><td>Text kopieren</td><td>Text im Bereich in Lesereihenfolge in die Zwischenablage – aus dem PDF (exakt), aus dem
-schon gelesenen Text oder per Texterkennung (in jeder Lage).</td></tr>
+<tr><td>Text kopieren</td><td>Text im Bereich in Lesereihenfolge – aus dem PDF (exakt), aus dem schon gelesenen Text
+oder per Texterkennung (in jeder Lage). Er erscheint erst in einem kleinen Fenster zum Prüfen und Bearbeiten;
+<i>Kopieren</i> legt ihn in die Zwischenablage.</td></tr>
 <tr><td>Als Tabelle (CSV) …</td><td>Liest eine Tabelle im Bereich: Zellen aus den Tabellenlinien, ohne Linien aus der
 Lage des Texts. Vorschau mit bearbeitbaren Zellen; Trennzeichen Semikolon, Komma oder Tabulator (zum direkten Einfügen
-in Excel); kopieren oder als CSV speichern.</td></tr>
+in Excel); kopieren, als CSV oder als <b>Excel-Datei</b> speichern (Zahlen als Zahl, Kopfzeile fett). Geht die
+Tabelle auf einer anderen Seite weiter: Fenster offen lassen, Seite wechseln, den Teil mit <i>Bereich</i> wählen und
+<i>Auswahl anhängen</i> – eine wiederholte Kopfzeile fällt weg.</td></tr>
 <tr><td>Diagramm digitalisieren …</td><td>Siehe <a href="#digitalisieren">Diagramm digitalisieren</a>.</td></tr>
 </table>
 <p><kbd>Esc</kbd> hebt die Auswahl auf. Alle Änderungen an der Zeichnung lassen sich mit <kbd>Strg</kbd>+<kbd>Z</kbd>
