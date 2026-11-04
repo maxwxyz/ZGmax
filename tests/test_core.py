@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import time
 
 import cv2
 import numpy as np
@@ -268,3 +269,56 @@ def test_manual_images_exist():
         assert len(imgs) >= 8, name
         for src in imgs:
             assert os.path.isfile(os.path.join(root, src)), src
+
+
+def test_arrow_heads(tmp_path):
+    """Pfeilspitzen: am Ende (Standard, wie bisher), am Anfang, an beiden Enden, keine - im Bild, im PDF und im
+    XFDF hin und zurueck."""
+    import diffreport as rep
+    import diffxfdf as dx
+    base = dict(type="arrow", x=100, y=100, x2=300, y2=100, color="#000000", size=3, text="", nr=0)
+    want = {"end": 1, "start": 1, "both": 2, "none": 0}
+    for hs, n in want.items():
+        a = dict(base, heads=hs) if hs != "end" else dict(base)
+        (ax, ay, bx, by), tris = rep.arrow_parts(a, 100, 100, 300, 100, 20)
+        assert len(tris) == n
+        assert (ax > 100) == (hs in ("start", "both")) and (bx < 300) == (hs in ("end", "both"))
+        img = np.full((200, 400, 3), 255, np.uint8)
+        rep.draw_annotations(img, [a])
+        assert img[100, 200].min() < 100                     # Linie immer da
+        h = lambda c: int((img[:, c] < 100).any(axis=1).sum())   # noqa: E731 - Hoehe der Tinte in Spalte c
+        line_h = h(200)
+        assert (h(285) > line_h + 4) == (hs in ("end", "both")), (hs, h(285), line_h)
+        assert (h(115) > line_h + 4) == (hs in ("start", "both")), (hs, h(115), line_h)
+        f = tmp_path / f"p_{hs}.xfdf"
+        dx.write_xfdf(str(f), [a], 1.0, 200)
+        items, _ = dx.parse_xfdf(str(f), 200)
+        back = dx.to_annotations(items, 1.0)
+        assert back and back[0]["type"] == ("line" if hs == "none" else "arrow")
+        if hs != "none":
+            assert back[0].get("heads", "end") == hs
+
+
+def test_ocr_service_priority():
+    """Erkennungsprozess: eine Suche (Vordergrund) wartet nicht hinter einem langen senkrechten Durchlauf; der
+    unterbrochene Durchlauf wird danach fertig."""
+    import diffreport as rep
+    import ocrservice as osv
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    big = np.full((3000, 4000), 255, np.uint8)
+    for i in range(12):
+        cv2.putText(big, f"TEXT {i}", (100 + (i % 3) * 1200, 200 + i * 220), cv2.FONT_HERSHEY_SIMPLEX, 2, 0, 4)
+    small = np.full((300, 900), 255, np.uint8)
+    cv2.putText(small, "SUCHE 42", (40, 160), cv2.FONT_HERSHEY_SIMPLEX, 2, 0, 4)
+    try:
+        fv = osv.submit(("t-vert",), big, vertical=True)
+        t0 = time.time()
+        while not osv._running and time.time() - t0 < 30:         # senkrechter Durchlauf hat begonnen
+            time.sleep(0.05)
+        r = osv.lines(("t-such",), small)
+        assert any("SUCHE" in l[4] for l in r)
+        assert not fv.done()                                      # Suche kam vor dem senkrechten Durchlauf dran
+        assert isinstance(fv.result(timeout=120), list)
+    finally:
+        osv.stop()

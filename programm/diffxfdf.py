@@ -83,7 +83,11 @@ def parse_xfdf(path, page_h_pt, page=0):
         if tag == "freetext":                                   # Textfarbe steht im Stil
             m = re.search(r"color:\s*(#[0-9a-fA-F]{6})", e.get("defaultstyle", "") or "")
             color = _color(m.group(1) if m else e.get("color"), "#e11d48")
-        out.append(dict(kind=_KIND[tag], rect=rect, pts=pts, text=(text or "").strip(), color=color,
+        ends = None
+        if tag == "line":                                         # Pfeilspitzen am Anfang (head) / Ende (tail)
+            arrow = lambda v: bool(v) and v.lower() not in ("none", "")   # noqa: E731
+            ends = (arrow(e.get("head")), arrow(e.get("tail")))
+        out.append(dict(kind=_KIND[tag], rect=rect, pts=pts, text=(text or "").strip(), color=color, ends=ends,
                         filled=bool(e.get("interior-color")) and tag in ("square", "circle", "polygon"),
                         author=e.get("title", ""), date=e.get("date", ""), subject=e.get("subject", ""),
                         cloudy=(e.get("style", "") or "").lower() == "cloudy", name=e.get("name"),
@@ -120,7 +124,11 @@ def pdf_comments(path, page=1):
             border = a.border or {}
             st = doc.xref_get_key(a.xref, "State")
             sm = doc.xref_get_key(a.xref, "StateModel")
-            out.append(dict(kind=names[t], rect=(r.x0, r.y0, r.x1, r.y1), pts=pts,
+            ends = None
+            if t == "Line":                                       # Pfeilspitzen am Anfang / Ende
+                le = a.line_ends or (0, 0)
+                ends = (bool(le[0]), bool(le[1]))
+            out.append(dict(kind=names[t], rect=(r.x0, r.y0, r.x1, r.y1), pts=pts, ends=ends,
                             filled=bool((a.colors or {}).get("fill")) and t in ("Square", "Circle", "Polygon"),
                             text=(info.get("content") or "").strip(), color=color, author=info.get("title", ""),
                             date=info.get("modDate", "") or info.get("creationDate", ""),
@@ -180,10 +188,19 @@ def to_annotations(items, k, size=2.0, map_point=None):
             ps = [P(*p) for p in it["pts"]]
             step = 1 if kind != "ink" else max(1, len(ps) // 40)   # Freihandstriche vereinfachen
             ps = ps[::step] + ([ps[-1]] if (len(ps) - 1) % step else [])
+            ends = it.get("ends")
             for i in range(len(ps) - 1):
                 last = i == len(ps) - 2
-                anns.append(dict(base, type="arrow" if (kind == "line" and last) else "line",
-                                 x=ps[i][0], y=ps[i][1], x2=ps[i + 1][0], y2=ps[i + 1][1]))
+                extra = {}
+                if kind == "line" and ends is not None:           # Spitzen wie in der Datei
+                    t = "arrow" if any(ends) else "line"
+                    if ends == (True, True):
+                        extra["heads"] = "both"
+                    elif ends == (True, False):
+                        extra["heads"] = "start"
+                else:                                             # unbekannt: wie bisher Spitze am Ende
+                    t = "arrow" if (kind == "line" and last) else "line"
+                anns.append(dict(base, type=t, x=ps[i][0], y=ps[i][1], x2=ps[i + 1][0], y2=ps[i + 1][1], **extra))
         elif kind in ("text", "note", "stamp") and box is not None:
             txt = note or it.get("subject", "") or ("Notiz" if kind == "note" else "")
             if not txt:
@@ -241,7 +258,9 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
         elif t == "highlight":
             rows.append(f'<square {common} {rect} opacity="0.35" interior-color="{col}">{body}</square>')
         elif t in ("arrow", "line"):
-            tail = ' tail="ClosedArrow"' if t == "arrow" else ""
+            hs = a.get("heads", "end") if t == "arrow" else "none"
+            tail = (' head="ClosedArrow"' if hs in ("start", "both") else "") + \
+                (' tail="ClosedArrow"' if hs in ("end", "both") else "")
             rows.append(f'<line {common} {rect} start="{X(a["x"])},{Y(a["y"])}" end="{X(a["x2"])},{Y(a["y2"])}"'
                         f'{tail}>{body}</line>')
         elif t in ("text", "approval", "number"):

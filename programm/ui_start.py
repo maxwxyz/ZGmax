@@ -3,6 +3,7 @@ from i18n import tr
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_icons import icon
+from PySide6.QtGui import QCursor
 
 
 class DropCard(QFrame):
@@ -206,3 +207,123 @@ class StartPage(QWidget):
 
     def _recent(self, it):
         self.recentChosen.emit(it.data(Qt.ItemDataRole.UserRole))
+
+
+class DropOverlay(QWidget):
+    """Ziele beim Hineinziehen einer Datei, wenn schon eine Zeichnung offen ist (wie die Felder der Startseite):
+    zusaetzlich in neuem Fenster, stattdessen, oder als Alt (A) / Neu (B) vergleichen. Ablegen ausserhalb der Ziele
+    = wie bisher in neuem Fenster."""
+    chosen = Signal(str, list)             # (Ziel, Dateien)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.files, self.cards = [], []
+        self._watch = QTimer(self)                        # Sicherheitsnetz: Maus nicht mehr ueber dem Fenster oder
+        self._watch.setInterval(300)                      # Ziehen abgebrochen, ohne dass das System es meldet
+        self._watch.timeout.connect(self._check_gone)
+        self.hide()
+        outer = QVBoxLayout(self)
+        outer.addStretch(1)
+        self.title = QLabel("")
+        self.title.setObjectName("cardtitle")
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(self.title)
+        sub = QLabel(tr("Auf ein Feld ziehen – außerhalb der Felder ablegen öffnet in einem neuen Fenster."))
+        sub.setObjectName("hint")
+        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(sub)
+        self.row = QHBoxLayout()
+        self.row.setSpacing(16)
+        outer.addLayout(self.row)
+        outer.addStretch(1)
+        outer.setContentsMargins(40, 40, 40, 40)
+
+    def open(self, files, targets):
+        """targets: [(Schluessel, Titel, Hinweis), ...]"""
+        self.files = files
+        while self.row.count():
+            w = self.row.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        self.cards = []
+        self.row.addStretch(1)
+        for key, title, hint in targets:
+            c = QFrame()
+            c.setObjectName("dropcard")
+            c.setFixedSize(230, 130)
+            lay = QVBoxLayout(c)
+            t = QLabel(title)
+            t.setObjectName("cardtitle")
+            t.setWordWrap(True)
+            h = QLabel(hint)
+            h.setObjectName("hint")
+            h.setWordWrap(True)
+            lay.addWidget(t)
+            lay.addWidget(h, 1)
+            c._key = key
+            self.row.addWidget(c)
+            self.cards.append(c)
+        self.row.addStretch(1)
+        names = ", ".join(os.path.basename(f) for f in files[:3]) + (" …" if len(files) > 3 else "")
+        self.title.setText(tr("{} – wohin damit?").format(names))
+        self.setGeometry(self.parentWidget().rect())
+        self.raise_()
+        self.show()
+        self._watch.start()
+
+    def hideEvent(self, e):
+        self._watch.stop()
+        super().hideEvent(e)
+
+    def _check_gone(self):
+        """Ueberlay entfernen, sobald die Maus nicht mehr ueber dem Fenster ist (Ziehen abgebrochen oder woanders
+        hin) - dann kann man normal weiterarbeiten."""
+        if not self.rect().contains(self.mapFromGlobal(QCursor.pos())):
+            self.hide()
+
+    def _card_at(self, pos):
+        for c in self.cards:                              # Karten sind Kinder des Overlays: gleiche Koordinaten
+            if c.geometry().contains(pos):
+                return c
+        return None
+
+    def _highlight(self, pos):
+        hit = self._card_at(pos)
+        for c in self.cards:
+            on = c is hit
+            if bool(c.property("filled")) != on:
+                c.setProperty("filled", on)
+                c.style().unpolish(c)
+                c.style().polish(c)
+        return hit
+
+    def paintEvent(self, e):
+        p = QPainter(self)
+        col = QColor(THEME["canvas"])
+        col.setAlpha(225)
+        p.fillRect(self.rect(), col)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dragMoveEvent(self, e):
+        self._highlight(e.position().toPoint())
+        e.acceptProposedAction()
+
+    def dragLeaveEvent(self, e):
+        self.hide()
+
+    def dropEvent(self, e):
+        hit = self._card_at(e.position().toPoint())
+        files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()] or self.files
+        self.hide()
+        e.acceptProposedAction()
+        self.chosen.emit(hit._key if hit else "window", files)
+
+    def keyPressEvent(self, e):
+        self.hide()                                       # jede Taste (z. B. Esc) schliesst die Ziele
+
+    def mousePressEvent(self, e):
+        self.hide()                                       # Klick = weiterarbeiten

@@ -14,6 +14,7 @@ import diffedit as de
 from ui_dialogs import BatchDialog, RevisionDialog, VectorFilterDialog
 from ui_widgets import Job, SafeStream, WheelGuard
 from ui_regions import RegionsMixin
+from ui_table import TableMixin
 from ui_annotations import AnnotationsMixin
 from ui_project import ProjectMixin
 from ui_export import ExportMixin
@@ -42,13 +43,16 @@ def hide_filtered(img, ink_all, ink_kept):
 
 
 class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMixin, EditMixin, ClipboardMixin, AreaMixin, SheetEditMixin, OcrPdfMixin,
-                 VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, QMainWindow):
+                 VectorizeMixin, RegionsMixin, AnnotationsMixin, ProjectMixin, ExportMixin, TableMixin, QMainWindow):
     def __init__(self, path_a=None, path_b=None):
         super().__init__()
         self.setWindowTitle(APP)
         self.resize(1440, 900)
         self.setMinimumSize(900, 600)
         self.setAcceptDrops(True)
+        from ui_start import DropOverlay
+        self.drop_overlay = DropOverlay(self)            # Ziele beim Hineinziehen, wenn schon etwas offen ist
+        self.drop_overlay.chosen.connect(self._drop_chosen)
         self.settings = app_settings()
         self.theme_mode = theme_setting(self.settings)
         hints = QGuiApplication.styleHints()
@@ -641,10 +645,52 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
+            self._drag_overlay(e)
             e.acceptProposedAction()
 
     def dropEvent(self, e):
         self._files_dropped([u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()])
+
+    def _drag_overlay(self, e):
+        """Datei wird hineingezogen, waehrend schon etwas offen ist: Ziele zeigen statt gleich ein neues Fenster."""
+        files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()]
+        if not files or self.payload is None or not (self.path_a or self.path_b):
+            return False
+        self.drop_overlay.open(files, self._drop_targets(files))
+        return True
+
+    def _drop_targets(self, files):
+        new_win = ("window", tr("In neuem Fenster öffnen"), tr("Zusätzlich öffnen; dieses Fenster bleibt, wie es ist."))
+        instead = ("replace", tr("Stattdessen öffnen"), tr("Schließt, was hier offen ist (fragt bei ungespeicherten "
+                                                            "Änderungen), und öffnet die neue Datei."))
+        if len(files) >= 2 or files[0].lower().endswith(PROJECT_EXT):
+            return [new_win, instead]
+        name = os.path.basename
+        if self.view_only:
+            cur = name(self.path_a or self.path_b)
+            return [new_win, instead,
+                    ("A", tr("Als Alt (A) vergleichen"), tr("Neue Datei = Alt, {} = Neu").format(cur)),
+                    ("B", tr("Als Neu (B) vergleichen"), tr("{} = Alt, neue Datei = Neu").format(cur))]
+        return [new_win, instead,
+                ("A", tr("Alt (A) ersetzen"), tr("Mit {} (Neu) vergleichen").format(name(self.path_b))),
+                ("B", tr("Neu (B) ersetzen"), tr("Mit {} (Alt) vergleichen").format(name(self.path_a)))]
+
+    def _drop_chosen(self, key, files):
+        if not files:
+            return
+        if key == "window":
+            self._doc_window()._files_dropped(files)
+        elif key == "replace":
+            self.close_document()                        # fragt nach Speichern; Abbrechen = bleibt offen
+            if self.payload is None and not (self.path_a or self.path_b):
+                self._files_dropped(files)
+        elif self.view_only:                             # Einzelansicht -> Vergleich mit der neuen Datei
+            cur = self.path_a or self.path_b
+            a, b = (files[0], cur) if key == "A" else (cur, files[0])
+            self._set_file("A", a, compute=False)
+            self._set_file("B", b)
+        else:
+            self._set_file(key, files[0])
 
     def _files_dropped(self, files):
         if self.payload is not None or self.path_a or self.path_b:   # schon etwas offen: neues Fenster

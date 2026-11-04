@@ -204,9 +204,11 @@ Markieren, Drucken und Speichern. Das Schild oben zeigt <i>Ansehen: datei</i>; V
 sind ausgeblendet. Klick auf das Schild → <i>Mit anderer Zeichnung vergleichen …</i> (oder in der Seitenleiste) öffnet eine
 zweite Zeichnung und vergleicht.</li>
 <li><b>Jedes Dokument in seinem Fenster:</b> Ist schon etwas offen, öffnen <i>Einzelne Zeichnung öffnen</i>, <i>Zuletzt
-verwendet</i>, <i>Projekt öffnen</i> und hineingezogene Dateien ein <b>neues Fenster</b> – Markierungen und Prüfstand
-eines Dokuments vermischen sich so nie. Nur <i>Alte/Neue Zeichnung öffnen</i> tauscht bewusst eine Seite des aktuellen
-Vergleichs. Das Menü <i>Fenster</i> listet alle offenen Fenster zum Wechseln.</li>
+verwendet</i>, <i>Projekt öffnen</i> ein <b>neues Fenster</b> – Markierungen und Prüfstand eines Dokuments vermischen sich so
+nie. Nur <i>Alte/Neue Zeichnung öffnen</i> tauscht bewusst eine Seite des aktuellen Vergleichs. <b>Hineinziehen</b> (aus
+Finder oder Explorer) zeigt Ziele: <i>In neuem Fenster öffnen</i>, <i>Stattdessen öffnen</i> (schließt das Offene) und
+<i>Alt (A) / Neu (B) ersetzen</i> – beim Ansehen <i>Als Alt (A) / Neu (B) vergleichen</i>. Außerhalb der Felder ablegen
+= neues Fenster; Maus aus dem Fenster, Klick oder Taste blendet die Ziele aus. Das Menü <i>Fenster</i> listet alle offenen Fenster zum Wechseln.</li>
 <li><b>Mehrere Vergleiche gleichzeitig:</b> <i>Datei → Neues Fenster</i> (<kbd>Strg</kbd>+<kbd>N</kbd>). Jedes Fenster
 ist unabhängig (eigene Dateien, Markierungen, Einstellungen der Ansicht).</li>
 <li><b>Schließen, ohne das Programm zu beenden:</b> <i>Datei → Schließen</i> (<kbd>Strg</kbd>+<kbd>W</kbd>). Bei ungespeicherten
@@ -309,7 +311,8 @@ Wolke (Revisionswolke), Rahmen und Ellipse aufziehen, Linie vom Anfang zum Ende 
 Linienzug und Polygon: Punkte anklicken, Doppelklick, <kbd>Enter</kbd> oder Rechtsklick beendet; die Eckpunkte lassen
 sich danach einzeln verschieben. Rahmen, Ellipse und Polygon lassen sich mit dem Haken <i>Gefüllt</i> in derselben Farbe
 füllen (Standard aus; auch nachträglich für eine gewählte Form).</td></tr>
-<tr><td>Pfeil</td><td>Vom Anfang zur Spitze ziehen</td></tr>
+<tr><td>Pfeil</td><td>Vom Anfang zur Spitze ziehen. In der Optionszeile: <i>Spitze am Ende</i> (Standard), <i>am
+Anfang</i>, <i>an beiden Enden</i> oder <i>ohne Spitze</i> – gilt für gewählte Pfeile, sonst für die nächsten.</td></tr>
 <tr><td>Stift</td><td>Freihand zeichnen. Jede Linie bleibt eine eigene Markierung; an den Ecken skalieren.</td></tr>
 <tr><td>Marker</td><td>Fläche farbig hinterlegen (Textmarker, Standard gelb)</td></tr>
 <tr><td>Schwärzen ▾</td><td><i>Schwärzen</i> (schwarze Fläche; mit dem Haken <i>Mit Hintergrundfarbe</i> stattdessen in der Farbe
@@ -431,8 +434,15 @@ oder <i>Bearbeiten → Zuschnitt aufheben</i>; beim Ansehen einer Zeichnung schn
 anwenden</i> die Zeichnung selbst zu.</td></tr>
 <tr><td>Markierungen entfernen (<kbd>Entf</kbd>)</td><td>Markierungen, Änderungen und Zonen in der Auswahl löschen; die Zeichnung bleibt. Den Zeichnungsinhalt entfernt <i>Mehr ▾ → Zeichnung im Bereich leeren</i>.</td></tr>
 <tr><td>Exportieren …</td><td>Auswahl als PNG, TIFF, JPG, PDF oder SVG mit Ebenen speichern.</td></tr>
-<tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>)
-und <i>Zeichnung im Bereich leeren</i> (beim Ansehen einer Zeichnung).</td></tr>
+<tr><td>Mehr ▾</td><td><i>Nur Linien/Geometrie kopieren …</i> (siehe unten), <i>Text kopieren</i>, <i>Als Tabelle
+(CSV) …</i>, <i>Diagramm digitalisieren …</i>, <i>Ausschneiden</i> (<kbd>Strg</kbd>+<kbd>X</kbd>) und <i>Zeichnung im
+Bereich leeren</i> (beim Ansehen einer Zeichnung).</td></tr>
+<tr><td>Text kopieren</td><td>Text im Bereich in Lesereihenfolge in die Zwischenablage – aus dem PDF (exakt), aus dem
+schon gelesenen Text oder per Texterkennung (in jeder Lage).</td></tr>
+<tr><td>Als Tabelle (CSV) …</td><td>Liest eine Tabelle im Bereich: Zellen aus den Tabellenlinien, ohne Linien aus der
+Lage des Texts. Vorschau mit bearbeitbaren Zellen; Trennzeichen Semikolon, Komma oder Tabulator (zum direkten Einfügen
+in Excel); kopieren oder als CSV speichern.</td></tr>
+<tr><td>Diagramm digitalisieren …</td><td>Siehe <a href="#digitalisieren">Diagramm digitalisieren</a>.</td></tr>
 </table>
 <p><kbd>Esc</kbd> hebt die Auswahl auf. Alle Änderungen an der Zeichnung lassen sich mit <kbd>Strg</kbd>+<kbd>Z</kbd>
 rückgängig machen.</p>

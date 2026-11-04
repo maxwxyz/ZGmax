@@ -846,6 +846,16 @@ class LayoutMixin:
                                          "verschwindet unauffällig"))
         self.chk_redact_paper.toggled.connect(self._redact_fill_changed)
         l.addWidget(self.chk_redact_paper)
+        self.cb_heads = QComboBox()                         # Pfeil: wo die Spitzen sitzen
+        for key, txt in (("end", tr("Spitze am Ende")), ("start", tr("Spitze am Anfang")),
+                         ("both", tr("Spitzen an beiden Enden")), ("none", tr("Ohne Spitze"))):
+            self.cb_heads.addItem(txt, key)
+        self.cb_heads.setToolTip(tr("Pfeilspitzen: am Ende (Standard), am Anfang, an beiden Enden oder keine. Gilt "
+                                    "für gewählte Pfeile, sonst für die nächsten."))
+        i = self.cb_heads.findData(self.settings.value("arrow_heads", "end"))
+        self.cb_heads.setCurrentIndex(max(0, i))
+        self.cb_heads.currentIndexChanged.connect(lambda _i: self._heads_changed(self.cb_heads.currentData()))
+        l.addWidget(self.cb_heads)
         self.chk_fill = QCheckBox(tr("Gefüllt"))            # Rahmen, Ellipse, Polygon: Flaeche in derselben Farbe
         self.chk_fill.setToolTip(tr("Fläche in derselben Farbe füllen (Rahmen, Ellipse, Polygon)"))
         self.chk_fill.toggled.connect(self._fill_changed)
@@ -939,6 +949,12 @@ class LayoutMixin:
                 ("copy", tr("Kopieren"), lambda: self.area_copy(), tr("Wie angezeigt kopieren (Strg+C)"), True),
                 ("copyopt", tr("Nur Linien/Geometrie kopieren …"), lambda: self.area_copy_options(),
                  tr("Alles, nur Linien oder nur Geometrie kopieren (Strg+Umschalt+C)"), False),
+                ("text", tr("Text kopieren"), lambda: self.area_text(),
+                 tr("Text im Bereich in Lesereihenfolge kopieren – aus dem PDF, aus dem schon gelesenen Text oder per "
+                    "Texterkennung"), False),
+                ("table", tr("Als Tabelle (CSV) …"), lambda: self.area_table(),
+                 tr("Tabelle im Bereich lesen (Zellen aus Linien oder Textlage) und als CSV kopieren oder speichern"),
+                 False),
                 ("cut", tr("Ausschneiden"), lambda: self.area_cut(), tr("Strg+X"), False),
                 ("delete", tr("Markierungen entfernen"), lambda: self.area_delete(),
                  tr("Markierungen, Änderungen und Zonen in der Auswahl löschen (Entf). Die Zeichnung selbst bleibt; "
@@ -1034,6 +1050,11 @@ class LayoutMixin:
         self.s_asize.setVisible(not no_size)
         fill_ctx = t in FILL_TYPES or (t == "hand" and sel_t in FILL_TYPES)
         self.chk_fill.setVisible(fill_ctx)
+        self.cb_heads.setVisible(t == "arrow" or (t == "hand" and sel_t == "arrow"))
+        if t == "hand" and sel_t == "arrow":
+            self.cb_heads.blockSignals(True)
+            self.cb_heads.setCurrentIndex(max(0, self.cb_heads.findData(sel.get("heads", "end"))))
+            self.cb_heads.blockSignals(False)
         if t == "hand" and sel_t in FILL_TYPES:
             self.chk_fill.blockSignals(True)
             self.chk_fill.setChecked(bool(sel.get("filled")))
@@ -1144,6 +1165,24 @@ class LayoutMixin:
                 changed = True
         if changed:
             self._commit()
+        c.update()
+
+    def _heads_changed(self, heads):
+        """Pfeilspitzen: gilt fuer gewaehlte Pfeile, sonst (und dazu) fuer die naechsten."""
+        c = self.canvas
+        changed = False
+        for k in c.selected_anns():
+            a = c.anns[k]
+            if a["type"] == "arrow" and a.get("heads", "end") != heads:
+                if heads == "end":
+                    a.pop("heads", None)                 # Standard: nichts speichern (wie bisher)
+                else:
+                    a["heads"] = heads
+                changed = True
+        if changed:
+            self._commit()
+        else:
+            self.settings.setValue("arrow_heads", heads)
         c.update()
 
     def _redact_fill_changed(self, on):

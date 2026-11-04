@@ -825,6 +825,29 @@ def cloud_radius(shape, size):
     return 4.0 * ann_unit(shape) * max(0.6, size)
 
 
+ARROW_HEADS = ("end", "start", "both", "none")    # Pfeilspitzen: am Ende (Standard), am Anfang, beide, keine
+
+
+def arrow_parts(a, x, y, x2, y2, head):
+    """Pfeil zeichnen: Linie (unter den Spitzen etwas gekuerzt) und Spitzen-Dreiecke je nach a['heads']
+    (end = Standard wie bisher, start, both, none). Rueckgabe ((ax, ay, bx, by), [Dreieck, ...])."""
+    import math
+    heads = a.get("heads", "end")
+    ang = math.atan2(y2 - y, x2 - x)
+
+    def tri(px, py, w):
+        return [(px, py), (px - head * math.cos(w - 0.4), py - head * math.sin(w - 0.4)),
+                (px - head * math.cos(w + 0.4), py - head * math.sin(w + 0.4))]
+    ax, ay, bx, by, tris = x, y, x2, y2, []
+    if heads in ("end", "both"):
+        bx, by = x2 - head * 0.8 * math.cos(ang), y2 - head * 0.8 * math.sin(ang)
+        tris.append(tri(x2, y2, ang))
+    if heads in ("start", "both"):
+        ax, ay = x + head * 0.8 * math.cos(ang), y + head * 0.8 * math.sin(ang)
+        tris.append(tri(x, y, ang + math.pi))
+    return (ax, ay, bx, by), tris
+
+
 def cloud_points(x0, y0, x1, y1, r):
     """Umriss einer Revisionswolke: Halbkreise nach aussen entlang des Rechtecks (Liste von Punkten)."""
     import math
@@ -1182,13 +1205,10 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
                 im.paste(pil, (int(round(min(x, x2))), int(round(min(y, y2)))), pil)
                 d = ImageDraw.Draw(im)
         elif t == "arrow":
-            ang = math.atan2(y2 - y, x2 - x)
-            head = max(5 * lw, 0.8 * th)
-            bx, by = x2 - head * 0.8 * math.cos(ang), y2 - head * 0.8 * math.sin(ang)
-            d.line([(x, y), (bx, by)], fill=col, width=int(lw))
-            d.polygon([(x2, y2),
-                       (x2 - head * math.cos(ang - 0.4), y2 - head * math.sin(ang - 0.4)),
-                       (x2 - head * math.cos(ang + 0.4), y2 - head * math.sin(ang + 0.4))], fill=col)
+            (ax, ay, bx, by), tris = arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
+            d.line([(ax, ay), (bx, by)], fill=col, width=int(lw))
+            for tri in tris:
+                d.polygon(tri, fill=col)
     img_bgr[:] = np.asarray(im)[:, :, ::-1]
     apply_redactions(img_bgr, anns, offset, ref_shape)
     return img_bgr
@@ -1694,7 +1714,9 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             an.set_colors(stroke=col)
             an.set_border(width=lw)
             if t == "arrow":
-                an.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
+                hs = a.get("heads", "end")
+                le = lambda on: pymupdf.PDF_ANNOT_LE_CLOSED_ARROW if on else pymupdf.PDF_ANNOT_LE_NONE  # noqa: E731
+                an.set_line_ends(le(hs in ("start", "both")), le(hs in ("end", "both")))
             info(an, tr("Pfeil") if t == "arrow" else tr("Linie"), a.get("comment", ""))
         elif t == "ellipse":
             an = page.add_circle_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
@@ -1834,13 +1856,10 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
             g.append(f'<polygon points="{" ".join(P(*q) for q in pl)}" {stroke}/>')
         elif t in ("line", "arrow"):
             if t == "arrow":
-                ang = math.atan2(y2 - y, x2 - x)
-                head = max(5 * lw, 0.8 * th)
-                bx, by = x2 - head * 0.8 * math.cos(ang), y2 - head * 0.8 * math.sin(ang)
-                g.append(f'<line x1="{x - ox:.1f}" y1="{y - oy:.1f}" x2="{bx - ox:.1f}" y2="{by - oy:.1f}" {stroke}/>')
-                tri = [(x2, y2), (x2 - head * math.cos(ang - 0.4), y2 - head * math.sin(ang - 0.4)),
-                       (x2 - head * math.cos(ang + 0.4), y2 - head * math.sin(ang + 0.4))]
-                g.append(f'<polygon points="{" ".join(P(*q) for q in tri)}" fill="{col}"/>')
+                (ax, ay, bx, by), tris = arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
+                g.append(f'<line x1="{ax - ox:.1f}" y1="{ay - oy:.1f}" x2="{bx - ox:.1f}" y2="{by - oy:.1f}" {stroke}/>')
+                for tri in tris:
+                    g.append(f'<polygon points="{" ".join(P(*q) for q in tri)}" fill="{col}"/>')
             else:
                 g.append(f'<line x1="{x - ox:.1f}" y1="{y - oy:.1f}" x2="{x2 - ox:.1f}" y2="{y2 - oy:.1f}" {stroke}/>')
         elif t in PTS_TYPES and a.get("pts"):

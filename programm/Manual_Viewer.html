@@ -196,8 +196,11 @@ prints stay normal. Separately, <i>View → Settings … → Appearance</i> (Aut
 saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. Click the chip → <i>Compare with another
 drawing …</i> (or the side panel) opens a second drawing and compares.</li>
 <li><b>Each document in its own window:</b> if something is already open, <i>Open single drawing</i>, <i>Recently used</i>,
-<i>Open project</i> and dropped files open a <b>new window</b> – markups and review state of different documents never
-mix. Only <i>Open old/new drawing</i> deliberately replaces one side of the current comparison. The <i>Window</i> menu
+<i>Open project</i> open a <b>new window</b> – markups and review state of different documents never mix. Only
+<i>Open old/new drawing</i> deliberately replaces one side of the current comparison. <b>Dragging in</b> a file (from
+Finder or Explorer) shows targets: <i>Open in new window</i>, <i>Open instead</i> (closes what is open) and <i>Replace
+Old (A) / New (B)</i> – when viewing, <i>Compare as Old (A) / New (B)</i>. Dropping outside the fields = new window;
+moving the mouse out of the window, a click or a key hides the targets. The <i>Window</i> menu
 lists all open windows for switching.</li>
 <li><b>Several comparisons at once:</b> <i>File → New window</i> (<kbd>Ctrl</kbd>+<kbd>N</kbd>). Each window is
 independent (own files, markups and view settings).</li>
@@ -300,7 +303,8 @@ cloud (revision cloud), box or ellipse, drag a line from start to end. Polyline 
 points, double-click, <kbd>Enter</kbd> or right-click finishes; the corner points can be moved individually later. Box,
 ellipse and polygon can be filled in the same color with the checkbox <i>Filled</i> (off by default; also later for a
 selected shape).</td></tr>
-<tr><td>Arrow</td><td>Drag from the start to the tip</td></tr>
+<tr><td>Arrow</td><td>Drag from the start to the tip. In the options bar: <i>arrowhead at end</i> (default), <i>at
+start</i>, <i>at both ends</i> or <i>no arrowhead</i> – applies to selected arrows, otherwise to the next ones.</td></tr>
 <tr><td>Pen</td><td>Draw freehand. Each stroke stays its own markup; scale it at the corners.</td></tr>
 <tr><td>Marker</td><td>Highlight an area in color (highlighter, yellow by default)</td></tr>
 <tr><td>Redact ▾</td><td>Drag <i>Redact</i> (black area; with the checkbox <i>With background color</i> filled with the color of the
@@ -411,8 +415,15 @@ or <i>Edit → Remove crop frame</i>; when viewing a single
 drawing, <i>Apply crop permanently</i> crops the drawing itself.</td></tr>
 <tr><td>Remove markups (<kbd>Del</kbd>)</td><td>Delete markups, changes and zones in the selection; the drawing stays. <i>More ▾ → Clear drawing in region</i> removes the drawing content.</td></tr>
 <tr><td>Export …</td><td>Save the selection as PNG, TIFF, JPG, PDF or SVG with layers.</td></tr>
-<tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>) and <i>Clear drawing
-in region</i> (when viewing a drawing).</td></tr>
+<tr><td>More ▾</td><td><i>Copy lines/geometry only …</i> (see below), <i>Copy text</i>, <i>As table (CSV) …</i>,
+<i>Digitise diagram …</i>, <i>Cut</i> (<kbd>Ctrl</kbd>+<kbd>X</kbd>) and <i>Clear drawing in region</i> (when viewing a
+drawing).</td></tr>
+<tr><td>Copy text</td><td>Copies the text in the area in reading order – from the PDF (exact), from text already read or
+by text recognition (any orientation).</td></tr>
+<tr><td>As table (CSV) …</td><td>Reads a table in the area: cells from the table lines, without lines from the position
+of the text. Preview with editable cells; separator semicolon, comma or tab (for pasting directly into Excel); copy or
+save as CSV.</td></tr>
+<tr><td>Digitise diagram …</td><td>See <a href="#digitize">Digitising diagrams</a>.</td></tr>
 </table>
 <p><kbd>Esc</kbd> clears the selection. All edits of the drawing can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
 <p><b>Copy lines or geometry only</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>): a window shows a preview.

@@ -20,7 +20,12 @@ _pool = None
 _queue = None                    # Fortschritt aus dem Prozess: (Schluessel, Anteil)
 _jobs = {}                       # Schluessel -> Future
 _prog = {}                       # Schluessel -> letzter Anteil
-_lock = threading.Lock()
+_lock = threading.RLock()
+_pending = []                    # wartende Auftraege: [Vorrang, Nummer, Schluessel, Argumente, Future]
+_running = None                  # [Vorrang, Nummer, Schluessel, Argumente, Future, Future des Prozesses] oder None
+_preempted = set()               # Prozess-Futures, deren Ergebnis verworfen wird (Auftrag neu eingereiht)
+_seq = [0]
+FOREGROUND, HORIZONTAL, VERTICAL = 0, 1, 2       # Vorrang: jemand wartet > waagerecht (Suche) > senkrecht
 
 
 def _child_init(queue):
@@ -121,20 +126,115 @@ def _drain():
         _prog[k] = f
 
 
-def submit(key, gray=None, vertical=False, src=None):
-    """Auftrag starten (oder den laufenden fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier, oder None
-    und src (siehe source): dann laedt der Prozess die Seite selbst.
-    vertical: nur die senkrechten Texte lesen (ocr_vertical), sonst die waagerechten (ocr_lines)."""
+def submit(key, gray=None, vertical=False, src=None, prio=None):
+    """Auftrag einreihen (oder den vorhandenen fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier, oder
+    None und src (siehe source): dann laedt der Prozess die Seite selbst.
+    vertical: nur die senkrechten Texte lesen (ocr_vertical), sonst die waagerechten (ocr_lines).
+    prio: FOREGROUND (jemand wartet), HORIZONTAL oder VERTICAL (Standard je nach vertical). Der Prozess liest einen
+    Auftrag nach dem anderen, immer den mit dem hoechsten Vorrang zuerst - so wartet die zweite Zeichnung oder eine
+    Suche nicht hinter den langen senkrechten Durchlaeufen der ersten."""
     import numpy as np
+    from concurrent.futures import Future
+    prio = (VERTICAL if vertical else HORIZONTAL) if prio is None else prio
     with _lock:
         fut = _jobs.get(key)
         if fut is not None and not fut.cancelled() and (not fut.done() or fut.exception() is None):
-            return fut
+            for job in _pending:                 # wartet noch: Vorrang ggf. erhoehen
+                if job[2] == key and prio < job[0]:
+                    job[0] = prio
+        else:
+            fut = None
+    if fut is not None:
+        if prio < VERTICAL:
+            _preempt(key)
+        return fut
+    with _lock:
         g = None if gray is None else np.ascontiguousarray(gray)
-        fut = _get_pool().submit(_child_lines, key, g, TILE_WORKERS, vertical, src)
+        fut = Future()
+        _seq[0] += 1
+        _pending.append([prio, _seq[0], key, (key, g, TILE_WORKERS, vertical, src), fut])
         _jobs[key] = fut
         _prog[key] = 0.0
-        return fut
+    if prio < VERTICAL:                          # Suche oder waagerechter Text: senkrechten Durchlauf unterbrechen
+        _preempt(key)
+    _dispatch()
+    return fut
+
+
+def _preempt(key):
+    """Ein dringenderer Auftrag (Suche, waagerechter Text einer weiteren Zeichnung) kommt, der Prozess liest aber
+    gerade einen langen senkrechten: den abbrechen und neu einreihen (er laeuft danach weiter)."""
+    global _running
+    with _lock:
+        run = _running
+        if run is None or run[2] == key or run[0] != VERTICAL:
+            return
+        _running = None
+        _preempted.add(run[5])
+        _pending.append(run[:5] + [True])         # True = Future laeuft schon (nicht erneut starten)
+        pool = _pool
+        procs = list(getattr(pool, "_processes", {}).values()) if pool is not None else []
+    _drop_pool()
+    for p in procs:
+        try:
+            p.kill()
+        except Exception:                        # noqa: BLE001
+            pass
+
+
+def _drop_pool():
+    global _pool, _queue
+    with _lock:
+        pool, _pool, _queue = _pool, None, None
+    if pool is not None:
+        try:
+            pool.shutdown(wait=False, cancel_futures=True)
+        except Exception:                        # noqa: BLE001
+            pass
+
+
+def _dispatch():
+    """Naechsten Auftrag (hoechster Vorrang, dann aeltester) an den Prozess geben, wenn er frei ist."""
+    global _running
+    with _lock:
+        if _running is not None:
+            return
+        while _pending:
+            _pending.sort(key=lambda j: (j[0], j[1]))
+            job = _pending.pop(0)
+            fut = job[4]
+            started = len(job) > 5 and job[5] is True
+            if not started and not fut.set_running_or_notify_cancel():
+                continue
+            try:
+                pf = _get_pool().submit(_child_lines, *job[3])
+            except Exception as e:               # noqa: BLE001 - Prozess laesst sich nicht starten
+                fut.set_exception(e)
+                continue
+            _running = job[:5] + [pf]
+            break
+        else:
+            return
+    pf.add_done_callback(lambda f, fut=fut: _finished(f, fut))
+
+
+def _finished(pf, fut):
+    global _running
+    with _lock:
+        if pf in _preempted:                     # abgebrochen und neu eingereiht: Ergebnis verwerfen
+            _preempted.discard(pf)
+            pf = None
+        elif _running is not None and _running[5] is pf:
+            _running = None
+    if pf is None:
+        _dispatch()
+        return
+    if not fut.done():
+        try:
+            fut.set_result(pf.result())
+        except BaseException as e:               # noqa: BLE001 - auch Abbruch/Absturz des Prozesses
+            fut.set_exception(e if isinstance(e, Exception) else RuntimeError(str(e)))
+    _dispatch()
 
 
 def busy(key):
@@ -164,23 +264,23 @@ def lines(key, gray=None, progress=None, cancel=None, src=None):
     gray oder src wie bei submit. Faellt der Prozess aus, wird im Programm selbst gelesen."""
     import diffcore as dc
     import diffreport as rep
+    from concurrent.futures import CancelledError
     from concurrent.futures.process import BrokenProcessPool
     try:
-        fut = submit(key, gray, src=src)
+        fut = submit(key, gray, src=src, prio=FOREGROUND)
         while True:
             try:
                 return fut.result(timeout=0.15)
             except TimeoutError:
                 pass
-            if cancel is not None and cancel():
-                stop()
+            if cancel is not None and cancel():  # nur nicht mehr warten: der Auftrag laeuft im Hintergrund weiter
                 raise dc.Cancelled()
             _drain()
             if progress:
                 progress(_prog.get(key, 0.0))
     except dc.Cancelled:
         raise
-    except Exception as e:                       # noqa: BLE001 - Prozess nicht verfuegbar oder abgestuerzt
+    except (Exception, CancelledError) as e:     # noqa: BLE001 - Prozess nicht verfuegbar oder abgestuerzt
         log.exception("Texterkennung im eigenen Prozess")
         if isinstance(e, (BrokenProcessPool, OSError, RuntimeError)) or _pool is None:
             reset()                              # Prozess kaputt: beim naechsten Mal neu starten
@@ -192,11 +292,16 @@ def lines(key, gray=None, progress=None, cancel=None, src=None):
 
 def reset():
     """Prozess verwerfen (z. B. nach Absturz); der naechste Auftrag startet einen neuen."""
-    global _pool, _queue
+    global _pool, _queue, _running
     with _lock:
         pool, _pool, _queue = _pool, None, None
+        waiting = [j[4] for j in _pending] + ([_running[4]] if _running else [])
+        _running = None
+        _pending.clear()
         _jobs.clear()
         _prog.clear()
+    for fut in waiting:
+        fut.cancel()
     if pool is not None:
         try:
             pool.shutdown(wait=False, cancel_futures=True)

@@ -525,16 +525,13 @@ class CanvasPaintMixin:
                 p.restore()
         elif t == "arrow":
             x2, y2 = self.to_wid(a["x2"], a["y2"])
-            ang = math.atan2(y2 - y, x2 - x)
-            head = max(5 * lw, 0.8 * th)
-            bx, by = x2 - head * 0.8 * math.cos(ang), y2 - head * 0.8 * math.sin(ang)
+            (ax, ay, bx, by), tris = rep.arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
             p.setPen(QPen(col, lw))
-            p.drawLine(QPointF(x, y), QPointF(bx, by))
+            p.drawLine(QPointF(ax, ay), QPointF(bx, by))
             p.setBrush(col)
             p.setPen(Qt.PenStyle.NoPen)
-            p.drawPolygon(QPolygonF([QPointF(x2, y2),
-                                     QPointF(x2 - head * math.cos(ang - 0.4), y2 - head * math.sin(ang - 0.4)),
-                                     QPointF(x2 - head * math.cos(ang + 0.4), y2 - head * math.sin(ang + 0.4))]))
+            for tri in tris:
+                p.drawPolygon(QPolygonF([QPointF(*q) for q in tri]))
         if selected:
             b = rep.ann_bounds(shape, a)
             a0, b0 = self.to_wid(b[0], b[1])

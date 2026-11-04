@@ -2232,3 +2232,24 @@ def test_index_check_uses_read_text(app, win, pair, monkeypatch):
     info = win.index_info
     assert info["index_a"] == "A" and info["index_b"] == "B"
     assert [e["index"] for e in info["revisions_new"]] == ["B"]
+
+
+def test_drop_targets_when_open(app, win, pair, tmp_path):
+    """Datei hineinziehen, waehrend schon etwas offen ist: Ziele statt sofort neues Fenster; A/B ersetzen."""
+    import shutil
+    c = tmp_path / "rev_c.png"
+    shutil.copy(pair[1], c)
+    win._set_file("A", pair[0])
+    wait(app, lambda: win.payload is not None and not win.running)
+    keys = [t[0] for t in win._drop_targets([str(c)])]
+    assert keys == ["window", "replace", "A", "B"]
+    win.drop_overlay.open([str(c)], win._drop_targets([str(c)]))
+    assert win.drop_overlay.isVisible() and len(win.drop_overlay.cards) == 4
+    win.drop_overlay.hide()
+    win._drop_chosen("B", [str(c)])                               # Einzelansicht -> Vergleich mit der neuen Datei
+    wait(app, lambda: not win.view_only and win.payload is not None and not win.running)
+    assert win.path_a == pair[0] and win.path_b == str(c)
+    win._drop_chosen("A", [pair[1]])                              # im Vergleich: A ersetzen
+    wait(app, lambda: win.path_a == pair[1] and not win.running)
+    assert win.path_b == str(c)
+    assert [t[0] for t in win._drop_targets([pair[0], pair[1]])] == ["window", "replace"]

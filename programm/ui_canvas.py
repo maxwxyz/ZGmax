@@ -329,6 +329,9 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
+            w = self.window()
+            if hasattr(w, "_drag_overlay"):              # Zeichnung offen: Ziele zeigen (neues Fenster, A, B ...)
+                w._drag_overlay(e)
             e.acceptProposedAction()
 
     def dropEvent(self, e):
@@ -885,6 +888,10 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
                         win.chk_redact_paper.isChecked() else "black"
                 elif self.tool in ("rect", "ellipse") and self._fill_on():
                     extra["filled"] = True
+                elif self.tool == "arrow":                # Pfeilspitzen aus der Optionszeile (Standard: am Ende)
+                    cb = getattr(self.window(), "cb_heads", None)
+                    if cb is not None and cb.currentData() not in (None, "end"):
+                        extra["heads"] = cb.currentData()
                 self.annCreated.emit(dict(type=self.tool, x=ax, y=ay, x2=bx, y2=by, text="", nr=0,
                                           color=color, size=self.ann_size, **extra))
         elif kind == "pen":
