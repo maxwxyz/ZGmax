@@ -347,16 +347,51 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
         if self.ann_multi or self.ann_selected is None or not (0 <= self.ann_selected < len(self.anns)):
             return None
         m = 8 / self.scale
-        for name, hx, hy in ann_handles(self.shape, self.anns[self.ann_selected]):
+        for name, hx, hy in ann_handles(self.shape, self.anns[self.ann_selected], self.scale):
             if abs(ix - hx) <= m and abs(iy - hy) <= m:
                 return name
         return None
 
+    def _screen_dir(self, ax, ay, bx, by):
+        """Richtung von Bildpunkt a nach b auf dem Bildschirm (mit Ansichtsdrehung)."""
+        xf = self._xform()
+        pa, pb = xf.map(QPointF(*self.to_wid(ax, ay))), xf.map(QPointF(*self.to_wid(bx, by)))
+        return pb.x() - pa.x(), pb.y() - pa.y()
+
+    def _handle_cursor(self, name):
+        """Mauszeiger fuer einen Anfasser der gewaehlten Markierung: Ecken diagonal, Seiten waagerecht/senkrecht
+        (passend zur Lage, auch gedreht), Drehanfasser eigener Zeiger, Punkte Fadenkreuz."""
+        if name == "rot":
+            return rotate_cursor()
+        if name == "lbl":
+            return Qt.CursorShape.SizeAllCursor
+        if name[0] in "pvm":
+            return Qt.CursorShape.CrossCursor
+        a = self.anns[self.ann_selected]
+        pos = {n: (hx, hy) for n, hx, hy in ann_handles(self.shape, a, self.scale)}
+        if name not in pos:
+            return Qt.CursorShape.SizeAllCursor
+        dx, dy = self._screen_dir(*handle_center(self.shape, a), *pos[name])
+        if name == "tw":                             # Textfeldbreite: immer quer zur Schrift
+            r = rep.ann_rot(a)
+            dx, dy = self._screen_dir(0, 0, math.cos(math.radians(r)), math.sin(math.radians(r)))
+        if abs(dx) < 1e-9 and abs(dy) < 1e-9:
+            return Qt.CursorShape.SizeAllCursor
+        return size_cursor(dx, dy)
+
+    def _frame_cursor(self, name):
+        """Mauszeiger fuer einen Anfasser des Zuschnitt-Rahmens."""
+        x0, y0, x1, y1 = self.crop_frame
+        pos = {n: (hx, hy) for n, hx, hy in self._frame_points()}
+        dx, dy = self._screen_dir((x0 + x1) / 2, (y0 + y1) / 2, *pos[name])
+        return size_cursor(dx, dy) if (dx or dy) else Qt.CursorShape.SizeAllCursor
+
     def _pixelated(self, a):
         """Mosaik des angezeigten Inhalts unter einer Verpixelung (zwischengespeichert)."""
         h, w = self.shape
-        x0, y0 = max(0, int(min(a["x"], a["x2"]))), max(0, int(min(a["y"], a["y2"])))
-        x1, y1 = min(w, int(np.ceil(max(a["x"], a["x2"])))), min(h, int(np.ceil(max(a["y"], a["y2"]))))
+        bx0, by0, bx1, by1 = rep.redaction_boxes([a])[0]   # gedreht: umgebendes Rechteck
+        x0, y0 = max(0, int(bx0)), max(0, int(by0))
+        x1, y1 = min(w, int(np.ceil(bx1))), min(h, int(np.ceil(by1)))
         if x1 <= x0 or y1 <= y0:
             return None, None
         mode = self.mode if self.mode in ("A", "B", "D", "O", "N", "R") else "D"
@@ -473,7 +508,9 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
                 sel = self.anns[self.ann_selected] if self.ann_selected is not None else None
                 box = (rep.pts_bbox(sel["pts"]) if sel.get("pts") else (min(sel["x"], sel["x2"]), min(sel["y"], sel["y2"]),
                        max(sel["x"], sel["x2"]), max(sel["y"], sel["y2"]))) if sel and "x2" in sel else None
-                self._drag = ("handle", name, (ix, iy), box)   # box: Rahmen beim Anfassen (Seitenverhaeltnis)
+                # box: Rahmen beim Anfassen (Seitenverhaeltnis), dazu der ganze Stand beim Anfassen: jede Bewegung
+                # rechnet von dort aus (auch bei gedrehten Markierungen eindeutig)
+                self._drag = ("handle", name, (ix, iy), box, copy.deepcopy(sel))
             elif i is not None and add:                  # Strg/Umschalt + Klick: zur Auswahl hinzu / heraus
                 chosen = self.selected_anns()
                 chosen ^= {i}
@@ -595,11 +632,21 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             cur = Qt.CursorShape.OpenHandCursor
             if self._drag is not None and self._drag[0] == "pan":
                 cur = Qt.CursorShape.ClosedHandCursor
+            elif self._drag is not None and self._drag[0] == "handle" and self.ann_selected is not None:
+                cur = self._handle_cursor(self._drag[1])
+            elif self._drag is not None and self._drag[0] == "fhandle" and self.crop_frame is not None:
+                cur = self._frame_cursor(self._drag[1])
             elif self._drag is not None:
                 cur = Qt.CursorShape.SizeAllCursor
-            elif self.res is not None and self.show_overlays and (
-                    self._hit_handle(ix, iy) or self.hit_ann(ix, iy) is not None or self._frame_handle(ix, iy)):
-                cur = Qt.CursorShape.SizeAllCursor
+            elif self.res is not None and self.show_overlays:
+                h_ = self._hit_handle(ix, iy)
+                f_ = None if h_ else self._frame_handle(ix, iy)
+                if h_:
+                    cur = self._handle_cursor(h_)
+                elif self.hit_ann(ix, iy) is not None:
+                    cur = Qt.CursorShape.SizeAllCursor
+                elif f_:
+                    cur = self._frame_cursor(f_)
             self.setCursor(cur)
         elif self.tool == "area" and self.res is not None and self.in_selection(ix, iy):
             self.setCursor(Qt.CursorShape.SizeAllCursor)
@@ -716,9 +763,22 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
                         a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
         elif kind == "handle":
             mods = e.modifiers()
-            name, box = self._drag[1], self._drag[3]
-            typ = self.anns[self.ann_selected]["type"]
-            corner = name in ("tl", "tr", "bl", "br") and box is not None and (typ in rep.RECT_TYPES or typ == "pen")
+            name, box, orig = self._drag[1], self._drag[3], self._drag[4]
+            a = self.anns[self.ann_selected]
+            a.clear()                                             # immer vom Stand beim Anfassen aus rechnen
+            a.update(copy.deepcopy(orig))
+            if name == "rot":                                     # drehen; Umschalt: in 15-Grad-Schritten
+                ang = apply_rotation(self.shape, a, orig, ix, iy,
+                                     15 if mods & Qt.KeyboardModifier.ShiftModifier else None)
+                self.window().statusBar().showMessage(tr("Drehung: {}°").format(f"{ang:.1f}".rstrip("0").rstrip(".")))
+                self.update()
+                return
+            typ = orig["type"]
+            rot = rep.ann_rot(orig)
+            c0 = rep.rot_center(self.shape, orig) if rot else None
+            if rot:                                               # Zwangsbedingungen in der ungedrehten Lage
+                ix, iy = rep.rot_pt(ix, iy, *c0, -rot)
+            corner = name in CORNERS and box is not None and (typ in rep.RECT_TYPES or typ == "pen")
             if mods & Qt.KeyboardModifier.ShiftModifier and corner:   # Umschalt an einer Ecke: Seitenverhaeltnis
                 x0, y0, x1, y1 = box                                  # bleibt (z. B. eingefuegte Bilder)
                 fx, fy = (x1 if "l" in name else x0), (y1 if "t" in name else y0)   # feste Ecke gegenueber
@@ -726,18 +786,22 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
                 k = max(abs(ix - fx) / w0, abs(iy - fy) / h0, 0.02)
                 ix = fx + (-1 if "l" in name else 1) * w0 * k
                 iy = fy + (-1 if "t" in name else 1) * h0 * k
-            elif mods & Qt.KeyboardModifier.ShiftModifier:        # Umschalt sonst: nur waagerecht oder senkrecht
+            elif mods & Qt.KeyboardModifier.ShiftModifier and name not in SIDES:   # sonst: nur waagerecht/senkrecht
                 sx, sy = self._drag[2]
+                if rot:
+                    sx, sy = rep.rot_pt(sx, sy, *c0, -rot)
                 if abs(ix - sx) >= abs(iy - sy):
                     iy = sy
                 else:
                     ix = sx
-            if self._drag[1].startswith("m"):
+            if rot:
+                ix, iy = rep.rot_pt(ix, iy, *c0, rot)
+            if name.startswith("m"):
                 ix, iy, _k = self.snap_point(ix, iy)
-            elif not mods & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):   # einrasten
-                dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})
+            elif not rot and not mods & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):
+                dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})   # einrasten
                 ix, iy = ix + dx, iy + dy
-            apply_handle(self.shape, self.anns[self.ann_selected], self._drag[1], ix, iy)
+            apply_handle(self.shape, a, name, ix, iy)
         self.update()
 
     def _align_snap(self, box, dx, dy, skip, lock_x=False, lock_y=False):
@@ -903,6 +967,8 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             if self._moved:
                 self.zoneEdited.emit(self.zone_sel, *self.zones[self.zone_sel])
         elif kind in ("move", "handle"):
+            if kind == "handle" and self._drag[1] == "rot":
+                self.window().statusBar().clearMessage()
             if self._moved:
                 self.annChanged.emit()
         elif kind == "pan" and self._moved < 3 and self.tool == "hand":

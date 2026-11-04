@@ -354,6 +354,13 @@ class CanvasPaintMixin:
         lw = max(1.5, rep.ann_line_w(shape, a["size"]) * s)
         x, y = self.to_wid(a["x"], a["y"])
         t = a["type"]
+        rot = rep.ann_rot(a)
+        if rot and t != "pixelate":                  # gedreht: ungedreht zeichnen, Maler um die Mitte der Box drehen
+            p.save()
+            rcx, rcy = self.to_wid(*rep.rot_center(shape, a))
+            p.translate(rcx, rcy)
+            p.rotate(rot)
+            p.translate(-rcx, -rcy)
         if t == "number":
             r = th * 0.95
             p.setPen(QPen(QColor("white"), max(1.0, lw * 0.4)))
@@ -379,7 +386,7 @@ class CanvasPaintMixin:
                 p.setPen(col)
                 p.drawText(box, fl, txt)
         elif t == "approval":
-            b = rep.ann_bounds(shape, a)
+            b = rep.ann_frame(shape, a)
             a0, b0 = self.to_wid(b[0], b[1])
             a1, b1 = self.to_wid(b[2], b[3])
             p.setPen(QPen(col, max(2.0, lw * 1.3)))
@@ -520,6 +527,11 @@ class CanvasPaintMixin:
                 a0, b0 = self.to_wid(rect[0], rect[1])
                 a1, b1 = self.to_wid(rect[2], rect[3])
                 p.save()
+                if rot:                              # gedreht: Mosaik des umgebenden Rechtecks, auf die Box beschnitten
+                    clip = QPainterPath()
+                    clip.addPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in rep.rot_corners(shape, a)]))
+                    clip.closeSubpath()
+                    p.setClipPath(clip, Qt.ClipOperation.IntersectClip)
                 p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
                 p.drawImage(QRectF(a0, b0, a1 - a0, b1 - b0), img)
                 p.restore()
@@ -532,19 +544,36 @@ class CanvasPaintMixin:
             p.setPen(Qt.PenStyle.NoPen)
             for tri in tris:
                 p.drawPolygon(QPolygonF([QPointF(*q) for q in tri]))
+        if rot and t != "pixelate":
+            p.restore()
         if selected:
             b = rep.ann_bounds(shape, a)
             a0, b0 = self.to_wid(b[0], b[1])
             a1, b1 = self.to_wid(b[2], b[3])
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
-            if t not in ("arrow", "line", "measure") or self.ann_multi:
+            if rot and not self.ann_multi:           # gedreht: Rahmen in der Lage der Box
+                m = 3 / s
+                f = rep.ann_frame(shape, a)
+                pts = rep.rot_corners(shape, a, (f[0] - m, f[1] - m, f[2] + m, f[3] + m))
+                p.drawPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in pts]))
+            elif t not in ("arrow", "line", "measure") or self.ann_multi:
                 p.drawRect(QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6))
-            p.setPen(QPen(QColor(ACCENT), 1.6))
-            p.setBrush(QColor("white"))
-            for _, hx, hy in ([] if self.ann_multi else ann_handles(shape, a)):   # Griffe nur bei Einzelauswahl
-                X, Y = self.to_wid(hx, hy)
-                p.drawRect(QRectF(X - 4.5, Y - 4.5, 9, 9))
+            if not self.ann_multi:                   # Griffe nur bei Einzelauswahl
+                g = rot_grip(shape, a, s)
+                if g is not None:                    # Drehanfasser: Verbindungslinie und Kreis
+                    p.setPen(QPen(QColor(ACCENT), 1.2))
+                    p.drawLine(QPointF(*self.to_wid(*g[0])), QPointF(*self.to_wid(*g[1])))
+                p.setPen(QPen(QColor(ACCENT), 1.6))
+                p.setBrush(QColor("white"))
+                for name, hx, hy in ann_handles(shape, a, s):
+                    X, Y = self.to_wid(hx, hy)
+                    if name == "rot":
+                        p.drawEllipse(QPointF(X, Y), 5, 5)
+                    elif name in SIDES:              # Seitenmitten etwas kleiner als die Ecken
+                        p.drawRect(QRectF(X - 3.5, Y - 3.5, 7, 7))
+                    else:
+                        p.drawRect(QRectF(X - 4.5, Y - 4.5, 9, 9))
 
     def _paint_overlays(self, p, w, h):
         s = self.scale

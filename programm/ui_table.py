@@ -11,9 +11,10 @@ SEPS = ((";", tr("Semikolon (;)")), (",", tr("Komma (,)")), ("\t", tr("Tabulator
 class TableDialog(QDialog):
     """Vorschau der gelesenen Tabelle (Zellen bearbeitbar), Trennzeichen waehlen, kopieren oder speichern (CSV oder
     Excel). Bleibt offen (nicht modal): auf einer anderen Seite oder an anderer Stelle einen Bereich waehlen und mit
-    „Auswahl anhaengen“ unten anfuegen (Tabellen ueber mehrere Seiten)."""
+    „Auswahl anhaengen“ unten anfuegen (Tabellen ueber mehrere Seiten). Verbundene Zellen (spans: zeile, spalte,
+    zeilen, spalten) werden verbunden gezeigt und in Excel verbunden gespeichert."""
 
-    def __init__(self, win, rows, source):
+    def __init__(self, win, rows, source, spans=()):
         super().__init__(win)
         self.win = win
         self.setWindowTitle(tr("Tabelle aus Auswahl"))
@@ -21,6 +22,7 @@ class TableDialog(QDialog):
         self.resize(820, 520)
         lay = QVBoxLayout(self)
         self.sources = [source]
+        self.spans = []
         self.hint = QLabel("")
         self.hint.setWordWrap(True)
         self.hint.setObjectName("hint")
@@ -28,7 +30,7 @@ class TableDialog(QDialog):
         self.table = QTableWidget(0, 0)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         lay.addWidget(self.table, 1)
-        self._fill(rows)
+        self._fill(rows, spans)
         row = QHBoxLayout()
         self.btn_append = QPushButton(tr("Auswahl anhängen"))
         self.btn_append.setToolTip(tr("Tabelle geht auf einer anderen Seite weiter: Seite wechseln, mit „Bereich“ "
@@ -55,7 +57,8 @@ class TableDialog(QDialog):
         self.btn_save.clicked.connect(lambda: self.save())
         row.addWidget(self.btn_save)
         self.btn_xlsx = QPushButton(tr("Als Excel speichern …"))
-        self.btn_xlsx.setToolTip(tr("Excel-Datei (.xlsx): Zahlen als Zahl, Kopfzeile fett."))
+        self.btn_xlsx.setToolTip(tr("Excel-Datei (.xlsx): Zahlen als Zahl, Kopfzeile fett, verbundene Zellen "
+                                    "verbunden."))
         self.btn_xlsx.clicked.connect(lambda: self.save("xlsx"))
         row.addWidget(self.btn_xlsx)
         close = QPushButton(tr("Schließen"))
@@ -63,24 +66,31 @@ class TableDialog(QDialog):
         row.addWidget(close)
         lay.addLayout(row)
 
-    def _fill(self, rows):
+    def _fill(self, rows, spans=()):
         nr, nc = len(rows), max((len(r) for r in rows), default=0)
         t = self.table
+        t.clearSpans()
         t.clear()
         t.setRowCount(nr)
         t.setColumnCount(nc)
         for i, r in enumerate(rows):
             for j, v in enumerate(r):
                 t.setItem(i, j, QTableWidgetItem(v))
+        self.spans = []
+        for r, c, rs, cs in spans or ():
+            rs, cs = min(rs, nr - r), min(cs, nc - c)
+            if r < nr and c < nc and rs * cs > 1:
+                t.setSpan(r, c, rs, cs)
+                self.spans.append((r, c, rs, cs))
         t.resizeColumnsToContents()
         self.hint.setText(tr("{} Zeilen × {} Spalten ({}). Zellen lassen sich vor dem Kopieren bearbeiten.").format(
             nr, nc, ", ".join(dict.fromkeys(self.sources))))
 
-    def append(self, rows, source):
+    def append(self, rows, source, spans=()):
         """Weitere gelesene Zeilen unten anfuegen (wiederholte Kopfzeile weg, Spalten auffuellen)."""
         before = self.table.rowCount()
         self.sources.append(source)
-        self._fill(te.append_rows(self.rows(), rows))
+        self._fill(*te.append_table(self.rows(), self.spans, rows, spans))
         self.table.scrollToBottom()
         n = self.table.rowCount() - before
         self.win.statusBar().showMessage(tr("{} Zeilen angehängt").format(n), 5000)
@@ -116,7 +126,7 @@ class TableDialog(QDialog):
             path += ".xlsx" if fmt == "xlsx" else ".csv"
         try:
             if os.path.splitext(path)[1].lower() == ".xlsx":
-                te.to_xlsx(self.rows(), path)
+                te.to_xlsx(self.rows(), path, spans=self.spans)
             else:
                 with open(path, "w", encoding="utf-8-sig", newline="") as f:     # mit BOM: Excel erkennt Umlaute
                     f.write(self.text("\r\n"))
@@ -217,7 +227,7 @@ class TableMixin:
 
     def _read_table(self, done):
         """Tabelle im gewaehlten Bereich lesen (Zellraster aus Linien oder aus der Lage des Texts) im Hintergrund;
-        done(rows, quelle), nur wenn Text gefunden wurde. False, wenn nichts gestartet wurde."""
+        done(rows, quelle, spans), nur wenn Text gefunden wurde. False, wenn nichts gestartet wurde."""
         bbox = self._area_bbox()
         if self.payload is None or bbox is None:
             return False
@@ -236,24 +246,25 @@ class TableMixin:
                 w = [(t[0] - pad, t[1] - pad, t[2] - pad, t[3] - pad, t[4]) for t in rep.ocr_any_orientation(big)]
                 src = tr("Texterkennung")
             ctx.progress(0.9, tr("Zellen bestimmen"))
-            return te.extract_table(w, gray), src
+            g = te.table_grid(w, gray)
+            return g["rows"], g["spans"], src
 
         def fin(res):
-            rows, src = res
+            rows, spans, src = res
             if not rows:
                 self.banner.show_msg(tr("Im Bereich wurde kein Text gefunden."), "info", timeout=8)
                 return
-            done(rows, src)
+            done(rows, src, spans)
         return self._run_job(work, tr("Lese Tabelle …"), fin)
 
     def area_table(self):
         """Tabelle im gewaehlten Bereich lesen und in einem Fenster anbieten (Vorschau, kopieren, speichern,
         weitere Bereiche anhaengen)."""
-        def done(rows, src):
+        def done(rows, src, spans):
             old = getattr(self, "_table_dlg", None)
             if old is not None:
                 old.close()
-            self._table_dlg = TableDialog(self, rows, src)
+            self._table_dlg = TableDialog(self, rows, src, spans)
             self._table_dlg.show()
         self._read_table(done)
 
@@ -263,7 +274,7 @@ class TableMixin:
             self.banner.show_msg(tr("Bitte zuerst mit „Bereich“ den weiteren Teil der Tabelle wählen (auch auf einer "
                                     "anderen Seite)."), "info", timeout=10)
             return False
-        return self._read_table(lambda rows, src: dlg.append(rows, src))
+        return self._read_table(lambda rows, src, spans: dlg.append(rows, src, spans))
 
     def area_text(self):
         """Text im gewaehlten Bereich in Lesereihenfolge - exakt aus dem PDF, sonst schon gelesener Text, sonst

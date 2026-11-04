@@ -236,7 +236,7 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
 
     now = _dt.datetime.now().strftime("D:%Y%m%d%H%M%S")
     rows = []
-    from diffreport import PDF_STATE, ann_id
+    from diffreport import PDF_STATE, ann_id, ann_rot, rot_corners, rot_ellipse
     for a in anns:
         t = a["type"]
         if t in ("redact", "pixelate"):              # Schwaerzungen sind keine Kommentare
@@ -249,9 +249,22 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
         contents = a.get("comment") or a.get("text") or ""
         x0, y0 = min(a["x"], a["x2"]), min(a["y"], a["y2"])
         x1, y1 = max(a["x"], a["x2"]), max(a["y"], a["y2"])
+        rot = ann_rot(a)
+        if rot and t in ("rect", "cloud", "highlight", "ellipse"):
+            poly = rot_ellipse(None, a) if t == "ellipse" else rot_corners(None, a)
+            x0, y0 = min(p[0] for p in poly), min(p[1] for p in poly)
+            x1, y1 = max(p[0] for p in poly), max(p[1] for p in poly)
         rect = f'rect="{X(x0)},{Y(y1)},{X(x1)},{Y(y0)}"'
         body = f"<contents>{escape(contents)}</contents>" if contents else ""
-        if t in ("rect", "cloud"):
+        if rot and t in ("rect", "cloud", "highlight", "ellipse"):   # XFDF kennt keine gedrehten Rechtecke: Polygon
+            verts = ";".join(f"{X(p[0])},{Y(p[1])}" for p in poly)
+            if t == "highlight":
+                extra = f' opacity="0.35" interior-color="{col}"'
+            else:
+                extra = (' style="cloudy" intensity="1"' if t == "cloud" else "") + \
+                    (f' interior-color="{col}"' if a.get("filled") and t in ("rect", "ellipse") else "")
+            rows.append(f"<polygon {common} {rect}{extra}><vertices>{verts}</vertices>{body}</polygon>")
+        elif t in ("rect", "cloud"):
             style = ' style="cloudy" intensity="1"' if t == "cloud" else ""
             ic = f' interior-color="{col}"' if a.get("filled") and t == "rect" else ""
             rows.append(f"<square {common} {rect}{style}{ic}>{body}</square>")
@@ -269,7 +282,14 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
             wpt, hpt = max(40.0, 7.0 * max(len(s) for s in lines)), 14.0 * len(lines)
             xl, ytop = a["x"] / k, page_h_pt - a["y"] / k
             r2 = f'rect="{xl:.2f},{ytop - hpt:.2f},{xl + wpt:.2f},{ytop:.2f}"'
-            rows.append(f'<freetext {common} {r2} defaultstyle="font: Helvetica 10pt; color:{col}">'
+            near = round(rot / 90) * 90
+            rr = ""
+            if rot and abs(rot - near) < 0.01:        # Freitext dreht nur in 90-Grad-Schritten (gegen den Uhrzeiger)
+                if near % 180 == 90:                  # hochkant: geschaetzte Box um ihre Mitte drehen
+                    cxp, cyp = xl + wpt / 2, ytop - hpt / 2
+                    r2 = f'rect="{cxp - hpt / 2:.2f},{cyp - wpt / 2:.2f},{cxp + hpt / 2:.2f},{cyp + wpt / 2:.2f}"'
+                rr = f' rotation="{int(-near) % 360}"'
+            rows.append(f'<freetext {common} {r2}{rr} defaultstyle="font: Helvetica 10pt; color:{col}">'
                         f"<contents>{escape(txt)}</contents></freetext>")
         elif t == "ellipse":
             ic = f' interior-color="{col}"' if a.get("filled") else ""

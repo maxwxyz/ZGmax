@@ -695,6 +695,8 @@ APPROVAL_TITLES = (tr("FREIGEGEBEN"), tr("GEPRÜFT"), tr("ABGELEHNT"), tr("IN AR
 #             (x, y)-(x2, y2) ist das umgebende Rechteck
 RECT_TYPES = ("rect", "cloud", "highlight", "ellipse", "image", "redact", "pixelate")
 REDACT_TYPES = ("redact", "pixelate")       # unkenntlich machen: wird in jede Ausgabe eingebrannt
+# Arten mit Box, die sich drehen lassen: Feld "rot" = Grad im Uhrzeigersinn um die Mitte der Box (fehlt = 0)
+ROT_TYPES = RECT_TYPES + ("text", "approval")
 
 # Feste Ebenen: Zeichnung, Aenderungsrahmen und die Markierungen nach Art. Ausgeblendete Ebenen werden weder
 # angezeigt noch gespeichert; in PDF mit Anmerkungen und SVG werden die Ebenen als echte Ebenen geschrieben.
@@ -769,27 +771,39 @@ def apply_redactions(img, anns, offset=(0, 0), ref_shape=None):
     for a in anns or []:
         if a.get("type") not in REDACT_TYPES:
             continue
-        x0 = int(np.floor(min(a["x"], a["x2"]) - ox))
-        y0 = int(np.floor(min(a["y"], a["y2"]) - oy))
-        x1 = int(np.ceil(max(a["x"], a["x2"]) - ox))
-        y1 = int(np.ceil(max(a["y"], a["y2"]) - oy))
+        bx0, by0, bx1, by1 = _redact_box(a)
+        x0, y0 = int(np.floor(bx0 - ox)), int(np.floor(by0 - oy))
+        x1, y1 = int(np.ceil(bx1 - ox)), int(np.ceil(by1 - oy))
         x0, y0, x1, y1 = max(0, x0), max(0, y0), min(w, x1), min(h, y1)
         if x1 <= x0 or y1 <= y0:
             continue
         part = img[y0:y1, x0:x1]
         if a["type"] == "redact":                    # schwarz - oder auf Wunsch in Papierfarbe (weiss "ausmalen")
-            if a.get("fill") == "paper":
-                part[:] = paper_around(img, x0, y0, x1, y1)
-            else:
-                part[:] = 0
+            new = np.empty_like(part)
+            new[:] = paper_around(img, x0, y0, x1, y1) if a.get("fill") == "paper" else 0
         else:
-            part[:] = pixelate(part, pixel_block(shape, a["size"]), redact_seed(a))
+            new = pixelate(part, pixel_block(shape, a["size"]), redact_seed(a))
+        if ann_rot(a):                               # gedreht: nur die Flaeche der gedrehten Box (1 px Zugabe)
+            poly = np.array(rot_corners(None, a), np.float64) - (ox + x0, oy + y0)
+            mask = np.zeros(part.shape[:2], np.uint8)
+            cv2.fillPoly(mask, [np.round(poly * 16).astype(np.int32)], 1, cv2.LINE_8, 4)
+            sel = cv2.dilate(mask, np.ones((3, 3), np.uint8)).astype(bool)
+            part[sel] = new[sel]
+        else:
+            part[:] = new
     return img
 
 
+def _redact_box(a):
+    """Achsparalleles Rechteck um eine (evtl. gedrehte) Schwaerzung."""
+    if not ann_rot(a):
+        return min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
+    pts = rot_corners(None, a)
+    return min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts)
+
+
 def redaction_boxes(anns):
-    return [(min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"]))
-            for a in anns or [] if a.get("type") in REDACT_TYPES]
+    return [_redact_box(a) for a in anns or [] if a.get("type") in REDACT_TYPES]
 
 
 def redact_result(res, anns):
@@ -1121,8 +1135,64 @@ def measure_geometry(a):
     return [("line", pts)]
 
 
+def ann_rot(a):
+    """Drehung einer Anmerkung in Grad (im Uhrzeigersinn, 0 ... 360); nur Arten mit Box, sonst 0."""
+    if a.get("type") not in ROT_TYPES:
+        return 0.0
+    r = float(a.get("rot") or 0.0) % 360.0
+    return 0.0 if min(r, 360.0 - r) < 1e-6 else r
+
+
+def rot_pt(x, y, cx, cy, deg):
+    """Punkt (x, y) um (cx, cy) drehen, deg im Uhrzeigersinn (Bildkoordinaten, y nach unten)."""
+    if not deg:
+        return x, y
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    dx, dy = x - cx, y - cy
+    return cx + dx * c - dy * s, cy + dx * s + dy * c
+
+
+def rot_box(shape, a):
+    """Box einer drehbaren Anmerkung ohne Drehung (x0, y0, x1, y1): Rechteck der Art bzw. Umrandung von Text."""
+    if a["type"] in RECT_TYPES:
+        return min(a["x"], a["x2"]), min(a["y"], a["y2"]), max(a["x"], a["x2"]), max(a["y"], a["y2"])
+    return ann_frame(shape, a)
+
+
+def rot_center(shape, a):
+    """Drehpunkt: Mitte der Box."""
+    x0, y0, x1, y1 = rot_box(shape, a)
+    return (x0 + x1) / 2, (y0 + y1) / 2
+
+
+def rot_corners(shape, a, box=None):
+    """Ecken der (gedrehten) Box: oben links, oben rechts, unten rechts, unten links (Bildpixel)."""
+    x0, y0, x1, y1 = box or rot_box(shape, a)
+    cx, cy = rot_center(shape, a)
+    r = ann_rot(a)
+    return [rot_pt(px, py, cx, cy, r) for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+
+
+def rot_ellipse(shape, a, n=72):
+    """Gedrehte Ellipse als Punktfolge (Bildpixel)."""
+    x0, y0, x1, y1 = rot_box(shape, a)
+    cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+    r = ann_rot(a)
+    return [rot_pt(cx + rx * math.cos(2 * math.pi * i / n), cy + ry * math.sin(2 * math.pi * i / n), cx, cy, r)
+            for i in range(n)]
+
+
 def ann_bounds(shape, a):
-    """Umrandung (x0, y0, x1, y1) in Bildpixeln."""
+    """Umrandung (x0, y0, x1, y1) in Bildpixeln (bei gedrehten Markierungen das umgebende achsparallele Rechteck)."""
+    b = ann_frame(shape, a)
+    if not ann_rot(a):
+        return b
+    pts = rot_corners(shape, a, b)
+    return (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
+
+
+def ann_frame(shape, a):
+    """Umrandung (x0, y0, x1, y1) in Bildpixeln ohne Drehung."""
     th = ann_text_h(shape, a["size"])
     x, y, t = a["x"], a["y"], a["type"]
     if t == "measure":
@@ -1155,119 +1225,147 @@ def draw_annotations(img_bgr, anns, offset=(0, 0), ref_shape=None, mm=None):
     ref_shape = Form des Gesamtbilds (bestimmt die Groesse von Text und Linien), mm = mm je Pixel (Messwerte)."""
     if not anns:
         return img_bgr
-    import math
-    from PIL import Image, ImageDraw
+    from PIL import Image
     shape = _ref(img_bgr.shape, ref_shape)
     ox, oy = offset
     im = Image.fromarray(np.ascontiguousarray(img_bgr[:, :, ::-1]))
-    d = ImageDraw.Draw(im)
     for a in anns:
         if a["type"] in REDACT_TYPES:                 # zum Schluss, ueber allem (apply_redactions)
             continue
-        th = ann_text_h(shape, a["size"])
-        lw = ann_line_w(shape, a["size"])
-        col = a["color"]
-        x, y, x2, y2 = a["x"] - ox, a["y"] - oy, a["x2"] - ox, a["y2"] - oy
-        t = a["type"]
-        if t == "number":
-            r = 0.95 * th
-            d.ellipse([x - r, y - r, x + r, y + r], fill=col, outline="white", width=max(1, int(lw * 0.4)))
-            d.text((x, y), str(a["nr"]), font=dc._font(max(6, int(stamp_font_h(th, a["nr"])))),
-                   fill="white", anchor="mm")
-        elif t == "text":
-            d.multiline_text((x, y), "\n".join(ann_lines(a, th)), font=dc._font(max(6, int(th))), fill=col,
-                             stroke_width=max(1, int(th / 12)), stroke_fill="white", spacing=int(th * 0.25))
-        elif t == "approval":
-            b = ann_bounds(shape, dict(a, x=x, y=y))
-            d.rectangle([b[0], b[1], b[2], b[3]], fill="white", outline=col, width=max(2, int(lw * 1.3)))
-            d.multiline_text((x + 0.5 * th, y + 0.5 * th), a.get("text", ""), font=dc._font(max(6, int(th))),
-                             fill=col, spacing=int(th * 0.25))
-        elif t == "measure":
-            mlw, mth, alen = measure_style(shape, a["size"])
-            pp = [(p[0] - ox, p[1] - oy) for p in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
-            for gk, gd in measure_geometry(a):
-                if gk == "circle":
-                    cx, cy, cr = gd[0] - ox, gd[1] - oy, gd[2]
-                    d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], outline=col, width=max(1, int(mlw)))
-                    d.line([(cx - mlw * 4, cy), (cx + mlw * 4, cy)], fill=col, width=max(1, int(mlw)))
-                    d.line([(cx, cy - mlw * 4), (cx, cy + mlw * 4)], fill=col, width=max(1, int(mlw)))
-                else:
-                    pl = [(p[0] - ox, p[1] - oy) for p in gd]
-                    if gk == "poly":
-                        pl = pl + [pl[0]]
-                    d.line(pl, fill=col, width=max(1, int(round(mlw))), joint="curve")
-            if a.get("kind", "dist") == "dist" and len(pp) >= 2:     # Pfeilspitzen wie bei einer Bemassung
-                d.polygon(arrow_head(pp[0], pp[1], alen), fill=col)
-                d.polygon(arrow_head(pp[-1], pp[-2], alen), fill=col)
-            else:
-                for p in pp:
-                    r_ = max(2.0, 1.4 * mlw)
-                    d.ellipse([p[0] - r_, p[1] - r_, p[0] + r_, p[1] + r_], outline=col, width=max(1, int(mlw)))
-            if mm:                                    # Wert ueber der Masslinie, parallel zu ihr
-                txt = measure_text(a, mm)
-                cx, cy, ang, ax, ay = measure_label(a, shape)
-                cx, cy, ax, ay = cx - ox, cy - oy, ax - ox, ay - oy
-                if a.get("lo"):
-                    d.line([(cx, cy), (ax, ay)], fill=col, width=max(1, int(mlw)))
-                f = dc._font(max(6, int(mth)))
-                w_ = d.textlength(txt, font=f)
-                bw, bh = int(w_ + mth * 0.6) + 2, int(mth * 1.3) + 2
-                lab = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
-                ld = ImageDraw.Draw(lab)
-                ld.rounded_rectangle([0, 0, bw - 1, bh - 1], radius=mth * 0.25, fill="white", outline=col,
-                                     width=max(1, int(mlw)))
-                ld.text((bw / 2, bh / 2), txt, font=f, fill=col, anchor="mm")
-                if abs(ang) > 0.1:
-                    lab = lab.rotate(-ang, resample=Image.BICUBIC, expand=True)
-                im.paste(lab, (int(round(cx - lab.width / 2)), int(round(cy - lab.height / 2))), lab)
-                d = ImageDraw.Draw(im)
-        elif t == "rect":
-            d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
-                        fill=col if a.get("filled") else None)
-        elif t == "cloud":
-            pl = cloud_points(x, y, x2, y2, cloud_radius(shape, a["size"]))
-            if pl:
-                d.line(pl + [pl[0]], fill=col, width=int(lw), joint="curve")
-        elif t == "highlight":
-            layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
-            ImageDraw.Draw(layer).rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)],
-                                            fill=_rgba(col, 95))
-            im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
-            d = ImageDraw.Draw(im)
-        elif t == "line":
-            d.line([(x, y), (x2, y2)], fill=col, width=int(lw))
-        elif t == "ellipse":
-            d.ellipse([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
-                      fill=col if a.get("filled") else None)
-        elif t in PTS_TYPES and a.get("pts"):
-            pl = [(q[0] - ox, q[1] - oy) for q in a["pts"]]
-            if t == "polygon" and len(pl) > 2:
-                if a.get("filled"):
-                    d.polygon(pl, fill=col)
-                pl = pl + [pl[0]]
-            if len(pl) == 1:
-                pl = pl * 2
-            d.line(pl, fill=col, width=int(lw), joint="curve")
-            if t == "pen":                               # runde Enden wie beim Stift
-                r_ = lw / 2
-                for q in (pl[0], pl[-1]):
-                    d.ellipse([q[0] - r_, q[1] - r_, q[0] + r_, q[1] + r_], fill=col)
-        elif t == "image":
-            src = ann_image(a)
-            bw, bh = int(round(abs(x2 - x))), int(round(abs(y2 - y)))
-            if bw > 0 and bh > 0:
-                tile = cv2.resize(src, (bw, bh), interpolation=cv2.INTER_AREA if bw < src.shape[1] else cv2.INTER_LINEAR)
-                pil = Image.fromarray(cv2.cvtColor(tile, cv2.COLOR_BGRA2RGBA))
-                im.paste(pil, (int(round(min(x, x2))), int(round(min(y, y2)))), pil)
-                d = ImageDraw.Draw(im)
-        elif t == "arrow":
-            (ax, ay, bx, by), tris = arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
-            d.line([(ax, ay), (bx, by)], fill=col, width=int(lw))
-            for tri in tris:
-                d.polygon(tri, fill=col)
-    img_bgr[:] = np.asarray(im)[:, :, ::-1]
+        rot = ann_rot(a)
+        if not rot:
+            im = _draw_ann(im, a, shape, ox, oy, mm)
+            continue
+        # gedreht: ungedreht auf eine durchsichtige Ebene zeichnen, die Ebene um die Mitte der Box drehen
+        cx, cy = rot_center(shape, a)
+        b = ann_frame(shape, a)
+        R = math.hypot(b[2] - b[0], b[3] - b[1]) / 2 + ann_text_h(shape, a["size"]) + 4
+        S = int(math.ceil(2 * R))
+        lx, ly = int(round(cx - ox - R)), int(round(cy - oy - R))   # Ursprung der Ebene im Ausgabebild
+        layer = _draw_ann(Image.new("RGBA", (S, S), (0, 0, 0, 0)), a, shape, ox + lx, oy + ly, mm)
+        layer = layer.convert("RGBa").rotate(-rot, resample=Image.BICUBIC,
+                                             center=(cx - ox - lx, cy - oy - ly)).convert("RGBA")
+        if im.mode != "RGB":
+            im = im.convert("RGB")
+        im.paste(layer.convert("RGB"), (lx, ly), layer.getchannel("A"))
+    img_bgr[:] = np.asarray(im.convert("RGB"))[:, :, ::-1]
     apply_redactions(img_bgr, anns, offset, ref_shape)
     return img_bgr
+
+
+def _draw_ann(im, a, shape, ox, oy, mm):
+    """Eine Anmerkung (ohne Drehung) in das PIL-Bild im zeichnen (RGB oder RGBA); gibt das Bild zurueck."""
+    from PIL import Image, ImageDraw
+    d = ImageDraw.Draw(im)
+    th = ann_text_h(shape, a["size"])
+    lw = ann_line_w(shape, a["size"])
+    col = a["color"]
+    x, y, x2, y2 = a["x"] - ox, a["y"] - oy, a["x2"] - ox, a["y2"] - oy
+    t = a["type"]
+    if t == "number":
+        r = 0.95 * th
+        d.ellipse([x - r, y - r, x + r, y + r], fill=col, outline="white", width=max(1, int(lw * 0.4)))
+        d.text((x, y), str(a["nr"]), font=dc._font(max(6, int(stamp_font_h(th, a["nr"])))),
+               fill="white", anchor="mm")
+    elif t == "text":
+        d.multiline_text((x, y), "\n".join(ann_lines(a, th)), font=dc._font(max(6, int(th))), fill=col,
+                         stroke_width=max(1, int(th / 12)), stroke_fill="white", spacing=int(th * 0.25))
+    elif t == "approval":
+        b = ann_frame(shape, dict(a, x=x, y=y))
+        d.rectangle([b[0], b[1], b[2], b[3]], fill="white", outline=col, width=max(2, int(lw * 1.3)))
+        d.multiline_text((x + 0.5 * th, y + 0.5 * th), a.get("text", ""), font=dc._font(max(6, int(th))),
+                         fill=col, spacing=int(th * 0.25))
+    elif t == "measure":
+        mlw, mth, alen = measure_style(shape, a["size"])
+        pp = [(p[0] - ox, p[1] - oy) for p in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
+        for gk, gd in measure_geometry(a):
+            if gk == "circle":
+                cx, cy, cr = gd[0] - ox, gd[1] - oy, gd[2]
+                d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], outline=col, width=max(1, int(mlw)))
+                d.line([(cx - mlw * 4, cy), (cx + mlw * 4, cy)], fill=col, width=max(1, int(mlw)))
+                d.line([(cx, cy - mlw * 4), (cx, cy + mlw * 4)], fill=col, width=max(1, int(mlw)))
+            else:
+                pl = [(p[0] - ox, p[1] - oy) for p in gd]
+                if gk == "poly":
+                    pl = pl + [pl[0]]
+                d.line(pl, fill=col, width=max(1, int(round(mlw))), joint="curve")
+        if a.get("kind", "dist") == "dist" and len(pp) >= 2:     # Pfeilspitzen wie bei einer Bemassung
+            d.polygon(arrow_head(pp[0], pp[1], alen), fill=col)
+            d.polygon(arrow_head(pp[-1], pp[-2], alen), fill=col)
+        else:
+            for p in pp:
+                r_ = max(2.0, 1.4 * mlw)
+                d.ellipse([p[0] - r_, p[1] - r_, p[0] + r_, p[1] + r_], outline=col, width=max(1, int(mlw)))
+        if mm:                                    # Wert ueber der Masslinie, parallel zu ihr
+            txt = measure_text(a, mm)
+            cx, cy, ang, ax, ay = measure_label(a, shape)
+            cx, cy, ax, ay = cx - ox, cy - oy, ax - ox, ay - oy
+            if a.get("lo"):
+                d.line([(cx, cy), (ax, ay)], fill=col, width=max(1, int(mlw)))
+            f = dc._font(max(6, int(mth)))
+            w_ = d.textlength(txt, font=f)
+            bw, bh = int(w_ + mth * 0.6) + 2, int(mth * 1.3) + 2
+            lab = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
+            ld = ImageDraw.Draw(lab)
+            ld.rounded_rectangle([0, 0, bw - 1, bh - 1], radius=mth * 0.25, fill="white", outline=col,
+                                 width=max(1, int(mlw)))
+            ld.text((bw / 2, bh / 2), txt, font=f, fill=col, anchor="mm")
+            if abs(ang) > 0.1:
+                lab = lab.rotate(-ang, resample=Image.BICUBIC, expand=True)
+            im.paste(lab, (int(round(cx - lab.width / 2)), int(round(cy - lab.height / 2))), lab)
+            d = ImageDraw.Draw(im)
+    elif t == "rect":
+        d.rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
+                    fill=col if a.get("filled") else None)
+    elif t == "cloud":
+        pl = cloud_points(x, y, x2, y2, cloud_radius(shape, a["size"]))
+        if pl:
+            d.line(pl + [pl[0]], fill=col, width=int(lw), joint="curve")
+    elif t == "highlight":
+        layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        ImageDraw.Draw(layer).rectangle([min(x, x2), min(y, y2), max(x, x2), max(y, y2)],
+                                        fill=_rgba(col, 95))
+        mode = im.mode
+        im = Image.alpha_composite(im.convert("RGBA"), layer)
+        if mode != "RGBA":
+            im = im.convert("RGB")
+        d = ImageDraw.Draw(im)
+    elif t == "line":
+        d.line([(x, y), (x2, y2)], fill=col, width=int(lw))
+    elif t == "ellipse":
+        d.ellipse([min(x, x2), min(y, y2), max(x, x2), max(y, y2)], outline=col, width=int(lw),
+                  fill=col if a.get("filled") else None)
+    elif t in PTS_TYPES and a.get("pts"):
+        pl = [(q[0] - ox, q[1] - oy) for q in a["pts"]]
+        if t == "polygon" and len(pl) > 2:
+            if a.get("filled"):
+                d.polygon(pl, fill=col)
+            pl = pl + [pl[0]]
+        if len(pl) == 1:
+            pl = pl * 2
+        d.line(pl, fill=col, width=int(lw), joint="curve")
+        if t == "pen":                               # runde Enden wie beim Stift
+            r_ = lw / 2
+            for q in (pl[0], pl[-1]):
+                d.ellipse([q[0] - r_, q[1] - r_, q[0] + r_, q[1] + r_], fill=col)
+    elif t == "image":
+        src = ann_image(a)
+        bw, bh = int(round(abs(x2 - x))), int(round(abs(y2 - y)))
+        if bw > 0 and bh > 0:
+            tile = cv2.resize(src, (bw, bh), interpolation=cv2.INTER_AREA if bw < src.shape[1] else cv2.INTER_LINEAR)
+            pil = Image.fromarray(cv2.cvtColor(tile, cv2.COLOR_BGRA2RGBA))
+            pos = (int(round(min(x, x2))), int(round(min(y, y2))))
+            if im.mode == "RGBA" and pos[0] >= 0 and pos[1] >= 0:   # Ebene einer gedrehten Markierung
+                im.alpha_composite(pil, dest=pos)
+            else:
+                im.paste(pil, pos, pil)
+            d = ImageDraw.Draw(im)
+    elif t == "arrow":
+        (ax, ay, bx, by), tris = arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
+        d.line([(ax, ay), (bx, by)], fill=col, width=int(lw))
+        for tri in tris:
+            d.polygon(tri, fill=col)
+    return im
 
 
 def _rgba(col, alpha):
@@ -1701,6 +1799,67 @@ def _pdf_thread(doc, page, parent, a, oc=None):
         r.update()
 
 
+def rotated_image(bgra, w, h, rot):
+    """Eingefuegtes Bild auf w x h Pixel bringen und um rot Grad (Uhrzeigersinn) drehen; Rand durchsichtig.
+    Ergebnis passt genau in das umgebende Rechteck der gedrehten Box."""
+    if bgra.ndim == 2:
+        bgra = cv2.cvtColor(bgra, cv2.COLOR_GRAY2BGRA)
+    elif bgra.shape[2] == 3:
+        bgra = cv2.cvtColor(bgra, cv2.COLOR_BGR2BGRA)
+    bw, bh = max(1, int(round(w))), max(1, int(round(h)))
+    tile = cv2.resize(bgra, (bw, bh), interpolation=cv2.INTER_AREA if bw < bgra.shape[1] else cv2.INTER_LINEAR)
+    c, s = abs(math.cos(math.radians(rot))), abs(math.sin(math.radians(rot)))
+    nw, nh = max(1, int(math.ceil(bw * c + bh * s))), max(1, int(math.ceil(bw * s + bh * c)))
+    M = cv2.getRotationMatrix2D((bw / 2, bh / 2), -rot, 1.0)   # OpenCV: positiv = gegen den Uhrzeigersinn
+    M[0, 2] += nw / 2 - bw / 2
+    M[1, 2] += nh / 2 - bh / 2
+    return cv2.warpAffine(tile, M, (nw, nh), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,
+                          borderValue=(0, 0, 0, 0))
+
+
+def _pdf_freetext(page, rect, text, fontsize, col, framed=False, rotate=0):
+    """Freitext-Anmerkung; framed = mit Rahmen in Textfarbe (Stempel). PyMuPDF erlaubt border_color nur bei
+    Rich-Text, deshalb Rahmen ueber die Randbreite."""
+    an = page.add_freetext_annot(rect, text, fontsize=fontsize, text_color=col, rotate=rotate)
+    if framed:
+        an.set_border(width=1.5)
+    return an
+
+
+def _pdf_rotated_text(page, a, shape, k, col, oc):
+    """Gedrehter Text/Stempel im PDF. Vielfache von 90 Grad: Freitext-Anmerkung mit /Rotate. Sonst kennt PDF keine
+    gedrehten Freitexte: Schrift (und Stempelflaeche) als gedrehter Seiteninhalt auf der Ebene der Markierung, dazu
+    eine Polygon-Anmerkung um die Box (Rahmen beim Stempel, beim Text unsichtbar) mit dem Text als Kommentar."""
+    import pymupdf
+    t, rot = a["type"], ann_rot(a)
+    th = ann_text_h(shape, a["size"])
+    lw = max(0.5, ann_line_w(shape, a["size"]) * k)
+    near = round(rot / 90) * 90
+    if abs(rot - near) < 0.01:
+        b = ann_bounds(shape, a)
+        r90 = near % 180 == 90
+        rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + (th * 0.5 if r90 else th) * k,
+                            b[3] * k + (th if r90 else th * 0.5) * k)
+        return _pdf_freetext(page, rect, a.get("text", ""), max(4, th * k * 0.85), col, t == "approval",
+                             int(-near) % 360)
+    cx, cy = rot_center(shape, a)
+    morph = (pymupdf.Point(cx * k, cy * k), pymupdf.Matrix(-rot))   # Matrix(w): gegen den Uhrzeigersinn
+    poly = [pymupdf.Point(px * k, py * k) for px, py in rot_corners(shape, a)]
+    if t == "approval":
+        page.draw_polyline(poly + [poly[0]], color=col, fill=(1, 1, 1), width=lw * 1.3, closePath=True, oc=oc)
+    pad = 0.5 * th if t == "approval" else 0
+    for i, line in enumerate(ann_lines(a, th)):
+        if line.strip():
+            page.insert_text(pymupdf.Point((a["x"] + pad) * k, (a["y"] + pad + th * (0.85 + 1.25 * i)) * k), line,
+                             fontsize=max(4, th * k), fontname="helv", color=col, morph=morph, oc=oc)
+    an = page.add_polygon_annot(poly)
+    an.set_colors(stroke=col)
+    an.set_border(width=lw * 1.3 if t == "approval" else 0)
+    if t != "approval":
+        an.set_opacity(0)
+    return an
+
+
 def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", ""), layers=True):
     """Ergebnisbild als PDF; Aenderungen als Revisionswolken und eigene Markierungen als echte PDF-Anmerkungen
     (in Acrobat & Co. anklick-, kommentier- und loeschbar). layers=True: jede Art auf einer eigenen PDF-Ebene
@@ -1755,7 +1914,23 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
         th = ann_text_h(shape, a["size"]) * k
         lw = max(0.5, ann_line_w(shape, a["size"]) * k)
         x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
-        if t in ("rect", "cloud", "highlight"):
+        rot = ann_rot(a)
+        if rot and t in ("rect", "cloud", "highlight", "ellipse"):   # gedreht: als Polygon-Anmerkung
+            poly = rot_ellipse(shape, a) if t == "ellipse" else rot_corners(shape, a)
+            an = page.add_polygon_annot([pymupdf.Point(px * k, py * k) for px, py in poly])
+            if t == "highlight":
+                an.set_colors(stroke=col, fill=col)
+                an.set_opacity(0.35)
+                an.set_border(width=0)
+            else:
+                an.set_colors(stroke=col, fill=col if (t in ("rect", "ellipse") and a.get("filled")) else None)
+                an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
+            info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung"),
+                      "ellipse": tr("Ellipse")}[t], a.get("comment" if t == "ellipse" else "text", ""))
+        elif rot and t in ("text", "approval"):
+            an = _pdf_rotated_text(page, a, shape, k, rgb(a["color"]), ocg.get(ann_layer(a), 0))
+            info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
+        elif t in ("rect", "cloud", "highlight"):
             an = page.add_rect_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
             if t == "highlight":
                 an.set_colors(stroke=col, fill=col)
@@ -1792,16 +1967,20 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
             info(an, {"pen": tr("Freihand"), "polygon": tr("Polygon"), "polyline": tr("Linienzug")}[t],
                  a.get("comment", ""))
         elif t == "image":
-            ok, png = cv2.imencode(".png", ann_image(a))
+            src, box = ann_image(a), (min(x, x2), min(y, y2), max(x, x2), max(y, y2))
+            if rot:                                   # gedreht: Bildpunkte drehen, ins umgebende Rechteck setzen
+                src = rotated_image(src, abs(a["x2"] - a["x"]), abs(a["y2"] - a["y"]), rot)
+                b = ann_bounds(shape, a)
+                box = (b[0] * k, b[1] * k, b[2] * k, b[3] * k)
+            ok, png = cv2.imencode(".png", src)
             if ok:
-                page.insert_image(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)),
-                                  stream=png.tobytes(), keep_proportion=False, oc=ocg.get("bilder", 0))
+                page.insert_image(pymupdf.Rect(*box), stream=png.tobytes(), keep_proportion=False,
+                                  oc=ocg.get("bilder", 0))
             continue
         elif t in ("text", "approval"):
             b = ann_bounds(shape, a)
             rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + th, b[3] * k + th * 0.5)
-            an = page.add_freetext_annot(rect, a.get("text", ""), fontsize=max(4, th * 0.85), text_color=col,
-                                         border_color=col if t == "approval" else None)
+            an = _pdf_freetext(page, rect, a.get("text", ""), max(4, th * 0.85), col, t == "approval")
             info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
         elif t == "number":
             rr = 0.95 * th
@@ -1898,6 +2077,7 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
         fill = col if a.get("filled") and t in ("rect", "ellipse", "polygon") else "none"
         stroke = f'fill="{fill}" stroke="{col}" stroke-width="{lw:.1f}" stroke-linecap="round" stroke-linejoin="round"'
         g = groups[ann_layer(a)]
+        n0 = len(g)
         x0, y0, x1, y1 = min(x, x2), min(y, y2), max(x, x2), max(y, y2)
         if t == "rect":
             g.append(f'<rect x="{x0 - ox:.1f}" y="{y0 - oy:.1f}" width="{x1 - x0:.1f}" height="{y1 - y0:.1f}" {stroke}/>')
@@ -1925,7 +2105,7 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
             lines = ann_lines(a, th)
             pad = 0.5 * th if t == "approval" else 0
             if t == "approval":
-                b = ann_bounds(shape, a)
+                b = ann_frame(shape, a)
                 g.append(f'<rect x="{b[0] - ox:.1f}" y="{b[1] - oy:.1f}" width="{b[2] - b[0]:.1f}" '
                          f'height="{b[3] - b[1]:.1f}" fill="white" stroke="{col}" stroke-width="{lw * 1.3:.1f}"/>')
             spans = "".join(f'<tspan x="{x - ox + pad:.1f}" dy="{th * (1.0 if i == 0 else 1.25):.1f}">{escape(s)}</tspan>'
@@ -1961,6 +2141,10 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
                          f'transform="rotate({ang:.2f} {cx - ox:.1f} {cy - oy:.1f})">{escape(measure_text(a, mm))}</text>')
         elif t == "image":
             g.append(img_tag(ann_image(a), x0 - ox, y0 - oy, x1 - x0, y1 - y0))
+        rot = ann_rot(a)
+        if rot and len(g) > n0:                       # gedreht: Gruppe um die Mitte der Box drehen
+            cx, cy = rot_center(shape, a)
+            g[n0:] = [f'<g transform="rotate({rot:.2f} {cx - ox:.1f} {cy - oy:.1f})">'] + g[n0:] + ["</g>"]
     for key in ("markierungen", "masse", "bilder"):
         layer(key, groups[key])
     out.append("</svg>\n")
