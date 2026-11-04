@@ -2,11 +2,17 @@
  "unreleased": {
   "de": [
    "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac).",
-   "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche."
+   "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche.",
+   "Tabelle aus Auswahl erkennt verbundene Zellen (waagerecht, senkrecht, gemischt); Vorschau und Excel zeigen sie verbunden.",
+   "Markierungen: passende Größen-Mauszeiger an den Anfassern, Anfasser in den Seitenmitten (nur in eine Richtung skalieren) und Drehanfasser (Umschalt = 15°-Schritte) – auch im Bild-, PDF-, SVG- und XFDF-Export.",
+   "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab."
   ],
   "en": [
    "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
-   "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface."
+   "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface.",
+   "Table from selection recognises merged cells (horizontal, vertical, mixed); preview and Excel show them merged.",
+   "Markups: matching resize cursors on the handles, handles at the side midpoints (scale in one direction only) and a rotation handle (Shift = 15° steps) – also in image, PDF, SVG and XFDF export.",
+   "Fixed: stamps aborted the “PDF with annotations” export."
   ]
  },
  "releases": [
