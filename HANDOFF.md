@@ -17,6 +17,8 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
 - Windows/Linux: deaktivierte Menüeinträge waren nicht grau – `* { color }` im Stylesheet überschrieb die Palette.
   Jetzt `*:disabled` und `QMenu::item:disabled` in `ui_theme.make_qss`; Test `test_disabled_menu_items_greyed`.
   Am Mac zeichnet das System die Menüleiste (deshalb dort schon grau). 161 Tests grün, Mac-Bau OK.
+- GitHub-Lauf für 1.0 (41803038113) auf allen drei Systemen grün. Neuer Lauf mit dem Fix (alle, mit Tests):
+  41805528676 – Ergebnis prüfen, dann unter Windows die grauen Menüeinträge ansehen.
 
 ## Erledigt 2026-11-04 (Release 1.0)
 - Agenten in Worktrees, Ergebnisse zusammengeführt: `tableextract.py` + `ui_table.py` (Tabelle CSV/Excel, mehrere
