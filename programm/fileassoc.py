@@ -41,7 +41,7 @@ def launch_command():
     if os.name == "nt" and exe.lower().endswith("python.exe"):     # ohne schwarzes Konsolenfenster
         w = exe[:-len("python.exe")] + "pythonw.exe"
         exe = w if os.path.isfile(w) else exe
-    return exe, [os.path.join(os.path.dirname(os.path.abspath(__file__)), "drawing_viewer.py")]
+    return exe, [os.path.join(os.path.dirname(os.path.abspath(__file__)), "zgmax_start.py")]
 
 
 def supported():

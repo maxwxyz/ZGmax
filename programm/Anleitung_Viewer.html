@@ -408,11 +408,11 @@ Seiten“); <kbd>Enter</kbd>/<kbd>F3</kbd> springt dann auch auf die nächste Se
 <p>Bei PDF mit echtem Text wird dieser genutzt (sofort, exakt). Bei Scans und Bildern liest die <b>Texterkennung</b> den
 Text einmal ein (je nach Größe einige Sekunden bis eine Minute, mit Fortschritt). Groß-/Kleinschreibung spielt keine
 Rolle.</p>
-<p><b>Text im Hintergrund lesen</b> (<i>Ansicht → Einstellungen …</i>, standardmäßig an): Gleich nach dem Öffnen liest
-ein eigener Prozess mit niedriger Priorität den Text von Alt und Neu – erst waagerecht (für die Suche), dann senkrecht
+<p><b>Text im Hintergrund lesen</b> (<i>Ansicht → Einstellungen …</i>, standardmäßig an): Sobald das Programm nach dem
+Öffnen ein paar Sekunden ruht, liest ein eigener Prozess mit niedriger Priorität den Text von Alt und Neu – erst waagerecht (für die Suche), dann senkrecht
 (Maße), zuletzt zur Sicherheit schräg (±45°) und kopfüber. Leicht schräge Texte liest schon der erste Durchlauf; die
 schrägen Funde gelten nur dort, wo sonst nichts erkannt wurde. Eine Suche oder eine weitere Zeichnung kommt vor den
-langen Durchläufen dran. Er lädt die Seite dafür selbst aus der Datei, mit allen Ebenen – egal, welche PDF-Ebenen im Vergleich
+langen Durchläufen dran; während eine Zeichnung geladen oder verglichen wird, pausiert die Erkennung ganz. Er lädt die Seite dafür selbst aus der Datei, mit allen Ebenen – egal, welche PDF-Ebenen im Vergleich
 ausgeblendet sind. Unten rechts zeigt <i>Text: 60 %</i> den Fortschritt. Er nutzt höchstens die Hälfte der Rechenkerne und liest
 mehrere Kacheln gleichzeitig – Ansehen, Markieren und Vergleichen bleiben flüssig. Ist er fertig, sind Textsuche,
 <i>Geänderten Text finden</i> (liest dann gar nichts mehr selbst) und das durchsuchbare PDF ohne Wartezeit bereit; läuft er noch, warten sie auf ihn statt

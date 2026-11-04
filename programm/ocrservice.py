@@ -168,6 +168,65 @@ def submit(key, gray=None, vertical=False, src=None, prio=None):
     return fut
 
 
+_holders = []                    # Berechnungen, fuer die die Erkennung ruht (Laden, Vergleich)
+_frozen = [False]
+
+
+def pause(job=None):
+    """Erkennung anhalten, solange das Programm selbst rechnet (Laden, Vergleich): der Prozess wird eingefroren
+    (nichts geht verloren) und bekommt keine neuen Auftraege. Mit job (QThread) gilt das nur, solange er laeuft -
+    auch wenn resume() nie kommt (z. B. Fenster geschlossen)."""
+    with _lock:
+        _holders.append(job if job is not None else True)
+    _held()
+
+
+def resume(job=None):
+    with _lock:
+        for i, h in enumerate(_holders):
+            if h is (job if job is not None else True):
+                del _holders[i]
+                break
+    if not _held():
+        _dispatch()
+
+
+def _held():
+    """Ruht die Erkennung gerade? Beendete oder geloeschte Berechnungen zaehlen nicht mehr."""
+    def alive(h):
+        if h is True:
+            return True
+        try:
+            return h.isRunning() or not h.isFinished()
+        except RuntimeError:                     # Qt-Objekt schon geloescht
+            return False
+    with _lock:
+        _holders[:] = [h for h in _holders if alive(h)]
+        held = bool(_holders)
+    if held != _frozen[0]:
+        _frozen[0] = held
+        _freeze(held)
+    return held
+
+
+def _freeze(on):
+    pool = _pool
+    for p in list(getattr(pool, "_processes", {}).values()) if pool is not None else []:
+        try:
+            if os.name == "nt":
+                import ctypes
+                k, nt = ctypes.windll.kernel32, ctypes.windll.ntdll
+                h = k.OpenProcess(0x0800, False, p.pid)       # PROCESS_SUSPEND_RESUME
+                if h:
+                    (nt.NtSuspendProcess if on else nt.NtResumeProcess)(h)
+                    k.CloseHandle(h)
+            else:
+                import signal
+                os.kill(p.pid, signal.SIGSTOP if on else signal.SIGCONT)
+        except Exception:                                    # noqa: BLE001 - dann laeuft sie eben weiter
+            pass
+
+
 def _preempt(key, prio):
     """Ein dringenderer Auftrag (Suche, waagerechter Text einer weiteren Zeichnung) kommt, der Prozess liest aber
     gerade einen langen senkrechten: den abbrechen und neu einreihen (er laeuft danach weiter)."""
@@ -203,6 +262,8 @@ def _drop_pool():
 def _dispatch():
     """Naechsten Auftrag (hoechster Vorrang, dann aeltester) an den Prozess geben, wenn er frei ist."""
     global _running
+    if _held():
+        return
     with _lock:
         if _running is not None:
             return
@@ -282,6 +343,7 @@ def lines(key, gray=None, progress=None, cancel=None, src=None):
                 pass
             if cancel is not None and cancel():  # nur nicht mehr warten: der Auftrag laeuft im Hintergrund weiter
                 raise dc.Cancelled()
+            _dispatch()                          # z. B. nach einer Pause wieder anstossen
             _drain()
             if progress:
                 progress(_prog.get(key, 0.0))
@@ -318,6 +380,8 @@ def reset():
 
 def stop():
     """Laufende Erkennung sofort beenden (Prozess abbrechen)."""
+    _freeze(False)                                   # eingefrorene Prozesse lassen sich sonst nicht beenden
+    _frozen[0] = False
     pool = _pool
     procs = list(getattr(pool, "_processes", {}).values()) if pool is not None else []
     reset()

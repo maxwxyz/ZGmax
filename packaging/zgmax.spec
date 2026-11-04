@@ -30,7 +30,7 @@ excludes = ["tkinter", "matplotlib", "IPython", "pytest", "PyQt5", "PyQt6", "PyS
             "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.Qt3DCore", "PySide6.QtQuick",
             "PySide6.QtQml", "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization"]
 
-a = Analysis([os.path.join(SRC, "drawing_viewer.py")], pathex=[SRC], datas=datas, hiddenimports=hidden,
+a = Analysis([os.path.join(SRC, "zgmax_start.py")], pathex=[SRC], datas=datas, hiddenimports=hidden,
              excludes=excludes, noarchive=False)
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="ZGmax", console=False,

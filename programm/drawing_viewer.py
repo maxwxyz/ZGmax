@@ -908,8 +908,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.start_compute()
 
     # --- Jobs
-    def _run_job(self, fn, text, done, on_abort=None):
-        """Startet eine Hintergrundberechnung (nur eine gleichzeitig) mit Fortschritt und Abbrechen."""
+    def _run_job(self, fn, text, done, on_abort=None, pause_ocr=False):
+        """Startet eine Hintergrundberechnung (nur eine gleichzeitig) mit Fortschritt und Abbrechen.
+        pause_ocr: die Texterkennung im Hintergrund solange anhalten (Laden und Vergleichen haben alle Kerne)."""
         if self.running:
             self._log(tr("Bitte warten, es l\u00e4uft noch eine Berechnung."))
             return False
@@ -943,6 +944,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         job.failed.connect(bad)
         job.aborted.connect(aborted)
         job.finished.connect(lambda j=job: self.jobs.remove(j) if j in self.jobs else None)
+        if pause_ocr:
+            ocrservice.pause(job)                        # gilt nur, solange der Job laeuft
+            job.finished.connect(lambda j=job: ocrservice.resume(j))
         job.start()
         return True
 
@@ -990,7 +994,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.stack.setCurrentWidget(self.work)
         self.canvas.preview_text = tr("Zeichnung wird geladen …") if single else tr("Vergleich läuft …")
         self._run_job(lambda ctx: self._compute(snap, ctx),
-                      tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap))
+                      tr("Lade \u2026") if single else tr("Vergleiche \u2026"), lambda r: self._computed(r, snap),
+                      pause_ocr=True)
 
     @staticmethod
     def _gray_key(path, page, dpi, vf=(None, None), hidden=()):
@@ -1212,7 +1217,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._refresh_pdf_layers()
         QTimer.singleShot(0, self, self._auto_import_pdf_comments)
         QTimer.singleShot(400, self, self._scan_hint)
-        QTimer.singleShot(1500, self, self._bg_text_start)  # Text schon mal lesen (eigener Prozess, niedrige Prioritaet)
+        self._bg_idle_start()                          # Text schon mal lesen, sobald das Programm ruht
         if self.search_bar.isVisible():                # Treffer an die neue Lage anpassen
             QTimer.singleShot(0, self, self.run_search)
         self._fill_table()

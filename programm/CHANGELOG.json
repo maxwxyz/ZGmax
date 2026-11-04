@@ -1,10 +1,12 @@
 {
  "unreleased": {
   "de": [
-   "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac)."
+   "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac).",
+   "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche."
   ],
   "en": [
-   "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac)."
+   "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
+   "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface."
   ]
  },
  "releases": [

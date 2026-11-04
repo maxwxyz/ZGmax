@@ -341,3 +341,23 @@ def test_skew_text_fallback():
     assert hit and abs(hit[0][5][0] - 0.71) < 0.15 and abs(abs(hit[0][5][1]) - 0.71) < 0.15
     ink = 255 - img
     assert "SCHRAEG" in rep.ocr_box(ink, (300, 200, w, h))
+
+
+def test_ocr_service_pause():
+    """Waehrend Laden/Vergleich ruht die Erkennung: pause() haelt neue Auftraege zurueck, resume() gibt sie frei."""
+    import diffreport as rep
+    import ocrservice as osv
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    small = np.full((300, 900), 255, np.uint8)
+    cv2.putText(small, "PAUSE 7", (40, 160), cv2.FONT_HERSHEY_SIMPLEX, 2, 0, 4)
+    try:
+        osv.pause()
+        fut = osv.submit(("t-pause",), small)
+        time.sleep(0.5)
+        assert not fut.done() and osv._running is None             # angehalten: nichts gestartet
+        osv.resume()
+        assert any("PAUSE" in l[4] for l in fut.result(timeout=60))
+    finally:
+        osv._holders.clear()
+        osv.stop()

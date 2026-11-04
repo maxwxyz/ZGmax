@@ -36,7 +36,7 @@ def main():
             print("\nEs fehlen weiterhin Pakete. Bitte Programm neu starten.")
             return 1
         print("\nFertig.")
-    viewer = os.path.join(HERE, "drawing_viewer.py")
+    viewer = os.path.join(HERE, "zgmax_start.py")
     args = sys.argv[1:]
     if os.name == "nt":                                   # ohne Konsolenfenster starten
         exe = sys.executable

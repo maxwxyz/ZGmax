@@ -392,10 +392,11 @@ For multi-page files the <i>All pages</i> box counts the hits on all pages (“1
 <kbd>Enter</kbd>/<kbd>F3</kbd> then also jumps to the next page with a hit.</p>
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
-<p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): right after opening, a separate
-process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions),
+<p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): as soon as the program has been idle
+for a few seconds after opening, a separate process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions),
 finally, for safety, skewed (±45°) and upside down. Slightly skewed text is already read by the first pass; skewed finds
-only count where nothing else was recognised. A search or a further drawing goes before the long passes.
+only count where nothing else was recognised. A search or a further drawing goes before the long passes; while a drawing is being loaded or compared, recognition
+pauses completely.
 It loads the page itself from the file, with all layers – no matter which PDF layers are hidden in the comparison.
 <i>Text: 60 %</i> at the bottom right shows the progress. It uses at most half of the processor cores and reads several tiles at once –
 viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> (then reads nothing

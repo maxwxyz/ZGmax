@@ -259,6 +259,21 @@ class SearchMixin:
                     break
             self._bg_keys = set()
 
+    def _bg_idle_start(self, delay=3000):
+        """Hintergrund-Erkennung erst starten, wenn das Programm ein paar Sekunden ruht (keine Berechnung, kein
+        weiteres Laden) - Start, Laden und Vergleich haben Vorrang."""
+        if not hasattr(self, "_bg_idle"):
+            self._bg_idle = QTimer(self)
+            self._bg_idle.setSingleShot(True)
+            self._bg_idle.timeout.connect(self._bg_idle_check)
+        self._bg_idle.start(delay)
+
+    def _bg_idle_check(self):
+        if self.running or getattr(self, "pending", False):
+            self._bg_idle.start(1500)                    # noch beschaeftigt: spaeter noch einmal
+            return
+        self._bg_text_start()
+
     def _bg_text_start(self):
         """Nach dem Laden: Text der Zeichnung(en) im Hintergrund lesen, fuer Textsuche, „Geaenderten Text finden“ und
         durchsuchbares PDF. Laeuft im eigenen Prozess mit niedriger Prioritaet (ocrservice); bei PDF mit echtem Text
