@@ -2,6 +2,7 @@
 from i18n import tr
 import csv
 import datetime as _dt
+import math
 import os
 import re
 import sys
@@ -259,11 +260,12 @@ def _may_hold_text(part, line=80):
     return bool((ink & ~lines).any())
 
 
-def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None, scores=False):
+def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None, scores=False, edges=False):
     """Texterkennung der ganzen Zeichnung in Kacheln: Liste (x0, y0, x1, y1, text) je Textzeile in Bildpixeln.
     gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst.
     workers > 1: mehrere Kacheln gleichzeitig (nur mit eng ohne Sperre sinnvoll, siehe ocrservice); das Ergebnis ist
-    dasselbe wie nacheinander. scores: je Zeile zusaetzlich die Sicherheit (6. Wert)."""
+    dasselbe wie nacheinander. scores: je Zeile zusaetzlich die Sicherheit (6. Wert); edges: dazu die Schreibrichtung
+    der Fundstelle in Grad (7. Wert, 0 = waagerecht, im Bild gemessen)."""
     H, W = gray.shape
     eng = eng or _ocr_engine()
     tiles = [(x, y) for y in range(0, max(1, H - overlap), tile - overlap) for x in range(0, max(1, W - overlap), tile - overlap)]
@@ -279,7 +281,9 @@ def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=
         if progress:
             progress(done[0] / max(1, len(tiles)))
         return [(x + min(p[0] for p in box), y + min(p[1] for p in box), x + max(p[0] for p in box),
-                 y + max(p[1] for p in box), str(text).strip(), float(score)) for box, text, score in res or []]
+                 y + max(p[1] for p in box), str(text).strip(), float(score),
+                 math.degrees(math.atan2(box[1][1] - box[0][1], box[1][0] - box[0][0])))
+                for box, text, score in res or []]
     if progress:
         progress(0.0)
     if workers > 1 and len(tiles) > 1:
@@ -295,7 +299,53 @@ def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=
         if any(u[4] == b[4] and abs((u[0] + u[2]) / 2 - cx) < 15 and abs((u[1] + u[3]) / 2 - cy) < 15 for u in uniq[-50:]):
             continue
         uniq.append(b)
-    return uniq if scores else [b[:5] for b in uniq]
+    return uniq if edges else [b[:6] for b in uniq] if scores else [b[:5] for b in uniq]
+
+
+SKEW_ANGLES = (45, -45, 180)        # Drehungen fuer schraege und kopfstehende Texte (waagerecht/senkrecht: eigene)
+
+
+def _rotate_expand(gray, ang):
+    """Bild um ang Grad drehen (gegen den Uhrzeigersinn), Flaeche so gross, dass nichts abgeschnitten wird.
+    Rueckgabe (gedrehtes Bild, Matrix zurueck ins Original 2x3)."""
+    h, w = gray.shape[:2]
+    m = cv2.getRotationMatrix2D((w / 2, h / 2), ang, 1.0)
+    c, s_ = abs(m[0, 0]), abs(m[0, 1])
+    nw, nh = int(h * s_ + w * c + 0.5), int(h * c + w * s_ + 0.5)
+    m[0, 2] += nw / 2 - w / 2
+    m[1, 2] += nh / 2 - h / 2
+    img = cv2.warpAffine(gray, m, (nw, nh), flags=cv2.INTER_LINEAR, borderValue=255)
+    return np.ascontiguousarray(img), cv2.invertAffineTransform(m)
+
+
+def ocr_skew(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.6, angles=SKEW_ANGLES, tile=1600):
+    """Schraege (z. B. 45 Grad) und kopfstehende Texte der ganzen Zeichnung - zur Sicherheit, falls etwas weder
+    waagerecht noch senkrecht steht. Die Seite wird gedreht gelesen; behalten wird nur, was in der Originallage
+    deutlich schraeg (nicht nahe 0 oder 90 Grad) oder kopfueber steht - das lesen die anderen Durchlaeufe ohnehin.
+    Rueckgabe [(x0, y0, x1, y1, text, (cos, sin) der Schreibrichtung im Bild), ...]."""
+    found = []
+    for k, ang in enumerate(angles):
+        img, back = _rotate_expand(gray, ang)
+        sub_prog = (lambda f, k=k: progress((k + f) / len(angles))) if progress else None
+        for x0, y0, x1, y1, text, score, edge in ocr_lines(img, progress=sub_prog, cancel=cancel, workers=workers,
+                                                             eng=eng, scores=True, edges=True, tile=tile):
+            if not text or score < min_score:
+                continue
+            q = np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], float) @ back[:, :2].T + back[:, 2]
+            e = math.radians(edge)                     # Schreibrichtung zurueck in die Originallage
+            d = back[:, :2] @ np.array([math.cos(e), math.sin(e)])
+            d = d / max(1e-9, float(np.hypot(*d)))
+            a = math.degrees(math.atan2(d[1], d[0]))
+            if min(abs(a), abs(abs(a) - 90)) < 20:     # (fast) waagerecht oder senkrecht: lesen die anderen
+                continue
+            found.append((float(q[:, 0].min()), float(q[:, 1].min()), float(q[:, 0].max()), float(q[:, 1].max()),
+                          text, score * len(text), (float(d[0]), float(d[1]))))
+    found.sort(key=lambda t: -t[5])
+    keep = []
+    for f in found:
+        if not any(_overlap(f, k) > 0.3 for k in keep):
+            keep.append(f)
+    return [(k[0], k[1], k[2], k[3], k[4], k[6]) for k in sorted(keep, key=lambda t: (t[1], t[0]))]
 
 
 def ocr_vertical(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.55):
@@ -409,7 +459,10 @@ def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None, known_v=None):
     crop = 255 - ink[y0:y1, x0:x1]
     crop = cv2.copyMakeBorder(crop, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
     if known is None:
-        return " ".join(t[4] for t in ocr_any_orientation(crop)).strip()
+        found = ocr_any_orientation(crop)
+        if not found:                                  # nichts in den ueblichen Lagen: schraeg oder kopfueber?
+            return " ".join(t[4] for t in ocr_skew(crop)).strip()
+        return " ".join(t[4] for t in found).strip()
     import diffvector as dv
     dirs = {1: (0.0, -1.0), 3: (0.0, 1.0)}
     if known_v is None:
@@ -417,11 +470,14 @@ def ocr_box(ink, box, pad=15, max_area=6_000_000, known=None, known_v=None):
         for v in ocr_any_orientation(crop, rots=(1, 3)):   # senkrecht: nur echte senkrechte Fundstellen
             if v[3] - v[1] > v[2] - v[0]:
                 known_v.append((v[0] + x0 - 20, v[1] + y0 - 20, v[2] + x0 - 20, v[3] + y0 - 20, v[4], v[6]))
-    # die waagerechte Erkennung liest senkrechte Texte teils mit: dieselbe Stelle nur einmal (senkrecht gilt)
-    known = [l for l in known if not any(_overlap(l, v) > 0.5 for v in known_v)]
+    # schraege Funde (Richtung als (cos, sin)) nur, wo waagerecht nichts steht - die waagerechte Erkennung liest leicht
+    # schraege Texte meist schon selbst; senkrechte (Drehung 1/3) gelten dagegen vor den waagerechten
+    known_v = [v for v in known_v if v[5] in dirs or not any(_overlap(v, l) > 0.5 for l in known)]
+    known = [l for l in known if not any(v[5] in dirs and _overlap(l, v) > 0.5 for v in known_v)]
     parts = [((l[0] + l[2]) / 2, (l[1] + l[3]) / 2, l[3] - l[1], l[4], (1.0, 0.0)) for l in known]
     for v in known_v:
-        parts.append(((v[0] + v[2]) / 2, (v[1] + v[3]) / 2, v[2] - v[0], v[4], dirs[v[5]]))
+        d = dirs[v[5]] if v[5] in dirs else tuple(v[5])
+        parts.append(((v[0] + v[2]) / 2, (v[1] + v[3]) / 2, min(v[2] - v[0], v[3] - v[1]), v[4], d))
     return " ".join(dv.reading_order(parts)).strip()
 
 

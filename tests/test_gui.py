@@ -2095,12 +2095,13 @@ def test_background_text_recognition(app, win, pair):
     try:
         win._bg_text_start()
         keys = set(win._bg_keys)
-        assert len(keys) == 4                                     # Alt und Neu, je waagerecht und senkrecht
+        assert len(keys) == 6                                     # Alt und Neu, je waagerecht, senkrecht, schraeg
         assert win.lbl_bg_text.isVisibleTo(win) and "%" in win.lbl_bg_text.text()
         wait(app, lambda: (win._bg_text_poll() or True) and not win._bg_keys, timeout=180)
         assert not win.lbl_bg_text.isVisibleTo(win)
         for side in ("A", "B"):
             assert ocrservice.vkey(win._text_key(side)[0]) in win.cache
+            assert ocrservice.skey(win._text_key(side)[0]) in win.cache
         for side in ("A", "B"):
             lines = win.cache[win._text_key(side)[0]]
             assert any("MASS" in l[4].upper() for l in lines), lines

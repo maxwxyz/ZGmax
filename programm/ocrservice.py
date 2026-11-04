@@ -25,7 +25,7 @@ _pending = []                    # wartende Auftraege: [Vorrang, Nummer, Schlues
 _running = None                  # [Vorrang, Nummer, Schluessel, Argumente, Future, Future des Prozesses] oder None
 _preempted = set()               # Prozess-Futures, deren Ergebnis verworfen wird (Auftrag neu eingereiht)
 _seq = [0]
-FOREGROUND, HORIZONTAL, VERTICAL = 0, 1, 2       # Vorrang: jemand wartet > waagerecht (Suche) > senkrecht
+FOREGROUND, HORIZONTAL, VERTICAL, SKEW = 0, 1, 2, 3   # Vorrang: jemand wartet > waagerecht > senkrecht > schraeg
 
 
 def _child_init(queue):
@@ -68,6 +68,11 @@ def vkey(key):
     return ("vert",) + tuple(key)
 
 
+def skey(key):
+    """Schluessel fuer die schraegen und kopfstehenden Texte derselben Seite."""
+    return ("skew",) + tuple(key)
+
+
 _last = None                     # im Erkennungsprozess: (Quelle, Graubild) der zuletzt geladenen Seite
 
 
@@ -101,6 +106,8 @@ def _child_lines(key, gray, workers, vertical=False, src=None):
             _queue.put_nowait((key, f))
         except Exception:                        # noqa: BLE001
             pass
+    if vertical == "skew":
+        return rep.ocr_skew(gray, progress=progress, workers=workers, eng=eng)
     if vertical:
         return rep.ocr_vertical(gray, progress=progress, workers=workers, eng=eng)
     return rep.ocr_lines(gray, progress=progress, workers=workers, eng=eng)
@@ -129,13 +136,15 @@ def _drain():
 def submit(key, gray=None, vertical=False, src=None, prio=None):
     """Auftrag einreihen (oder den vorhandenen fuer key zurueckgeben). gray: dunkle Schrift auf hellem Papier, oder
     None und src (siehe source): dann laedt der Prozess die Seite selbst.
-    vertical: nur die senkrechten Texte lesen (ocr_vertical), sonst die waagerechten (ocr_lines).
+    vertical: True = nur die senkrechten Texte (ocr_vertical), "skew" = schraege/kopfstehende (ocr_skew), sonst die
+    waagerechten (ocr_lines).
     prio: FOREGROUND (jemand wartet), HORIZONTAL oder VERTICAL (Standard je nach vertical). Der Prozess liest einen
     Auftrag nach dem anderen, immer den mit dem hoechsten Vorrang zuerst - so wartet die zweite Zeichnung oder eine
     Suche nicht hinter den langen senkrechten Durchlaeufen der ersten."""
     import numpy as np
     from concurrent.futures import Future
-    prio = (VERTICAL if vertical else HORIZONTAL) if prio is None else prio
+    if prio is None:
+        prio = SKEW if vertical == "skew" else VERTICAL if vertical else HORIZONTAL
     with _lock:
         fut = _jobs.get(key)
         if fut is not None and not fut.cancelled() and (not fut.done() or fut.exception() is None):
@@ -145,8 +154,7 @@ def submit(key, gray=None, vertical=False, src=None, prio=None):
         else:
             fut = None
     if fut is not None:
-        if prio < VERTICAL:
-            _preempt(key)
+        _preempt(key, prio)
         return fut
     with _lock:
         g = None if gray is None else np.ascontiguousarray(gray)
@@ -155,19 +163,18 @@ def submit(key, gray=None, vertical=False, src=None, prio=None):
         _pending.append([prio, _seq[0], key, (key, g, TILE_WORKERS, vertical, src), fut])
         _jobs[key] = fut
         _prog[key] = 0.0
-    if prio < VERTICAL:                          # Suche oder waagerechter Text: senkrechten Durchlauf unterbrechen
-        _preempt(key)
+    _preempt(key, prio)                          # Dringenderes unterbricht einen langen Durchlauf
     _dispatch()
     return fut
 
 
-def _preempt(key):
+def _preempt(key, prio):
     """Ein dringenderer Auftrag (Suche, waagerechter Text einer weiteren Zeichnung) kommt, der Prozess liest aber
     gerade einen langen senkrechten: den abbrechen und neu einreihen (er laeuft danach weiter)."""
     global _running
     with _lock:
         run = _running
-        if run is None or run[2] == key or run[0] != VERTICAL:
+        if run is None or run[2] == key or run[0] < VERTICAL or prio >= run[0]:
             return
         _running = None
         _preempted.add(run[5])

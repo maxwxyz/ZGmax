@@ -5,14 +5,16 @@
    "Datei in ein offenes Fenster ziehen zeigt Ziele: in neuem Fenster, stattdessen öffnen, Alt (A) oder Neu (B) ersetzen bzw. damit vergleichen.",
    "Text kopieren: Text einer Auswahl in Lesereihenfolge in die Zwischenablage (PDF-Text, schon gelesener Text oder Texterkennung).",
    "Als Tabelle (CSV): Tabelle in einer Auswahl lesen (aus Linien oder Textlage), Zellen bearbeiten, kopieren (auch für Excel) oder speichern.",
-   "Texterkennung im Hintergrund: eine zweite Zeichnung und die Textsuche warten nicht mehr hinter den senkrechten Texten der ersten."
+   "Texterkennung im Hintergrund: eine zweite Zeichnung und die Textsuche warten nicht mehr hinter den senkrechten Texten der ersten.",
+   "Schräge und kopfstehende Texte: zusätzlicher Durchlauf im Hintergrund (±45°, 180°) und Rückfall, wenn in einer Änderung sonst nichts erkannt wird."
   ],
   "en": [
    "Arrow: arrowhead at the end (default), at the start, at both ends or none – also in PDF, SVG and XFDF.",
    "Dragging a file into an open window shows targets: new window, open instead, replace Old (A) or New (B) or compare with it.",
    "Copy text: the text of a selection in reading order to the clipboard (PDF text, text already read or text recognition).",
    "As table (CSV): read a table in a selection (from lines or text position), edit cells, copy (also for Excel) or save.",
-   "Background text recognition: a second drawing and the text search no longer wait behind the vertical text of the first."
+   "Background text recognition: a second drawing and the text search no longer wait behind the vertical text of the first.",
+   "Skewed and upside-down text: extra background pass (±45°, 180°) and fallback when nothing else is recognised in a change."
   ]
  },
  "releases": [

@@ -322,3 +322,22 @@ def test_ocr_service_priority():
         assert isinstance(fv.result(timeout=120), list)
     finally:
         osv.stop()
+
+
+def test_skew_text_fallback():
+    """Schraeger und kopfstehender Text: die gedrehten Durchlaeufe finden ihn mit Schreibrichtung; in einem Bereich,
+    in dem sonst nichts erkannt wird, liest ocr_box ihn ueber diesen Rueckfall."""
+    import diffreport as rep
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    img = np.full((900, 1200), 255, np.uint8)
+    t = np.full((90, 480), 255, np.uint8)
+    cv2.putText(t, "SCHRAEG 45", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.3, 0, 3)
+    r, _ = rep._rotate_expand(t, 45)
+    h, w = r.shape
+    np.minimum(img[200:200 + h, 300:300 + w], r, out=img[200:200 + h, 300:300 + w])
+    sk = rep.ocr_skew(img)
+    hit = [s for s in sk if "SCHRAEG" in s[4]]
+    assert hit and abs(hit[0][5][0] - 0.71) < 0.15 and abs(abs(hit[0][5][1]) - 0.71) < 0.15
+    ink = 255 - img
+    assert "SCHRAEG" in rep.ocr_box(ink, (300, 200, w, h))

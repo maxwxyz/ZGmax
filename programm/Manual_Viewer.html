@@ -391,7 +391,9 @@ In a comparison you choose whether to search in <i>New</i> or <i>Old</i>; the hi
 <p>For PDFs with real text, that text is used (instant, exact). For scans and images, <b>text recognition</b> reads the
 text once (a few seconds up to a minute depending on size, with progress). Upper/lower case does not matter.</p>
 <p><b>Read text in the background</b> (<i>View → Settings …</i>, on by default): right after opening, a separate
-process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions).
+process with low priority reads the text of Old and New – first horizontal (for the search), then vertical (dimensions),
+finally, for safety, skewed (±45°) and upside down. Slightly skewed text is already read by the first pass; skewed finds
+only count where nothing else was recognised. A search or a further drawing goes before the long passes.
 It loads the page itself from the file, with all layers – no matter which PDF layers are hidden in the comparison.
 <i>Text: 60 %</i> at the bottom right shows the progress. It uses at most half of the processor cores and reads several tiles at once –
 viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> (then reads nothing

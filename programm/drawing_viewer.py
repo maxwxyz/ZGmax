@@ -311,6 +311,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         got, vgot = [], []
         for side, k in zip(("A", "B"), keys):
             lines, vl = self.cache.get(k), self.cache.get(ocrservice.vkey(k))
+            if vl is not None:                           # schraege Texte dazu, falls schon gelesen (nicht darauf warten)
+                vl = list(vl) + list(self.cache.get(ocrservice.skey(k)) or [])
             got.append(None if lines is None else [(*self._to_view(side, ln[:4]), ln[4]) for ln in lines])
             vgot.append(None if vl is None else [(*self._to_view(side, ln[:4]), ln[4], ln[5]) for ln in vl])
         if not vertical:

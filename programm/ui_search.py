@@ -128,7 +128,9 @@ class SearchMixin:
             self.lbl_search.setText(tr("Lese den Text der Zeichnung (einmalig) …"))
             self._run_job(work, tr("Lese Text …"), done)
             return
-        raw = rep.find_text(lines, q)
+        sk = self.cache.get(ocrservice.skey(key)) or []   # schraege Texte, wo waagerecht nichts gefunden wurde
+        extra = [l[:5] for l in sk if not any(rep._overlap(l, h) > 0.5 for h in lines)]
+        raw = rep.find_text(list(lines) + extra, q)
         hits = [self._to_view(side, h) for h in raw]
         h0, w0 = self.canvas.shape
         hits = [h for h in hits if h[2] > 0 and h[3] > 0 and h[0] < w0 and h[1] < h0]
@@ -173,7 +175,7 @@ class SearchMixin:
             key, path, page = self._text_key(side)
             vk = ocrservice.vkey(key)
             have = lambda k: k in self.cache or ocrservice.busy(k)      # noqa: E731
-            if have(key) and have(vk):
+            if have(key) and have(vk) and have(ocrservice.skey(key)):
                 continue
             if key not in self.cache and path.lower().endswith(".pdf") and dv.available():
                 try:
@@ -184,7 +186,8 @@ class SearchMixin:
                     self.cache[key] = found              # finden“ direkt aus dem PDF
                     continue
             src = ocrservice.source(path, page, self.dpi_value())   # Prozess laedt die Seite selbst (alle Ebenen)
-            for k, vert in ((key, False), (vk, True)):   # erst waagerecht (Suche), dann senkrecht (Masse)
+            sk = ocrservice.skey(key)                    # zuletzt schraeg/kopfueber (zur Sicherheit)
+            for k, vert in ((key, False), (vk, True), (sk, "skew")):   # erst waagerecht (Suche), dann senkrecht
                 if not have(k):
                     ocrservice.submit(k, vertical=vert, src=src)
                     self._bg_keys.add(k)
@@ -214,7 +217,7 @@ class SearchMixin:
         if not keys:
             lbl.hide()
             return
-        weight = lambda k: 2.0 if k[0] == "vert" else 1.0       # noqa: E731 - senkrecht = zwei Drehungen
+        weight = lambda k: {"vert": 2.0, "skew": 3.0}.get(k[0], 1.0)   # noqa: E731 - Anzahl der Drehungen
         allk = self._bg_all
         done = sum(weight(k) * (ocrservice.progress(k) or 0.0 if k in self._bg_keys else 1.0) for k in allk)
         lbl.setText(tr("Text: {} %").format(int(100 * done / max(1.0, sum(weight(k) for k in allk)))))
