@@ -13,14 +13,14 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
   ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
 
-## OFFEN – als Nächstes
-1. Agent „große Zeichen-/Berichtsfunktionen aufteilen“ (`worktree-agent-a69f5d77c865bc059`, nach Limit fortgesetzt):
-   Ergebnis prüfen und zusammenführen (ui_icons, ui_canvas_paint, ui_canvas, diffreport – in diffreport stehen die
-   Speicherzeilen jetzt als `safe_write(...)`), volle Tests.
-2. Danach: Mac-Bau + Selbsttest, Push, GitHub-Bau „Apps bauen“ (alle, mit Tests), Worktree/Branch löschen.
-   Version bleibt 1.1 (Einträge unter „unreleased“).
-- Schon erledigt und gepusht (48527f3): Speichern absichern (`programm/safewrite.py`), Leisten-Aufbau geteilt,
-  38 Befehls-Erklärungen, 99 unbenutzte Übersetzungen entfernt, Menüreferenz neu. 205 Tests grün.
+## Stand 2026-11-18 abends
+- Alle sieben Review-Befunde erledigt und zusammengeführt (drei Agenten-Branches, gelöscht): Speichern absichern
+  (`programm/safewrite.py`), Leisten-Aufbau und große Zeichen-/Berichtsfunktionen in Teilfunktionen, 38
+  Befehls-Erklärungen, 99 unbenutzte Übersetzungen entfernt. 205 Tests grün, Mac-Bau + Selbsttest OK.
+- GitHub-Bau „Apps bauen“ (alle, mit Tests) für diesen Stand gestartet – Ergebnis prüfen. Version bleibt 1.1
+  (Einträge unter „unreleased“; nächstes Release wäre 1.2).
+- Offen für den Nutzer: Windows-Test von Hand (Installer-Dialog, Übergabe an laufendes Programm, Drag & Drop, graue
+  Menüs, gesperrte Zieldatei beim Speichern), echte Testzeichnungen, Commit-Zeile (Fable 5.2 vs. CLAUDE.md Opus 5.5).
 
 ## Erledigt 2026-11-18 (nach 1.1, unter „unreleased“)
 - Texterkennung überall im eigenen Prozess: `rep._in_service` um `ocr_image`, `ocr_lines`, `ocr_any_orientation`,
