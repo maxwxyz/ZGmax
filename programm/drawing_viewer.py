@@ -413,6 +413,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self.manual_tf = None
         if hasattr(self, "act_align_reset"):
             self.act_align_reset.setEnabled(False)
+        self._trim_cache()
         self._vec_inspect(which, path)
         if which == "A":
             self._detect_dpi(path)
@@ -423,6 +424,15 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._big_sheet_hint(which, path)
         if compute:
             self.start_compute()
+
+    def _trim_cache(self):
+        """Bilder frueher geoeffneter Dateien freigeben (je Datei Grau- und Farbfassung, bei A0 mehrere 100 MB):
+        nach dem Wechsel von A oder B nur behalten, was noch offen ist. Gelesener Text bleibt (klein)."""
+        keep = {p for p in (self.path_a, self.path_b) if p}
+        for k in [k for k in self.cache if isinstance(k, str) and k[:3] in ("sh_", "sk_", "gk_") and k[3:] not in keep]:
+            del self.cache[k]
+        for k in [k for k in self.cache if isinstance(k, str) and k[:2] in ("g_", "c_") and k[2:] not in keep]:
+            del self.cache[k]
 
     def _big_sheet_hint(self, which, path):
         """Sehr grosses Blatt (z. B. A0 mit 400-600 dpi): Hinweis, bei PDF/SVG/DXF mit Knopf fuer geringere Aufloesung."""
@@ -946,6 +956,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         job.failed.connect(bad)
         job.aborted.connect(aborted)
         job.finished.connect(lambda j=job: self.jobs.remove(j) if j in self.jobs else None)
+        job.finished.connect(job.release)            # sonst bleibt jeder Job samt seinen Daten bis zum Fensterende
         if pause_ocr:
             token = ("job", id(job), time.time())        # Marke statt Qt-Objekt (wird auch in fremden Threads gelesen)
             ocrservice.pause(token)

@@ -14,6 +14,7 @@ T0 = time.time()                              # Programmbeginn (so frueh wie moe
 MARKS = []                                    # [(Name, Sekunden seit Start)]
 SERVER = "zgmax-" + (os.environ.get("USERNAME") or os.environ.get("USER") or "user")
 QT_IMAGES = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff")
+PREVIEW_MAX_PX = 150_000_000                  # groessere Bilder: nur der Name (das Lesen dauerte laenger als der Start)
 
 
 def mark(name):
@@ -142,7 +143,7 @@ def preview(path, size=(1440, 900)):
             r = QImageReader(path)
             r.setAutoTransform(True)
             full = r.size()
-            if full.isValid() and full.width() > 0:
+            if full.isValid() and 0 < full.width() * full.height() <= PREVIEW_MAX_PX:
                 box = QSize(size[0] - 40, size[1] - 60)
                 r.setScaledSize(full.scaled(box, Qt.AspectRatioMode.KeepAspectRatio))   # klein lesen: schnell
                 img = r.read()

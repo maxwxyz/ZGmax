@@ -77,6 +77,11 @@ class Job(QThread):
     def cancel(self):
         self.cancelled = True
 
+    def release(self):
+        """Nach dem Ende: Arbeit und Daten loslassen und das Objekt spaeter loeschen (im Hauptthread aufrufen)."""
+        self.fn = None
+        self.deleteLater()
+
     def run(self):
         try:
             self.done.emit(self.fn(self.ctx))

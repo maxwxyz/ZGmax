@@ -2400,3 +2400,21 @@ def test_quickstart_preview_and_handover(app, tmp_path, monkeypatch):
     # ohne laufendes Programm: nicht uebergeben
     monkeypatch.setattr(qs, "SERVER", name + "-keins")
     assert qs.hand_over([str(p)], timeout=100) is False
+
+
+def test_cache_released_and_jobs_deleted(app, win, pair, tmp_path):
+    """Nach dem Wechsel einer Datei bleiben die Bilder der alten nicht im Speicher; beendete Berechnungen werden
+    geloescht statt bis zum Fensterende gesammelt."""
+    import shutil
+    from ui_widgets import Job
+    c = tmp_path / "rev_c.png"
+    shutil.copy(pair[1], c)
+    compare(app, win, *pair)
+    assert "g_" + pair[1] in win.cache
+    win._set_file("B", str(c))
+    wait(app, lambda: win.path_b == str(c) and not win.running)
+    assert "g_" + pair[1] not in win.cache and "gk_" + pair[1] not in win.cache
+    assert "g_" + pair[0] in win.cache and "g_" + str(c) in win.cache
+    for _ in range(5):
+        app.processEvents()
+    assert len(win.findChildren(Job)) <= 1                        # fruehere Jobs sind weg
