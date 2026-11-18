@@ -704,37 +704,37 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <h3>File</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>New window</td><td>Ctrl+N</td><td>Another window for a different comparison</td></tr>
-<tr><td>Start page</td><td></td><td></td></tr>
-<tr><td>Open old drawing (A) …</td><td>Ctrl+Shift+A</td><td></td></tr>
-<tr><td>Open new drawing (B) …</td><td>Ctrl+Shift+B</td><td></td></tr>
-<tr><td>Open single drawing …</td><td>Ctrl+Shift+O</td><td></td></tr>
+<tr><td>Start page</td><td></td><td>Overview for opening drawings and projects, with the recently used files</td></tr>
+<tr><td>Open old drawing (A) …</td><td>Ctrl+Shift+A</td><td>Choose the old version that the new one is compared with (PDF, image, SVG, DXF)</td></tr>
+<tr><td>Open new drawing (B) …</td><td>Ctrl+Shift+B</td><td>Choose the new version; once both drawings are open, they are compared</td></tr>
+<tr><td>Open single drawing …</td><td>Ctrl+Shift+O</td><td>View, measure and mark up one drawing without comparing</td></tr>
 <tr><td>Open image from clipboard</td><td></td><td>E.g. open a screenshot as a drawing</td></tr>
-<tr><td>Open project …</td><td>Ctrl+O</td><td></td></tr>
-<tr><td>Save project</td><td>Ctrl+S</td><td></td></tr>
-<tr><td>Save project as …</td><td>Ctrl+Shift+S</td><td></td></tr>
+<tr><td>Open project …</td><td>Ctrl+O</td><td>Load a saved state (.zgmax) with its settings, change list and markups</td></tr>
+<tr><td>Save project</td><td>Ctrl+S</td><td>Save the current state with settings, change list and markups as a .zgmax file</td></tr>
+<tr><td>Save project as …</td><td>Ctrl+Shift+S</td><td>Save the current state under a new name or in another location</td></tr>
 <tr><td>Embed drawings in the project</td><td></td><td>On (default): the .zgmax file also contains the drawings and can be sent and opened elsewhere. Off: only references to the files (smaller).</td></tr>
 <tr><td>Close</td><td>Ctrl+W</td><td>Close the comparison or project and return to the start page (the program stays open)</td></tr>
-<tr><td>Print to scale …</td><td>Ctrl+P</td><td></td></tr>
-<tr><td>Quit</td><td>Ctrl+Q</td><td></td></tr>
+<tr><td>Print to scale …</td><td>Ctrl+P</td><td>Print at original size, fitted or in percent; a sheet that is too large is spread over several pages</td></tr>
+<tr><td>Quit</td><td>Ctrl+Q</td><td>Close all windows and exit the program</td></tr>
 </table>
 <h3>File → Export</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Save as image (as displayed) …</td><td>Ctrl+E</td><td>Image with markups as displayed, as PNG, JPG, TIFF or PDF</td></tr>
 <tr><td>Copy to clipboard (as shown)</td><td>Ctrl+Shift+E</td><td>Put the visible area exactly as shown on screen into the clipboard as an image (without legend) – e.g. to paste into an e-mail or presentation</td></tr>
-<tr><td>PDF with annotations (Acrobat) …</td><td></td><td></td></tr>
+<tr><td>PDF with annotations (Acrobat) …</td><td></td><td>The displayed view as a PDF; markups and changes become real comments that can be read and answered in Acrobat and similar programs</td></tr>
 <tr><td>PDF with annotations – all pages …</td><td></td><td>Every page with its markups (in a comparison: result with changes) in one PDF</td></tr>
 <tr><td>As SVG with layers …</td><td></td><td>Drawing, changes and markups as separate layers; markups as vectors (editable in Inkscape, Illustrator &amp; co.)</td></tr>
 <tr><td>Searchable PDF (text recognition) …</td><td></td><td>Drawing as PDF with invisible text: searchable and copyable in any PDF program (scans via text recognition)</td></tr>
 <tr><td>Vectorize (SVG, PDF, DXF) …</td><td></td><td>Convert a pixel drawing into lines, e.g. for CAD (DXF) or lossless enlarging</td></tr>
 <tr><td>Save edited drawing …</td><td></td><td>Save the drawing with moved regions as an image or PDF (without markups)</td></tr>
-<tr><td>PDF change report …</td><td></td><td></td></tr>
+<tr><td>PDF change report …</td><td></td><td>Report for passing on: overview of the comparison and the numbered changes of this page</td></tr>
 <tr><td>PDF change report – all pages …</td><td></td><td>Change report over all pages in one PDF</td></tr>
-<tr><td>List of changes (CSV) …</td><td></td><td></td></tr>
+<tr><td>List of changes (CSV) …</td><td></td><td>Table of all changes with number, type, position, text, status and comment, e.g. for Excel</td></tr>
 </table>
 <h3>File → Markups</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
-<tr><td>Save markups …</td><td></td><td></td></tr>
-<tr><td>Load markups …</td><td></td><td></td></tr>
+<tr><td>Save markups …</td><td></td><td>Write the markups to a file of their own, e.g. to pass them on or reuse them</td></tr>
+<tr><td>Load markups …</td><td></td><td>Take markups from a previously saved file; the existing ones are replaced</td></tr>
 <tr><td>Import comments (XFDF, PDF) …</td><td></td><td>Import comments from Acrobat &amp; co.: XFDF file or commented PDF</td></tr>
 <tr><td>Save markups as XFDF …</td><td></td><td>For Acrobat &amp; co.: Comments → Import</td></tr>
 <tr><td>Measurements and counts as CSV (Excel) …</td><td></td><td>All measurements with value, unit and page, plus the number of each markup type</td></tr>
@@ -742,13 +742,13 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <h3>Edit</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Undo</td><td>Ctrl+Z</td><td>Undo (markups, measurements, zones)</td></tr>
-<tr><td>Redo</td><td>Ctrl+Shift+Z</td><td></td></tr>
+<tr><td>Redo</td><td>Ctrl+Shift+Z</td><td>Carry out the most recently undone step again</td></tr>
 <tr><td>Find text …</td><td>Ctrl+F</td><td>Find text in the drawing (PDF text, text recognition for images)</td></tr>
 <tr><td>Find next</td><td>F3</td><td>Next match (F3, Enter)</td></tr>
 <tr><td>Find previous</td><td>Shift+F3</td><td>Previous match (Shift+F3)</td></tr>
-<tr><td>Read title block</td><td></td><td></td></tr>
+<tr><td>Read title block</td><td></td><td>Read drawing number, revision and scale from the title block at the bottom right (PDF text or text recognition)</td></tr>
 <tr><td>Delete</td><td>Del</td><td>Delete the selected markup, change, zone or area selection (Del)</td></tr>
-<tr><td>Delete all markups …</td><td></td><td></td></tr>
+<tr><td>Delete all markups …</td><td></td><td>Remove every markup of the drawing after confirmation</td></tr>
 <tr><td>Cut</td><td>Ctrl+X</td><td>Cut the region selection (markups; when viewing also the drawing)</td></tr>
 <tr><td>Copy</td><td>Ctrl+C</td><td>Copy the region selection, the selected markups or else the whole view (as displayed)</td></tr>
 <tr><td>Copy lines/geometry only …</td><td>Ctrl+Shift+C</td><td>Drag an area and copy it: everything, lines only or geometry only (without dimensions, text and thin lines)</td></tr>
@@ -760,15 +760,15 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Move region</td><td></td><td>Cut part of the drawing and place it elsewhere (when viewing a single drawing)</td></tr>
 <tr><td>Crop to region (permanently)</td><td></td><td>Crop the drawing itself to the part selected with “Region”</td></tr>
-<tr><td>Rotate 90° right</td><td></td><td></td></tr>
-<tr><td>Rotate 90° left</td><td></td><td></td></tr>
-<tr><td>Rotate 180°</td><td></td><td></td></tr>
+<tr><td>Rotate 90° right</td><td></td><td>Rotate the drawing itself clockwise, not just the display</td></tr>
+<tr><td>Rotate 90° left</td><td></td><td>Rotate the drawing itself counterclockwise, not just the display</td></tr>
+<tr><td>Rotate 180°</td><td></td><td>Turn the drawing itself upside down, not just the display</td></tr>
 <tr><td>Straighten …</td><td></td><td>Rotate a skewed scan straight: detect the angle automatically or enter it by hand</td></tr>
 <tr><td>Straighten along a line</td><td></td><td>Trace an edge that should be horizontal or vertical</td></tr>
 <tr><td>Correct perspective (4 corners) …</td><td></td><td>Make the photo of a sheet rectangular: corners are detected and can be moved; choose a paper size so that the mm are correct</td></tr>
 <tr><td>Even out background …</td><td></td><td>Remove shadows, creases and yellowed paper from a scan; paper white or in a custom color</td></tr>
-<tr><td>Brightness and contrast …</td><td></td><td></td></tr>
-<tr><td>Image size and resolution …</td><td></td><td></td></tr>
+<tr><td>Brightness and contrast …</td><td></td><td>Brighten, darken or add contrast to pale or overly dark scans</td></tr>
+<tr><td>Image size and resolution …</td><td></td><td>Resample the drawing to another pixel size or set its resolution (dpi)</td></tr>
 <tr><td>Save edited drawing …</td><td></td><td>Save the drawing with moved regions as an image or PDF (without markups)</td></tr>
 </table>
 <h3>View</h3>
@@ -783,7 +783,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>New with changes</td><td>7</td><td>New drawing, new and changed parts in blue (key 7)</td></tr>
 <tr><td>Old with changes</td><td>8</td><td>Old drawing, removed and changed parts in red (key 8)</td></tr>
 <tr><td>Whole drawing</td><td>F</td><td>Show the whole drawing (F or double-click)</td></tr>
-<tr><td>Actual size (100 %)</td><td>Ctrl+0</td><td></td></tr>
+<tr><td>Actual size (100 %)</td><td>Ctrl+0</td><td>One pixel of the drawing equals one pixel on the screen</td></tr>
 <tr><td>Zoom in</td><td>Ctrl++</td><td>Zoom in (mouse wheel, +)</td></tr>
 <tr><td>Zoom out</td><td>Ctrl+-</td><td>Zoom out (mouse wheel, −)</td></tr>
 <tr><td>Zoom box</td><td></td><td>Drag a box and zoom in (also possible any time with the right mouse button)</td></tr>
@@ -828,7 +828,7 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Compare</td><td>Ctrl+Return</td><td>Compute the comparison (again)</td></tr>
 <tr><td>Start review</td><td>Ctrl+Shift+R</td><td>Find the changes (if needed), show the first open one and review step by step: N = next, G = checked, X = rejected, C = comment</td></tr>
-<tr><td>Find changes</td><td>Ctrl+Shift+F</td><td></td></tr>
+<tr><td>Find changes</td><td>Ctrl+Shift+F</td><td>Group differences into numbered entries and show them in the list</td></tr>
 <tr><td>Renumber changes</td><td></td><td>Number the list consecutively from 1 (otherwise entries keep their number after deleting)</td></tr>
 <tr><td>Next change</td><td>N</td><td>To the next open change (N)</td></tr>
 <tr><td>Previous change</td><td>P</td><td>To the previous change (P)</td></tr>
@@ -841,32 +841,32 @@ a dot (●) on the button shows that a new comparison is due. On: every change c
 <tr><td>Find changed text</td><td></td><td>Reads the text of every change (old → new) and compares the dimension values (e.g. 12.5 → 12.8) – from the PDF if it contains real text, otherwise by text recognition in any orientation. Text already read (also by the text search) is reused. Afterwards the list shows only changes with changed text; “Show: changed dimensions only” narrows it further, “Show: Changes” brings everything back.</td></tr>
 <tr><td>Dimension changes as table …</td><td></td><td>Changed dimensions with old → new, tolerance old/new, position and review status as PDF or CSV – e.g. for suppliers and production</td></tr>
 <tr><td>Check index and revision table</td><td></td><td>Reads the index (revision) in the title block and the revision table of old and new: warns if the drawing changed but the index or revision table was not updated – or if the newest entry does not match the index.</td></tr>
-<tr><td>Compare all pages</td><td></td><td></td></tr>
+<tr><td>Compare all pages</td><td></td><td>Compares every page and shows in the list how many changes it has</td></tr>
 <tr><td>Compare folders (batch) …</td><td></td><td>Compare all matching drawings of two folders, e.g. your own release against a supplier data set: overview of which sheets changed or are missing</td></tr>
-<tr><td>Compare revisions (A → B → C) …</td><td></td><td></td></tr>
+<tr><td>Compare revisions (A → B → C) …</td><td></td><td>Compare several revisions in sequence and see how much changed in each step</td></tr>
 </table>
 <h3>Compare → Comparison settings</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
 <tr><td>Auto-adjust</td><td></td><td>Determine tolerance, threshold and search ranges from this pair of drawings</td></tr>
 <tr><td>Align manually (3 points)</td><td></td><td>If the automatic alignment is off: click three matching points in Old and New</td></tr>
-<tr><td>Reset manual alignment</td><td></td><td></td></tr>
-<tr><td>Choose region</td><td></td><td></td></tr>
-<tr><td>Compare whole sheet</td><td></td><td></td></tr>
-<tr><td>Match areas (A ↔ B) …</td><td></td><td></td></tr>
-<tr><td>Draw zone (do not compare)</td><td></td><td></td></tr>
+<tr><td>Reset manual alignment</td><td></td><td>Discard the clicked points and align automatically again</td></tr>
+<tr><td>Choose region</td><td></td><td>Drag a frame; only this part of the drawing is compared (faster)</td></tr>
+<tr><td>Compare whole sheet</td><td></td><td>Remove the section and compare everything again</td></tr>
+<tr><td>Match areas (A ↔ B) …</td><td></td><td>Choose an area in A and the matching area in B yourself, e.g. when a view was moved on the sheet or scaled differently</td></tr>
+<tr><td>Draw zone (do not compare)</td><td></td><td>Drag a frame around an area that is left out of the comparison, e.g. title block or stamp</td></tr>
 </table>
 <h3>Help</h3>
 <table class="menus"><tr><th>Command</th><th>Key</th><th>What it does</th></tr>
-<tr><td>Manual</td><td>F1</td><td></td></tr>
+<tr><td>Manual</td><td>F1</td><td>Open the detailed description of all functions</td></tr>
 <tr><td>Show introduction</td><td></td><td>Show the short introduction (open, compare, review) on the start page</td></tr>
-<tr><td>Command-line manual</td><td></td><td></td></tr>
-<tr><td>Keyboard shortcuts</td><td></td><td></td></tr>
+<tr><td>Command-line manual</td><td></td><td>Description of comparing without the user interface, e.g. in scripts and batch runs</td></tr>
+<tr><td>Keyboard shortcuts</td><td></td><td>Overview of keys and mouse gestures for views, tools and reviewing</td></tr>
 <tr><td>What&#x27;s new …</td><td></td><td>Change history: what changed in which version</td></tr>
 <tr><td>Open file types with ZGmax …</td><td></td><td>Choose which files (PDF, PNG, DXF, projects …) open in ZGmax on double-click – also for the portable app</td></tr>
-<tr><td>Open log file</td><td></td><td></td></tr>
-<tr><td>Copy command-line command</td><td></td><td></td></tr>
+<tr><td>Open log file</td><td></td><td>Record of the program&#x27;s messages and errors, helpful when there are problems</td></tr>
+<tr><td>Copy command-line command</td><td></td><td>Put the current comparison with its settings on the clipboard as a call for terminal or script</td></tr>
 <tr><td>Reset all settings …</td><td></td><td>Appearance, language, size, comparison values and tool options back to defaults; files and projects stay unchanged</td></tr>
-<tr><td>About ZGmax</td><td></td><td></td></tr>
+<tr><td>About ZGmax</td><td></td><td>Version, license, libraries used and folder of the log file</td></tr>
 </table>
 <!-- MENUS:END -->
 

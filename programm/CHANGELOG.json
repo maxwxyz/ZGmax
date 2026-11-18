@@ -6,7 +6,9 @@
    "Sicherheit: Eingebettete Zeichnungen aus Projektdateien werden immer im Datenordner abgelegt; alte entpackte Kopien werden nach 30 Tagen entfernt.",
    "Gelesener Text wird dauerhaft gemerkt und am Inhalt der Datei erkannt: dieselbe Zeichnung ist beim nächsten Öffnen sofort durchsuchbar, auch umbenannt; die Ablage räumt sich selbst auf und wandert mit dem Projekt mit.",
    "Schriftfeld lesen, Als Tabelle und Text kopieren nutzen den schon gelesenen Text (waagerecht, senkrecht, schräg) statt neu zu erkennen.",
-   "Nach dem Bearbeiten einer Zeichnung (Drehen, Entzerren …) sucht die Textsuche im gezeigten Bild statt im Text der Originaldatei."
+   "Nach dem Bearbeiten einer Zeichnung (Drehen, Entzerren …) sucht die Textsuche im gezeigten Bild statt im Text der Originaldatei.",
+   "Speichern abgesichert: Exporte entstehen erst vollständig und ersetzen dann die Zieldatei; schlägt das Speichern fehl (Datei geöffnet, kein Platz, keine Rechte), bleibt die alte Datei unverändert und es gibt eine klare Meldung. Vor dem Überschreiben der geöffneten Zeichnung wird nachgefragt.",
+   "Alle Menübefehle haben jetzt eine kurze Erklärung (Tooltip, Statuszeile, Menüreferenz)."
   ],
   "en": [
    "More robust text recognition: every recognition (also title block, text per change, tables, chart axes) runs in its own process. If it crashes, the program keeps running and reports the skipped places.",
@@ -14,7 +16,9 @@
    "Security: embedded drawings from project files are always stored in the data folder; old unpacked copies are removed after 30 days.",
    "Recognised text is remembered permanently and identified by the content of the file: the same drawing is searchable at once the next time, also when renamed; the store tidies itself and travels with the project.",
    "Read title block, As table and Copy text use the text already read (horizontal, vertical, skewed) instead of recognising again.",
-   "After editing a drawing (rotating, deskewing …) the text search searches the displayed image instead of the text of the original file."
+   "After editing a drawing (rotating, deskewing …) the text search searches the displayed image instead of the text of the original file.",
+   "Safer saving: exports are written completely first and then replace the target file; if saving fails (file open, no space, no permission), the old file stays unchanged and there is a clear message. Overwriting the drawing that is currently open asks for confirmation.",
+   "All menu commands now have a short explanation (tooltip, status bar, menu reference)."
   ]
  },
  "releases": [
