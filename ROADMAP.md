@@ -1,6 +1,6 @@
 # ZGmax – Roadmap und Funktionsstand
 
-Stand: Version **1.0** (4.11.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
+Stand: Version **1.1** (18.11.2026). Was sich je Version geändert hat, steht in [CHANGELOG.md](CHANGELOG.md);
 technische Übergabe zwischen Sitzungen in [HANDOFF.md](HANDOFF.md). Diese Datei wird bei jeder neuen Funktion und jedem
 Release mit gepflegt.
 
@@ -22,7 +22,9 @@ nicht beschlossen) · ⚠️ bekanntes Problem
 1.0  4.11.2026   ✅ Digitalisieren: Diagramme (Kurven → Wertetabelle/Excel), Tabellen (CSV/Excel), Text kopieren;
                     Suche über alle Seiten, schräge Texte, Kreise/Bögen beim Vektorisieren, Pfeilspitzen, Drag & Drop
                     mit Zielen
-1.1  geplant     🟡 Windows/Linux von Hand geprüft, echte Testzeichnungen, Prüfplan mit Ballonnummern
+1.1  18.11.2026  ✅ Schneller Start (Sofortvorschau, ein Programm statt vieler), Windows-Installer, Drehen und
+                    Seitenanfasser, verbundene Tabellenzellen, Diagramm-Verbesserungen, robusteres Ausrichten
+1.2  geplant     🟡 Windows/Linux von Hand geprüft, echte Testzeichnungen, Prüfplan mit Ballonnummern
 später           💡 3D-Modelle (eigenes Werkzeug)
 ```
 
@@ -32,10 +34,10 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 |---|---|---|
 | Feste Tests mit echten, anonymisierten Zeichnungen (Scan, CAD-PDF, DXF, A0) | Sicherheit, dass Vergleich und Maßerkennung auf echten Daten stabil bleiben | 🔧 Gerüst fertig (`tests/real/`), echte Fälle fehlen |
 | Absturz bei „Schriftfeld lesen“ beheben | Programm stürzt in OpenCV ab (siehe Bekannte Probleme) | 🔧 abgesichert, Bestätigung mit der Originaldatei offen |
-| Dateitypen zuordnen, Texterkennung im Hintergrund und Wiederherstellen auf Windows und Linux ausprobieren | Alles läuft auf allen Systemen | 🟡 1.1 |
+| Dateitypen zuordnen, Texterkennung im Hintergrund und Wiederherstellen auf Windows und Linux ausprobieren | Alles läuft auf allen Systemen | 🟡 1.2 |
 | GitHub-Builds für Windows, macOS, Linux einmal komplett grün (mit allen Tests) | Fertige Apps für alle Systeme aus einer Hand | ✅ 26.10.2026 |
 | GitHub Actions auf neue Hauptversionen heben (Node-20-Warnung) | Workflow bleibt lauffähig | ✅ v7 (Node 24) |
-| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 1.1 |
+| Sichtprüfung am Mac: Bereiche zuordnen, Umschalt-Ecke, Zuschnitt aufheben, Projekt mit einer Zeichnung | Bestätigung der 0.8-Funktionen im echten Einsatz | 🟡 1.2 |
 | Rückmeldungen aus der Nutzung einarbeiten, erste stabile Version | Verlässlicher Stand für den Alltag | 🟡 1.0 |
 | PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | ✅ |
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
@@ -114,7 +116,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Textsuche über alle Seiten; schräge und kopfstehende Texte; Vorrang in der Hintergrund-Erkennung (1.0)
 
 ### Bedienung
-- 🔧 Schneller Start: Sofortvorschau des Bildes vor dem Laden des Programms, Übergabe an ein laufendes ZGmax, Startzeit-Messung `--startzeit` (nach 1.0)
+- 🔧 Schneller Start: Sofortvorschau des Bildes vor dem Laden des Programms, Übergabe an ein laufendes ZGmax, Startzeit-Messung `--startzeit` (1.1)
 - ✅ Pfeilspitzen wählbar (Ende, Anfang, beide, keine); Drag & Drop mit Zielen bei offener Zeichnung (1.0)
 - ✅ Wolke und Formen in einem Knopf der Werkzeugleiste, merkt das zuletzt gewählte Werkzeug (0.9)
 - ✅ Einstellungsfenster (Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen) (0.9)
@@ -122,7 +124,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Keine falsche Wiederherstellen-Frage mehr beim Start (Windows-Prozessprüfung, nur bei echtem Inhalt) (0.9)
 
 ### Technik und Betrieb
-- 🔧 Windows-Installer (Inno Setup, `packaging/zgmax.iss`): ohne Adminrechte je Nutzer oder für alle, Dateitypen wählbar, Update durch Darüberinstallieren; GitHub-Bau installiert probeweise (nach 1.0)
+- 🔧 Windows-Installer (Inno Setup, `packaging/zgmax.iss`): ohne Adminrechte je Nutzer oder für alle, Dateitypen wählbar, Update durch Darüberinstallieren; GitHub-Bau installiert probeweise (1.1)
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
 - ✅ Texterkennung im Hintergrund (eigener Prozess, niedrige Priorität, halbe Kerne), ganze Seiten 30–40 % schneller,

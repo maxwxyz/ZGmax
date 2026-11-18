@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-11-18, lokal) – **Version 1.0** (Tag `v1.0`), alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-18, lokal) – **Version 1.1** (Tag `v1.1`), alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -7,11 +7,20 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-04): **1.0 veröffentlicht** (Tag `v1.0`). Offen für 1.1: Windows/Linux von Hand
-  prüfen (Dateitypen, Hintergrund-Erkennung, Wiederherstellen, Drag & Drop), echte Testzeichnungen in `tests/real/`,
-  Absturz-Fix „Schriftfeld lesen“ mit Originaldatei. Ideen: Prüfplan mit Ballonnummern + ISO-286-Passungen,
-  Schriftfeld als Daten, Stückliste gegen Positionsnummern, eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel,
-  macOS-Signatur. Keine Firma/Zielgruppe nennen.
+- `ROADMAP.md` abgeglichen (2026-11-18): **1.1 veröffentlicht** (Tag `v1.1`). Offen für 1.2: Windows/Linux von Hand
+  prüfen (Installer mit echtem Nutzerkonto, Übergabe an laufendes Programm, Drag & Drop, graue Menüs), echte
+  Testzeichnungen in `tests/real/`, Absturz-Fix „Schriftfeld lesen“ mit Originaldatei. Ideen: Prüfplan mit
+  Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
+  ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-18 (Release 1.1)
+- Prüfbau 44304411880 auf allen drei Systemen grün, Installer-Probe bestanden (bauen, `/CURRENTUSER` installieren,
+  darüber aktualisieren, Selbsttest, Registry, Deinstallation). Startzeiten der fertigen Apps (GitHub-Rechner):
+  Windows Vorschau 0,2 s / Bild 0,75 s, Linux 0,19 / 0,79 s, macOS 0,35 / 1,5 s.
+- Review-Fixes: `Job.release()` nach `finished`, `_trim_cache()` beim Dateiwechsel, Vorschau nur bis 150 MP.
+- Golden-Tests: `golden.json` enthält je Fall `sha` und Pixelzahlen `n`; am Mac exakt, sonst Toleranz
+  (max(100, 2 %)) – `GOLDEN_TOLERANT=1` erzwingt das auch am Mac.
+- Commit-Zeile: seit dem Modellwechsel „Co-Authored-By: Claude Fable 5.2“; CLAUDE.md nennt noch Opus 5.5 (Nutzer gefragt).
 
 ## Erledigt 2026-11-18 (zwei CI-Fehler aus Lauf 44300320970)
 - Linux: Golden-Tests und `test_map_points…` rot (Ausrichtung 24 px daneben) – ECC hing am Startwert der

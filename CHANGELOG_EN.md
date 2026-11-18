@@ -1,5 +1,19 @@
 # ZGmax – Change history
 
+## Version 1.1 of 2026-11-18
+
+- Faster start by double-click: the image appears at once as a preview while the program loads.
+- If ZGmax is already running, another double-click opens the file there in a new window – without starting the program a second time.
+- Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface.
+- Windows: additionally an installer (without admin rights for the current user only, otherwise optionally for all users; selectable file types; update by installing over it). The portable app stays.
+- Digitise chart: window opens at once (analysis in the background), zoom around the mouse as in the main window, sharp view for PDF, grid can be hidden, dashed and dash-dot curves, reversed axes (e.g. 7 → 5) correct also in Excel, Excel with live polynomial formulas; fixed: the second point of the y axis was not taken.
+- Table from selection recognises merged cells (horizontal, vertical, mixed); preview and Excel show them merged.
+- Markups: matching resize cursors on the handles, handles at the side midpoints (scale in one direction only) and a rotation handle (Shift = 15° steps) – also in image, PDF, SVG and XFDF export.
+- More robust alignment: two starting points, the better one wins – prevents a comparison from being many pixels off depending on the computer.
+- Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).
+- Less memory: images of previously opened files are released when A or B is replaced.
+- Fixed: stamps aborted the “PDF with annotations” export; crashes on Linux and Windows when text recognition and another calculation ran at the same time.
+
 ## Version 1.0 of 2026-11-04
 
 - Digitise chart: the curves of a diagram (e.g. spring curves) as a value table and function – axes calibrate themselves by text recognition, curves are traced across crossings, coloured curves separated; output as CSV or Excel with a ready-made chart, as polynomial or smooth curve.

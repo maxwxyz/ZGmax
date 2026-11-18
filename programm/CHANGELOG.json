@@ -1,33 +1,39 @@
 {
  "unreleased": {
-  "de": [
-   "Schneller Start per Doppelklick: Das Bild erscheint sofort als Vorschau, während das Programm lädt.",
-   "Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen Fenster – ohne zweiten Programmstart.",
-   "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche.",
-   "Windows: zusätzlich ein Installer (ohne Adminrechte nur für den Benutzer, sonst wahlweise für alle; Dateitypen wählbar; Update durch Darüberinstallieren). Die portable App bleibt.",
-   "Diagramm digitalisieren: Fenster sofort offen (Analyse im Hintergrund), Zoom um die Maus wie im Hauptfenster, scharfe Ansicht bei PDF, Gitter ausblendbar, gestrichelte und strichpunktierte Kurven, umgekehrte Achsen (z. B. 7 → 5) richtig auch im Excel, Excel mit Live-Formeln der Polynome; behoben: zweiter Punkt der y-Achse wurde nicht übernommen.",
-   "Tabelle aus Auswahl erkennt verbundene Zellen (waagerecht, senkrecht, gemischt); Vorschau und Excel zeigen sie verbunden.",
-   "Markierungen: passende Größen-Mauszeiger an den Anfassern, Anfasser in den Seitenmitten (nur in eine Richtung skalieren) und Drehanfasser (Umschalt = 15°-Schritte) – auch im Bild-, PDF-, SVG- und XFDF-Export.",
-   "Ausrichten robuster: zwei Startwerte, der bessere gewinnt – verhindert, dass ein Vergleich je nach Rechner um viele Pixel daneben liegt.",
-   "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac).",
-   "Weniger Speicher: Bilder früher geöffneter Dateien werden freigegeben, wenn A oder B gewechselt wird.",
-   "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab; Abstürze unter Linux und Windows, wenn Texterkennung und eine andere Berechnung gleichzeitig liefen."
-  ],
-  "en": [
-   "Faster start by double-click: the image appears at once as a preview while the program loads.",
-   "If ZGmax is already running, another double-click opens the file there in a new window – without starting the program a second time.",
-   "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface.",
-   "Windows: additionally an installer (without admin rights for the current user only, otherwise optionally for all users; selectable file types; update by installing over it). The portable app stays.",
-   "Digitise chart: window opens at once (analysis in the background), zoom around the mouse as in the main window, sharp view for PDF, grid can be hidden, dashed and dash-dot curves, reversed axes (e.g. 7 → 5) correct also in Excel, Excel with live polynomial formulas; fixed: the second point of the y axis was not taken.",
-   "Table from selection recognises merged cells (horizontal, vertical, mixed); preview and Excel show them merged.",
-   "Markups: matching resize cursors on the handles, handles at the side midpoints (scale in one direction only) and a rotation handle (Shift = 15° steps) – also in image, PDF, SVG and XFDF export.",
-   "More robust alignment: two starting points, the better one wins – prevents a comparison from being many pixels off depending on the computer.",
-   "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
-   "Less memory: images of previously opened files are released when A or B is replaced.",
-   "Fixed: stamps aborted the “PDF with annotations” export; crashes on Linux and Windows when text recognition and another calculation ran at the same time."
-  ]
+  "de": [],
+  "en": []
  },
  "releases": [
+  {
+   "version": "1.1",
+   "date": "2026-11-18",
+   "de": [
+    "Schneller Start per Doppelklick: Das Bild erscheint sofort als Vorschau, während das Programm lädt.",
+    "Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen Fenster – ohne zweiten Programmstart.",
+    "Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche.",
+    "Windows: zusätzlich ein Installer (ohne Adminrechte nur für den Benutzer, sonst wahlweise für alle; Dateitypen wählbar; Update durch Darüberinstallieren). Die portable App bleibt.",
+    "Diagramm digitalisieren: Fenster sofort offen (Analyse im Hintergrund), Zoom um die Maus wie im Hauptfenster, scharfe Ansicht bei PDF, Gitter ausblendbar, gestrichelte und strichpunktierte Kurven, umgekehrte Achsen (z. B. 7 → 5) richtig auch im Excel, Excel mit Live-Formeln der Polynome; behoben: zweiter Punkt der y-Achse wurde nicht übernommen.",
+    "Tabelle aus Auswahl erkennt verbundene Zellen (waagerecht, senkrecht, gemischt); Vorschau und Excel zeigen sie verbunden.",
+    "Markierungen: passende Größen-Mauszeiger an den Anfassern, Anfasser in den Seitenmitten (nur in eine Richtung skalieren) und Drehanfasser (Umschalt = 15°-Schritte) – auch im Bild-, PDF-, SVG- und XFDF-Export.",
+    "Ausrichten robuster: zwei Startwerte, der bessere gewinnt – verhindert, dass ein Vergleich je nach Rechner um viele Pixel daneben liegt.",
+    "Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac).",
+    "Weniger Speicher: Bilder früher geöffneter Dateien werden freigegeben, wenn A oder B gewechselt wird.",
+    "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab; Abstürze unter Linux und Windows, wenn Texterkennung und eine andere Berechnung gleichzeitig liefen."
+   ],
+   "en": [
+    "Faster start by double-click: the image appears at once as a preview while the program loads.",
+    "If ZGmax is already running, another double-click opens the file there in a new window – without starting the program a second time.",
+    "Faster start, loading and comparison: background text recognition only starts when the program is idle, pauses while loading and comparing, and starts without a second program interface.",
+    "Windows: additionally an installer (without admin rights for the current user only, otherwise optionally for all users; selectable file types; update by installing over it). The portable app stays.",
+    "Digitise chart: window opens at once (analysis in the background), zoom around the mouse as in the main window, sharp view for PDF, grid can be hidden, dashed and dash-dot curves, reversed axes (e.g. 7 → 5) correct also in Excel, Excel with live polynomial formulas; fixed: the second point of the y axis was not taken.",
+    "Table from selection recognises merged cells (horizontal, vertical, mixed); preview and Excel show them merged.",
+    "Markups: matching resize cursors on the handles, handles at the side midpoints (scale in one direction only) and a rotation handle (Shift = 15° steps) – also in image, PDF, SVG and XFDF export.",
+    "More robust alignment: two starting points, the better one wins – prevents a comparison from being many pixels off depending on the computer.",
+    "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
+    "Less memory: images of previously opened files are released when A or B is replaced.",
+    "Fixed: stamps aborted the “PDF with annotations” export; crashes on Linux and Windows when text recognition and another calculation ran at the same time."
+   ]
+  },
   {
    "version": "1.0",
    "date": "2026-11-04",

@@ -1,5 +1,19 @@
 # ZGmax – Änderungshistorie
 
+## Version 1.1 vom 18.11.2026
+
+- Schneller Start per Doppelklick: Das Bild erscheint sofort als Vorschau, während das Programm lädt.
+- Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen Fenster – ohne zweiten Programmstart.
+- Schneller beim Start, Laden und Vergleichen: Die Texterkennung im Hintergrund startet erst, wenn das Programm ruht, pausiert während Laden und Vergleich und startet ohne zweite Programmoberfläche.
+- Windows: zusätzlich ein Installer (ohne Adminrechte nur für den Benutzer, sonst wahlweise für alle; Dateitypen wählbar; Update durch Darüberinstallieren). Die portable App bleibt.
+- Diagramm digitalisieren: Fenster sofort offen (Analyse im Hintergrund), Zoom um die Maus wie im Hauptfenster, scharfe Ansicht bei PDF, Gitter ausblendbar, gestrichelte und strichpunktierte Kurven, umgekehrte Achsen (z. B. 7 → 5) richtig auch im Excel, Excel mit Live-Formeln der Polynome; behoben: zweiter Punkt der y-Achse wurde nicht übernommen.
+- Tabelle aus Auswahl erkennt verbundene Zellen (waagerecht, senkrecht, gemischt); Vorschau und Excel zeigen sie verbunden.
+- Markierungen: passende Größen-Mauszeiger an den Anfassern, Anfasser in den Seitenmitten (nur in eine Richtung skalieren) und Drehanfasser (Umschalt = 15°-Schritte) – auch im Bild-, PDF-, SVG- und XFDF-Export.
+- Ausrichten robuster: zwei Startwerte, der bessere gewinnt – verhindert, dass ein Vergleich je nach Rechner um viele Pixel daneben liegt.
+- Windows und Linux: Nicht verfügbare Befehle erscheinen in Menüs und Knöpfen wieder grau (wie am Mac).
+- Weniger Speicher: Bilder früher geöffneter Dateien werden freigegeben, wenn A oder B gewechselt wird.
+- Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab; Abstürze unter Linux und Windows, wenn Texterkennung und eine andere Berechnung gleichzeitig liefen.
+
 ## Version 1.0 vom 4.11.2026
 
 - Diagramm digitalisieren: Kurven eines Diagramms (z. B. Federkennlinien) als Wertetabelle und Funktion – Achsen kalibrieren sich per Texterkennung, Kurven werden auch über Kreuzungen verfolgt, farbige Kurven getrennt; Ausgabe als CSV oder Excel mit fertigem Diagramm, als Polynom oder glatte Kurve.
