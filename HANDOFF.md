@@ -13,23 +13,14 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
   ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
 
-## OFFEN (Nutzungslimit erreicht, 2026-11-18) – als Nächstes
-1. Agenten-Branches zusammenführen (jeweils erst `git log main..<branch>` ansehen, Tests laufen lassen):
-   - `worktree-agent-aa69aaed08bc52aa8` (Commit d201b6e, FERTIG): Speichern absichern (`programm/safewrite.py`,
-     `_save_dialog` fragt beim Überschreiben der Quelle). Neue tr()-Texte noch in `i18n_en.json` eintragen:
-     „Datei konnte nicht gespeichert werden: {}“ → “Could not save file: {}”; „(Datei in einem anderen Programm
-     geöffnet? Genug Platz? Schreibrechte?)“ → “(File open in another program? Enough disk space? Write permission?)”;
-     „es wurde nichts geschrieben“ → “nothing was written”; „„{}“ ist die gerade geöffnete Zeichnung. Soll die
-     Originaldatei wirklich überschrieben werden?“ → ““{}” is the drawing that is currently open. Really overwrite
-     the original file?”
-   - `worktree-agent-ac5af1c7574d5ca61` (lief noch): Leisten-Aufbau aufteilen + 23 Tooltips (ui_layout/ui_panels).
-   - `worktree-agent-a69f5d77c865bc059` (lief noch): große Zeichen-/Berichtsfunktionen aufteilen (ui_icons,
-     ui_canvas_paint, ui_canvas, diffreport) – beim Zusammenführen mit dem Speichern-Branch auf die Speicherzeilen in
-     `build_annotated_pdf`/`build_report` achten.
-2. Befund 5: unbenutzte Übersetzungen aus `i18n_en.json` entfernen (nach dem Zusammenführen).
-3. Menüreferenz/Bilder neu, CHANGELOG-Einträge (Speichern abgesichert, Erklärungen), volle Tests, Mac-Bau, Push,
-   GitHub-Bau „Apps bauen“ (alle, mit Tests). Version bleibt 1.1 (Einträge unter „unreleased“).
-4. Arbeitskopien/Branches der Agenten danach löschen.
+## OFFEN – als Nächstes
+1. Agent „große Zeichen-/Berichtsfunktionen aufteilen“ (`worktree-agent-a69f5d77c865bc059`, nach Limit fortgesetzt):
+   Ergebnis prüfen und zusammenführen (ui_icons, ui_canvas_paint, ui_canvas, diffreport – in diffreport stehen die
+   Speicherzeilen jetzt als `safe_write(...)`), volle Tests.
+2. Danach: Mac-Bau + Selbsttest, Push, GitHub-Bau „Apps bauen“ (alle, mit Tests), Worktree/Branch löschen.
+   Version bleibt 1.1 (Einträge unter „unreleased“).
+- Schon erledigt und gepusht (48527f3): Speichern absichern (`programm/safewrite.py`), Leisten-Aufbau geteilt,
+  38 Befehls-Erklärungen, 99 unbenutzte Übersetzungen entfernt, Menüreferenz neu. 205 Tests grün.
 
 ## Erledigt 2026-11-18 (nach 1.1, unter „unreleased“)
 - Texterkennung überall im eigenen Prozess: `rep._in_service` um `ocr_image`, `ocr_lines`, `ocr_any_orientation`,
