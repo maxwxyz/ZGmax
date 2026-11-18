@@ -406,28 +406,63 @@ def _prep(m, scale, blur):
     return s
 
 
+def _ecc(fa, fb, start, motion, iters=200):
+    """ECC ab einem Startwert: (Uebereinstimmung, warp) oder (-1, Startwert), wenn es nicht konvergiert."""
+    crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, iters, 1e-6)
+    try:
+        # inputMask/gaussFiltSize-Argumente sind je nach OpenCV-Version Pflicht
+        cc, warp = cv2.findTransformECC(fa, fb, start.copy(), motion, crit, None, 5)
+        return float(cc), warp
+    except cv2.error:
+        return -1.0, start.copy()
+
+
 def align_global(a, b, mode="affine", work=2000):
-    """Richtet b auf a aus (gleiche Groesse vorausgesetzt). Liefert warp (2x3, Vollaufloesung)."""
+    """Richtet b auf a aus (gleiche Groesse vorausgesetzt). Liefert warp (2x3, Vollaufloesung).
+
+    Grob-zu-fein mit zwei Startwerten: Auf einem Viertel der Arbeitsaufloesung laeuft ECC einmal ab der Verschiebung
+    aus der Phasenkorrelation und einmal ab "keine Verschiebung"; der bessere Treffer wird in voller Arbeitsaufloesung
+    verfeinert. Frueher gab es nur den ersten Start - liefert die Phasenkorrelation dort einen falschen Wert (bei
+    Massstabs- oder Drehunterschied moeglich, je nach Rechner), blieb die Ausrichtung in einem falschen Optimum."""
     scale = min(1.0, work / max(a.shape))
     fa, fb = _prep(a, scale, 2.0), _prep(b, scale, 2.0)
-
-    warp = np.eye(2, 3, dtype=np.float32)
-    # Start: Verschiebung per Phasenkorrelation
-    try:
-        (dx, dy), _ = cv2.phaseCorrelate(fa, fb)
-        warp[0, 2], warp[1, 2] = dx, dy
-    except cv2.error:
-        pass
-
     motion = {"translation": cv2.MOTION_TRANSLATION,
               "euclidean": cv2.MOTION_EUCLIDEAN,
               "affine": cv2.MOTION_AFFINE}[mode]
-    crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 200, 1e-6)
-    try:
-        # inputMask/gaussFiltSize-Argumente sind je nach OpenCV-Version Pflicht
-        _, warp = cv2.findTransformECC(fa, fb, warp, motion, crit, None, 5)
-    except cv2.error as e:
-        log.warning(tr("  Warnung: ECC fehlgeschlagen ({}); nutze nur Verschiebung").format(e))
+    eye = np.eye(2, 3, dtype=np.float32)
+    starts = [eye]
+    try:                                               # Start: Verschiebung per Phasenkorrelation
+        (dx, dy), _ = cv2.phaseCorrelate(fa, fb)
+        st = eye.copy()
+        st[0, 2], st[1, 2] = dx, dy
+        starts.insert(0, st)
+    except cv2.error:
+        pass
+    k = 4 if min(fa.shape) >= 400 else 1               # grobe Stufe (kleine Bilder: gleich fein)
+    if k > 1:
+        ca = cv2.resize(fa, None, fx=1 / k, fy=1 / k, interpolation=cv2.INTER_AREA)
+        cb = cv2.resize(fb, None, fx=1 / k, fy=1 / k, interpolation=cv2.INTER_AREA)
+        best = None
+        for st in starts:
+            c0 = st.copy()
+            c0[:, 2] /= k
+            cc, w = _ecc(ca, cb, c0, motion, 100)
+            if best is None or cc > best[0] + 1e-3:    # bei Gleichstand der erste (Phasenkorrelation)
+                best = (cc, w)
+        start = best[1].copy()
+        start[:, 2] *= k
+        if best[0] < 0:                                # grob nichts gefunden: wie frueher ab der Phasenkorrelation
+            start = starts[0]
+    else:
+        start = starts[0]
+    cc, warp = _ecc(fa, fb, start, motion)
+    if cc < 0 and k > 1:                               # fein nicht konvergiert: zweiter Startwert, sonst der grobe
+        cc, warp = max((_ecc(fa, fb, st, motion) for st in starts), key=lambda t: t[0])
+        if cc < 0:
+            warp = start
+            log.warning(tr("  Warnung: ECC fehlgeschlagen ({}); nutze nur Verschiebung").format("keine Konvergenz"))
+    elif cc < 0:
+        log.warning(tr("  Warnung: ECC fehlgeschlagen ({}); nutze nur Verschiebung").format("keine Konvergenz"))
     warp = warp.copy()
     warp[:, 2] /= scale        # Translation auf Vollaufloesung umrechnen
     return warp

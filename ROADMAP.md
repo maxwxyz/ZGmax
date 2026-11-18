@@ -122,6 +122,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Keine falsche Wiederherstellen-Frage mehr beim Start (Windows-Prozessprüfung, nur bei echtem Inhalt) (0.9)
 
 ### Technik und Betrieb
+- 🔧 Windows-Installer (Inno Setup, `packaging/zgmax.iss`): ohne Adminrechte je Nutzer oder für alle, Dateitypen wählbar, Update durch Darüberinstallieren; GitHub-Bau installiert probeweise (nach 1.0)
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
 - ✅ Texterkennung im Hintergrund (eigener Prozess, niedrige Priorität, halbe Kerne), ganze Seiten 30–40 % schneller,

@@ -5,6 +5,8 @@ Start:  App "ZGmax" oder Doppelklick auf "Start ZGmax" im Hauptordner,
         oder  python drawing_viewer.py [ALT [NEU]]   (eine Datei = nur ansehen)
 Anleitung: Menue Hilfe > Anleitung (F1).
 """
+import time
+
 import i18n
 from i18n import tr
 from ui_common import *  # noqa: F401,F403
@@ -945,8 +947,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         job.aborted.connect(aborted)
         job.finished.connect(lambda j=job: self.jobs.remove(j) if j in self.jobs else None)
         if pause_ocr:
-            ocrservice.pause(job)                        # gilt nur, solange der Job laeuft
-            job.finished.connect(lambda j=job: ocrservice.resume(j))
+            token = ("job", id(job), time.time())        # Marke statt Qt-Objekt (wird auch in fremden Threads gelesen)
+            ocrservice.pause(token)
+            job.finished.connect(lambda t=token: ocrservice.resume(t))
+            job.destroyed.connect(lambda *_a, t=token: ocrservice.resume(t))   # Fenster weg, bevor der Job endet
         job.start()
         return True
 

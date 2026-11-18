@@ -79,6 +79,35 @@ jobs:
             ZGMAX_T0=$(python -c "import time; print(time.time())") "$APP" --startzeit programm/icon.png || true
           done
           cat startzeit.txt
+      - name: Windows-Installer bauen und probeweise installieren
+        if: env.AKTIV == 'true' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; if ($LASTEXITCODE -ne 0) { exit 1 } }
+          $ver = (.venv\Scripts\python -c "import sys; sys.path.insert(0,'programm'); import version; print(version.VERSION)")
+          & $iscc "/DVER=$ver" packaging\zgmax.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $setup = "dist\ZGmax-$ver-Windows-x64-Setup.exe"
+          # Probe: ohne Adminrechte nur fuer den Nutzer installieren, App pruefen, Eintraege pruefen, wieder entfernen
+          $ziel = "$env:RUNNER_TEMP\ZGmax-Probe"
+          Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART","/DIR=`"$ziel`"","/LOG=`"$env:RUNNER_TEMP\setup.log`"" -Wait
+          if (-not (Test-Path "$ziel\ZGmax.exe")) { Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 40; throw "Installation fehlgeschlagen" }
+          # Update: noch einmal darueber installieren (ohne Zielangabe -> muss den vorhandenen Ordner nehmen)
+          Set-Content "$ziel\_internal\alt.txt" "Rest einer frueheren Version"
+          Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          if (Test-Path "$ziel\_internal\alt.txt") { throw "Update hat alte Dateien nicht entfernt" }
+          if (-not (Test-Path "$ziel\ZGmax.exe")) { throw "Update hat nicht in den vorhandenen Ordner installiert" }
+          $p = Start-Process "$ziel\ZGmax.exe" -ArgumentList "--selbsttest" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Selbsttest der installierten App fehlgeschlagen" }
+          $cmd = (Get-ItemProperty "HKCU:\Software\Classes\ZGmax.Projekt\shell\open\command").'(default)'
+          if ($cmd -notlike "*ZGmax.exe*") { throw "Dateityp .zgmax nicht eingetragen: $cmd" }
+          Get-Item "HKCU:\Software\Classes\.pdf\OpenWithProgids" | Out-Null
+          Write-Host "Installiert nach $ziel, .zgmax -> $cmd"
+          $un = Get-ChildItem "$ziel\unins*.exe" | Select-Object -First 1
+          Start-Process $un.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          if (Test-Path "HKCU:\Software\Classes\ZGmax.Projekt") { throw "Deinstallation hat Eintraege hinterlassen" }
+          Write-Host "Deinstallation sauber"
       - uses: actions/upload-artifact@v7
         if: env.AKTIV == 'true'
         with:
@@ -86,4 +115,5 @@ jobs:
           path: |
             dist/*.zip
             dist/*.tar.gz
+            dist/*-Setup.exe
           if-no-files-found: error

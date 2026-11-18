@@ -168,43 +168,38 @@ def submit(key, gray=None, vertical=False, src=None, prio=None):
     return fut
 
 
-_holders = []                    # Berechnungen, fuer die die Erkennung ruht (Laden, Vergleich)
+_holders = {}                    # Marke -> Zeitpunkt: Berechnungen, fuer die die Erkennung ruht (Laden, Vergleich)
 _frozen = [False]
+PAUSE_MAX = 300.0                # laenger ruht die Erkennung fuer eine Berechnung nie (falls resume ausbleibt)
 
 
-def pause(job=None):
+def pause(token=True):
     """Erkennung anhalten, solange das Programm selbst rechnet (Laden, Vergleich): der Prozess wird eingefroren
-    (nichts geht verloren) und bekommt keine neuen Auftraege. Mit job (QThread) gilt das nur, solange er laeuft -
-    auch wenn resume() nie kommt (z. B. Fenster geschlossen)."""
+    (nichts geht verloren) und bekommt keine neuen Auftraege. token: beliebige Marke der Berechnung (z. B. eine
+    Nummer); mit derselben Marke wieder resume() rufen. Bewusst keine Qt-Objekte hier: _held() laeuft auch in
+    fremden Threads, und dort darf nichts angefasst werden, was der Hauptthread gerade loeschen koennte."""
     with _lock:
-        _holders.append(job if job is not None else True)
+        _holders[token] = time.time()
     _held()
 
 
-def resume(job=None):
+def resume(token=True):
     with _lock:
-        for i, h in enumerate(_holders):
-            if h is (job if job is not None else True):
-                del _holders[i]
-                break
+        _holders.pop(token, None)
     if not _held():
         _dispatch()
 
 
 def _held():
-    """Ruht die Erkennung gerade? Beendete oder geloeschte Berechnungen zaehlen nicht mehr."""
-    def alive(h):
-        if h is True:
-            return True
-        try:
-            return h.isRunning() or not h.isFinished()
-        except RuntimeError:                     # Qt-Objekt schon geloescht
-            return False
+    """Ruht die Erkennung gerade? Zu alte Marken (resume ausgeblieben) zaehlen nicht mehr."""
+    now = time.time()
     with _lock:
-        _holders[:] = [h for h in _holders if alive(h)]
+        for k in [k for k, t in _holders.items() if now - t > PAUSE_MAX]:
+            del _holders[k]
         held = bool(_holders)
-    if held != _frozen[0]:
+        change = held != _frozen[0]
         _frozen[0] = held
+    if change:
         _freeze(held)
     return held
 

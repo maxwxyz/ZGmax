@@ -13,6 +13,24 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Schriftfeld als Daten, Stückliste gegen Positionsnummern, eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel,
   macOS-Signatur. Keine Firma/Zielgruppe nennen.
 
+## Erledigt 2026-11-18 (zwei CI-Fehler aus Lauf 44300320970)
+- Linux: Golden-Tests und `test_map_points…` rot (Ausrichtung 24 px daneben) – ECC hing am Startwert der
+  Phasenkorrelation, der auf dem Runner anders ausfiel (am Mac nicht nachstellbar, mit gefälschtem Startwert schon).
+  `dc.align_global` jetzt grob-zu-fein mit zwei Startwerten (`_ecc`); Fingerabdrücke unverändert, Test
+  `test_alignment_survives_bad_phase_start`.
+- Windows: Zugriffsverletzung im Stresstest (`Job.__init__`) – `ocrservice._held()` fragte aus dem Thread des
+  Prozess-Pools `QThread.isRunning()` ab, während der Hauptthread Jobs löschen kann. Jetzt Marken statt Qt-Objekten
+  (`pause(token)/resume(token)`, `PAUSE_MAX` 300 s, `job.destroyed` gibt frei).
+
+## Erledigt 2026-11-18 (Windows-Installer)
+- `packaging/zgmax.iss` (Inno Setup 6, UTF-8 mit BOM, CRLF): `PrivilegesRequired=lowest` +
+  `PrivilegesRequiredOverridesAllowed=dialog` (Dialog „für alle / nur für mich“, ohne Admin automatisch je Nutzer),
+  Aufgaben je Dateityp, Registry über `HKA` nach dem Schema von `fileassoc.py`, `[InstallDelete]` räumt `_internal`
+  vor einem Update. Workflow-Schritt „Windows-Installer bauen und probeweise installieren“: ISCC (ggf. per choco),
+  stille Installation `/CURRENTUSER`, Update darüber, Selbsttest der installierten App, Registry-Prüfung,
+  Deinstallation. Artefakt `dist/*-Setup.exe` neben dem ZIP. Lokal am Mac nicht prüfbar – erster Lauf zeigt, ob es baut.
+  Portable App bleibt (Ein-Datei-EXE verworfen: entpackt bei jedem Start, langsamer). Ohne Signatur SmartScreen-Warnung.
+
 ## Erledigt 2026-11-18 (schneller Start)
 - GitHub-Lauf 44298581129: Linux rot – SIGFPE in OpenCV (Stresstest): `_SafeOcr` stellte `cv2.setNumThreads(0)` um,
   während der Hauptthread `HoughCircles` rechnete (Texterkennung des Diagramm-Fensters im Hintergrund-Thread).

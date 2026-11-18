@@ -361,3 +361,18 @@ def test_ocr_service_pause():
     finally:
         osv._holders.clear()
         osv.stop()
+
+
+def test_alignment_survives_bad_phase_start(pair, monkeypatch):
+    """Ausrichten darf nicht am Startwert haengen: liefert die Phasenkorrelation eine falsche Verschiebung (kommt je
+    nach Rechner bei Massstabs- und Drehunterschied vor), muss der zweite Startwert die richtige Lage finden."""
+    a = dp.ink_from_gray(dp.load_gray(pair[0]), 128)
+    g = dp.load_gray(pair[1])
+    M0 = cv2.getRotationMatrix2D((800, 550), 0.6, 0.97)
+    g2 = cv2.warpAffine(g, M0, (g.shape[1], g.shape[0]), borderValue=255)
+    pts = np.array([[1250, 700], [500, 520], [1000, 200]], float)
+    raw = cv2.transform(pts[None], M0)[0]
+    for bad in ((40.0, -25.0), (-60.0, 30.0), (120.0, 0.0)):
+        monkeypatch.setattr(cv2, "phaseCorrelate", lambda *a_, bad=bad, **k: (bad, 0.5))
+        _b, tf = dp.prepare_pair_tf(a, dp.ink_from_gray(g2, 128), "affine", lambda *_: None)
+        assert np.abs(dp.map_points_tf(raw, tf) - pts).max() < 3.0, bad
