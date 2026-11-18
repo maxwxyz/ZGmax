@@ -407,8 +407,9 @@ pauses completely.
 It loads the page itself from the file, with all layers – no matter which PDF layers are hidden in the comparison.
 <i>Text: 60 %</i> at the bottom right shows the progress. It uses at most half of the processor cores and reads several tiles at once –
 viewing, marking up and comparing stay smooth. Once it has finished, text search, <i>Find changed text</i> (then reads nothing
-itself) and the searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. An error
-in the text recognition can no longer close the program.</p>
+itself) and the searchable PDF are ready without waiting; while it is still running they wait for it instead of reading again. Every other text
+recognition (title block, text per change, tables, chart axes) runs in this process too: if it crashes, the program
+keeps running and reports at how many places nothing was read.</p>
 
 <h2 id="copy">Region selection, copy, paste</h2>
 <p>Tool <b>Region</b> (<kbd>B</kbd>): drag a rectangle; add more with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>. The selection

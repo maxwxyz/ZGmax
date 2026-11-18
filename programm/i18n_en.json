@@ -375,6 +375,7 @@
 "Die Ecken des Blatts an die vier Punkte ziehen (Lupe hilft). Danach wird das Blatt rechteckig gerechnet, z. B. bei einem Handyfoto.": "Drag the four points to the corners of the sheet (the magnifier helps). The sheet is then made rectangular, e.g. for a phone photo.",
 "Die Oberfläche wird nach einem Neustart auf {:.0f} % gestellt.": "The interface will be set to {:.0f} % after a restart.",
 "Die Punkte passen nicht zusammen (z. B. vertauscht). Bitte neu setzen.": "The points do not match (e.g. swapped). Please set them again.",
+"Die Texterkennung ist an {} Stelle(n) abgestürzt; dort wurde nichts gelesen. Das Programm läuft normal weiter.": "Text recognition crashed at {} place(s); nothing was read there. The program continues normally.",
 "Die Verknüpfung „ZGmax“ liegt jetzt auf dem Desktop.": "The shortcut “ZGmax” is now on the desktop.",
 "Die Zeichnung bleibt vollständig; nur Liste, Rahmen im Bild und Berichte werden gefiltert. Kleine Änderungen nach Fläche: Optionen → Mindestgröße einer Änderung.": "The drawing stays complete; only the list, the frames in the drawing and the reports are filtered. Small changes by area: Options → Minimum size of a change.",
 "Die Zeichnung liegt schon gerade.": "The drawing is already straight.",

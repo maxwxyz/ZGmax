@@ -387,3 +387,33 @@ def test_alignment_survives_bad_phase_start(pair, monkeypatch):
         monkeypatch.setattr(cv2, "phaseCorrelate", lambda *a_, bad=bad, **k: (bad, 0.5))
         _b, tf = dp.prepare_pair_tf(a, dp.ink_from_gray(g2, 128), "affine", lambda *_: None)
         assert np.abs(dp.map_points_tf(raw, tf) - pts).max() < 3.0, bad
+
+
+def test_ocr_runs_in_service_and_survives_crash():
+    """Jede Texterkennung laeuft im eigenen Prozess; stirbt der mitten im Auftrag, kommt "nichts gelesen" zurueck,
+    der Zaehler steigt und der naechste Aufruf geht wieder."""
+    import signal
+    import threading
+    import diffreport as rep
+    import ocrservice as osv
+    if not rep.ocr_available():
+        pytest.skip("Texterkennung nicht installiert")
+    img = np.full((300, 900), 255, np.uint8)
+    cv2.putText(img, "PROZESS 42", (40, 160), cv2.FONT_HERSHEY_SIMPLEX, 2, 0, 4)
+    try:
+        assert any("PROZESS" in t[-1] for t in rep.ocr_image(img))
+        assert osv._pool is not None                              # lief im Erkennungsprozess
+        big = np.full((6000, 8000), 255, np.uint8)
+        for i in range(60):
+            cv2.putText(big, f"TEXT {i}", (100 + (i % 6) * 1200, 200 + (i // 6) * 500), cv2.FONT_HERSHEY_SIMPLEX, 2, 0, 4)
+        before = rep.OCR_CRASHED[0]
+
+        def kill():
+            time.sleep(0.15)
+            for p in list(osv._pool._processes.values()):
+                os.kill(p.pid, signal.SIGTERM if os.name == "nt" else signal.SIGKILL)
+        threading.Thread(target=kill, daemon=True).start()
+        assert rep.ocr_lines(big) == [] and rep.OCR_CRASHED[0] == before + 1
+        assert any("PROZESS" in l[4] for l in rep.ocr_lines(img))
+    finally:
+        osv.stop()

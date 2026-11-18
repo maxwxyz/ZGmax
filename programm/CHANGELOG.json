@@ -1,7 +1,11 @@
 {
  "unreleased": {
-  "de": [],
-  "en": []
+  "de": [
+   "Texterkennung robuster: Jede Erkennung (auch Schriftfeld, Text je Änderung, Tabellen, Diagramm-Achsen) läuft im eigenen Prozess. Stürzt sie ab, läuft das Programm weiter und meldet die übersprungenen Stellen."
+  ],
+  "en": [
+   "More robust text recognition: every recognition (also title block, text per change, tables, chart axes) runs in its own process. If it crashes, the program keeps running and reports the skipped places."
+  ]
  },
  "releases": [
   {

@@ -44,6 +44,9 @@ def _child_init(queue):
     import cv2
     cv2.setNumThreads(0)
     _limit_ort_threads()
+    import diffreport as rep
+    rep.IN_SERVICE = True                        # hier wird wirklich erkannt (kein Weiterreichen)
+    rep._SafeOcr.SINGLE = False                  # Kernzahl steht schon fest: nicht je Aufruf umstellen
 
 
 def _limit_ort_threads():
@@ -111,6 +114,65 @@ def _child_lines(key, gray, workers, vertical=False, src=None):
     if vertical:
         return rep.ocr_vertical(gray, progress=progress, workers=workers, eng=eng)
     return rep.ocr_lines(gray, progress=progress, workers=workers, eng=eng)
+
+
+class Crashed(RuntimeError):
+    """Der Erkennungsprozess ist bei diesem Auftrag abgestuerzt."""
+
+
+class Unavailable(RuntimeError):
+    """Der Erkennungsprozess laesst sich nicht starten."""
+
+
+def _child_call(name, args, kwargs):
+    import diffreport as rep
+    return getattr(rep, name).local(*args, **kwargs)
+
+
+_fg_until = [0.0]                # bis dahin keine Hintergrund-Auftraege starten (eine Reihe einzelner Aufrufe)
+_call_seq = [0]
+_later = [False]
+
+
+def call(name, args=(), kwargs=None, cancel=None, timeout=600.0):
+    """Eine Erkennungsfunktion aus diffreport (ocr_image, ocr_any_orientation, ...) im Erkennungsprozess ausfuehren
+    und auf das Ergebnis warten - mit Vorrang vor dem Hintergrund. Loest Crashed aus, wenn der Prozess dabei
+    abstuerzt, Unavailable, wenn er sich nicht starten laesst."""
+    import diffcore as dc
+    from concurrent.futures import CancelledError, Future
+    from concurrent.futures.process import BrokenProcessPool
+    with _lock:
+        _call_seq[0] += 1
+        key = ("call", name, _call_seq[0])
+        fut = Future()
+        _seq[0] += 1
+        _pending.append([FOREGROUND, _seq[0], key, None, fut, False, (_child_call, (name, tuple(args), kwargs or {}))])
+        _fg_until[0] = time.time() + 2.0
+    _preempt(key, FOREGROUND)
+    _dispatch()
+    t0 = time.time()
+    try:
+        while True:
+            try:
+                return fut.result(timeout=0.1)
+            except TimeoutError:
+                pass
+            if cancel is not None and cancel():
+                fut.cancel()
+                raise dc.Cancelled()
+            if time.time() - t0 > timeout:
+                raise Crashed(name)
+            _dispatch()
+    except BrokenProcessPool:
+        _drop_pool()
+        raise Crashed(name) from None
+    except CancelledError:
+        raise Unavailable(name) from None
+    except (OSError, ImportError, AttributeError) as e:      # Prozess laesst sich nicht starten
+        log.exception("Erkennungsprozess nicht verfuegbar")
+        raise Unavailable(str(e)) from None
+    finally:
+        _fg_until[0] = time.time() + 2.0
 
 
 def _get_pool():
@@ -232,7 +294,7 @@ def _preempt(key, prio):
             return
         _running = None
         _preempted.add(run[5])
-        _pending.append(run[:5] + [True])         # True = Future laeuft schon (nicht erneut starten)
+        _pending.append(run[:5] + [True] + run[6:7])   # True = Future laeuft schon (nicht erneut starten)
         pool = _pool
         procs = list(getattr(pool, "_processes", {}).values()) if pool is not None else []
     _drop_pool()
@@ -264,17 +326,31 @@ def _dispatch():
             return
         while _pending:
             _pending.sort(key=lambda j: (j[0], j[1]))
+            if _pending[0][0] != FOREGROUND and time.time() < _fg_until[0]:
+                # gerade laeuft eine Reihe einzelner Aufrufe (z. B. Text je Aenderung): Hintergrund kurz zurueckhalten,
+                # sonst wuerde jeder Aufruf einen eben gestarteten langen Durchlauf wieder abbrechen
+                if not _later[0]:                # nur ein Wecker zur Zeit
+                    _later[0] = True
+
+                    def wake():
+                        _later[0] = False
+                        _dispatch()
+                    t = threading.Timer(max(0.05, _fg_until[0] - time.time()), wake)
+                    t.daemon = True
+                    t.start()
+                return
             job = _pending.pop(0)
             fut = job[4]
             started = len(job) > 5 and job[5] is True
             if not started and not fut.set_running_or_notify_cancel():
                 continue
             try:
-                pf = _get_pool().submit(_child_lines, *job[3])
+                target = job[6] if len(job) > 6 else (_child_lines, job[3])
+                pf = _get_pool().submit(target[0], *target[1])
             except Exception as e:               # noqa: BLE001 - Prozess laesst sich nicht starten
                 fut.set_exception(e)
                 continue
-            _running = job[:5] + [pf]
+            _running = job[:5] + [pf] + job[6:7]
             break
         else:
             return

@@ -237,10 +237,43 @@ def _ocr_engine():
     return _engine
 
 
+IN_SERVICE = False        # True im Erkennungsprozess selbst (ocrservice): dort wird wirklich erkannt
+OCR_CRASHED = [0]         # so oft ist die Erkennung im eigenen Prozess abgestuerzt (das Programm lief weiter)
+
+
+def _in_service(fn):
+    """Erkennung nicht im Programm, sondern im eigenen Prozess (ocrservice) ausfuehren: ein Absturz der Texterkennung
+    (OpenCV/onnxruntime) kann das Programm dann nicht mehr beenden - die Stelle gilt als "nichts gelesen". Nur wenn
+    sich der Prozess gar nicht starten laesst, wird im Programm gelesen. Mit eng=... (Aufruf im Prozess selbst) oder
+    ZGMAX_OCR_IM_PROGRAMM=1 laeuft es direkt."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrap(*a, **k):
+        if IN_SERVICE or k.get("eng") is not None or os.environ.get("ZGMAX_OCR_IM_PROGRAMM") == "1":
+            return fn(*a, **k)
+        import ocrservice
+        cancel = k.pop("cancel", None)
+        progress = k.pop("progress", None)             # Rueckrufe gehen nicht ueber die Prozessgrenze
+        try:
+            return ocrservice.call(fn.__name__, a, k, cancel=cancel)
+        except dc.Cancelled:
+            raise
+        except ocrservice.Crashed:
+            OCR_CRASHED[0] += 1
+            dc.log.error("Texterkennung abgestuerzt (%s) - Stelle uebersprungen, Programm laeuft weiter", fn.__name__)
+            return []
+        except ocrservice.Unavailable:
+            return fn(*a, cancel=cancel, progress=progress, **k) if fn.__name__ == "ocr_lines" else fn(*a, **k)
+    wrap.local = fn
+    return wrap
+
+
 def ocr_language():
     return tr("Deutsch/Englisch") if os.path.isfile(os.path.join(OCR_DIR, "latin_rec.onnx")) else tr("Englisch")
 
 
+@_in_service
 def ocr_image(gray):
     """Liefert [(x, y, hoehe, text), ...] sortiert nach Zeilen (dunkle Schrift auf hellem Grund)."""
     result, _ = _ocr_engine()(gray)
@@ -266,6 +299,7 @@ def _may_hold_text(part, line=80):
     return bool((ink & ~lines).any())
 
 
+@_in_service
 def ocr_lines(gray, tile=1600, overlap=200, progress=None, cancel=None, workers=1, eng=None, scores=False, edges=False):
     """Texterkennung der ganzen Zeichnung in Kacheln: Liste (x0, y0, x1, y1, text) je Textzeile in Bildpixeln.
     gray: dunkle Schrift auf hellem Papier. Doppelte Funde aus ueberlappenden Kacheln werden zusammengefasst.
@@ -324,6 +358,7 @@ def _rotate_expand(gray, ang):
     return np.ascontiguousarray(img), cv2.invertAffineTransform(m)
 
 
+@_in_service
 def ocr_skew(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.6, angles=SKEW_ANGLES, tile=1600):
     """Schraege (z. B. 45 Grad) und kopfstehende Texte der ganzen Zeichnung - zur Sicherheit, falls etwas weder
     waagerecht noch senkrecht steht. Die Seite wird gedreht gelesen; behalten wird nur, was in der Originallage
@@ -354,6 +389,7 @@ def ocr_skew(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.
     return [(k[0], k[1], k[2], k[3], k[4], k[6]) for k in sorted(keep, key=lambda t: (t[1], t[0]))]
 
 
+@_in_service
 def ocr_vertical(gray, progress=None, cancel=None, workers=1, eng=None, min_score=0.55):
     """Senkrechte Texte der ganzen Zeichnung (von unten nach oben und von oben nach unten), wie ocr_any_orientation,
     aber fuer die ganze Seite: Liste (x0, y0, x1, y1, text, Drehung 1/3) in Bildpixeln der ungedrehten Seite."""
@@ -406,6 +442,7 @@ def find_text(lines, query):
     return sorted(out, key=lambda r: (round(r[1] / 20), r[0]))
 
 
+@_in_service
 def ocr_any_orientation(gray, min_score=0.55, rots=(0, 1, 3)):
     """Text in jeder Lage: waagerecht, senkrecht von unten nach oben (typische Bemassung) und von oben nach unten.
     Jede Fundstelle wird in der Drehung gelesen, in der sie am sichersten erkannt wird.

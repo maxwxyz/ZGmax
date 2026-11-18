@@ -935,10 +935,16 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         job.progress.connect(self._on_progress)
         job.preview.connect(lambda pv: self.canvas.set_preview(*pv))
 
+        crashes = rep.OCR_CRASHED[0]
+
         def ok(r):
             self.running = False
             self._busy(False, tr("Fertig"))
             done(r)
+            n = rep.OCR_CRASHED[0] - crashes
+            if n > 0:                                # Erkennung im eigenen Prozess abgestuerzt: Programm lief weiter
+                self.banner.show_msg(tr("Die Texterkennung ist an {} Stelle(n) abgestürzt; dort wurde nichts gelesen. "
+                                        "Das Programm läuft normal weiter.").format(n), "warn", timeout=20)
 
         def bad(m):
             self.running = False
