@@ -40,7 +40,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 | PDF beim starken Hineinzoomen scharf nachrendern | Feine Schrift und Linien bleiben scharf (Vergleich unverändert) | ✅ |
 | Revisionstabelle im Schriftfeld gegen die Änderungsliste prüfen | Fehlende oder falsche Revisionseinträge auffallen lassen | ✅ |
 | Große Blätter (A0 mit 400–600 dpi): Warnung oder Vorschau mit geringerer Auflösung | Weniger Speicher, schneller | ✅ |
-| Laufendes Programm öffnet weitere Dateien (eine Instanz, Windows) | Schneller, keine doppelten Prozesse | 💡 |
+| Laufendes Programm öffnet weitere Dateien (eine Instanz) | Schneller, keine doppelten Prozesse | 🔧 umgesetzt (QLocalServer), auf Windows/Linux noch ausprobieren |
 | Texterkennung einmal je Zeichnung im Hintergrund (nach dem Laden), für Suche, Text finden, Index und Revisionstabelle | Kein Warten beim ersten Gebrauch | ✅ (eigener Prozess, 0.9) |
 | Vergleich über mehrere Rechenkerne pro Kachel (matchTemplate ist der größte Anteil) | Große Blätter schneller | ✅ 0.9 |
 | Prüfplan mit Ballonnummern (alle Maße nummeriert, Nenn-/Grenzmaße, Spalte „Ist“), Passungen nach ISO 286 | Erstmuster- und Prüfberichte ohne Abtippen | 💡 |
@@ -114,6 +114,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Textsuche über alle Seiten; schräge und kopfstehende Texte; Vorrang in der Hintergrund-Erkennung (1.0)
 
 ### Bedienung
+- 🔧 Schneller Start: Sofortvorschau des Bildes vor dem Laden des Programms, Übergabe an ein laufendes ZGmax, Startzeit-Messung `--startzeit` (nach 1.0)
 - ✅ Pfeilspitzen wählbar (Ende, Anfang, beide, keine); Drag & Drop mit Zielen bei offener Zeichnung (1.0)
 - ✅ Wolke und Formen in einem Knopf der Werkzeugleiste, merkt das zuletzt gewählte Werkzeug (0.9)
 - ✅ Einstellungsfenster (Darstellung, Sprache, Größe, Name, Text im Hintergrund, alle Einstellungen) (0.9)

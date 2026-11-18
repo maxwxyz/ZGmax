@@ -62,6 +62,23 @@ jobs:
             macOS)   dist/ZGmax.app/Contents/MacOS/ZGmax --selbsttest ;;
             Linux)   dist/ZGmax/ZGmax --selbsttest ;;
           esac
+      - name: Startzeit der fertigen App messen (nur zur Information)
+        if: env.AKTIV == 'true'
+        continue-on-error: true
+        timeout-minutes: 3
+        shell: bash
+        env:
+          ZGMAX_STARTZEIT_DATEI: startzeit.txt
+        run: |
+          case "$RUNNER_OS" in
+            Windows) APP=dist/ZGmax/ZGmax.exe ;;
+            macOS)   APP=dist/ZGmax.app/Contents/MacOS/ZGmax ;;
+            Linux)   APP=dist/ZGmax/ZGmax; export QT_QPA_PLATFORM=offscreen ;;
+          esac
+          for i in 1 2 3; do
+            ZGMAX_T0=$(python -c "import time; print(time.time())") "$APP" --startzeit programm/icon.png || true
+          done
+          cat startzeit.txt
       - uses: actions/upload-artifact@v7
         if: env.AKTIV == 'true'
         with:

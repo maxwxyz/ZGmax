@@ -2355,3 +2355,45 @@ def test_disabled_menu_items_greyed(app):
             m.close()
     finally:
         apply_theme(app, "auto")
+
+
+def test_quickstart_preview_and_handover(app, tmp_path, monkeypatch):
+    """Schneller Start: Sofortvorschau zeigt das Bild ohne Rechenkern; ein zweiter Aufruf gibt seine Dateien an das
+    laufende Programm (und endet), statt selbst zu starten."""
+    import subprocess
+    import sys
+    import cv2
+    import numpy as np
+    import quickstart as qs
+    img = np.full((300, 400, 3), 255, np.uint8)
+    cv2.line(img, (20, 20), (380, 280), (0, 0, 0), 3)
+    p = tmp_path / "bild.png"
+    cv2.imwrite(str(p), img)
+    pv = qs.preview(str(p))
+    try:
+        from PySide6.QtWidgets import QLabel
+        lbl = pv.findChild(QLabel)
+        assert pv.isVisible() and lbl.pixmap() is not None and not lbl.pixmap().isNull()
+    finally:
+        pv.close()
+    assert qs.preview(str(tmp_path / "fehlt.png")) is None
+    name = f"zgmax-test-{os.getpid()}"
+    monkeypatch.setattr(qs, "SERVER", name)
+    got = []
+    srv = qs.serve(got.append)
+    assert srv is not None
+    try:
+        env = dict(os.environ, USER=name[6:], USERNAME=name[6:], QT_QPA_PLATFORM="offscreen")
+        env.pop("ZGMAX_EIGENE_INSTANZ", None)
+        code = ("import sys; sys.path.insert(0, sys.argv[1]); import quickstart as qs; "
+                "from PySide6.QtCore import QCoreApplication; a = QCoreApplication([]); "
+                "print('OK' if qs.hand_over(sys.argv[2:]) else 'NEIN')")
+        prog = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "programm")
+        proc = subprocess.Popen([sys.executable, "-c", code, prog, str(p)], env=env, stdout=subprocess.PIPE, text=True)
+        wait(app, lambda: proc.poll() is not None, timeout=30)
+        assert proc.stdout.read().strip() == "OK" and got == [[str(p)]]
+    finally:
+        srv.close()
+    # ohne laufendes Programm: nicht uebergeben
+    monkeypatch.setattr(qs, "SERVER", name + "-keins")
+    assert qs.hand_over([str(p)], timeout=100) is False

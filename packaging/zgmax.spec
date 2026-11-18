@@ -15,7 +15,7 @@ datas += [(os.path.join(ROOT, "LICENSE"), ".")]       # AGPL-3.0, liegt der App 
 datas += [(os.path.join(SRC, "doc_img", lang), os.path.join("doc_img", lang)) for lang in ("de", "en")]   # Bilder der Anleitung
 datas += [(os.path.join(SRC, "ocr", f), "ocr") for f in ("latin_rec.onnx", "latin_dict.txt", "HERKUNFT.txt")]
 hidden = ["ezdxf.addons.drawing.pymupdf", "ezdxf.addons.drawing.layout", "ezdxf.addons.drawing.config",
-          "PySide6.QtPrintSupport", "PySide6.QtSvg"]
+          "PySide6.QtPrintSupport", "PySide6.QtSvg", "PySide6.QtNetwork", "quickstart"]
 try:                                                 # Texterkennung (optional) samt Modellen mitnehmen
     from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
     import rapidocr_onnxruntime  # noqa: F401

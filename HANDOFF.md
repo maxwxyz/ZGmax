@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-11-04, lokal) – **Version 1.0** (Tag `v1.0`), alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-18, lokal) – **Version 1.0** (Tag `v1.0`), alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -12,6 +12,20 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Absturz-Fix „Schriftfeld lesen“ mit Originaldatei. Ideen: Prüfplan mit Ballonnummern + ISO-286-Passungen,
   Schriftfeld als Daten, Stückliste gegen Positionsnummern, eine Instanz, Ordnervergleich als ein PDF, Tastenkürzel,
   macOS-Signatur. Keine Firma/Zielgruppe nennen.
+
+## Erledigt 2026-11-18 (schneller Start)
+- `programm/quickstart.py` (braucht nur Qt): `make_app`, `hand_over`/`serve` (QLocalServer `zgmax-<Nutzer>`: ein
+  weiterer Aufruf gibt seine Dateien ab und endet; `--neu` oder `ZGMAX_EIGENE_INSTANZ=1` erzwingt einen eigenen Lauf,
+  `restart_app` nutzt `--neu`), `preview` (Sofortvorschau über QImageReader, verkleinert gelesen), `mark`/`report`.
+  `zgmax_start.py` ruft das vor dem Import von `drawing_viewer`; `main(app, preview)` zeigt das Hauptfenster erst,
+  wenn die Zeichnung da ist, und schließt dann die Vorschau.
+- Messung: `ZGmax --startzeit <datei>` (eigene Einstellungen im Temp-Ordner, `ZGMAX_T0` = Startzeitpunkt vom Aufrufer,
+  `ZGMAX_STARTZEIT_DATEI` für Windows ohne Konsole). Mac-App warm: Vorschau 0,32 s, Bild 0,87 s, Startseite 0,59 s.
+  GitHub-Workflow misst nach dem Selbsttest dreimal und gibt die Zeiten aus (Windows-Werte dort ablesen).
+- Kalt dominiert das Laden von OpenCV (~1,2 s am Mac) und Qt; das ist nicht vermeidbar, liegt jetzt aber hinter der
+  Vorschau. Fensteraufbau 0,24 s (Werkzeugleiste/Symbole ~0,15 s) – wenig zu holen.
+- Achtung: Ein Messlauf vor der Umstellung lief mit den echten Einstellungen und hat vermutlich die Scratch-Datei
+  `…/scratchpad/zd/a.png` in „Zuletzt verwendet“ eingetragen (Zurücknehmen wurde blockiert) – Nutzer informiert.
 
 ## Erledigt 2026-11-04 (nach 1.0)
 - Zweite Runde nach 1.0 (Agenten + selbst): Tempo – Hintergrund-Erkennung startet erst im Ruhezustand

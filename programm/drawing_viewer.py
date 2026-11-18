@@ -1601,6 +1601,17 @@ def selftest():
         wb.save(f)
         return f"openpyxl {openpyxl.__version__}"
     step("Excel", excel)
+
+    def handover():                              # schneller Start: Dateien an ein laufendes Programm geben
+        import quickstart as qs
+        from PySide6.QtCore import QCoreApplication
+        _app = QCoreApplication.instance() or QCoreApplication([])
+        qs.SERVER = f"zgmax-selbsttest-{os.getpid()}"
+        srv = qs.serve(lambda files: None)
+        assert srv is not None, tr("Annahme weiterer Aufrufe nicht moeglich")
+        srv.close()
+        return "QtNetwork"
+    step(tr("Uebergabe an laufendes Programm"), handover)
     step(tr("Schrift"), lambda: os.path.basename(str(dc._font_path())))
     text = tr("{} {} Selbsttest\n").format(APP, VERSION) + "\n".join(out)
     log.info(text)
@@ -1622,8 +1633,12 @@ def install_qt_translations(app):
     return None
 
 
-def main():
+def main(app=None, preview=None):
+    """Programm starten. app/preview kommen vom schnellen Einstieg (zgmax_start): die QApplication und ggf. die
+    Sofortvorschau des Bildes, die stehen bleibt, bis das Hauptfenster die Zeichnung selbst zeigt."""
     import multiprocessing
+    import time
+    import quickstart as qs
     multiprocessing.freeze_support()             # Texterkennung im eigenen Prozess (ocrservice), auch in der App
     if "--selbsttest" in sys.argv:
         setup_logging()
@@ -1631,16 +1646,8 @@ def main():
     for name in ("stdout", "stderr"):
         if getattr(sys, name) is not None:
             setattr(sys, name, SafeStream(getattr(sys, name)))
-    if os.name == "nt":                          # eigenes Symbol in der Taskleiste (nicht das von Python)
-        try:
-            import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ZGmax.Viewer.2")
-        except Exception:                        # noqa: BLE001
-            pass
-    scale = ui_scale_setting(app_settings())       # Groesse der Oberflaeche (vor dem Start festlegen)
-    if abs(scale - 1.0) > 0.01:
-        os.environ["QT_SCALE_FACTOR"] = f"{scale:.2f}"
-    app = QApplication(sys.argv)
+    if app is None:
+        app = qs.make_app(sys.argv)              # Symbol in der Taskleiste, Groesse der Oberflaeche
     app.setApplicationName(APP)
     app.setOrganizationName("ZGmax")
     app.setApplicationVersion(VERSION)
@@ -1657,11 +1664,66 @@ def main():
     args = [a for a in args if a not in proj]
     w = MainWindow(args[0] if len(args) > 0 else None, args[1] if len(args) > 1 else None)
     WINDOWS.append(w)
+    qs.mark("Fenster")
     fo = _FileOpenFilter(w)
     app.installEventFilter(fo)
-    w.show()
+    timing = "--startzeit" in sys.argv
+
+    def shown():
+        """Hauptfenster zeigt die Zeichnung (oder die Startseite): Vorschau weg, ggf. Startzeit melden."""
+        if preview is not None:
+            preview.close()
+        qs.mark("Bild" if args else "Startseite")
+        log.info(qs.report())
+        if timing:
+            print(qs.report())
+            out = os.environ.get("ZGMAX_STARTZEIT_DATEI")        # Windows-App ohne Konsole: in eine Datei
+            if out:
+                with open(out, "a", encoding="utf-8") as f:
+                    f.write(qs.report() + "\n")
+            QTimer.singleShot(0, app.quit)
+    if preview is not None and args and not proj:
+        w.resize(preview.size())                 # Hauptfenster uebernimmt Platz und Groesse der Vorschau
+        w.move(preview.pos())
+        t_wait = time.time()
+        swap = QTimer(w)
+
+        def check():
+            ready = w.payload is not None and not w.running
+            stuck = time.time() - t_wait > 0.4 and not w.running      # Fehler, Abbruch
+            if ready or stuck or QApplication.activeModalWidget() is not None or time.time() - t_wait > 20:
+                swap.stop()
+                w.show()
+                shown()
+        swap.timeout.connect(check)
+        swap.start(20)
+    else:
+        w.show()
+        if timing and args and not proj:
+            wait = QTimer(w)
+            wait.timeout.connect(lambda: (wait.stop(), shown()) if (w.payload is not None and not w.running) else None)
+            wait.start(20)
+        else:
+            QTimer.singleShot(0, shown)
     if proj:
         QTimer.singleShot(0, lambda: w.project_open(proj[0]))
+
+    def from_other_start(files):
+        """Ein weiterer Aufruf (Doppelklick auf eine Datei) gibt seine Dateien an dieses Programm."""
+        act = QApplication.activeWindow()
+        win = act if isinstance(act, MainWindow) else (WINDOWS[-1] if WINDOWS else None)
+        if win is None:
+            return
+        n = len(WINDOWS)
+        if files:
+            win._files_dropped(files)
+        top = WINDOWS[-1] if len(WINDOWS) > n else win               # neues Fenster nach vorn, sonst dieses
+        if top.isMinimized():
+            top.showNormal()
+        top.raise_()
+        top.activateWindow()
+    if not timing:
+        app._zgmax_server = qs.serve(from_other_start)               # Referenz halten
     app.aboutToQuit.connect(ocrservice.stop)
     app.aboutToQuit.connect(MainWindow.clear_process_autosaves)   # normales Ende: keine Wiederherstellen-Frage
     sys.exit(app.exec())

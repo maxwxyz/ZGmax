@@ -1301,7 +1301,8 @@ class LayoutMixin:
         """Programm neu starten (z. B. fuer die Groesse der Oberflaeche); Ungespeichertes wird vorher abgefragt."""
         if not self._maybe_save():
             return
-        args = [a for a in sys.argv[1:] if a.startswith("-")]
+        args = [a for a in sys.argv[1:] if a.startswith("-") and a != "--neu"]
+        args.append("--neu")                         # eigener Programmlauf: nicht an dieses (endende) uebergeben
         if self.project_path:
             args.append(self.project_path)
         elif self.path_a:
