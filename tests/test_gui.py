@@ -2418,3 +2418,44 @@ def test_cache_released_and_jobs_deleted(app, win, pair, tmp_path):
     for _ in range(5):
         app.processEvents()
     assert len(win.findChildren(Job)) <= 1                        # fruehere Jobs sind weg
+
+
+def test_window_geometry_remembered(app, win):
+    """Fensterlage merken und wiederherstellen; eine Lage ausserhalb aller Bildschirme wird verworfen."""
+    import quickstart as qs
+    st = win.settings
+    win.setGeometry(120, 90, 1100, 700)
+    qs.save_window(win, st)
+    assert qs.saved_window(st) == (120, 90, 1100, 700, False)
+    st.setValue("win_x", 90000)                                   # Monitor abgesteckt
+    assert qs.saved_window(st) is None
+    for k in "xywh":
+        st.remove("win_" + k)
+    assert qs.saved_window(st) is None
+
+
+def test_project_embedded_files_stay_in_data_dir(app, tmp_path, pair):
+    """Eingebettete Zeichnungen einer (fremden) Projektdatei landen immer unter <Daten>/projektdateien - auch wenn
+    die Pruefsumme in der Datei einen Pfad vortaeuscht; alte entpackte Ordner werden aufgeraeumt."""
+    import json as _json
+    import time as _time
+    import zipfile
+    import ui_project as up
+    from ui_common import app_data_dir
+    root = os.path.realpath(os.path.join(app_data_dir(), "projektdateien"))
+    evil = tmp_path / "boese.zgmax"
+    with zipfile.ZipFile(evil, "w") as z:
+        z.write(pair[0], "dateien/A_alt.png")
+        z.writestr(up.PROJECT_JSON, _json.dumps({"format": "zgmax", "files": {
+            "a": "alt.png", "a_embedded": "dateien/A_alt.png", "a_sha256": "../../../../raus"}}))
+    _data, emb = up.read_project(str(evil))
+    out = os.path.realpath(emb["a"])
+    assert out.startswith(root + os.sep) and os.path.isfile(out)
+    assert not os.path.exists(os.path.join(os.path.dirname(app_data_dir()), "raus"))
+    old = os.path.join(root, "0123456789abcdef")
+    os.makedirs(old, exist_ok=True)
+    open(os.path.join(old, "x.png"), "wb").close()
+    t = _time.time() - 40 * 86400
+    os.utime(old, (t, t))
+    assert up.prune_project_files(keep={os.path.dirname(emb["a"])}) >= 1
+    assert not os.path.exists(old) and os.path.isfile(emb["a"])

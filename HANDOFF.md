@@ -13,6 +13,18 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
   ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
 
+## Erledigt 2026-11-18 (nach 1.1, unter „unreleased“)
+- Texterkennung überall im eigenen Prozess: `rep._in_service` um `ocr_image`, `ocr_lines`, `ocr_any_orientation`,
+  `ocr_vertical`, `ocr_skew` → `ocrservice.call(name, args, kwargs)` (Vorrang FOREGROUND, hält Hintergrund 2 s
+  zurück, damit Reihen einzelner Aufrufe ihn nicht dauernd abbrechen). Absturz → `ocrservice.Crashed` → leeres
+  Ergebnis, `rep.OCR_CRASHED` zählt, `_run_job` meldet es per Hinweis. `ZGMAX_OCR_IM_PROGRAMM=1` = alter Weg.
+  Kosten: kleine Einzelerkennungen ~50 % langsamer (10 Stück 3,5 s statt 2,3 s).
+- Review der ganzen App, 7 Befunde: (1) Pfad aus fremder Projektdatei (`read_project`, jetzt nur Hex), (2) Aufräumen
+  `prune_project_files` (30 Tage), (4) Fensterlage `quickstart.saved_window/save_window` (nur wenn `main()` die
+  App-Eigenschaft `zgmax_remember_window` setzt). (3) Speichern absichern, (6) Tooltips, (7) große Funktionen:
+  drei Agenten in Worktrees – Ergebnisse zusammenführen. (5) unbenutzte Übersetzungen danach entfernen.
+- Idee (Nutzer gefragt): eine „Textschicht“ je Seite für alle Funktionen, auf der Platte gemerkt, mit Anzeige.
+
 ## Erledigt 2026-11-18 (Release 1.1)
 - Prüfbau 44304411880 auf allen drei Systemen grün, Installer-Probe bestanden (bauen, `/CURRENTUSER` installieren,
   darüber aktualisieren, Selbsttest, Registry, Deinstallation). Startzeiten der fertigen Apps (GitHub-Rechner):

@@ -18,7 +18,7 @@ if __name__ == "__main__":
         if "--startzeit" not in sys.argv and "--neu" not in sys.argv and qs.hand_over(files):
             sys.exit(0)                          # ZGmax laeuft schon und hat die Dateien uebernommen
         if files and not files[0].lower().endswith(".zgmax"):
-            pv = qs.preview(files[0])
+            pv = qs.preview(files[0], place=qs.saved_window())
             if pv is not None:
                 app.processEvents()
                 qs.mark("Vorschau")

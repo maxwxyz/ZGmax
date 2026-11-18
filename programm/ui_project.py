@@ -4,6 +4,8 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
 import hashlib
+import re
+import time
 from version import VERSION, version_key
 import shutil
 import zipfile
@@ -57,15 +59,47 @@ def read_project(path):
             name, sha = fl.get(k + "_embedded"), fl.get(k + "_sha256", "")
             if not name or name not in z.namelist():
                 continue
-            out_dir = os.path.join(app_data_dir(), "projektdateien", (sha or k)[:16])
-            out = os.path.join(out_dir, os.path.basename(name).split("_", 1)[-1])
+            # Ordnername nur aus Hex-Zeichen: sha kommt aus der (fremden) Projektdatei und darf nicht aus dem
+            # Datenordner herausfuehren (z. B. "../.."); der Dateiname ist nur der letzte Teil des Eintrags
+            tag = sha[:16] if re.fullmatch(r"[0-9a-fA-F]{16,128}", sha or "") else k
+            out_dir = os.path.join(app_data_dir(), "projektdateien", tag)
+            fname = os.path.basename(name.replace("\\", "/")).split("_", 1)[-1] or k
+            out = os.path.join(out_dir, fname)
             if not (os.path.isfile(out) and (not sha or file_sha256(out) == sha)):
                 os.makedirs(out_dir, exist_ok=True)
                 with z.open(name) as src, open(out + ".tmp", "wb") as dst:
                     shutil.copyfileobj(src, dst)
                 os.replace(out + ".tmp", out)
             embedded[k] = out
+            try:
+                os.utime(out_dir)                    # zuletzt benutzt (fuer das Aufraeumen)
+            except OSError:
+                pass
+    prune_project_files(keep={os.path.dirname(p) for p in embedded.values()})
     return data, embedded
+
+
+def prune_project_files(keep=(), days=30):
+    """Entpackte Zeichnungen frueher geoeffneter Projekte entfernen, die seit 'days' Tagen nicht benutzt wurden -
+    sonst waechst der Datenordner mit jedem Projekt. Nichts ausserhalb von <Daten>/projektdateien anfassen."""
+    root = os.path.join(app_data_dir(), "projektdateien")
+    limit = time.time() - days * 86400
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    n = 0
+    for name in names:
+        d = os.path.join(root, name)
+        if d in keep or os.path.islink(d) or not os.path.isdir(d):
+            continue
+        try:
+            if os.path.getmtime(d) < limit:
+                shutil.rmtree(d)
+                n += 1
+        except OSError:
+            pass
+    return n
 
 
 class ProjectMixin:
@@ -383,6 +417,10 @@ class ProjectMixin:
             if hasattr(job, "cancel"):
                 job.cancel()
             job.wait(15000)
+        app = QApplication.instance()
+        if app is not None and app.property("zgmax_remember_window"):
+            import quickstart as qs
+            qs.save_window(self, self.settings)            # naechster Start: gleiche Lage und Groesse
         self._closed = True                            # Fenster bleibt im Speicher: Sicherung darf nicht wiederkommen
         self.autosave_timer.stop()
         self.clear_autosave()

@@ -53,6 +53,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self.setWindowTitle(APP)
         self.resize(1440, 900)
         self.setMinimumSize(900, 600)
+        self._restore_window()
         self.setAcceptDrops(True)
         from ui_start import DropOverlay
         self.drop_overlay = DropOverlay(self)            # Ziele beim Hineinziehen, wenn schon etwas offen ist
@@ -424,6 +425,20 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._big_sheet_hint(which, path)
         if compute:
             self.start_compute()
+
+    def _restore_window(self):
+        """Erstes Fenster eines Programmlaufs: Lage und Groesse vom letzten Mal (nur im echten Programmlauf, den
+        main() kennzeichnet - Tests und Hilfsskripte bleiben bei der festen Groesse). Weitere Fenster setzt
+        new_window versetzt daneben."""
+        import quickstart as qs
+        app = QApplication.instance()
+        if app is None or not app.property("zgmax_remember_window") or WINDOWS:
+            return
+        g = qs.saved_window(self.settings if hasattr(self, "settings") else None)
+        if g:
+            self.setGeometry(*g[:4])
+            if g[4]:
+                self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
 
     def _trim_cache(self):
         """Bilder frueher geoeffneter Dateien freigeben (je Datei Grau- und Farbfassung, bei A0 mehrere 100 MB):
@@ -1670,6 +1685,7 @@ def main(app=None, preview=None):
     if app is None:
         app = qs.make_app(sys.argv)              # Symbol in der Taskleiste, Groesse der Oberflaeche
     app.setApplicationName(APP)
+    app.setProperty("zgmax_remember_window", not ("--startzeit" in sys.argv))   # Fensterlage merken/wiederherstellen
     app.setOrganizationName("ZGmax")
     app.setApplicationVersion(VERSION)
     app.setStyle(tr("Fusion"))

@@ -1,10 +1,14 @@
 {
  "unreleased": {
   "de": [
-   "Texterkennung robuster: Jede Erkennung (auch Schriftfeld, Text je Änderung, Tabellen, Diagramm-Achsen) läuft im eigenen Prozess. Stürzt sie ab, läuft das Programm weiter und meldet die übersprungenen Stellen."
+   "Texterkennung robuster: Jede Erkennung (auch Schriftfeld, Text je Änderung, Tabellen, Diagramm-Achsen) läuft im eigenen Prozess. Stürzt sie ab, läuft das Programm weiter und meldet die übersprungenen Stellen.",
+   "Das Fenster öffnet in der Lage und Größe vom letzten Mal.",
+   "Sicherheit: Eingebettete Zeichnungen aus Projektdateien werden immer im Datenordner abgelegt; alte entpackte Kopien werden nach 30 Tagen entfernt."
   ],
   "en": [
-   "More robust text recognition: every recognition (also title block, text per change, tables, chart axes) runs in its own process. If it crashes, the program keeps running and reports the skipped places."
+   "More robust text recognition: every recognition (also title block, text per change, tables, chart axes) runs in its own process. If it crashes, the program keeps running and reports the skipped places.",
+   "The window opens at the position and size of the last time.",
+   "Security: embedded drawings from project files are always stored in the data folder; old unpacked copies are removed after 30 days."
   ]
  },
  "releases": [

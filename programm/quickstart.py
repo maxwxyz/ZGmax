@@ -59,6 +59,40 @@ def make_app(argv):
     return app
 
 
+def _settings():
+    from PySide6.QtCore import QSettings
+    return QSettings(QSettings.defaultFormat(), QSettings.Scope.UserScope, "drawing_diff", "viewer")
+
+
+def saved_window(settings=None):
+    """Zuletzt benutzte Lage des Hauptfensters: (x, y, b, h, maximiert) oder None. Nur, wenn das Fenster damit noch
+    auf einem angeschlossenen Bildschirm liegt (sonst waere es nach dem Abstecken eines Monitors unerreichbar)."""
+    from PySide6.QtCore import QRect
+    from PySide6.QtGui import QGuiApplication
+    st = settings or _settings()
+    try:
+        x, y, w, h = (int(st.value("win_" + k)) for k in "xywh")
+    except (TypeError, ValueError):
+        return None
+    if w < 600 or h < 400:
+        return None
+    r = QRect(x, y, w, h)
+    if not any(s.availableGeometry().intersected(r).width() >= 200 and
+               s.availableGeometry().intersected(r).height() >= 150 for s in QGuiApplication.screens()):
+        return None
+    return x, y, w, h, str(st.value("win_max", "false")).lower() == "true"
+
+
+def save_window(win, settings=None):
+    """Lage des Hauptfensters merken (bei maximiertem Fenster die Lage davor und das Merkmal maximiert)."""
+    st = settings or _settings()
+    g = win.normalGeometry() if win.isMaximized() or win.isFullScreen() else win.geometry()
+    if g.width() >= 600 and g.height() >= 400:
+        for k, v in zip("xywh", (g.x(), g.y(), g.width(), g.height())):
+            st.setValue("win_" + k, int(v))
+    st.setValue("win_max", "true" if win.isMaximized() else "false")
+
+
 def hand_over(files, timeout=400):
     """Laeuft ZGmax schon? Dann die Dateien dorthin geben (auch ohne Dateien: Fenster nach vorn). True = erledigt,
     dieses Programm kann sofort enden."""
@@ -114,7 +148,7 @@ def serve(on_files):
     return srv
 
 
-def preview(path, size=(1440, 900)):
+def preview(path, size=(1440, 900), place=None):
     """Sofortvorschau: Fenster in Programmgroesse mit dem Bild (falls Qt es lesen kann), sonst nur der Dateiname.
     Bleibt, bis das Hauptfenster das Bild selbst zeigt. None, wenn es nichts zu zeigen gibt."""
     from PySide6.QtCore import QSize, Qt
@@ -129,6 +163,8 @@ def preview(path, size=(1440, 900)):
         from PySide6.QtGui import QIcon
         w.setWindowIcon(QIcon(ico))
     w.resize(*size)
+    if place:                                    # wie das Hauptfenster beim letzten Mal: (x, y, b, h, maximiert)
+        w.setGeometry(*place[:4])
     pal = w.palette()
     pal.setColor(QPalette.ColorRole.Window, QColor("#e5e7eb"))
     w.setPalette(pal)
@@ -151,7 +187,10 @@ def preview(path, size=(1440, 900)):
                     lbl.setPixmap(QPixmap.fromImage(img))
         except Exception:                        # noqa: BLE001 - dann eben nur der Name
             pass
-    w.show()
+    if place and place[4]:
+        w.showMaximized()
+    else:
+        w.show()
     return w
 
 
