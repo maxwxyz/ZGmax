@@ -346,6 +346,13 @@ class CanvasPaintMixin:
             p.setPen(QColor(THEME["text2"]))
             p.drawText(QRectF(x0 + 26, y, wd - 26, 15), Qt.AlignmentFlag.AlignVCenter, t)
 
+    # Art der Markierung -> Methode (p, a, col, th, lw, x, y); Stift/Linienzug/Polygon siehe _paint_ann
+    _ANN_PAINTERS = {"number": "_paint_ann_number", "text": "_paint_ann_text", "approval": "_paint_ann_approval",
+                     "measure": "_paint_ann_measure", "rect": "_paint_ann_rect", "cloud": "_paint_ann_cloud",
+                     "highlight": "_paint_ann_highlight", "line": "_paint_ann_line", "ellipse": "_paint_ann_ellipse",
+                     "image": "_paint_ann_image", "redact": "_paint_ann_redact", "pixelate": "_paint_ann_pixelate",
+                     "arrow": "_paint_ann_arrow"}
+
     def _paint_ann(self, p, a, selected=False):
         s = self.scale
         shape = self.shape
@@ -361,219 +368,270 @@ class CanvasPaintMixin:
             p.translate(rcx, rcy)
             p.rotate(rot)
             p.translate(-rcx, -rcy)
-        if t == "number":
-            r = th * 0.95
-            p.setPen(QPen(QColor("white"), max(1.0, lw * 0.4)))
-            p.setBrush(col)
-            p.drawEllipse(QPointF(x, y), r, r)
-            f = QFont(UI_FONT)
-            f.setBold(True)
-            f.setPixelSize(max(5, int(rep.stamp_font_h(th, a["nr"]))))
-            p.setFont(f)
-            p.setPen(QColor("white"))
-            p.drawText(QRectF(x - r, y - r, 2 * r, 2 * r), Qt.AlignmentFlag.AlignCenter, str(a["nr"]))
-        elif t == "text":
-            if th >= 3:
-                f = QFont(UI_FONT)
-                f.setPixelSize(max(4, int(th)))
-                p.setFont(f)
-                box = QRectF(x, y, 20000, 20000)
-                fl = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-                p.setPen(QColor("white"))
-                txt = "\n".join(rep.ann_lines(a, rep.ann_text_h(shape, a["size"])))
-                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    p.drawText(box.translated(dx, dy), fl, txt)
-                p.setPen(col)
-                p.drawText(box, fl, txt)
-        elif t == "approval":
-            b = rep.ann_frame(shape, a)
-            a0, b0 = self.to_wid(b[0], b[1])
-            a1, b1 = self.to_wid(b[2], b[3])
-            p.setPen(QPen(col, max(2.0, lw * 1.3)))
-            p.setBrush(QColor("white"))
-            p.drawRect(QRectF(a0, b0, a1 - a0, b1 - b0))
-            if th >= 3:
-                f = QFont(UI_FONT)
-                f.setPixelSize(max(4, int(th)))
-                p.setFont(f)
-                p.setPen(col)
-                p.drawText(QRectF(a0 + 0.5 * th, b0 + 0.5 * th, 20000, 20000),
-                           Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, a["text"])
-        elif t == "measure":
-            mlw, mth, alen = rep.measure_style(shape, a["size"])
-            mlw, mth, alen = max(1.0, mlw * s), mth * s, alen * s
-            # Groesse wie auf dem Papier (waechst mit dem Zoom); beim Herauszoomen nie unlesbar klein
-            mth = max(11.0, mth)
-            alen = float(np.clip(alen, 7, 40))
-            pen = QPen(col, mlw)
-            pen.setCapStyle(Qt.PenCapStyle.FlatCap)
-            p.setPen(pen)
-            for gk, gd in rep.measure_geometry(a):
-                if gk == "circle":
-                    cx, cy = self.to_wid(gd[0], gd[1])
-                    p.setBrush(Qt.BrushStyle.NoBrush)
-                    p.drawEllipse(QPointF(cx, cy), gd[2] * s, gd[2] * s)
-                    p.drawLine(QPointF(cx - 6, cy), QPointF(cx + 6, cy))
-                    p.drawLine(QPointF(cx, cy - 6), QPointF(cx, cy + 6))
-                else:
-                    pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in gd])
-                    if gk == "poly":
-                        c2 = QColor(col)
-                        c2.setAlpha(40)
-                        p.setBrush(c2)
-                        p.drawPolygon(pg)
-                    else:
-                        p.setBrush(Qt.BrushStyle.NoBrush)
-                        p.drawPolyline(pg)
-            wp = [self.to_wid(q[0], q[1]) for q in a["pts"]]
-            if a.get("kind", "dist") == "dist" and len(wp) >= 2:   # Pfeilspitzen wie bei einer Bemassung
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(col)
-                for tip, frm in ((wp[0], wp[1]), (wp[-1], wp[-2])):
-                    p.drawPolygon(QPolygonF([QPointF(*q) for q in rep.arrow_head(tip, frm, alen)]))
-            else:
-                p.setPen(QPen(col, mlw))
-                p.setBrush(QColor("white"))
-                for q in wp:
-                    p.drawEllipse(QPointF(*q), 3, 3)
-            txt = rep.measure_text(a, self.mm_px)
-            if txt:                                   # Wert wie bei einer Bemassung: ueber der Linie, parallel
-                cx, cy, ang, ax, ay = rep.measure_label(a, shape)
-                X, Y = self.to_wid(cx, cy)
-                if a.get("lo"):                       # verschoben: Hinweislinie zur Messung
-                    p.setPen(QPen(col, max(1.0, mlw * 0.8)))
-                    p.drawLine(QPointF(X, Y), QPointF(*self.to_wid(ax, ay)))
-                f = QFont(UI_FONT)
-                f.setPixelSize(int(mth))
-                f.setBold(True)
-                p.setFont(f)
-                tw = p.fontMetrics().horizontalAdvance(txt)
-                p.save()
-                p.translate(X, Y)
-                p.rotate(ang)
-                r = QRectF(-tw / 2 - mth * 0.3, -mth * 0.65, tw + mth * 0.6, mth * 1.3)
-                p.setPen(QPen(col, 1))
-                p.setBrush(QColor(255, 255, 255, 235))
-                p.drawRoundedRect(r, mth * 0.25, mth * 0.25)
-                p.setPen(col)
-                p.drawText(r, Qt.AlignmentFlag.AlignCenter, txt)
-                p.restore()
-        elif t == "rect":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            p.setPen(QPen(col, lw))
-            p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
-            p.drawRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
-        elif t == "cloud":
-            pts = rep.cloud_points(a["x"], a["y"], a["x2"], a["y2"], rep.cloud_radius(shape, a["size"]))
-            if pts:
-                pen = QPen(col, lw)
-                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                p.setPen(pen)
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawPolygon(QPolygonF([QPointF(*self.to_wid(qx, qy)) for qx, qy in pts]))
-        elif t == "highlight":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            c2 = QColor(col)
-            c2.setAlpha(95)
-            p.fillRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), c2)
-        elif t == "line":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            pen = QPen(col, lw)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            p.setPen(pen)
-            p.drawLine(QPointF(x, y), QPointF(x2, y2))
-        elif t == "ellipse":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            p.setPen(QPen(col, lw))
-            p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
-            p.drawEllipse(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
-        elif t in rep.PTS_TYPES and a.get("pts"):
-            pen = QPen(col, lw)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            p.setPen(pen)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in a["pts"]])
-            if t == "polygon":
-                if a.get("filled"):
-                    p.setBrush(QColor(col))
-                p.drawPolygon(pg)
-            elif len(a["pts"]) == 1:
-                p.drawPoint(pg[0])
-            else:
-                p.drawPolyline(pg)
-        elif t == "image":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            p.drawImage(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), self._ann_qimage(a))
-        elif t == "redact":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            fill = QColor("black")
-            if a.get("fill") == "paper" and self.res is not None:   # Papierfarbe aus der Umgebung
-                h_, w_ = self.shape
-                X0, Y0 = max(0, int(min(a["x"], a["x2"]))), max(0, int(min(a["y"], a["y2"])))
-                X1, Y1 = min(w_, int(max(a["x"], a["x2"])) + 1), min(h_, int(max(a["y"], a["y2"])) + 1)
-                if X1 > X0 and Y1 > Y0:
-                    m = self.mode if self.mode in ("A", "B", "D", "O", "N", "R") else "D"
-                    ring = 24
-                    part = self._layer(m, 0, max(0, Y0 - ring), min(h_, Y1 + ring), max(0, X0 - ring), min(w_, X1 + ring))
-                    b, g, r = rep.paper_around(part, ring, ring, part.shape[1] - ring, part.shape[0] - ring)
-                    fill = QColor(r, g, b)
-                    if self.invert:
-                        fill = QColor(26, 24, 22)
-            p.fillRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), fill)
-        elif t == "pixelate":
-            img, rect = self._pixelated(a)
-            if img is not None:
-                a0, b0 = self.to_wid(rect[0], rect[1])
-                a1, b1 = self.to_wid(rect[2], rect[3])
-                p.save()
-                if rot:                              # gedreht: Mosaik des umgebenden Rechtecks, auf die Box beschnitten
-                    clip = QPainterPath()
-                    clip.addPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in rep.rot_corners(shape, a)]))
-                    clip.closeSubpath()
-                    p.setClipPath(clip, Qt.ClipOperation.IntersectClip)
-                p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
-                p.drawImage(QRectF(a0, b0, a1 - a0, b1 - b0), img)
-                p.restore()
-        elif t == "arrow":
-            x2, y2 = self.to_wid(a["x2"], a["y2"])
-            (ax, ay, bx, by), tris = rep.arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
-            p.setPen(QPen(col, lw))
-            p.drawLine(QPointF(ax, ay), QPointF(bx, by))
-            p.setBrush(col)
-            p.setPen(Qt.PenStyle.NoPen)
-            for tri in tris:
-                p.drawPolygon(QPolygonF([QPointF(*q) for q in tri]))
+        if t in rep.PTS_TYPES:
+            name = "_paint_ann_pts" if a.get("pts") else None
+        else:
+            name = self._ANN_PAINTERS.get(t)
+        if name:
+            getattr(self, name)(p, a, col, th, lw, x, y)
         if rot and t != "pixelate":
             p.restore()
         if selected:
-            b = rep.ann_bounds(shape, a)
-            a0, b0 = self.to_wid(b[0], b[1])
-            a1, b1 = self.to_wid(b[2], b[3])
+            self._paint_ann_selection(p, a)
+
+    def _paint_ann_number(self, p, a, col, th, lw, x, y):
+        """Nummer: gefuellter Kreis mit weisser Zahl."""
+        r = th * 0.95
+        p.setPen(QPen(QColor("white"), max(1.0, lw * 0.4)))
+        p.setBrush(col)
+        p.drawEllipse(QPointF(x, y), r, r)
+        f = QFont(UI_FONT)
+        f.setBold(True)
+        f.setPixelSize(max(5, int(rep.stamp_font_h(th, a["nr"]))))
+        p.setFont(f)
+        p.setPen(QColor("white"))
+        p.drawText(QRectF(x - r, y - r, 2 * r, 2 * r), Qt.AlignmentFlag.AlignCenter, str(a["nr"]))
+
+    def _paint_ann_text(self, p, a, col, th, lw, x, y):
+        """Text mit weissem Saum (lesbar auf Linien)."""
+        shape = self.shape
+        if th >= 3:
+            f = QFont(UI_FONT)
+            f.setPixelSize(max(4, int(th)))
+            p.setFont(f)
+            box = QRectF(x, y, 20000, 20000)
+            fl = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+            p.setPen(QColor("white"))
+            txt = "\n".join(rep.ann_lines(a, rep.ann_text_h(shape, a["size"])))
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                p.drawText(box.translated(dx, dy), fl, txt)
+            p.setPen(col)
+            p.drawText(box, fl, txt)
+
+    def _paint_ann_approval(self, p, a, col, th, lw, x, y):
+        """Stempel: weisse Flaeche mit Rahmen und Text."""
+        shape = self.shape
+        b = rep.ann_frame(shape, a)
+        a0, b0 = self.to_wid(b[0], b[1])
+        a1, b1 = self.to_wid(b[2], b[3])
+        p.setPen(QPen(col, max(2.0, lw * 1.3)))
+        p.setBrush(QColor("white"))
+        p.drawRect(QRectF(a0, b0, a1 - a0, b1 - b0))
+        if th >= 3:
+            f = QFont(UI_FONT)
+            f.setPixelSize(max(4, int(th)))
+            p.setFont(f)
+            p.setPen(col)
+            p.drawText(QRectF(a0 + 0.5 * th, b0 + 0.5 * th, 20000, 20000),
+                       Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, a["text"])
+
+    def _paint_ann_measure(self, p, a, col, th, lw, x, y):
+        """Mass: Linien/Flaeche/Kreis, Pfeilspitzen oder Punkte, dann der Wert."""
+        s = self.scale
+        shape = self.shape
+        mlw, mth, alen = rep.measure_style(shape, a["size"])
+        mlw, mth, alen = max(1.0, mlw * s), mth * s, alen * s
+        # Groesse wie auf dem Papier (waechst mit dem Zoom); beim Herauszoomen nie unlesbar klein
+        mth = max(11.0, mth)
+        alen = float(np.clip(alen, 7, 40))
+        pen = QPen(col, mlw)
+        pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+        p.setPen(pen)
+        for gk, gd in rep.measure_geometry(a):
+            if gk == "circle":
+                cx, cy = self.to_wid(gd[0], gd[1])
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(QPointF(cx, cy), gd[2] * s, gd[2] * s)
+                p.drawLine(QPointF(cx - 6, cy), QPointF(cx + 6, cy))
+                p.drawLine(QPointF(cx, cy - 6), QPointF(cx, cy + 6))
+            else:
+                pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in gd])
+                if gk == "poly":
+                    c2 = QColor(col)
+                    c2.setAlpha(40)
+                    p.setBrush(c2)
+                    p.drawPolygon(pg)
+                else:
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawPolyline(pg)
+        wp = [self.to_wid(q[0], q[1]) for q in a["pts"]]
+        if a.get("kind", "dist") == "dist" and len(wp) >= 2:   # Pfeilspitzen wie bei einer Bemassung
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            for tip, frm in ((wp[0], wp[1]), (wp[-1], wp[-2])):
+                p.drawPolygon(QPolygonF([QPointF(*q) for q in rep.arrow_head(tip, frm, alen)]))
+        else:
+            p.setPen(QPen(col, mlw))
+            p.setBrush(QColor("white"))
+            for q in wp:
+                p.drawEllipse(QPointF(*q), 3, 3)
+        self._paint_ann_measure_label(p, a, col, mlw, mth)
+
+    def _paint_ann_measure_label(self, p, a, col, mlw, mth):
+        """Messwert als Schild; verschoben ("lo") mit Hinweislinie zur Messung."""
+        shape = self.shape
+        txt = rep.measure_text(a, self.mm_px)
+        if txt:                                   # Wert wie bei einer Bemassung: ueber der Linie, parallel
+            cx, cy, ang, ax, ay = rep.measure_label(a, shape)
+            X, Y = self.to_wid(cx, cy)
+            if a.get("lo"):                       # verschoben: Hinweislinie zur Messung
+                p.setPen(QPen(col, max(1.0, mlw * 0.8)))
+                p.drawLine(QPointF(X, Y), QPointF(*self.to_wid(ax, ay)))
+            f = QFont(UI_FONT)
+            f.setPixelSize(int(mth))
+            f.setBold(True)
+            p.setFont(f)
+            tw = p.fontMetrics().horizontalAdvance(txt)
+            p.save()
+            p.translate(X, Y)
+            p.rotate(ang)
+            r = QRectF(-tw / 2 - mth * 0.3, -mth * 0.65, tw + mth * 0.6, mth * 1.3)
+            p.setPen(QPen(col, 1))
+            p.setBrush(QColor(255, 255, 255, 235))
+            p.drawRoundedRect(r, mth * 0.25, mth * 0.25)
+            p.setPen(col)
+            p.drawText(r, Qt.AlignmentFlag.AlignCenter, txt)
+            p.restore()
+
+    def _paint_ann_rect(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        p.setPen(QPen(col, lw))
+        p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
+        p.drawRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
+
+    def _paint_ann_cloud(self, p, a, col, th, lw, x, y):
+        shape = self.shape
+        pts = rep.cloud_points(a["x"], a["y"], a["x2"], a["y2"], rep.cloud_radius(shape, a["size"]))
+        if pts:
+            pen = QPen(col, lw)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
             p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
-            if rot and not self.ann_multi:           # gedreht: Rahmen in der Lage der Box
-                m = 3 / s
-                f = rep.ann_frame(shape, a)
-                pts = rep.rot_corners(shape, a, (f[0] - m, f[1] - m, f[2] + m, f[3] + m))
-                p.drawPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in pts]))
-            elif t not in ("arrow", "line", "measure") or self.ann_multi:
-                p.drawRect(QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6))
-            if not self.ann_multi:                   # Griffe nur bei Einzelauswahl
-                g = rot_grip(shape, a, s)
-                if g is not None:                    # Drehanfasser: Verbindungslinie und Kreis
-                    p.setPen(QPen(QColor(ACCENT), 1.2))
-                    p.drawLine(QPointF(*self.to_wid(*g[0])), QPointF(*self.to_wid(*g[1])))
-                p.setPen(QPen(QColor(ACCENT), 1.6))
-                p.setBrush(QColor("white"))
-                for name, hx, hy in ann_handles(shape, a, s):
-                    X, Y = self.to_wid(hx, hy)
-                    if name == "rot":
-                        p.drawEllipse(QPointF(X, Y), 5, 5)
-                    elif name in SIDES:              # Seitenmitten etwas kleiner als die Ecken
-                        p.drawRect(QRectF(X - 3.5, Y - 3.5, 7, 7))
-                    else:
-                        p.drawRect(QRectF(X - 4.5, Y - 4.5, 9, 9))
+            p.drawPolygon(QPolygonF([QPointF(*self.to_wid(qx, qy)) for qx, qy in pts]))
+
+    def _paint_ann_highlight(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        c2 = QColor(col)
+        c2.setAlpha(95)
+        p.fillRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), c2)
+
+    def _paint_ann_line(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        pen = QPen(col, lw)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawLine(QPointF(x, y), QPointF(x2, y2))
+
+    def _paint_ann_ellipse(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        p.setPen(QPen(col, lw))
+        p.setBrush(QColor(col) if a.get("filled") else Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized())
+
+    def _paint_ann_pts(self, p, a, col, th, lw, x, y):
+        """Stift, Linienzug, Polygon (Punktliste 'pts')."""
+        t = a["type"]
+        pen = QPen(col, lw)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        pg = QPolygonF([QPointF(*self.to_wid(q[0], q[1])) for q in a["pts"]])
+        if t == "polygon":
+            if a.get("filled"):
+                p.setBrush(QColor(col))
+            p.drawPolygon(pg)
+        elif len(a["pts"]) == 1:
+            p.drawPoint(pg[0])
+        else:
+            p.drawPolyline(pg)
+
+    def _paint_ann_image(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        p.drawImage(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), self._ann_qimage(a))
+
+    def _paint_ann_redact(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        fill = QColor("black")
+        if a.get("fill") == "paper" and self.res is not None:   # Papierfarbe aus der Umgebung
+            fill = self._redact_paper(a, fill)
+        p.fillRect(QRectF(QPointF(x, y), QPointF(x2, y2)).normalized(), fill)
+
+    def _redact_paper(self, a, fill):
+        """Papierfarbe aus dem Rand um die Box einer Schwaerzung (fill, wenn die Box ausserhalb des Blatts liegt)."""
+        h_, w_ = self.shape
+        X0, Y0 = max(0, int(min(a["x"], a["x2"]))), max(0, int(min(a["y"], a["y2"])))
+        X1, Y1 = min(w_, int(max(a["x"], a["x2"])) + 1), min(h_, int(max(a["y"], a["y2"])) + 1)
+        if X1 > X0 and Y1 > Y0:
+            m = self.mode if self.mode in ("A", "B", "D", "O", "N", "R") else "D"
+            ring = 24
+            part = self._layer(m, 0, max(0, Y0 - ring), min(h_, Y1 + ring), max(0, X0 - ring), min(w_, X1 + ring))
+            b, g, r = rep.paper_around(part, ring, ring, part.shape[1] - ring, part.shape[0] - ring)
+            fill = QColor(r, g, b)
+            if self.invert:
+                fill = QColor(26, 24, 22)
+        return fill
+
+    def _paint_ann_pixelate(self, p, a, col, th, lw, x, y):
+        shape = self.shape
+        rot = rep.ann_rot(a)
+        img, rect = self._pixelated(a)
+        if img is not None:
+            a0, b0 = self.to_wid(rect[0], rect[1])
+            a1, b1 = self.to_wid(rect[2], rect[3])
+            p.save()
+            if rot:                              # gedreht: Mosaik des umgebenden Rechtecks, auf die Box beschnitten
+                clip = QPainterPath()
+                clip.addPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in rep.rot_corners(shape, a)]))
+                clip.closeSubpath()
+                p.setClipPath(clip, Qt.ClipOperation.IntersectClip)
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+            p.drawImage(QRectF(a0, b0, a1 - a0, b1 - b0), img)
+            p.restore()
+
+    def _paint_ann_arrow(self, p, a, col, th, lw, x, y):
+        x2, y2 = self.to_wid(a["x2"], a["y2"])
+        (ax, ay, bx, by), tris = rep.arrow_parts(a, x, y, x2, y2, max(5 * lw, 0.8 * th))
+        p.setPen(QPen(col, lw))
+        p.drawLine(QPointF(ax, ay), QPointF(bx, by))
+        p.setBrush(col)
+        p.setPen(Qt.PenStyle.NoPen)
+        for tri in tris:
+            p.drawPolygon(QPolygonF([QPointF(*q) for q in tri]))
+
+    def _paint_ann_selection(self, p, a):
+        """Auswahlrahmen und (bei Einzelauswahl) Anfasser einer gewaehlten Markierung."""
+        s = self.scale
+        shape = self.shape
+        t = a["type"]
+        rot = rep.ann_rot(a)
+        b = rep.ann_bounds(shape, a)
+        a0, b0 = self.to_wid(b[0], b[1])
+        a1, b1 = self.to_wid(b[2], b[3])
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
+        if rot and not self.ann_multi:           # gedreht: Rahmen in der Lage der Box
+            m = 3 / s
+            f = rep.ann_frame(shape, a)
+            pts = rep.rot_corners(shape, a, (f[0] - m, f[1] - m, f[2] + m, f[3] + m))
+            p.drawPolygon(QPolygonF([QPointF(*self.to_wid(*q)) for q in pts]))
+        elif t not in ("arrow", "line", "measure") or self.ann_multi:
+            p.drawRect(QRectF(a0 - 3, b0 - 3, a1 - a0 + 6, b1 - b0 + 6))
+        if not self.ann_multi:                   # Griffe nur bei Einzelauswahl
+            g = rot_grip(shape, a, s)
+            if g is not None:                    # Drehanfasser: Verbindungslinie und Kreis
+                p.setPen(QPen(QColor(ACCENT), 1.2))
+                p.drawLine(QPointF(*self.to_wid(*g[0])), QPointF(*self.to_wid(*g[1])))
+            p.setPen(QPen(QColor(ACCENT), 1.6))
+            p.setBrush(QColor("white"))
+            for name, hx, hy in ann_handles(shape, a, s):
+                X, Y = self.to_wid(hx, hy)
+                if name == "rot":
+                    p.drawEllipse(QPointF(X, Y), 5, 5)
+                elif name in SIDES:              # Seitenmitten etwas kleiner als die Ecken
+                    p.drawRect(QRectF(X - 3.5, Y - 3.5, 7, 7))
+                else:
+                    p.drawRect(QRectF(X - 4.5, Y - 4.5, 9, 9))
 
     def _paint_overlays(self, p, w, h):
         s = self.scale
