@@ -86,7 +86,7 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; if ($LASTEXITCODE -ne 0) { exit 1 } }
           $ver = (.venv\Scripts\python -c "import sys; sys.path.insert(0,'programm'); import version; print(version.VERSION)")
-          & $iscc "/DVER=$ver" packaging\zgmax.iss
+          & $iscc "/DAPPVER=$ver" packaging\zgmax.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $setup = "dist\ZGmax-$ver-Windows-x64-Setup.exe"
           # Probe: ohne Adminrechte nur fuer den Nutzer installieren, App pruefen, Eintraege pruefen, wieder entfernen

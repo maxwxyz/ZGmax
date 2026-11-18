@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import sys
 import time
 
 import cv2
@@ -25,10 +26,11 @@ def run(pa, pb, **kw):
 
 
 def digest(res):
+    """Fingerabdruck des Ergebnisses: exakter Hash und die Pixelzahlen je Maske (nur A, nur B, gleich, verschoben)."""
     h = hashlib.sha1()
     for m in (res.oa, res.ob, res.both, res.moved):
         h.update(np.packbits(m).tobytes())
-    return h.hexdigest()
+    return {"sha": h.hexdigest(), "n": [int(m.sum()) for m in (res.oa, res.ob, res.both, res.moved)]}
 
 
 def test_known_changes(pair):
@@ -55,7 +57,16 @@ def check_golden(key, d):
     if os.environ.get("UPDATE_GOLDEN") or key not in gold:
         gold[key] = d
         json.dump(gold, open(GOLDEN, "w"), indent=1)
-    assert d == gold[key], key
+    g = gold[key]
+    if d["sha"] == (g["sha"] if isinstance(g, dict) else g):
+        return
+    # Nicht bitgleich. Auf dem Mac (dort entstehen die Fingerabdruecke) ist das eine Aenderung des Verfahrens. Auf
+    # anderen Prozessoren rechnet OpenCV die Ausrichtung in der letzten Stelle anders, dann kippen einzelne
+    # Randpixel - dort muessen nur die Pixelzahlen je Maske passen.
+    strict = sys.platform == "darwin" and not os.environ.get("GOLDEN_TOLERANT")
+    assert isinstance(g, dict) and not strict, f"{key}: Fingerabdruck weicht ab (mit UPDATE_GOLDEN=1 neu schreiben)"
+    for name, got, want in zip(("nur A", "nur B", "gleich", "verschoben"), d["n"], g["n"]):
+        assert abs(got - want) <= max(100, 0.02 * want), f"{key}: {name} {got} statt {want}"
 
 
 # "v1": Neuerungen aus -> muss exakt wie Version 1 rechnen. "standard": aktuelle Standardeinstellungen.

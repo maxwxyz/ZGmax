@@ -1,5 +1,5 @@
 ﻿; Installer fuer Windows (Inno Setup 6). Baut aus dem fertigen Ordner dist\ZGmax eine Setup-Datei:
-;   ISCC /DVER=1.0 packaging\zgmax.iss      ->  dist\ZGmax-1.0-Windows-x64-Setup.exe
+;   ISCC /DAPPVER=1.0 packaging\zgmax.iss      ->  dist\ZGmax-1.0-Windows-x64-Setup.exe
 ; Ohne Adminrechte installierbar: der Installer fragt "fuer alle" oder "nur fuer mich"; ohne Adminrechte geht es
 ; automatisch nur fuer den angemeldeten Nutzer (%LocalAppData%\Programs\ZGmax). Dateitypen sind waehlbar; die
 ; Eintraege entsprechen programm\fileassoc.py (ZGmax.Zeichnung / ZGmax.Projekt), nur je nach Installationsart
@@ -8,8 +8,8 @@
 ; Ordner, gleiche Art fuer alle/nur Nutzer). Alte Programmdateien (_internal) werden vorher entfernt, damit nichts
 ; aus einer frueheren Version liegen bleibt; Einstellungen und Projekte des Nutzers liegen woanders und bleiben.
 ; Die portable App (ZIP mit ZGmax.exe und _internal) bleibt daneben bestehen.
-#ifndef VER
-  #define VER "0.0"
+#ifndef APPVER
+  #define APPVER "0.0"
 #endif
 #define APP "ZGmax"
 #define EXE "ZGmax.exe"
@@ -17,8 +17,8 @@
 [Setup]
 AppId={{6F1B6A0E-5C0B-4B7E-9C55-2A7D4E0F9A31}
 AppName={#APP}
-AppVersion={#VER}
-AppVerName={#APP} {#VER}
+AppVersion={#APPVER}
+AppVerName={#APP} {#APPVER}
 AppPublisher=Max Wilfinger
 DefaultDirName={autopf}\{#APP}
 DefaultGroupName={#APP}
@@ -28,7 +28,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
-OutputBaseFilename={#APP}-{#VER}-Windows-x64-Setup
+OutputBaseFilename={#APP}-{#APPVER}-Windows-x64-Setup
 SetupIconFile=..\programm\icon.ico
 UninstallDisplayIcon={app}\{#EXE}
 LicenseFile=..\LICENSE

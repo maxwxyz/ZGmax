@@ -70,7 +70,7 @@ fingerprints of the results. If the comparison is changed on purpose: `UPDATE_GO
 * macOS (on a Mac): `packaging/build_mac.sh` → `dist/ZGmax.app` and a ZIP. Runs on Macs with the same processor type
   as the build Mac (Apple silicon or Intel).
 * Windows (on a Windows PC with Python 3.12+ on the PATH): `packaging\build_windows.bat` → `dist\ZGmax\ZGmax.exe` and a ZIP.
-  Installer (Inno Setup 6): `ISCC /DVER=<version> packaging\zgmax.iss` → `dist\ZGmax-<version>-Windows-x64-Setup.exe`
+  Installer (Inno Setup 6): `ISCC /DAPPVER=<version> packaging\zgmax.iss` → `dist\ZGmax-<version>-Windows-x64-Setup.exe`
   (per-user without admin rights or for all users, selectable file types; built automatically by the GitHub workflow).
 * Linux: `packaging/build_linux.sh` → `dist/ZGmax/ZGmax` and a `.tar.gz`. Runs on systems with the same processor type and
   the same or a newer glibc as the build system.
