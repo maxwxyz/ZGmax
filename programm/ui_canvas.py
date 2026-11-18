@@ -614,6 +614,13 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             return ax + math.copysign(m, dx or 1), ay + math.copysign(m, dy or 1)
         return ix, iy
 
+    # Art des laufenden Ziehens (self._drag[0]) -> Methode (e, pos, ix, iy)
+    _DRAG_MOVES = {
+        "rzoom": "_move_rzoom", "pan": "_move_pan", "split": "_move_split", "areamove": "_move_areamove",
+        "rubber": "_move_rubber", "selbox": "_move_rubber", "textbox": "_move_rubber", "area": "_move_rubber",
+        "ann": "_move_ann", "fhandle": "_move_fhandle", "zmove": "_move_zmove", "zhandle": "_move_zhandle",
+        "pen": "_move_pen", "float": "_move_float", "move": "_move_move", "handle": "_move_handle"}
+
     def mouseMoveEvent(self, e):
         pos = self._vp(e.position())
         self._mouse = e.position()
@@ -623,6 +630,32 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
         if self.res is not None:
             ix, iy = self.to_img(pos)
             self.cursor.emit(int(ix), int(iy), self.scale)
+        self._hover_cursor(e, pos, ix, iy)
+        if self._drag is not None and e.buttons() == Qt.MouseButton.NoButton:
+            self._lost_release(e)                         # Loslassen ging verloren (z. B. an einen Dialog)
+            return
+        if self._drag is None and self.poly:              # Linienzug: Vorschau bis zum Mauszeiger
+            self._poly_hover = [ix, iy]
+            self.update()
+        if self._drag is None:
+            if self.tool == "measure" and self.res is not None:
+                sx, sy, k = self.snap_point(ix, iy)
+                self.snap_hint = (sx, sy, k) if k else None
+                self.hover = (sx, sy, k)
+                self.update()
+            return
+        self._moved += 1
+        kind = self._drag[0]
+        if kind == "ov":
+            self._overview_jump(e.position())
+            return
+        name = self._DRAG_MOVES.get(kind)
+        if name:
+            getattr(self, name)(e, pos, ix, iy)
+        self.update()
+
+    def _hover_cursor(self, e, pos, ix, iy):
+        """Mauszeiger passend zu Werkzeug, laufendem Ziehen und dem, was unter der Maus liegt."""
         ov = self.overview_rect()
         if self._drag is None and ov is not None and ov.contains(e.position()):
             self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -652,58 +685,56 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             self.setCursor(Qt.CursorShape.SizeAllCursor)
         else:
             self.setCursor(Qt.CursorShape.CrossCursor)
-        if self._drag is not None and e.buttons() == Qt.MouseButton.NoButton:
-            self._lost_release(e)                         # Loslassen ging verloren (z. B. an einen Dialog)
-            return
-        if self._drag is None and self.poly:              # Linienzug: Vorschau bis zum Mauszeiger
-            self._poly_hover = [ix, iy]
-            self.update()
-        if self._drag is None:
-            if self.tool == "measure" and self.res is not None:
-                sx, sy, k = self.snap_point(ix, iy)
-                self.snap_hint = (sx, sy, k) if k else None
-                self.hover = (sx, sy, k)
-                self.update()
-            return
-        self._moved += 1
-        kind = self._drag[0]
-        if kind == "ov":
-            self._overview_jump(e.position())
-            return
-        if kind == "rzoom":
-            d = e.position() - self._drag[1]
-            if abs(d.x()) + abs(d.y()) > 6:
-                self._rubber = (self._drag[2], (ix, iy))
-        elif kind == "pan":
-            self._fitted = False
-            d = pos - self._drag[1]
-            self.ox = self._drag[2] - d.x() / self.scale
-            self.oy = self._drag[3] - d.y() / self.scale
-        elif kind == "split":
-            self.split = float(np.clip(pos.x() / self.width(), 0.0, 1.0))
-        elif kind == "areamove":
-            _, (sx, sy), orig, rects0 = self._drag
-            dx, dy = round(ix - sx), round(iy - sy)
-            for k, o in orig.items():
-                if k < len(self.anns):
-                    a = self.anns[k]
-                    a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
-                    if o.get("pts"):
-                        a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
-            self.sel_rects = [(r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy) for r in rects0]
-            if self.float:
-                self.float["dx"], self.float["dy"] = dx, dy
-        elif kind in ("rubber", "selbox", "textbox", "area") and self._rubber is not None:
+
+    def _move_rzoom(self, e, pos, ix, iy):
+        """Rechte Maustaste gezogen: Rahmen zum Hineinzoomen (erst nach ein paar Pixeln)."""
+        d = e.position() - self._drag[1]
+        if abs(d.x()) + abs(d.y()) > 6:
+            self._rubber = (self._drag[2], (ix, iy))
+
+    def _move_pan(self, e, pos, ix, iy):
+        """Ansicht verschieben."""
+        self._fitted = False
+        d = pos - self._drag[1]
+        self.ox = self._drag[2] - d.x() / self.scale
+        self.oy = self._drag[3] - d.y() / self.scale
+
+    def _move_split(self, e, pos, ix, iy):
+        """Trennlinie (Schieber) zwischen den beiden Ansichten."""
+        self.split = float(np.clip(pos.x() / self.width(), 0.0, 1.0))
+
+    def _move_areamove(self, e, pos, ix, iy):
+        """Bereichsauswahl samt Markierungen verschieben."""
+        _, (sx, sy), orig, rects0 = self._drag
+        dx, dy = round(ix - sx), round(iy - sy)
+        for k, o in orig.items():
+            if k < len(self.anns):
+                a = self.anns[k]
+                a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
+                if o.get("pts"):
+                    a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
+        self.sel_rects = [(r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy) for r in rects0]
+        if self.float:
+            self.float["dx"], self.float["dy"] = dx, dy
+
+    def _move_rubber(self, e, pos, ix, iy):
+        """Aufgezogener Rahmen (Zone, Zuschnitt, Zoom, Auswahl, Textfeld, Bereich) mit Groesse in der Statuszeile."""
+        if self._rubber is not None:
             self._rubber = (self._rubber[0], (ix, iy))
             (ax, ay), (bx, by) = self._rubber
             rw, rh = abs(bx - ax), abs(by - ay)
             self.window().statusBar().showMessage(
                 tr("Bereich: {:.0f} × {:.0f} px   =   {:.1f} × {:.1f} mm").format(rw, rh, rw * self.mm_px, rh * self.mm_px))
-        elif kind == "ann":
-            if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                ix, iy = self._shift_constrain(self._ann_prev[0], ix, iy)
-            self._ann_prev = (self._ann_prev[0], (ix, iy))
-        elif kind == "fhandle" and self.crop_frame is not None:
+
+    def _move_ann(self, e, pos, ix, iy):
+        """Neue Markierung aufziehen."""
+        if e.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            ix, iy = self._shift_constrain(self._ann_prev[0], ix, iy)
+        self._ann_prev = (self._ann_prev[0], (ix, iy))
+
+    def _move_fhandle(self, e, pos, ix, iy):
+        """Anfasser des Zuschnitt-Rahmens."""
+        if self.crop_frame is not None:
             _, name, (x0, y0, x1, y1) = self._drag
             if "l" in name:
                 x0 = ix
@@ -716,10 +747,16 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             x0, x1 = sorted((int(round(x0)), int(round(x1))))
             y0, y1 = sorted((int(round(y0)), int(round(y1))))
             self.crop_frame = (x0, y0, max(x0 + 2, x1), max(y0 + 2, y1))
-        elif kind == "zmove" and self.zone_sel is not None:
+
+    def _move_zmove(self, e, pos, ix, iy):
+        """Zone verschieben."""
+        if self.zone_sel is not None:
             _, (sx, sy), (x, y, w, h) = self._drag
             self.zones[self.zone_sel] = (int(round(x + ix - sx)), int(round(y + iy - sy)), w, h)
-        elif kind == "zhandle" and self.zone_sel is not None:
+
+    def _move_zhandle(self, e, pos, ix, iy):
+        """Ecke einer Zone ziehen."""
+        if self.zone_sel is not None:
             _, corner, (x, y, w, h) = self._drag
             x0, y0, x1, y1 = x, y, x + w, y + h
             if "l" in corner:
@@ -733,76 +770,84 @@ class Canvas(CanvasSnapMixin, CanvasPaintMixin, CanvasSharpMixin, QWidget):
             x0, x1 = sorted((int(round(x0)), int(round(x1))))
             y0, y1 = sorted((int(round(y0)), int(round(y1))))
             self.zones[self.zone_sel] = (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
-        elif kind == "pen" and self._pen is not None:
+
+    def _move_pen(self, e, pos, ix, iy):
+        """Freihandlinie: Punkt anhaengen."""
+        if self._pen is not None:
             q = self._pen[-1]
             if math.hypot(ix - q[0], iy - q[1]) >= 1.5 / self.scale:
                 self._pen.append([ix, iy])
-        elif kind == "float" and self.float:
+
+    def _move_float(self, e, pos, ix, iy):
+        """Schwebenden Ausschnitt verschieben."""
+        if self.float:
             _, (sx, sy), dx0, dy0 = self._drag
             self.float["dx"], self.float["dy"] = round(dx0 + ix - sx), round(dy0 + iy - sy)
-        elif kind == "move":
-            _, (sx, sy), orig = self._drag
-            dx, dy = ix - sx, iy - sy
-            mods = e.modifiers()
-            if mods & Qt.KeyboardModifier.ShiftModifier:          # Umschalt: nur waagerecht oder senkrecht
-                if abs(dx) >= abs(dy):
-                    dy = 0
-                else:
-                    dx = 0
-            if not mods & Qt.KeyboardModifier.AltModifier:        # Alt: ohne Einrasten an anderen Elementen
-                boxes = [rep.ann_bounds(self.shape, o) for o in orig.values()]
-                box = (min(b[0] for b in boxes), min(b[1] for b in boxes),
-                       max(b[2] for b in boxes), max(b[3] for b in boxes))
-                dx, dy = self._align_snap(box, dx, dy, set(orig), lock_x=dx == 0 and dy != 0,
-                                          lock_y=dy == 0 and dx != 0)
-            for k, o in orig.items():
-                if k < len(self.anns):
-                    a = self.anns[k]
-                    a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
-                    if o.get("pts"):
-                        a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
-        elif kind == "handle":
-            mods = e.modifiers()
-            name, box, orig = self._drag[1], self._drag[3], self._drag[4]
-            a = self.anns[self.ann_selected]
-            a.clear()                                             # immer vom Stand beim Anfassen aus rechnen
-            a.update(copy.deepcopy(orig))
-            if name == "rot":                                     # drehen; Umschalt: in 15-Grad-Schritten
-                ang = apply_rotation(self.shape, a, orig, ix, iy,
-                                     15 if mods & Qt.KeyboardModifier.ShiftModifier else None)
-                self.window().statusBar().showMessage(tr("Drehung: {}°").format(f"{ang:.1f}".rstrip("0").rstrip(".")))
-                self.update()
-                return
-            typ = orig["type"]
-            rot = rep.ann_rot(orig)
-            c0 = rep.rot_center(self.shape, orig) if rot else None
-            if rot:                                               # Zwangsbedingungen in der ungedrehten Lage
-                ix, iy = rep.rot_pt(ix, iy, *c0, -rot)
-            corner = name in CORNERS and box is not None and (typ in rep.RECT_TYPES or typ == "pen")
-            if mods & Qt.KeyboardModifier.ShiftModifier and corner:   # Umschalt an einer Ecke: Seitenverhaeltnis
-                x0, y0, x1, y1 = box                                  # bleibt (z. B. eingefuegte Bilder)
-                fx, fy = (x1 if "l" in name else x0), (y1 if "t" in name else y0)   # feste Ecke gegenueber
-                w0, h0 = max(1e-6, x1 - x0), max(1e-6, y1 - y0)
-                k = max(abs(ix - fx) / w0, abs(iy - fy) / h0, 0.02)
-                ix = fx + (-1 if "l" in name else 1) * w0 * k
-                iy = fy + (-1 if "t" in name else 1) * h0 * k
-            elif mods & Qt.KeyboardModifier.ShiftModifier and name not in SIDES:   # sonst: nur waagerecht/senkrecht
-                sx, sy = self._drag[2]
-                if rot:
-                    sx, sy = rep.rot_pt(sx, sy, *c0, -rot)
-                if abs(ix - sx) >= abs(iy - sy):
-                    iy = sy
-                else:
-                    ix = sx
+
+    def _move_move(self, e, pos, ix, iy):
+        """Gewaehlte Markierungen verschieben."""
+        _, (sx, sy), orig = self._drag
+        dx, dy = ix - sx, iy - sy
+        mods = e.modifiers()
+        if mods & Qt.KeyboardModifier.ShiftModifier:          # Umschalt: nur waagerecht oder senkrecht
+            if abs(dx) >= abs(dy):
+                dy = 0
+            else:
+                dx = 0
+        if not mods & Qt.KeyboardModifier.AltModifier:        # Alt: ohne Einrasten an anderen Elementen
+            boxes = [rep.ann_bounds(self.shape, o) for o in orig.values()]
+            box = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                   max(b[2] for b in boxes), max(b[3] for b in boxes))
+            dx, dy = self._align_snap(box, dx, dy, set(orig), lock_x=dx == 0 and dy != 0,
+                                      lock_y=dy == 0 and dx != 0)
+        for k, o in orig.items():
+            if k < len(self.anns):
+                a = self.anns[k]
+                a["x"], a["y"], a["x2"], a["y2"] = o["x"] + dx, o["y"] + dy, o["x2"] + dx, o["y2"] + dy
+                if o.get("pts"):
+                    a["pts"] = [[q[0] + dx, q[1] + dy] for q in o["pts"]]
+
+    def _move_handle(self, e, pos, ix, iy):
+        """Anfasser einer Markierung: Groesse, Punkt, Drehen."""
+        mods = e.modifiers()
+        name, box, orig = self._drag[1], self._drag[3], self._drag[4]
+        a = self.anns[self.ann_selected]
+        a.clear()                                             # immer vom Stand beim Anfassen aus rechnen
+        a.update(copy.deepcopy(orig))
+        if name == "rot":                                     # drehen; Umschalt: in 15-Grad-Schritten
+            ang = apply_rotation(self.shape, a, orig, ix, iy,
+                                 15 if mods & Qt.KeyboardModifier.ShiftModifier else None)
+            self.window().statusBar().showMessage(tr("Drehung: {}°").format(f"{ang:.1f}".rstrip("0").rstrip(".")))
+            return
+        typ = orig["type"]
+        rot = rep.ann_rot(orig)
+        c0 = rep.rot_center(self.shape, orig) if rot else None
+        if rot:                                               # Zwangsbedingungen in der ungedrehten Lage
+            ix, iy = rep.rot_pt(ix, iy, *c0, -rot)
+        corner = name in CORNERS and box is not None and (typ in rep.RECT_TYPES or typ == "pen")
+        if mods & Qt.KeyboardModifier.ShiftModifier and corner:   # Umschalt an einer Ecke: Seitenverhaeltnis
+            x0, y0, x1, y1 = box                                  # bleibt (z. B. eingefuegte Bilder)
+            fx, fy = (x1 if "l" in name else x0), (y1 if "t" in name else y0)   # feste Ecke gegenueber
+            w0, h0 = max(1e-6, x1 - x0), max(1e-6, y1 - y0)
+            k = max(abs(ix - fx) / w0, abs(iy - fy) / h0, 0.02)
+            ix = fx + (-1 if "l" in name else 1) * w0 * k
+            iy = fy + (-1 if "t" in name else 1) * h0 * k
+        elif mods & Qt.KeyboardModifier.ShiftModifier and name not in SIDES:   # sonst: nur waagerecht/senkrecht
+            sx, sy = self._drag[2]
             if rot:
-                ix, iy = rep.rot_pt(ix, iy, *c0, rot)
-            if name.startswith("m"):
-                ix, iy, _k = self.snap_point(ix, iy)
-            elif not rot and not mods & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):
-                dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})   # einrasten
-                ix, iy = ix + dx, iy + dy
-            apply_handle(self.shape, a, name, ix, iy)
-        self.update()
+                sx, sy = rep.rot_pt(sx, sy, *c0, -rot)
+            if abs(ix - sx) >= abs(iy - sy):
+                iy = sy
+            else:
+                ix = sx
+        if rot:
+            ix, iy = rep.rot_pt(ix, iy, *c0, rot)
+        if name.startswith("m"):
+            ix, iy, _k = self.snap_point(ix, iy)
+        elif not rot and not mods & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):
+            dx, dy = self._align_snap((ix, iy, ix, iy), 0, 0, {self.ann_selected})   # einrasten
+            ix, iy = ix + dx, iy + dy
+        apply_handle(self.shape, a, name, ix, iy)
 
     def _align_snap(self, box, dx, dy, skip, lock_x=False, lock_y=False):
         """Einrasten beim Verschieben: Kanten und Mitte des verschobenen Rahmens (box + dx/dy) an Kanten und Mitten

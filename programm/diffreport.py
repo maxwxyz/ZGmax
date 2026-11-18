@@ -1591,39 +1591,37 @@ def pdf_text(s):
     return s.encode("cp1252", "replace").decode("cp1252")
 
 
-def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, max_detail=40, log=print,
-                 anns=None, scale_n=1.0):
-    """PDF-Bericht mit echtem Text (durchsuchbar) und hochaufgeloesten Bildern. Ohne PyMuPDF: Rasterbericht."""
-    try:
-        import pymupdf
-    except ImportError:
-        log(tr("Hinweis: PyMuPDF fehlt, es wird ein Rasterbericht erzeugt (pip install pymupdf)."))
-        return build_report_raster(path, res, regs, name_a, name_b, dpi, info, index, max_detail, log, anns, scale_n)
+class _ReportPdf:
+    """Seiten des PDF-Berichts (A4 quer): Kopfzeile, gekuerzter Text, Bilder. pm = Modul pymupdf."""
     PW, PH, M = 842.0, 595.0, 30.0                   # A4 quer in Punkt
-    doc = pymupdf.open()
-    mm = 25.4 / dpi * scale_n
     NAVY, GREY, DARK = (34 / 255, 48 / 255, 68 / 255), (0.4, 0.4, 0.4), (0.1, 0.1, 0.1)
-    font = pymupdf.Font("helv")
 
-    def clean(s):
+    def __init__(self, pm, doc):
+        self.pm = pm
+        self.doc = doc
+        self.font = pm.Font("helv")
+
+    def clean(self, s):
         return pdf_text(s)
 
-    def fit_text(s, width, size):
-        s = clean(s)
-        if font.text_length(s, size) <= width:
+    def fit_text(self, s, width, size):
+        s = self.clean(s)
+        if self.font.text_length(s, size) <= width:
             return s
-        while s and font.text_length(s + "...", size) > width:
+        while s and self.font.text_length(s + "...", size) > width:
             s = s[:-1]
         return s + "..."
 
-    def page(title):
-        pg = doc.new_page(width=PW, height=PH)
-        pg.draw_rect(pymupdf.Rect(0, 0, PW, 40), color=None, fill=NAVY)
-        pg.insert_text((M, 26), clean(title), fontsize=16, fontname="helv", color=(1, 1, 1))
-        pg.insert_text((PW - M - 50, 26), f"Seite {doc.page_count}", fontsize=10, fontname="helv", color=(0.8, 0.84, 0.9))
+    def page(self, title):
+        PW, M = self.PW, self.M
+        pg = self.doc.new_page(width=PW, height=self.PH)
+        pg.draw_rect(self.pm.Rect(0, 0, PW, 40), color=None, fill=self.NAVY)
+        pg.insert_text((M, 26), self.clean(title), fontsize=16, fontname="helv", color=(1, 1, 1))
+        pg.insert_text((PW - M - 50, 26), f"Seite {self.doc.page_count}", fontsize=10, fontname="helv",
+                       color=(0.8, 0.84, 0.9))
         return pg
 
-    def put(pg, img, rect, maxpx):
+    def put(self, pg, img, rect, maxpx):
         h, w = img.shape[:2]
         f = min(maxpx / max(w, h), 1.0)
         if f < 1:
@@ -1632,12 +1630,15 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
         if ok:
             pg.insert_image(rect, stream=buf.tobytes(), keep_proportion=True)
 
-    def row_text(pg, y, items, size=9):
+    def row_text(self, pg, y, items, size=9):
         for x, w, s, col in items:
-            pg.insert_text((x, y), fit_text(s, w - 4, size), fontsize=size, fontname="helv", color=col)
+            pg.insert_text((x, y), self.fit_text(s, w - 4, size), fontsize=size, fontname="helv", color=col)
 
-    # ---- Uebersicht
-    pg = page(tr("ZGmax - \u00dcbersicht"))
+
+def _report_overview(rp, res, regs, name_a, name_b, dpi, info, index, anns, mm):
+    """Bericht, erste Seite: Kopfdaten und das ganze Vergleichsbild mit Rahmen und Markierungen."""
+    PW, PH, M = rp.PW, rp.PH, rp.M
+    pg = rp.page(tr("ZGmax - Übersicht"))
     cnt = {k: sum(1 for r in regs if r["typ"] == k) for k in TYPE_LABEL}
     lines = [tr("A (Referenz): {}").format(name_a), tr("B (Vergleich): {}").format(name_b),
              tr("Erstellt: {:%d.%m.%Y %H:%M}   Auflösung: {} dpi").format(_dt.datetime.now(), dpi),
@@ -1647,21 +1648,27 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
         lines += list(index["notes"])
     y = 62.0
     for ln in lines:
-        pg.insert_text((M, y), fit_text(ln, PW - 2 * M, 11), fontsize=11, fontname="helv", color=DARK)
+        pg.insert_text((M, y), rp.fit_text(ln, PW - 2 * M, 11), fontsize=11, fontname="helv", color=rp.DARK)
         y += 16
     ov = dc.render(res.oa, res.ob, res.both, res.moved)
     draw_marks(ov, regs)
     draw_annotations(ov, anns or [], mm=mm)
     ov = _thumb(ov, 6000, 3000)
-    put(pg, ov, pymupdf.Rect(M, y + 4, PW - M, PH - 34), 6000)
-    pg.insert_text((M, PH - 16), fit_text(info, PW - 2 * M, 8), fontsize=8, fontname="helv", color=GREY)
+    rp.put(pg, ov, rp.pm.Rect(M, y + 4, PW - M, PH - 34), 6000)
+    pg.insert_text((M, PH - 16), rp.fit_text(info, PW - 2 * M, 8), fontsize=8, fontname="helv", color=rp.GREY)
 
-    # ---- Aenderungsliste als Text
-    cols = [(tr("Nr"), 28), (tr("Typ"), 78), (tr("Position (mm)"), 82), (tr("Gr\u00f6\u00dfe (mm)"), 78), (tr("Text A"), 140),
+
+_REPORT_ROWS = 27                                    # Zeilen je Seite in den Listen des Berichts
+
+
+def _report_changes(rp, regs, mm):
+    """Bericht: Aenderungsliste als Text."""
+    PW, M, NAVY, DARK = rp.PW, rp.M, rp.NAVY, rp.DARK
+    cols = [(tr("Nr"), 28), (tr("Typ"), 78), (tr("Position (mm)"), 82), (tr("Größe (mm)"), 78), (tr("Text A"), 140),
             (tr("Text B"), 140), (tr("Beschreibung"), 236)]
-    per = 27
+    per = _REPORT_ROWS
     for p0 in range(0, len(regs), per):
-        pg = page(tr("\u00c4nderungsliste"))
+        pg = rp.page(tr("Änderungsliste"))
         x, y = M, 62.0
         for name, wd in cols:
             pg.insert_text((x, y), name, fontsize=9.5, fontname="helv", color=NAVY)
@@ -1672,47 +1679,51 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
             dim = r.get("dim")
             vals = [str(r["nr"]), TYPE_LABEL[r["typ"]], f"{r['x'] * mm:.0f} / {r['y'] * mm:.0f}",
                     f"{r['w'] * mm:.1f} x {r['h'] * mm:.1f}", r.get("text_a", ""), r.get("text_b", ""),
-                    (tr("Ma\u00df ") + dim + "  " if dim else "") + r.get("desc", "")
+                    (tr("Maß ") + dim + "  " if dim else "") + r.get("desc", "")
                     + (("  [" + review_text(r) + "]") if (r.get("status") or r.get("checked")) else "")]
             x = M
             items = []
             for v, (_, wd) in zip(vals, cols):
                 items.append((x, wd, v, DARK))
                 x += wd
-            row_text(pg, y, items)
+            rp.row_text(pg, y, items)
             y += 7
             pg.draw_line((M, y), (PW - M, y), color=(0.88, 0.89, 0.91), width=0.5)
             y += 12
 
-    # ---- Anmerkungen als Text
-    if anns:
-        label = {"text": tr("Text"), "number": tr("Nummer"), "approval": tr("Stempel"), "rect": tr("Rahmen"), "arrow": tr("Pfeil"),
-                 "measure": tr("Ma\u00df")}
-        for p0 in range(0, len(anns), per):
-            pg = page(tr("Anmerkungen"))
-            y = 62.0
-            for a in anns[p0:p0 + per]:
-                what = label.get(a["type"], a["type"])
-                if a["type"] == "number":
-                    what += f" {a['nr']}"
-                txt = " / ".join(s for s in (a.get("text") or "").split("\n") if s)
-                if a["type"] == "measure":
-                    what = MEASURE_KINDS.get(a.get("kind", "dist"), "Ma\u00df")
-                    txt = measure_text(a, mm) + ("  " + txt if txt else "")
-                row_text(pg, y, [(M, 120, what, DARK), (M + 130, 120, tr("{:.0f} / {:.0f} mm").format(a['x'] * mm, a['y'] * mm), DARK),
-                                 (M + 260, PW - 2 * M - 260, txt, DARK)])
-                y += 7
-                pg.draw_line((M, y), (PW - M, y), color=(0.88, 0.89, 0.91), width=0.5)
-                y += 12
 
-    # ---- Details A | B | Vergleich (volle Aufloesung, max. 1600 px je Bild)
-    det = list(regs)[:max_detail]
-    log(tr("Bericht: {} Detailansichten ...").format(len(det)))
+def _report_annotations(rp, anns, mm):
+    """Bericht: Anmerkungen als Text."""
+    PW, M, DARK = rp.PW, rp.M, rp.DARK
+    per = _REPORT_ROWS
+    label = {"text": tr("Text"), "number": tr("Nummer"), "approval": tr("Stempel"), "rect": tr("Rahmen"), "arrow": tr("Pfeil"),
+             "measure": tr("Maß")}
+    for p0 in range(0, len(anns), per):
+        pg = rp.page(tr("Anmerkungen"))
+        y = 62.0
+        for a in anns[p0:p0 + per]:
+            what = label.get(a["type"], a["type"])
+            if a["type"] == "number":
+                what += f" {a['nr']}"
+            txt = " / ".join(s for s in (a.get("text") or "").split("\n") if s)
+            if a["type"] == "measure":
+                what = MEASURE_KINDS.get(a.get("kind", "dist"), "Maß")
+                txt = measure_text(a, mm) + ("  " + txt if txt else "")
+            rp.row_text(pg, y, [(M, 120, what, DARK), (M + 130, 120, tr("{:.0f} / {:.0f} mm").format(a['x'] * mm, a['y'] * mm), DARK),
+                                (M + 260, PW - 2 * M - 260, txt, DARK)])
+            y += 7
+            pg.draw_line((M, y), (PW - M, y), color=(0.88, 0.89, 0.91), width=0.5)
+            y += 12
+
+
+def _report_details(rp, res, det, anns, mm):
+    """Bericht: Details A | B | Vergleich (volle Aufloesung, max. 1600 px je Bild), zwei Aenderungen je Seite."""
+    PW, M, GREY, DARK = rp.PW, rp.M, rp.GREY, rp.DARK
     gap = 10.0
     pw_ = (PW - 2 * M - 2 * gap) / 3
     ph_ = 205.0
     for p0 in range(0, len(det), 2):
-        pg = page(tr("Details: A | B | Vergleich"))
+        pg = rp.page(tr("Details: A | B | Vergleich"))
         y = 62.0
         for r in det[p0:p0 + 2]:
             pad = max(40, int(0.25 * max(r["w"], r["h"])))
@@ -1726,30 +1737,50 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
                 near = [a for a in anns if (lambda b: b[2] >= x0 and b[0] <= x1 and b[3] >= y0 and b[1] <= y1)(
                     ann_bounds(res.a.shape, a))]
                 draw_annotations(cd, near, (x0, y0), res.a.shape, mm)
-            pg.insert_text((M, y), fit_text(f"{r['nr']}  {TYPE_LABEL[r['typ']]}   Position "
-                                           f"{r['x'] * mm:.0f} / {r['y'] * mm:.0f} mm", PW - 2 * M, 11),
+            pg.insert_text((M, y), rp.fit_text(f"{r['nr']}  {TYPE_LABEL[r['typ']]}   Position "
+                                              f"{r['x'] * mm:.0f} / {r['y'] * mm:.0f} mm", PW - 2 * M, 11),
                            fontsize=11, fontname="helv", color=DARK)
             y += 14
             sub = []
             if r.get("dim"):
-                sub.append(tr("Ma\u00df ") + r["dim"])
+                sub.append(tr("Maß ") + r["dim"])
             elif r.get("text_a") or r.get("text_b"):
                 sub.append(tr("Text: {}  ->  {}").format(r.get('text_a', ''), r.get('text_b', '')))
             if r.get("desc"):
                 sub.append(tr("Beschreibung: ") + r["desc"])
             if r.get("status") or r.get("checked") or r.get("comment"):
-                sub.append(tr("Pr\u00fcfung: ") + review_text(r))
+                sub.append(tr("Prüfung: ") + review_text(r))
             for s in sub:
-                pg.insert_text((M, y), fit_text(s, PW - 2 * M, 9.5), fontsize=9.5, fontname="helv",
-                               color=(0.7, 0.08, 0.16) if s.startswith("Ma\u00df") else GREY)
+                pg.insert_text((M, y), rp.fit_text(s, PW - 2 * M, 9.5), fontsize=9.5, fontname="helv",
+                               color=(0.7, 0.08, 0.16) if s.startswith("Maß") else GREY)
                 y += 13
             y += 4
             for i, (img, lab) in enumerate(((ca, "A"), (cb, "B"), (cd, tr("Vergleich")))):
-                rc = pymupdf.Rect(M + i * (pw_ + gap), y, M + i * (pw_ + gap) + pw_, y + ph_)
-                put(pg, img, rc, 1600)
+                rc = rp.pm.Rect(M + i * (pw_ + gap), y, M + i * (pw_ + gap) + pw_, y + ph_)
+                rp.put(pg, img, rc, 1600)
                 pg.draw_rect(rc, color=(0.75, 0.77, 0.8), width=0.5)
                 pg.insert_text((rc.x0 + 4, rc.y0 + 10), lab, fontsize=8, fontname="helv", color=GREY)
             y += ph_ + 28
+
+
+def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, max_detail=40, log=print,
+                 anns=None, scale_n=1.0):
+    """PDF-Bericht mit echtem Text (durchsuchbar) und hochaufgeloesten Bildern. Ohne PyMuPDF: Rasterbericht."""
+    try:
+        import pymupdf
+    except ImportError:
+        log(tr("Hinweis: PyMuPDF fehlt, es wird ein Rasterbericht erzeugt (pip install pymupdf)."))
+        return build_report_raster(path, res, regs, name_a, name_b, dpi, info, index, max_detail, log, anns, scale_n)
+    doc = pymupdf.open()
+    mm = 25.4 / dpi * scale_n
+    rp = _ReportPdf(pymupdf, doc)
+    _report_overview(rp, res, regs, name_a, name_b, dpi, info, index, anns, mm)
+    _report_changes(rp, regs, mm)
+    if anns:
+        _report_annotations(rp, anns, mm)
+    det = list(regs)[:max_detail]
+    log(tr("Bericht: {} Detailansichten ...").format(len(det)))
+    _report_details(rp, res, det, anns, mm)
     doc.save(path, deflate=True, garbage=3)
     n = doc.page_count
     doc.close()
@@ -1903,161 +1934,236 @@ def _pdf_rotated_text(page, a, shape, k, col, oc):
     return an
 
 
-def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", ""), layers=True):
-    """Ergebnisbild als PDF; Aenderungen als Revisionswolken und eigene Markierungen als echte PDF-Anmerkungen
-    (in Acrobat & Co. anklick-, kommentier- und loeschbar). layers=True: jede Art auf einer eigenen PDF-Ebene
-    (Zeichnung, Aenderungen, Markierungen, Masse, Eingefuegte Bilder), in Acrobat ein- und ausblendbar."""
-    import math
-    import pymupdf
-    h, w = img_bgr.shape[:2]
-    k = 72.0 / dpi
-    doc = pymupdf.open()
-    page = doc.new_page(width=w * k, height=h * k)
+def _pdf_rgb(col):
+    col = col.lstrip("#")
+    return tuple(int(col[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def _pdf_info(annot, subject, content):
+    annot.set_info(title=tr("ZGmax"), subject=subject, content=content)
+
+
+def _pdf_layers(doc, regs, anns, layers):
+    """PDF-Ebenen (OCG) fuer alle benutzten Arten anlegen: Schluessel -> xref; ohne Ebenen leer."""
     ocg = {}
     if layers:
         used = {"zeichnung"} | ({"aenderungen"} if regs else set()) | {ann_layer(a) for a in anns}
         for key, name in LAYERS:
             if key in used:
                 ocg[key] = doc.add_ocg(name, on=True)
+    return ocg
+
+
+def _pdf_region(page, r, k, ocg):
+    """Eine Aenderung als Revisionswolke mit Beschreibung und Pruefstatus."""
+    import pymupdf
+    pad = 12
+    rect = pymupdf.Rect((r["x"] - pad) * k, (r["y"] - pad) * k, (r["x"] + r["w"] + pad) * k,
+                        (r["y"] + r["h"] + pad) * k)
+    an = page.add_rect_annot(rect)
+    an.set_border(width=1.5, clouds=1)
+    an.set_colors(stroke=_pdf_rgb(STATUS_COLORS[reg_status(r)]))
+    txt = [tr("Änderung {}: {}").format(r['nr'], TYPE_LABEL[r['typ']])]
+    if r.get("text_a") or r.get("text_b"):
+        txt.append(f"{r.get('text_a', '')} → {r.get('text_b', '')}")
+    if r.get("dim"):
+        txt.append(tr("Maß ") + r["dim"])
+    if r.get("desc"):
+        txt.append(r["desc"])
+    txt.append(tr("Prüfung: ") + review_text(r))
+    _pdf_info(an, tr("Änderung {}").format(r['nr']), "\n".join(txt))
+    if "aenderungen" in ocg:
+        an.set_oc(ocg["aenderungen"])
+    an.update()
+
+
+def _pdf_ann_box(page, a, shape, k, col, lw):
+    """Rahmen, Wolke, Markierung (und gedrehte Ellipse): gedreht als Polygon-, sonst als Rechteck-Anmerkung."""
+    import pymupdf
+    t = a["type"]
+    x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
+    if ann_rot(a):                                    # gedreht: als Polygon-Anmerkung
+        poly = rot_ellipse(shape, a) if t == "ellipse" else rot_corners(shape, a)
+        an = page.add_polygon_annot([pymupdf.Point(px * k, py * k) for px, py in poly])
+        if t == "highlight":
+            an.set_colors(stroke=col, fill=col)
+            an.set_opacity(0.35)
+            an.set_border(width=0)
+        else:
+            an.set_colors(stroke=col, fill=col if (t in ("rect", "ellipse") and a.get("filled")) else None)
+            an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
+        _pdf_info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung"),
+                       "ellipse": tr("Ellipse")}[t], a.get("comment" if t == "ellipse" else "text", ""))
+        return an
+    an = page.add_rect_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
+    if t == "highlight":
+        an.set_colors(stroke=col, fill=col)
+        an.set_opacity(0.35)
+        an.set_border(width=0)
+    else:
+        an.set_colors(stroke=col, fill=col if (t == "rect" and a.get("filled")) else None)
+        an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
+    _pdf_info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung")}[t], a.get("text", ""))
+    return an
+
+
+def _pdf_ann_line(page, a, k, col, lw):
+    """Linie oder Pfeil als Linien-Anmerkung (Pfeilspitzen nach 'heads')."""
+    import pymupdf
+    t = a["type"]
+    x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
+    an = page.add_line_annot(pymupdf.Point(x, y), pymupdf.Point(x2, y2))
+    an.set_colors(stroke=col)
+    an.set_border(width=lw)
+    if t == "arrow":
+        hs = a.get("heads", "end")
+        le = lambda on: pymupdf.PDF_ANNOT_LE_CLOSED_ARROW if on else pymupdf.PDF_ANNOT_LE_NONE  # noqa: E731
+        an.set_line_ends(le(hs in ("start", "both")), le(hs in ("end", "both")))
+    _pdf_info(an, tr("Pfeil") if t == "arrow" else tr("Linie"), a.get("comment", ""))
+    return an
+
+
+def _pdf_ann_pts(page, a, k, col, lw):
+    """Freihand, Polygon, Linienzug aus der Punktliste."""
+    import pymupdf
+    t = a["type"]
+    pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in a["pts"]]
+    if t == "pen":
+        an = page.add_ink_annot([[(q.x, q.y) for q in pts]])
+    elif t == "polygon":
+        an = page.add_polygon_annot(pts)
+    else:
+        an = page.add_polyline_annot(pts)
+    an.set_colors(stroke=col, fill=col if (t == "polygon" and a.get("filled")) else None)
+    an.set_border(width=lw)
+    _pdf_info(an, {"pen": tr("Freihand"), "polygon": tr("Polygon"), "polyline": tr("Linienzug")}[t],
+              a.get("comment", ""))
+    return an
+
+
+def _pdf_ann_image(page, a, shape, k, ocg):
+    """Eingefuegtes Bild als Seiteninhalt (keine Anmerkung)."""
+    import pymupdf
+    x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
+    rot = ann_rot(a)
+    src, box = ann_image(a), (min(x, x2), min(y, y2), max(x, x2), max(y, y2))
+    if rot:                                   # gedreht: Bildpunkte drehen, ins umgebende Rechteck setzen
+        src = rotated_image(src, abs(a["x2"] - a["x"]), abs(a["y2"] - a["y"]), rot)
+        b = ann_bounds(shape, a)
+        box = (b[0] * k, b[1] * k, b[2] * k, b[3] * k)
+    ok, png = cv2.imencode(".png", src)
+    if ok:
+        page.insert_image(pymupdf.Rect(*box), stream=png.tobytes(), keep_proportion=False,
+                          oc=ocg.get("bilder", 0))
+
+
+def _pdf_ann_number(page, a, k, col, th, ocg):
+    """Nummer: gefuellter Kreis, darauf die Zahl als Freitext (zurueck: die Freitext-Anmerkung)."""
+    import pymupdf
+    x, y = a["x"] * k, a["y"] * k
+    rr = 0.95 * th
+    an = page.add_circle_annot(pymupdf.Rect(x - rr, y - rr, x + rr, y + rr))
+    an.set_colors(stroke=col, fill=col)
+    an.set_border(width=0.5)
+    _pdf_info(an, tr("Nummer {}").format(a['nr']), tr("Nummer {}").format(a['nr']))
+    if "markierungen" in ocg:
+        an.set_oc(ocg["markierungen"])
+    an.update()
+    an = page.add_freetext_annot(pymupdf.Rect(x - rr, y - rr * 0.75, x + rr, y + rr), str(a["nr"]),
+                                 fontsize=max(4, rr), text_color=(1, 1, 1), align=1)
+    _pdf_info(an, tr("Nummer {}").format(a['nr']), str(a["nr"]))
+    return an
+
+
+def _pdf_ann_measure(page, a, shape, k, col, mm, ocg):
+    """Mass: Linienzug/Flaeche; mit mm zusaetzlich der Wert als Freitext (zurueck: die letzte Anmerkung)."""
+    import pymupdf
+    pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
+    an = page.add_polyline_annot(pts) if a.get("kind") != "area" else page.add_polygon_annot(pts)
+    an.set_colors(stroke=col)
+    an.set_border(width=max(0.5, measure_style(shape, a["size"])[0] * k))
+    if a.get("kind", "dist") == "dist":
+        an.set_line_ends(pymupdf.PDF_ANNOT_LE_CLOSED_ARROW, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
+    _pdf_info(an, tr("Maß"), measure_text(a, mm) if mm else "")
+    if mm:                                    # Wert auch sichtbar (nicht nur beim Anklicken)
+        if "masse" in ocg:
+            an.set_oc(ocg["masse"])
+        an.update()
+        cx, cy, _ang, _ax, _ay = measure_label(a, shape)
+        txt = measure_text(a, mm)
+        mth = measure_style(shape, a["size"])[1] * k
+        tw = pymupdf.get_text_length(txt, fontname="helv", fontsize=mth) + mth * 0.6
+        an = page.add_freetext_annot(pymupdf.Rect(cx * k - tw / 2, cy * k - mth * 0.7, cx * k + tw / 2,
+                                                  cy * k + mth * 0.7), txt, fontsize=mth, text_color=col,
+                                     fill_color=(1, 1, 1), align=1)
+        _pdf_info(an, tr("Maß"), txt)
+    return an
+
+
+def _pdf_ann(page, a, shape, k, mm, ocg):
+    """Eine Markierung als PDF-Anmerkung anlegen. Zurueck: die Anmerkung (noch ohne Ebene/update) oder None, wenn
+    es keine gibt (eingebrannte Schwaerzung, eingefuegtes Bild als Seiteninhalt, unbekannte Art)."""
+    import pymupdf
+    t = a["type"]
+    if t in REDACT_TYPES:                         # steckt schon im Bild (eingebrannt)
+        return None
+    col = _pdf_rgb(a["color"])
+    th = ann_text_h(shape, a["size"]) * k
+    lw = max(0.5, ann_line_w(shape, a["size"]) * k)
+    x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
+    rot = ann_rot(a)
+    if rot and t in ("rect", "cloud", "highlight", "ellipse"):   # gedreht: als Polygon-Anmerkung
+        return _pdf_ann_box(page, a, shape, k, col, lw)
+    if rot and t in ("text", "approval"):
+        an = _pdf_rotated_text(page, a, shape, k, _pdf_rgb(a["color"]), ocg.get(ann_layer(a), 0))
+        _pdf_info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
+        return an
+    if t in ("rect", "cloud", "highlight"):
+        return _pdf_ann_box(page, a, shape, k, col, lw)
+    if t in ("arrow", "line"):
+        return _pdf_ann_line(page, a, k, col, lw)
+    if t == "ellipse":
+        an = page.add_circle_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
+        an.set_colors(stroke=col, fill=col if a.get("filled") else None)
+        an.set_border(width=lw)
+        _pdf_info(an, tr("Ellipse"), a.get("comment", ""))
+        return an
+    if t in PTS_TYPES and a.get("pts"):
+        return _pdf_ann_pts(page, a, k, col, lw)
+    if t == "image":
+        _pdf_ann_image(page, a, shape, k, ocg)
+        return None
+    if t in ("text", "approval"):
+        b = ann_bounds(shape, a)
+        rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + th, b[3] * k + th * 0.5)
+        an = _pdf_freetext(page, rect, a.get("text", ""), max(4, th * 0.85), col, t == "approval")
+        _pdf_info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
+        return an
+    if t == "number":
+        return _pdf_ann_number(page, a, k, col, th, ocg)
+    if t == "measure":
+        return _pdf_ann_measure(page, a, shape, k, col, mm, ocg)
+    return None
+
+
+def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", ""), layers=True):
+    """Ergebnisbild als PDF; Aenderungen als Revisionswolken und eigene Markierungen als echte PDF-Anmerkungen
+    (in Acrobat & Co. anklick-, kommentier- und loeschbar). layers=True: jede Art auf einer eigenen PDF-Ebene
+    (Zeichnung, Aenderungen, Markierungen, Masse, Eingefuegte Bilder), in Acrobat ein- und ausblendbar."""
+    import pymupdf
+    h, w = img_bgr.shape[:2]
+    k = 72.0 / dpi
+    doc = pymupdf.open()
+    page = doc.new_page(width=w * k, height=h * k)
+    ocg = _pdf_layers(doc, regs, anns, layers)
     ok, png = cv2.imencode(".png", img_bgr)
     page.insert_image(page.rect, stream=png.tobytes(), oc=ocg.get("zeichnung", 0))
     shape = img_bgr.shape
-
-    def rgb(col):
-        col = col.lstrip("#")
-        return tuple(int(col[i:i + 2], 16) / 255 for i in (0, 2, 4))
-
-    def info(annot, subject, content):
-        annot.set_info(title=tr("ZGmax"), subject=subject, content=content)
-
     for r in regs:
-        pad = 12
-        rect = pymupdf.Rect((r["x"] - pad) * k, (r["y"] - pad) * k, (r["x"] + r["w"] + pad) * k,
-                            (r["y"] + r["h"] + pad) * k)
-        an = page.add_rect_annot(rect)
-        an.set_border(width=1.5, clouds=1)
-        an.set_colors(stroke=rgb(STATUS_COLORS[reg_status(r)]))
-        txt = [tr("Änderung {}: {}").format(r['nr'], TYPE_LABEL[r['typ']])]
-        if r.get("text_a") or r.get("text_b"):
-            txt.append(f"{r.get('text_a', '')} → {r.get('text_b', '')}")
-        if r.get("dim"):
-            txt.append(tr("Maß ") + r["dim"])
-        if r.get("desc"):
-            txt.append(r["desc"])
-        txt.append(tr("Prüfung: ") + review_text(r))
-        info(an, tr("Änderung {}").format(r['nr']), "\n".join(txt))
-        if "aenderungen" in ocg:
-            an.set_oc(ocg["aenderungen"])
-        an.update()
+        _pdf_region(page, r, k, ocg)
     for a in anns:
-        t = a["type"]
-        if t in REDACT_TYPES:                         # steckt schon im Bild (eingebrannt)
-            continue
-        col = rgb(a["color"])
-        th = ann_text_h(shape, a["size"]) * k
-        lw = max(0.5, ann_line_w(shape, a["size"]) * k)
-        x, y, x2, y2 = a["x"] * k, a["y"] * k, a["x2"] * k, a["y2"] * k
-        rot = ann_rot(a)
-        if rot and t in ("rect", "cloud", "highlight", "ellipse"):   # gedreht: als Polygon-Anmerkung
-            poly = rot_ellipse(shape, a) if t == "ellipse" else rot_corners(shape, a)
-            an = page.add_polygon_annot([pymupdf.Point(px * k, py * k) for px, py in poly])
-            if t == "highlight":
-                an.set_colors(stroke=col, fill=col)
-                an.set_opacity(0.35)
-                an.set_border(width=0)
-            else:
-                an.set_colors(stroke=col, fill=col if (t in ("rect", "ellipse") and a.get("filled")) else None)
-                an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
-            info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung"),
-                      "ellipse": tr("Ellipse")}[t], a.get("comment" if t == "ellipse" else "text", ""))
-        elif rot and t in ("text", "approval"):
-            an = _pdf_rotated_text(page, a, shape, k, rgb(a["color"]), ocg.get(ann_layer(a), 0))
-            info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
-        elif t in ("rect", "cloud", "highlight"):
-            an = page.add_rect_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
-            if t == "highlight":
-                an.set_colors(stroke=col, fill=col)
-                an.set_opacity(0.35)
-                an.set_border(width=0)
-            else:
-                an.set_colors(stroke=col, fill=col if (t == "rect" and a.get("filled")) else None)
-                an.set_border(width=lw, clouds=1 if t == "cloud" else -1)
-            info(an, {"rect": tr("Rahmen"), "cloud": tr("Wolke"), "highlight": tr("Markierung")}[t], a.get("text", ""))
-        elif t in ("arrow", "line"):
-            an = page.add_line_annot(pymupdf.Point(x, y), pymupdf.Point(x2, y2))
-            an.set_colors(stroke=col)
-            an.set_border(width=lw)
-            if t == "arrow":
-                hs = a.get("heads", "end")
-                le = lambda on: pymupdf.PDF_ANNOT_LE_CLOSED_ARROW if on else pymupdf.PDF_ANNOT_LE_NONE  # noqa: E731
-                an.set_line_ends(le(hs in ("start", "both")), le(hs in ("end", "both")))
-            info(an, tr("Pfeil") if t == "arrow" else tr("Linie"), a.get("comment", ""))
-        elif t == "ellipse":
-            an = page.add_circle_annot(pymupdf.Rect(min(x, x2), min(y, y2), max(x, x2), max(y, y2)))
-            an.set_colors(stroke=col, fill=col if a.get("filled") else None)
-            an.set_border(width=lw)
-            info(an, tr("Ellipse"), a.get("comment", ""))
-        elif t in PTS_TYPES and a.get("pts"):
-            pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in a["pts"]]
-            if t == "pen":
-                an = page.add_ink_annot([[(q.x, q.y) for q in pts]])
-            elif t == "polygon":
-                an = page.add_polygon_annot(pts)
-            else:
-                an = page.add_polyline_annot(pts)
-            an.set_colors(stroke=col, fill=col if (t == "polygon" and a.get("filled")) else None)
-            an.set_border(width=lw)
-            info(an, {"pen": tr("Freihand"), "polygon": tr("Polygon"), "polyline": tr("Linienzug")}[t],
-                 a.get("comment", ""))
-        elif t == "image":
-            src, box = ann_image(a), (min(x, x2), min(y, y2), max(x, x2), max(y, y2))
-            if rot:                                   # gedreht: Bildpunkte drehen, ins umgebende Rechteck setzen
-                src = rotated_image(src, abs(a["x2"] - a["x"]), abs(a["y2"] - a["y"]), rot)
-                b = ann_bounds(shape, a)
-                box = (b[0] * k, b[1] * k, b[2] * k, b[3] * k)
-            ok, png = cv2.imencode(".png", src)
-            if ok:
-                page.insert_image(pymupdf.Rect(*box), stream=png.tobytes(), keep_proportion=False,
-                                  oc=ocg.get("bilder", 0))
-            continue
-        elif t in ("text", "approval"):
-            b = ann_bounds(shape, a)
-            rect = pymupdf.Rect(b[0] * k, b[1] * k, b[2] * k + th, b[3] * k + th * 0.5)
-            an = _pdf_freetext(page, rect, a.get("text", ""), max(4, th * 0.85), col, t == "approval")
-            info(an, tr("Stempel") if t == "approval" else tr("Text"), a.get("text", ""))
-        elif t == "number":
-            rr = 0.95 * th
-            an = page.add_circle_annot(pymupdf.Rect(x - rr, y - rr, x + rr, y + rr))
-            an.set_colors(stroke=col, fill=col)
-            an.set_border(width=0.5)
-            info(an, tr("Nummer {}").format(a['nr']), tr("Nummer {}").format(a['nr']))
-            if "markierungen" in ocg:
-                an.set_oc(ocg["markierungen"])
-            an.update()
-            an = page.add_freetext_annot(pymupdf.Rect(x - rr, y - rr * 0.75, x + rr, y + rr), str(a["nr"]),
-                                         fontsize=max(4, rr), text_color=(1, 1, 1), align=1)
-            info(an, tr("Nummer {}").format(a['nr']), str(a["nr"]))
-        elif t == "measure":
-            pts = [pymupdf.Point(q[0] * k, q[1] * k) for q in (a.get("pts") or [[a["x"], a["y"]], [a["x2"], a["y2"]]])]
-            an = page.add_polyline_annot(pts) if a.get("kind") != "area" else page.add_polygon_annot(pts)
-            an.set_colors(stroke=col)
-            an.set_border(width=max(0.5, measure_style(shape, a["size"])[0] * k))
-            if a.get("kind", "dist") == "dist":
-                an.set_line_ends(pymupdf.PDF_ANNOT_LE_CLOSED_ARROW, pymupdf.PDF_ANNOT_LE_CLOSED_ARROW)
-            info(an, tr("Maß"), measure_text(a, mm) if mm else "")
-            if mm:                                    # Wert auch sichtbar (nicht nur beim Anklicken)
-                if "masse" in ocg:
-                    an.set_oc(ocg["masse"])
-                an.update()
-                cx, cy, _ang, _ax, _ay = measure_label(a, shape)
-                txt = measure_text(a, mm)
-                mth = measure_style(shape, a["size"])[1] * k
-                tw = pymupdf.get_text_length(txt, fontname="helv", fontsize=mth) + mth * 0.6
-                an = page.add_freetext_annot(pymupdf.Rect(cx * k - tw / 2, cy * k - mth * 0.7, cx * k + tw / 2,
-                                                          cy * k + mth * 0.7), txt, fontsize=mth, text_color=col,
-                                             fill_color=(1, 1, 1), align=1)
-                info(an, tr("Maß"), txt)
-        else:
+        an = _pdf_ann(page, a, shape, k, mm, ocg)
+        if an is None:
             continue
         if ann_layer(a) in ocg:
             an.set_oc(ocg[ann_layer(a)])
