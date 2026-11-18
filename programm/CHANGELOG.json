@@ -8,7 +8,8 @@
    "Behoben: Stempel brachen den Export „PDF mit Anmerkungen“ ab.",
    "Diagramm digitalisieren: Fenster sofort offen (Analyse im Hintergrund), Zoom um die Maus wie im Hauptfenster, scharfe Ansicht bei PDF, Gitter ausblendbar, gestrichelte und strichpunktierte Kurven, umgekehrte Achsen (z. B. 7 → 5) richtig auch im Excel, Excel mit Live-Formeln der Polynome; behoben: zweiter Punkt der y-Achse wurde nicht übernommen.",
    "Schneller Start per Doppelklick: Das Bild erscheint sofort als Vorschau, während das Programm lädt.",
-   "Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen Fenster – ohne zweiten Programmstart."
+   "Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen Fenster – ohne zweiten Programmstart.",
+   "Behoben (Linux, möglich auch Windows): Absturz, wenn Texterkennung im Programm und eine andere Berechnung gleichzeitig liefen (z. B. Diagramm-Fenster offen und Maus über der Zeichnung)."
   ],
   "en": [
    "Windows and Linux: unavailable commands appear grey again in menus and buttons (as on the Mac).",
@@ -18,7 +19,8 @@
    "Fixed: stamps aborted the “PDF with annotations” export.",
    "Digitise chart: window opens at once (analysis in the background), zoom around the mouse as in the main window, sharp view for PDF, grid can be hidden, dashed and dash-dot curves, reversed axes (e.g. 7 → 5) correct also in Excel, Excel with live polynomial formulas; fixed: the second point of the y axis was not taken.",
    "Faster start by double-click: the image appears at once as a preview while the program loads.",
-   "If ZGmax is already running, another double-click opens the file there in a new window – without starting the program a second time."
+   "If ZGmax is already running, another double-click opens the file there in a new window – without starting the program a second time.",
+   "Fixed (Linux, possibly Windows): crash when in-program text recognition and another calculation ran at the same time (e.g. chart window open and mouse over the drawing)."
   ]
  },
  "releases": [

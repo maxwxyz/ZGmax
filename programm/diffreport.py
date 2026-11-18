@@ -191,9 +191,13 @@ OCR_DIR = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(
 class _SafeOcr:
     """Huelle um die Texterkennung gegen einen Absturz auf Macs mit Apple-Chip: OpenCVs beschleunigtes, mehrfaediges
     cv2.resize (KleidiCV) las waehrend der Texterkennung ueber das Bild hinaus (SIGSEGV). Darum je Aufruf: Bild
-    zusammenhaengend, nur eine Erkennung zur Zeit und OpenCV dabei einfaedig (der parallele Pfad wird nicht benutzt)."""
+    zusammenhaengend, nur eine Erkennung zur Zeit und - nur am Mac - OpenCV dabei einfaedig (der parallele Pfad wird
+    nicht benutzt). Auf anderen Systemen bleibt die Zahl der Rechenkerne unangetastet: sie mitten in einer laufenden
+    OpenCV-Berechnung eines anderen Threads (z. B. Fangpunkte im Hauptfenster) umzustellen, laesst OpenCV dort
+    abstuerzen (Division durch null im Thread-Pool, unter Linux beobachtet)."""
     import threading
     _lock = threading.Lock()
+    SINGLE = sys.platform == "darwin"        # GCD-Backend: Umstellen ist dort nur ein Schalter
 
     def __init__(self, eng):
         self.eng = eng
@@ -204,6 +208,8 @@ class _SafeOcr:
     def __call__(self, img, *a, **k):
         img = np.ascontiguousarray(img)
         with self._lock:
+            if not self.SINGLE:
+                return self.eng(img, *a, **k)
             n = cv2.getNumThreads()
             cv2.setNumThreads(0)               # 0 = ohne Parallelisierung (das Mac-Backend GCD ignoriert die 1)
             try:

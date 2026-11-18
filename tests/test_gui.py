@@ -2044,15 +2044,18 @@ def test_big_sheet_hint(app, win, tmp_path):
 
 
 def test_ocr_wrapper_single_threaded(monkeypatch):
-    """Texterkennung laeuft mit einfaedigem OpenCV und zusammenhaengendem Bild (Absturz auf Apple-Chip)."""
+    """Texterkennung: zusammenhaengendes Bild; am Mac dabei einfaediges OpenCV (Absturz auf Apple-Chip), auf anderen
+    Systemen bleibt die Zahl der Rechenkerne unangetastet (Umstellen waehrend fremder Berechnungen stuerzt ab)."""
     import cv2
     import numpy as np
     import diffreport as rep
-    seen = []
-    eng = rep._SafeOcr(lambda img: (seen.append((cv2.getNumThreads(), img.flags["C_CONTIGUOUS"])), (None, 0))[1])
-    before = cv2.getNumThreads()
-    eng(np.zeros((40, 80), np.uint8)[:, ::2])                     # nicht zusammenhaengend
-    assert seen == [(1, True)] and cv2.getNumThreads() == before
+    for single in (True, False):
+        monkeypatch.setattr(rep._SafeOcr, "SINGLE", single)
+        seen = []
+        eng = rep._SafeOcr(lambda img: (seen.append((cv2.getNumThreads(), img.flags["C_CONTIGUOUS"])), (None, 0))[1])
+        before = cv2.getNumThreads()
+        eng(np.zeros((40, 80), np.uint8)[:, ::2])                 # nicht zusammenhaengend
+        assert seen == [(1 if single else before, True)] and cv2.getNumThreads() == before
 
 
 def test_changed_text_reuses_read_text(app, win, pair, monkeypatch):

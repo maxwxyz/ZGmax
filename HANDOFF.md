@@ -14,6 +14,10 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   macOS-Signatur. Keine Firma/Zielgruppe nennen.
 
 ## Erledigt 2026-11-18 (schneller Start)
+- GitHub-Lauf 44298581129: Linux rot – SIGFPE in OpenCV (Stresstest): `_SafeOcr` stellte `cv2.setNumThreads(0)` um,
+  während der Hauptthread `HoughCircles` rechnete (Texterkennung des Diagramm-Fensters im Hintergrund-Thread).
+  Jetzt nur noch am Mac umstellen (`_SafeOcr.SINGLE`); im Erkennungsprozess bleibt es einmalig beim Start.
+  Erste Windows-Startzeiten (Runner, warm): Vorschau 0,25 s, Bild 0,9 s.
 - `programm/quickstart.py` (braucht nur Qt): `make_app`, `hand_over`/`serve` (QLocalServer `zgmax-<Nutzer>`: ein
   weiterer Aufruf gibt seine Dateien ab und endet; `--neu` oder `ZGMAX_EIGENE_INSTANZ=1` erzwingt einen eigenen Lauf,
   `restart_app` nutzt `--neu`), `preview` (Sofortvorschau über QImageReader, verkleinert gelesen), `mark`/`report`.
