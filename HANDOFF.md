@@ -13,6 +13,24 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
   ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
 
+## OFFEN (Nutzungslimit erreicht, 2026-11-18) – als Nächstes
+1. Agenten-Branches zusammenführen (jeweils erst `git log main..<branch>` ansehen, Tests laufen lassen):
+   - `worktree-agent-aa69aaed08bc52aa8` (Commit d201b6e, FERTIG): Speichern absichern (`programm/safewrite.py`,
+     `_save_dialog` fragt beim Überschreiben der Quelle). Neue tr()-Texte noch in `i18n_en.json` eintragen:
+     „Datei konnte nicht gespeichert werden: {}“ → “Could not save file: {}”; „(Datei in einem anderen Programm
+     geöffnet? Genug Platz? Schreibrechte?)“ → “(File open in another program? Enough disk space? Write permission?)”;
+     „es wurde nichts geschrieben“ → “nothing was written”; „„{}“ ist die gerade geöffnete Zeichnung. Soll die
+     Originaldatei wirklich überschrieben werden?“ → ““{}” is the drawing that is currently open. Really overwrite
+     the original file?”
+   - `worktree-agent-ac5af1c7574d5ca61` (lief noch): Leisten-Aufbau aufteilen + 23 Tooltips (ui_layout/ui_panels).
+   - `worktree-agent-a69f5d77c865bc059` (lief noch): große Zeichen-/Berichtsfunktionen aufteilen (ui_icons,
+     ui_canvas_paint, ui_canvas, diffreport) – beim Zusammenführen mit dem Speichern-Branch auf die Speicherzeilen in
+     `build_annotated_pdf`/`build_report` achten.
+2. Befund 5: unbenutzte Übersetzungen aus `i18n_en.json` entfernen (nach dem Zusammenführen).
+3. Menüreferenz/Bilder neu, CHANGELOG-Einträge (Speichern abgesichert, Erklärungen), volle Tests, Mac-Bau, Push,
+   GitHub-Bau „Apps bauen“ (alle, mit Tests). Version bleibt 1.1 (Einträge unter „unreleased“).
+4. Arbeitskopien/Branches der Agenten danach löschen.
+
 ## Erledigt 2026-11-18 (nach 1.1, unter „unreleased“)
 - Texterkennung überall im eigenen Prozess: `rep._in_service` um `ocr_image`, `ocr_lines`, `ocr_any_orientation`,
   `ocr_vertical`, `ocr_skew` → `ocrservice.call(name, args, kwargs)` (Vorrang FOREGROUND, hält Hintergrund 2 s
@@ -23,7 +41,13 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   `prune_project_files` (30 Tage), (4) Fensterlage `quickstart.saved_window/save_window` (nur wenn `main()` die
   App-Eigenschaft `zgmax_remember_window` setzt). (3) Speichern absichern, (6) Tooltips, (7) große Funktionen:
   drei Agenten in Worktrees – Ergebnisse zusammenführen. (5) unbenutzte Übersetzungen danach entfernen.
-- Idee (Nutzer gefragt): eine „Textschicht“ je Seite für alle Funktionen, auf der Platte gemerkt, mit Anzeige.
+- Textschicht (Nutzerwunsch, ohne Daueranzeige in der Statusleiste): `programm/textstore.py` merkt erkannten Text
+  unter `<Daten>/textcache/<sha1 des Inhalts>-p<Seite>-d<dpi|0>.json.gz` (Teile h/v/s, `VER`), Obergrenze 400
+  Dateien/40 MB/120 Tage (`prune` einmal je Programmlauf). `SearchMixin`: `_store_pull/_store_push/_store_ref`,
+  `text_layer(side, page)` als gemeinsame Quelle (Suche, `_known_lines`, Schriftfeld, Tabelle, Text kopieren),
+  `_text_valid` (bearbeitete Zeichnung: Suche liest das gezeigte Bild, Schlüssel `txt-edit`). Projekt: `text_cache`
+  in `_project_data`, Import in `project_open` (Name gegen festes Muster geprüft). Tests räumen die Ablage je Test
+  (conftest `_fresh_text_store`).
 
 ## Erledigt 2026-11-18 (Release 1.1)
 - Prüfbau 44304411880 auf allen drei Systemen grün, Installer-Probe bestanden (bauen, `/CURRENTUSER` installieren,

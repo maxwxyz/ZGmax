@@ -324,11 +324,22 @@ class FeaturesMixin:
         if not pdf and not self.ensure_ocr(tr("das Schriftfeld eines Bildes zu lesen")):
             return
 
+        side = "A" if self.path_a else "B"
+        layer = None if pdf else self.text_layer(side)      # schon gelesen (Hintergrund, frueher gemerkt)?
+        size = self.payload["res"].a.shape if self.payload else None
+
         def work(ctx):
             ctx.progress(0.1, tr("Lese Schriftfeld"))
             texts = []
             if pdf:
                 texts = dv.title_block_words(path, page)
+            if not texts and layer and size:             # aus der Textschicht: Zeilen im Feld rechts unten
+                h, w = size
+                ox, oy = self.origin
+                x0, y0 = int(w * 0.5) + ox, int(h * 0.62) + oy
+                rows = sorted((l for l in layer if (l[0] + l[2]) / 2 >= x0 and (l[1] + l[3]) / 2 >= y0),
+                              key=lambda l: (round(l[1] / max(10, l[3] - l[1])), l[0]))
+                texts = [(l[0] - x0, l[1] - y0, str(l[4]).strip()) for l in rows]
             if not texts and rep.ocr_available():
                 g = self._gray(path, page, dpi, ctx)
                 h, w = g.shape

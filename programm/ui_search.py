@@ -103,6 +103,63 @@ class SearchMixin:
             stamp = None
         return ("txt", path, page, self.dpi_value(), stamp), path, page
 
+    # --- Textschicht: gelesener Text je Seite, im Programm (self.cache) und dauerhaft (textstore)
+    def _store_parts(self, key):
+        """Schluessel der drei Teile einer Seite: waagerecht, senkrecht, schraeg."""
+        return (("h", key), ("v", ocrservice.vkey(key)), ("s", ocrservice.skey(key)))
+
+    @staticmethod
+    def _store_ref(key):
+        """(Pruefsumme der Datei, Seite, Aufloesung) zu einem Textschluessel - der Text haengt am Inhalt der Datei,
+        nicht am Namen; bei Bildern spielt die Aufloesung keine Rolle (0)."""
+        base = key[1:] if key[0] in ("vert", "skew") else key
+        _t, path, page, dpi, _stamp = base
+        return textstore.file_id(path), page, (dpi if dp.is_vector(path) else 0)
+
+    def _store_pull(self, side, page=None):
+        """Dauerhaft gemerkten Text dieser Seite in den Arbeitsspeicher holen (einmal je Seite und Programmlauf)."""
+        key = self._text_key(side, page)[0]
+        seen = self.__dict__.setdefault("_store_pulled", set())
+        if key in seen or key[4] is None or not self._text_valid(side):
+            return
+        seen.add(key)
+        got = textstore.load(*self._store_ref(key))
+        for part, k in self._store_parts(key):
+            if part in got and k not in self.cache:
+                self.cache[k] = got[part]
+
+    def _store_push(self, key, lines):
+        """Frisch erkannten Text dauerhaft merken (nur Texterkennung; echter PDF-Text ist ohnehin sofort da)."""
+        part = {"vert": "v", "skew": "s"}.get(key[0], "h")
+        try:
+            textstore.save(*self._store_ref(key), part, lines)
+        except Exception:                                # noqa: BLE001 - Merken ist nur Bequemlichkeit
+            log.exception("Text merken")
+
+    def text_layer(self, side, page=None):
+        """Die Textschicht einer Seite fuer alle Funktionen (Suche, Text finden, Schriftfeld, Tabelle, Text kopieren):
+        alle schon gelesenen Zeilen in Bildpixeln der Datei als (x0, y0, x1, y1, text) - waagerecht, dazu senkrechte
+        und schraege, wo waagerecht nichts steht. None = noch nichts gelesen (oder Zeichnung bearbeitet)."""
+        if not self._text_valid(side):
+            return None
+        self._bg_text_poll()
+        self._store_pull(side, page)
+        key = self._text_key(side, page)[0]
+        lines = self.cache.get(key)
+        if lines is None:
+            return None
+        out = [tuple(l[:5]) for l in lines]
+        for _part, k in self._store_parts(key)[1:]:
+            for l in self.cache.get(k) or []:
+                if not any(rep._overlap(l, h) > 0.5 for h in lines):
+                    out.append(tuple(l[:5]))
+        return out
+
+    def _text_valid(self, side):
+        """Passt der gelesene Text der Datei noch zum gezeigten Bild? Nicht mehr, wenn die Zeichnung beim Ansehen
+        bearbeitet wurde (gedreht, entzerrt, Ausschnitt verschoben ...): dann liegt der Text woanders."""
+        return not (side == "A" and getattr(self, "_edit_ver", 0))
+
     def run_search(self):
         """Text sammeln (einmal je Datei/Seite, im Hintergrund) und Treffer zeigen."""
         if self.payload is None or not self.search_bar.isVisible():
@@ -120,6 +177,11 @@ class SearchMixin:
         if getattr(self, "_search_jump", None) and (self.running or self.page_timer.isActive()):
             return                                       # Seitenwechsel laeuft: nach dem Laden wird neu gesucht
         self._bg_text_poll()                             # im Hintergrund fertig geworden?
+        edited = not self._text_valid(side)
+        if edited:                                       # bearbeitete Zeichnung: eigener Text des gezeigten Bildes
+            key = ("txt-edit", path, page, self._edit_ver, id(self))
+        else:
+            self._store_pull(side)
         lines = self.cache.get(key)
         if lines is None:
             if self.running:
@@ -134,25 +196,37 @@ class SearchMixin:
             dpi = self.dpi_value()
             src = ocrservice.source(path, page, dpi)     # der Erkennungsprozess laedt die Seite selbst
 
+            shown = None
+            if edited:                                   # das bearbeitete Bild selbst lesen (nicht die Datei)
+                imgs, _p = self._edit_images()
+                shown = imgs[0] if imgs else None        # Graubild, wie es gerade gezeigt wird
+            read = []
+
             def work(ctx):
-                found = dv.text_lines(path, page, dpi) if pdf else []
+                found = dv.text_lines(path, page, dpi) if (pdf and not edited) else []
                 if not found:                            # Bild oder PDF ohne Text: Texterkennung
                     if not rep.ocr_available():
                         return []
                     ctx.progress(0.02, tr("Lese Text in der Zeichnung"))
-                    found = ocrservice.lines(key, src=src, cancel=ctx.cancelled,   # wartet ggf. auf den Hintergrund
-                                             progress=lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung")))
+                    msg = lambda f: ctx.progress(f, tr("Lese Text in der Zeichnung"))   # noqa: E731
+                    if shown is not None:
+                        found = ocrservice.lines(key, shown, cancel=ctx.cancelled, progress=msg)
+                    else:                                # wartet ggf. auf den Hintergrund
+                        found = ocrservice.lines(key, src=src, cancel=ctx.cancelled, progress=msg)
+                        read.append(True)
                 return found
 
             def done(found):
                 self.cache[key] = found
+                if read and found:
+                    self._store_push(key, found)
                 self.run_search()
             self.canvas.search_hits, self.canvas.search_cur = [], -1     # alte Treffer gelten nicht mehr
             self.canvas.update()
             self.lbl_search.setText(tr("Lese den Text der Zeichnung (einmalig) …"))
             self._run_job(work, tr("Lese Text …"), done)
             return
-        sk = self.cache.get(ocrservice.skey(key)) or []   # schraege Texte, wo waagerecht nichts gefunden wurde
+        sk = ([] if edited else self.cache.get(ocrservice.skey(key))) or []   # schraege Texte, wo sonst nichts steht
         extra = [l[:5] for l in sk if not any(rep._overlap(l, h) > 0.5 for h in lines)]
         raw = rep.find_text(list(lines) + extra, q)
         hits = [self._to_view(side, h) for h in raw]
@@ -181,6 +255,8 @@ class SearchMixin:
         """Alle Seiten: Treffer je Seite zaehlen (self._search_counts = {seite: anzahl}). Fehlt der Text einzelner
         Seiten, wird er im Hintergrund gelesen (PDF-Text, sonst Texterkennung) und danach neu gesucht; dann False."""
         n = self._search_pages(side)
+        for p in range(1, n + 1):
+            self._store_pull(side, p)                    # schon einmal gelesene Seiten
         missing = [p for p in range(1, n + 1) if p != page and self._text_key(side, p)[0] not in self.cache]
         if missing:
             if self.running:                             # andere Berechnung (z. B. Seite laden): spaeter
@@ -191,6 +267,8 @@ class SearchMixin:
             dpi = self.dpi_value()
             jobs = [(self._text_key(side, p)[0], p, ocrservice.source(path, p, dpi)) for p in missing]
             ocr = rep.ocr_available()
+
+            read = set()
 
             def work(ctx):
                 out = {}
@@ -206,11 +284,15 @@ class SearchMixin:
                     if not found and ocr:
                         found = ocrservice.lines(key, src=src, cancel=ctx.cancelled, progress=lambda f, i=i: (
                             ctx.progress((i + f) / len(jobs), msg)))
+                        read.add(key)
                     out[key] = found or []
                 return out
 
             def done(found):
                 self.cache.update(found)
+                for key in read:
+                    if found.get(key):
+                        self._store_push(key, found[key])
                 self.run_search()
 
             def aborted():                               # nicht gleich wieder anfangen
@@ -287,8 +369,17 @@ class SearchMixin:
             return
         if not self._bg_keys:
             self._bg_all = set()                         # neue Runde fuer die Fortschrittsanzeige
+        if not getattr(SearchMixin, "_store_pruned", False):         # einmal je Programmlauf aufraeumen
+            SearchMixin._store_pruned = True
+            try:
+                textstore.prune()
+            except Exception:                            # noqa: BLE001
+                log.exception("Textablage aufraeumen")
         sides = ["A"] if self.view_only or not self.path_b else ["B", "A"]
         for side in sides:
+            if not self._text_valid(side):               # bearbeitete Zeichnung: der Text der Datei passt nicht
+                continue
+            self._store_pull(side)                       # schon einmal gelesen (auch unter anderem Namen)?
             key, path, page = self._text_key(side)
             vk = ocrservice.vkey(key)
             have = lambda k: k in self.cache or ocrservice.busy(k)      # noqa: E731
@@ -318,6 +409,7 @@ class SearchMixin:
             r = ocrservice.result(key)
             if r is not None:
                 self.cache.setdefault(key, r)
+                self._store_push(key, r)                 # naechstes Mal ohne Erkennung
                 self._bg_keys.discard(key)
             elif not ocrservice.busy(key):               # abgebrochen oder fehlgeschlagen
                 self._bg_keys.discard(key)

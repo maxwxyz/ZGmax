@@ -209,8 +209,7 @@ class TableMixin:
             got = inside([(w[0] * z, w[1] * z, w[2] * z, w[3] * z, w[4]) for w in words])
             if got:
                 return got, tr("Text aus dem PDF")
-        self._bg_text_poll()
-        lines = self.cache.get(self._text_key(side)[0])
+        lines = self.text_layer(side)                      # gemeinsame Textschicht: waagerecht, senkrecht, schraeg
         if lines:
             got = inside(lines)
             if got:

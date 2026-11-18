@@ -2459,3 +2459,60 @@ def test_project_embedded_files_stay_in_data_dir(app, tmp_path, pair):
     os.utime(old, (t, t))
     assert up.prune_project_files(keep={os.path.dirname(emb["a"])}) >= 1
     assert not os.path.exists(old) and os.path.isfile(emb["a"])
+
+
+def test_text_store_by_content_not_name(app, win, pair, tmp_path, monkeypatch):
+    """Gelesener Text wird dauerhaft gemerkt und am INHALT der Datei erkannt: umbenannt = Text sofort da, andere
+    Datei unter gleichem Namen = kein fremder Text; die Ablage haelt ihre Obergrenze ein."""
+    import shutil
+    import ocrservice
+    import textstore
+    calls = []
+    monkeypatch.setattr(ocrservice, "lines", lambda key, *a, **k: calls.append(key) or [(10, 10, 90, 30, "MASS 25,4")])
+    monkeypatch.setattr("diffreport.ocr_available", lambda: True)
+    win._set_file("A", pair[0])
+    wait(app, lambda: win.payload is not None and not win.running)
+    win.open_search()
+    win.ed_search.setText("MASS")
+    win.run_search()
+    wait(app, lambda: not win.running and win.canvas.search_hits)
+    assert len(calls) == 1                                        # einmal gelesen ...
+    fid = textstore.file_id(pair[0])
+    assert textstore.load(fid, 1, 0)["h"][0][4] == "MASS 25,4"    # ... und dauerhaft gemerkt
+    renamed = tmp_path / "ganz_anderer_name.png"
+    shutil.copy(pair[0], renamed)
+    win.close_document()
+    win._set_file("A", str(renamed))                              # umbenannt: Text ohne Erkennung da
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert any(l[4] == "MASS 25,4" for l in win.text_layer("A")) and len(calls) == 1
+    other = tmp_path / "x" / os.path.basename(pair[0])            # gleicher Name, anderer Inhalt: nichts uebernehmen
+    other.parent.mkdir()
+    shutil.copy(pair[1], other)
+    win.close_document()
+    win._set_file("A", str(other))
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert win.text_layer("A") is None
+    for i in range(12):                                           # Obergrenze: Aeltestes fliegt raus
+        textstore.save(f"{i:040x}", 1, 0, "h", [[0, 0, 1, 1, "x"]])
+    assert textstore.prune(max_files=5) >= 8
+    assert len(os.listdir(textstore._dir())) <= 5
+    assert not textstore.import_("../boese.json.gz", {"ver": textstore.VER, "h": []})   # fremder Name: abgelehnt
+
+
+def test_project_carries_read_text(app, win, pair, tmp_path):
+    """Der gelesene Text wandert mit dem Projekt: nach dem Oeffnen auf einem Rechner ohne diesen Text ist er da."""
+    import shutil
+    import textstore
+    compare(app, win, *pair)
+    key = win._text_key("B")[0]
+    win._store_push(key, [(10, 10, 90, 30, "MASS 25,4")])
+    proj = tmp_path / "p.zgmax"
+    win._save_dialog = lambda *a, **k: str(proj)
+    assert win.project_save(as_new=True)
+    shutil.rmtree(textstore._dir())                               # wie ein anderer Rechner
+    assert textstore.load(*win._store_ref(key)) == {}
+    win.close_document()
+    win.project_open(str(proj))
+    wait(app, lambda: win.payload is not None and not win.running)
+    assert textstore.load(*win._store_ref(key))["h"][0][4] == "MASS 25,4"
+    assert any(l[4] == "MASS 25,4" for l in win.text_layer("B"))

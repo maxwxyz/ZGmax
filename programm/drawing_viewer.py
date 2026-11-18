@@ -308,6 +308,8 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         Ergebnisses: (Zeilen A, Zeilen B) bzw. mit vertical ((A, B), (senkrecht A, senkrecht B)); fehlt eine Seite,
         steht dort None. Liest der Hintergrund gerade, kommt "wait" und retry() laeuft kurz darauf erneut."""
         self._bg_text_poll()
+        for side in ("A", "B"):
+            self._store_pull(side)                       # dauerhaft gemerkter Text (auch unter anderem Dateinamen)
         keys = [self._text_key(s)[0] for s in ("A", "B")]
         if any(ocrservice.busy(k) or (vertical and ocrservice.busy(ocrservice.vkey(k))) for k in keys):
             self.lbl_status.setText(tr("Warte auf die Texterkennung im Hintergrund …"))

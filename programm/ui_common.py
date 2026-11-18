@@ -27,6 +27,7 @@ import diffpipe as dp
 import diffreport as rep
 import diffvector as dv
 import ocrservice
+import textstore
 
 APP = tr("ZGmax")
 APP_SUBTITLE = tr("Zeichnungen ansehen, vergleichen und pr\u00fcfen")

@@ -235,7 +235,22 @@ class ProjectMixin:
             "manual_align": self.manual_tf,
             # Aenderungsliste mit Pruefstand (Status, Kommentar, eigene Eintraege)
             "regions": copy.deepcopy(self.payload["regs"]) if (self.payload and self.payload["regs_done"]) else None,
+            # gelesener Text der gezeigten Seiten (Texterkennung): wer das Projekt oeffnet, muss nicht neu lesen
+            "text_cache": self._project_text(),
         }
+
+    def _project_text(self):
+        out = {}
+        for side, path in (("A", self.path_a), ("B", self.path_b)):
+            if not path:
+                continue
+            try:
+                item = textstore.export(*self._store_ref(self._text_key(side)[0]))
+            except Exception:                            # noqa: BLE001 - nur Bequemlichkeit
+                item = None
+            if item:
+                out[item[0]] = item[1]
+        return out
 
     def project_save(self, as_new=False):
         path = self.project_path
@@ -287,6 +302,8 @@ class ProjectMixin:
         except (OSError, ValueError, KeyError, zipfile.BadZipFile) as ex:
             QMessageBox.warning(self, APP, tr("Projekt konnte nicht gelesen werden:\n{}").format(ex))
             return
+        for fname, item in (data.get("text_cache") or {}).items():    # mitgegebener Text (Name wird geprueft)
+            textstore.import_(fname, item)
         base_dir = os.path.dirname(os.path.abspath(path))
         fl = data.get("files", {})
         found = {}

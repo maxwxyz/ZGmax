@@ -42,3 +42,12 @@ def pair(tmp_path):
     Image.fromarray(draw_sheet(False)).save(pa, dpi=(200, 200))
     Image.fromarray(draw_sheet(True)).save(pb, dpi=(200, 200))
     return str(pa), str(pb)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_text_store():
+    """Jeder Test beginnt ohne dauerhaft gemerkten Text (sonst kennt er die Zeichnungen frueherer Tests schon)."""
+    import shutil
+    d = os.path.join(os.environ["ZV_DATA_DIR"], "textcache")
+    shutil.rmtree(d, ignore_errors=True)
+    yield
