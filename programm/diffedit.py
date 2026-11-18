@@ -6,6 +6,8 @@ derselben Groesse. Rechtecke sind (x0, y0, x1, y1) in Pixeln, x1/y1 exklusiv.
 """
 import os
 
+from safewrite import atomic_open, write as safe_write
+
 import cv2
 import numpy as np
 
@@ -1068,7 +1070,7 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
                 out.append(f'<path d="M{xa:.2f},{ya:.2f} A{r:.2f},{r:.2f} 0 {int(a1 - a0 > 180)} 1 {xb:.2f},{yb:.2f}"/>')
             out.append("</g>")
         out.append("</svg>\n")
-        with open(path, "w", encoding="utf-8") as f:
+        with atomic_open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(out))
     elif ext == ".pdf":
         import pymupdf
@@ -1091,7 +1093,7 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
                 sh.draw_sector(pymupdf.Point(cx * k, cy * k), pymupdf.Point(xa * k, ya * k), -(a1 - a0), fullSector=False)
             sh.finish(color=col, width=max(0.1, width * k), lineCap=1, lineJoin=1, closePath=False)
         sh.commit()
-        doc.save(path, deflate=True)
+        safe_write(path, lambda t: doc.save(t, deflate=True))
         doc.close()
     elif ext == ".dxf":
         import ezdxf
@@ -1111,7 +1113,7 @@ def write_vectors(path, vec, size, dpi=200, mm_px=None, color=(0, 0, 0)):
             pts = [(x * f, (H - y) * f) for x, y in p]
             hatch = msp.add_hatch(color=7, dxfattribs={"layer": "FLAECHEN"})
             hatch.paths.add_polyline_path(pts, is_closed=True)
-        doc.saveas(path)
+        safe_write(path, doc.saveas)
     else:
         raise ValueError(ext)
     return len(lines) + len(fills) + len(arcs) + len(circles)

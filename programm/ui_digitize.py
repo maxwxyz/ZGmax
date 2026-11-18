@@ -17,11 +17,12 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSpinBox, QApplication
                                QDialog, QDoubleSpinBox, QFileDialog, QFormLayout,
                                QGraphicsPathItem, QGraphicsPixmapItem, QGraphicsScene, QGraphicsSimpleTextItem,
                                QGraphicsView, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QListWidget,
-                               QListWidgetItem, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QScrollArea,
+                               QListWidgetItem, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QScrollArea,
                                QSpinBox, QSplitter, QTableWidget, QTableWidgetItem, QTextEdit, QToolButton,
                                QVBoxLayout, QWidget)
 
 import digitize as dg
+from safewrite import SaveError, atomic_open
 from i18n import tr
 
 COLORS = ["#e11d48", "#2563eb", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"]
@@ -1436,6 +1437,11 @@ class DigitizeDialog(QDialog):
         for b in (self.btn_copy, self.btn_save, self.btn_xlsx, self.btn_fn):
             b.setEnabled(True)
 
+    def _save_failed(self, err):
+        """Schreibfehler: als Meldung ueber dem Fenster, nicht als unauffaelliger Hinweis."""
+        self.lbl_status.setText(str(err))
+        QMessageBox.warning(self, self.windowTitle(), str(err))
+
     def _say(self, text):
         self.lbl_status.setText(text)
         if self.notify:
@@ -1464,8 +1470,12 @@ class DigitizeDialog(QDialog):
             path, _ = QFileDialog.getSaveFileName(self, title, "diagramm.csv", flt)
         if not path:
             return
-        with open(path, "w", encoding="utf-8-sig", newline="") as f:   # mit BOM: Excel erkennt UTF-8
-            f.write(txt.replace("\n", "\r\n"))
+        try:
+            with atomic_open(path, "w", encoding="utf-8-sig", newline="") as f:   # mit BOM: Excel erkennt UTF-8
+                f.write(txt.replace("\n", "\r\n"))
+        except SaveError as e:
+            self._save_failed(e)
+            return
         self._say(tr("Gespeichert: {}").format(path))
 
     def save_xlsx(self, path=None):
@@ -1494,6 +1504,9 @@ class DigitizeDialog(QDialog):
                        labels=(tr("Polynom"), tr("Kurve"), tr("von x"), tr("bis x")))
         except ImportError:
             self._say(tr("Für Excel-Dateien fehlt das Paket openpyxl."))
+            return
+        except SaveError as e:
+            self._save_failed(e)
             return
         except OSError as e:
             self._say(tr("Speichern fehlgeschlagen: {}").format(e))

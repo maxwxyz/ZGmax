@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QTextBrowser
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_dialogs import RevisionDialog
+from safewrite import write as safe_write
 
 
 class BgTask(QThread):
@@ -303,7 +304,7 @@ class FeaturesMixin:
                         rep.build_annotated_pdf(f, img, regs, anns[i], dpi, mm, names)
                     with pymupdf.open(f) as part:
                         out.insert_pdf(part, annots=True)
-                out.save(path, deflate=True)
+                safe_write(path, lambda t: out.save(t, deflate=True))
             out.close()
             return path
         self._run_job(work, tr("Speichere alle Seiten …"), self._saved)

@@ -136,8 +136,9 @@ class ReviewMixin:
         if chk_pdf.isChecked():
             path = self._save_dialog(tr("Prüfprotokoll speichern"), tr("PDF (*.pdf)"), "pruefprotokoll.pdf")
             if path:
-                rep.build_protocol_pdf(path, rec)
-                self._saved(path)
+                with self._saving():
+                    rep.build_protocol_pdf(path, rec)
+                    self._saved(path)
         self.banner.show_msg(msg + tr(" – im Projekt gespeichert (Projekt speichern nicht vergessen)."), "info",
                              timeout=12)
         self._set_reviewing(False)
@@ -213,8 +214,9 @@ class ReviewMixin:
             if 0 <= row < len(recs):
                 path = self._save_dialog(tr("Prüfprotokoll speichern"), tr("PDF (*.pdf)"), "pruefprotokoll.pdf")
                 if path:
-                    rep.build_protocol_pdf(path, recs[row])
-                    self._saved(path)
+                    with self._saving(dlg):
+                        rep.build_protocol_pdf(path, recs[row])
+                        self._saved(path)
         b.clicked.connect(save)
         bb.rejected.connect(dlg.reject)
         lay.addWidget(bb)
@@ -241,10 +243,11 @@ class ReviewMixin:
         rows = rep.dim_rows(self.payload["regs"], self.canvas.mm_px,
                             self.sp_pa.value() if max(self.n_pages_a, self.n_pages_b) > 1 else None)
         names = (os.path.basename(self.path_a), os.path.basename(self.path_b))
-        if path.lower().endswith(".csv"):
-            rep.write_dim_csv(path, rows)
-        else:
-            if not path.lower().endswith(".pdf"):
-                path += ".pdf"
-            rep.build_dim_report(path, rows, *names, info=f"{APP} {VERSION}")
-        self._saved(path)
+        with self._saving():
+            if path.lower().endswith(".csv"):
+                rep.write_dim_csv(path, rows)
+            else:
+                if not path.lower().endswith(".pdf"):
+                    path += ".pdf"
+                rep.build_dim_report(path, rows, *names, info=f"{APP} {VERSION}")
+            self._saved(path)

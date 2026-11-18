@@ -19,7 +19,30 @@ class PanelsMixin:
         lay = QVBoxLayout(inner)
         lay.setContentsMargins(12, 8, 12, 12)
         lay.setSpacing(8)
+        self._build_left_files(lay)
+        self._build_left_sensitivity(lay)
+        self._build_left_lines(lay)
+        self._build_left_pages(lay)
+        self._build_left_scale(lay)
+        # --- ab hier nur mit "Alle Einstellungen zeigen"
+        zon = self._build_left_zones(lay)
+        self._build_left_vector(lay)
+        adv = self._build_left_advanced(lay)
+        self.expert_widgets = [zon, adv]
+        self.compare_widgets = [self.sec_sens, zon]           # beim Ansehen einer einzelnen Zeichnung ohne Sinn
+        lay.addStretch()
 
+        for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
+                  self.s_cell, self.s_maxs, self.s_border):
+            w.changed.connect(self._param_changed)
+        self.cb_align.currentIndexChanged.connect(self._param_changed)
+        self.sp_dpi.valueChanged.connect(self._dpi_changed)
+        self.sp_scale.valueChanged.connect(self._update_units)
+        self.sp_scale.valueChanged.connect(self._remember_page_scale)
+        self._build_left_bottom(inner)
+
+    def _build_left_files(self, lay):
+        """Abschnitt Zeichnungen: Dateien A und B, tauschen, zweite Zeichnung dazunehmen."""
         sec = Section(tr("Zeichnungen"))
         self.lbl_a, self.lbl_b = ElideLabel(tr("(nicht gewählt)")), ElideLabel(tr("(nicht gewählt)"))
         self.file_rows = {}
@@ -49,6 +72,8 @@ class PanelsMixin:
         sec.body.addWidget(self.btn_add_b)
         lay.addWidget(sec)
 
+    def _build_left_sensitivity(self, lay):
+        """Abschnitt Empfindlichkeit: Toleranz, Mindestgroesse, Ausrichten."""
         sec = Section(tr("Empfindlichkeit"))
         self.sec_sens = sec
         self.s_tol = SliderRow(tr("Toleranz (px)"), 0, 10, 2, 1, 0,
@@ -86,6 +111,8 @@ class PanelsMixin:
         sec.body.addWidget(h)
         lay.addWidget(sec)
 
+    def _build_left_lines(self, lay):
+        """Abschnitt Linien filtern (Strichbreiten)."""
         # Linienfilter: gilt fuer Anzeige und Vergleich, daher in beiden Modi sichtbar
         lf = Collapsible(tr("Linien filtern"), tr("Nur bestimmte Strichbreiten anzeigen und vergleichen"))
         self.cb_lines = QComboBox()
@@ -117,6 +144,8 @@ class PanelsMixin:
         lay.addWidget(lf)
         self.sec_lines = lf
 
+    def _build_left_pages(self, lay):
+        """Abschnitt Seiten: Seitenliste, Seite A/B, alle Seiten vergleichen."""
         self.sec_pages = Collapsible(tr("Seiten"), tr("Seite auswählen"))
         self.list_pages = QListWidget()
         self.list_pages.setIconSize(QSize(40, 56))
@@ -142,6 +171,8 @@ class PanelsMixin:
         self.sec_pages.hide()
         lay.addWidget(self.sec_pages)
 
+    def _build_left_scale(self, lay):
+        """Abschnitt Massstab und Aufloesung."""
         fo = Collapsible(tr("Maßstab und Auflösung"), tr("Auflösung (dpi) und Zeichnungsmaßstab für Messungen"))
         self.sp_dpi = QSpinBox()
         self.sp_dpi.setRange(50, 1200)
@@ -183,7 +214,8 @@ class PanelsMixin:
         lay.addWidget(fo)
         self.sec_file = fo
 
-        # --- ab hier nur mit "Alle Einstellungen zeigen"
+    def _build_left_zones(self, lay):
+        """Abschnitt Ausschnitt und Zonen; gibt den Abschnitt zurueck."""
         zon = Collapsible(tr("Ausschnitt und Zonen"), tr("Nur einen Teil vergleichen oder Bereiche ausnehmen"))
         h = QLabel(tr("Ausschnitt: nur diesen Teil der Zeichnung vergleichen (schneller). Der passende Bereich in B "
                    "wird automatisch gesucht; mit „Bereiche zuordnen“ wählt man ihn selbst."))
@@ -235,7 +267,10 @@ class PanelsMixin:
                                   tr("Zeichnungsrahmen am Blattrand nicht vergleichen."))
         zon.body.addWidget(self.s_border)
         lay.addWidget(zon)
+        return zon
 
+    def _build_left_vector(self, lay):
+        """Abschnitt Vektordaten (PDF): exakter Vergleich, Ebenen und Farben."""
         self.vfilter = (None, None)
         self.vinfo = {"A": None, "B": None}
         vec = Collapsible(tr("Vektordaten (PDF)"), tr("Exakter Vergleich, Ebenen und Farben"))
@@ -272,6 +307,8 @@ class PanelsMixin:
         lay.addWidget(vec)
         self.sec_vec = vec
 
+    def _build_left_advanced(self, lay):
+        """Abschnitt Erweiterte Optionen; gibt den Abschnitt zurueck."""
         self.s_thr = SliderRow(tr("Linienschwelle"), 0, 255, 128, 1, 0,
                                tr("Dunkler als dieser Wert = Linie. Höher erfasst auch blasse/gelbe Linien."))
         self.cb_align = QComboBox()
@@ -325,18 +362,10 @@ class PanelsMixin:
         b.clicked.connect(self._reset_params)
         adv.body.addWidget(b)
         lay.addWidget(adv)
-        self.expert_widgets = [zon, adv]
-        self.compare_widgets = [self.sec_sens, zon]           # beim Ansehen einer einzelnen Zeichnung ohne Sinn
-        lay.addStretch()
+        return adv
 
-        for w in (self.s_thr, self.s_tol, self.s_hatch, self.s_move, self.s_obj, self.s_rot, self.s_area,
-                  self.s_cell, self.s_maxs, self.s_border):
-            w.changed.connect(self._param_changed)
-        self.cb_align.currentIndexChanged.connect(self._param_changed)
-        self.sp_dpi.valueChanged.connect(self._dpi_changed)
-        self.sp_scale.valueChanged.connect(self._update_units)
-        self.sp_scale.valueChanged.connect(self._remember_page_scale)
-
+    def _build_left_bottom(self, inner):
+        """Rollbereich und feste Fusszeile (Alle Einstellungen, automatisch neu berechnen, Vergleichen)."""
         scroll = PanelScroll(inner, 300)
         bottom = QWidget()
         bl = QVBoxLayout(bottom)
@@ -377,11 +406,42 @@ class PanelsMixin:
         tabs = QTabWidget()
         lay.addWidget(tabs, 1)
         self.tabs = tabs
+        t1 = self._build_right_changes()
+        t2 = self._build_right_markups()
+        # Reihenfolge: Markierungen (gibt es immer, bleibt vorn), Aenderungen (nur im Vergleich), Ebenen
+        self.tab_anns, self.tab_layers = t2, self._build_layers_tab()
+        tabs.addTab(t2, tr("Markierungen"))
+        tabs.addTab(t1, tr("Änderungen"))
+        tabs.addTab(self.tab_layers, tr("Ebenen"))
+        on = self.settings.value("layers_tab", "true") == "true"      # Ebenen standardmaessig sichtbar
+        tabs.setTabVisible(tabs.indexOf(self.tab_layers), on)
+        self.act_layers.blockSignals(True)
+        self.act_layers.setChecked(on)
+        self.act_layers.blockSignals(False)
 
+        self.log = QPlainTextEdit()
+        self.log.setReadOnly(True)
+        self.log.setFixedHeight(110)
+        self.log.setPlaceholderText(tr("Protokoll"))
+        lay.addWidget(self.log)
+        self.expert_widgets.append(self.log)
+        self._fill_table()
+
+    def _build_right_changes(self):
+        """Reiter Aenderungen: Pruefen, Filter, Liste, weitere Pruefungen; gibt den Reiter zurueck."""
         t1 = QWidget()
         t1.setObjectName("panel")
         l1 = QVBoxLayout(t1)
         l1.setContentsMargins(0, 6, 0, 0)
+        self._build_right_review(l1)
+        self._build_right_filter(l1)
+        self._build_right_table(l1)
+        self._build_right_more(l1)
+        self.tab_regs = t1
+        return t1
+
+    def _build_right_review(self, l1):
+        """Pruefen starten, Knoepfe zum Blaettern und Bewerten, Zusammenfassung."""
         self.btn_regs = QPushButton(tr("Prüfen starten"))       # bewusst kein Hauptknopf: Liste und Bild stehen im
         self.btn_regs.setToolTip(self.act_review_start.toolTip())
         self.btn_regs.clicked.connect(self.review_start)
@@ -413,6 +473,9 @@ class PanelsMixin:
         self.lbl_protocol.setWordWrap(True)
         self.lbl_protocol.hide()
         l1.addWidget(self.lbl_protocol)
+
+    def _build_right_filter(self, l1):
+        """Filter der Liste: Zeigen, Suchfeld, Strichbreite, geaenderten Text finden."""
         row = QHBoxLayout()
         row.addWidget(QLabel(tr("Zeigen:")))
         self.cb_filter = QComboBox()
@@ -459,6 +522,9 @@ class PanelsMixin:
         self.act_text.changed.connect(lambda b=b: b.setEnabled(self.act_text.isEnabled()))
         l1.addWidget(b)
         self.btn_text = b
+
+    def _build_right_table(self, l1):
+        """Liste der Aenderungen mit den Knoepfen darunter."""
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([tr("Status"), tr("Nr"), tr("Typ"), tr("Pos. mm"), tr("Inhalt")])
         self.table.verticalHeader().hide()
@@ -489,6 +555,9 @@ class PanelsMixin:
         for key in ("Delete", "Backspace"):            # Mac: die Taste "delete" ist Backspace
             QShortcut(QKeySequence(key), self.table, activated=self._reg_delete).setContext(
                 Qt.ShortcutContext.WidgetShortcut)
+
+    def _build_right_more(self, l1):
+        """Aufklappbarer Abschnitt Weitere Pruefungen."""
         more = Collapsible(tr("Weitere Prüfungen"), tr("Gruppierung, Index und Revisionstabelle"))
         self.s_group = SliderRow(tr("Gruppierung (px)"), 0, 150, 25, 5, 0,
                                  tr("Wie nah beieinander liegende Unterschiede zu EINEM Eintrag zusammengefasst werden."))
@@ -503,8 +572,9 @@ class PanelsMixin:
             b.clicked.connect(a.trigger)
             more.body.addWidget(b)
         l1.addWidget(more)
-        self.tab_regs = t1
 
+    def _build_right_markups(self):
+        """Reiter Markierungen: Suchfeld, Liste, Knoepfe, Summen, Kommentare; gibt den Reiter zurueck."""
         t2 = QWidget()
         t2.setObjectName("panel")
         l2 = QVBoxLayout(t2)
@@ -541,24 +611,7 @@ class PanelsMixin:
         l2.addWidget(self.lbl_sums)
         l2.addWidget(self._build_thread_panel())
         l2.addWidget(ann_hint)
-        # Reihenfolge: Markierungen (gibt es immer, bleibt vorn), Aenderungen (nur im Vergleich), Ebenen
-        self.tab_anns, self.tab_layers = t2, self._build_layers_tab()
-        tabs.addTab(t2, tr("Markierungen"))
-        tabs.addTab(t1, tr("Änderungen"))
-        tabs.addTab(self.tab_layers, tr("Ebenen"))
-        on = self.settings.value("layers_tab", "true") == "true"      # Ebenen standardmaessig sichtbar
-        tabs.setTabVisible(tabs.indexOf(self.tab_layers), on)
-        self.act_layers.blockSignals(True)
-        self.act_layers.setChecked(on)
-        self.act_layers.blockSignals(False)
-
-        self.log = QPlainTextEdit()
-        self.log.setReadOnly(True)
-        self.log.setFixedHeight(110)
-        self.log.setPlaceholderText(tr("Protokoll"))
-        lay.addWidget(self.log)
-        self.expert_widgets.append(self.log)
-        self._fill_table()
+        return t2
 
     @staticmethod
     def _tab_hint(short, full):

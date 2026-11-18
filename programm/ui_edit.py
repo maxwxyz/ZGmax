@@ -4,6 +4,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_canvas import invert_view, pool_ink
 import diffedit as de
+from safewrite import SaveError, atomic_path
 
 
 def to_qimage(arr):
@@ -138,7 +139,12 @@ class CopyDialog(QDialog):
         if path:
             if not path.lower().endswith(".png"):
                 path += ".png"
-            cv2.imencode(".png", self.result)[1].tofile(path)
+            try:
+                with atomic_path(path) as tmp:
+                    cv2.imencode(".png", self.result)[1].tofile(tmp)
+            except SaveError as e:
+                self.parent()._save_failed(e, self)
+                return
             self.accept()
 
 
@@ -325,14 +331,19 @@ class EditMixin:
         pil = Image.fromarray(img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         dpi = self.dpi_value()
         ext = os.path.splitext(out)[1].lower()
-        if ext == ".pdf":
-            pil.convert("RGB").save(out, resolution=dpi)
-        elif ext in (".tif", ".tiff"):
-            pil.save(out, dpi=(dpi, dpi), compression="tiff_lzw")
-        elif ext in (".jpg", ".jpeg"):
-            pil.convert("RGB").save(out, dpi=(dpi, dpi), quality=95)
-        else:
-            pil.save(out, dpi=(dpi, dpi))
+        try:
+            with atomic_path(out) as tmp:
+                if ext == ".pdf":
+                    pil.convert("RGB").save(tmp, resolution=dpi)
+                elif ext in (".tif", ".tiff"):
+                    pil.save(tmp, dpi=(dpi, dpi), compression="tiff_lzw")
+                elif ext in (".jpg", ".jpeg"):
+                    pil.convert("RGB").save(tmp, dpi=(dpi, dpi), quality=95)
+                else:
+                    pil.save(tmp, dpi=(dpi, dpi))
+        except SaveError as e:
+            self._save_failed(e)
+            return False
         self._edit_saved = True
         self.banner.show_msg(tr("Gespeichert: {}").format(out), "info", timeout=10)
         return True
@@ -596,8 +607,12 @@ class AreaMixin:
         x0, y0, x1, y1 = bbox
         regs = [g for g in self._export_regs() if g["x"] < x1 and g["x"] + g["w"] > x0 and g["y"] < y1
                 and g["y"] + g["h"] > y0]
-        rep.build_svg(path, img, (x1 - x0, y1 - y0), regs, self._export_anns(), self.dpi_value(), c.mm_px,
-                      offset=(x0, y0), ref_shape=c.shape)
+        try:
+            rep.build_svg(path, img, (x1 - x0, y1 - y0), regs, self._export_anns(), self.dpi_value(), c.mm_px,
+                          offset=(x0, y0), ref_shape=c.shape)
+        except SaveError as e:
+            self._save_failed(e)
+            return None
         self.banner.show_msg(tr("Gespeichert: {}").format(path), "info", timeout=8)
         return path
 
@@ -711,13 +726,17 @@ class AreaMixin:
             a = bgra[..., 3:4].astype(np.float32) / 255
             rgb = (bgra[..., :3] * a + 255 * (1 - a)).astype(np.uint8)[..., ::-1]
             im = Image.fromarray(np.ascontiguousarray(rgb))
-            if ext == ".pdf":
-                im.save(out, resolution=dpi)
-            else:
-                im.save(out, dpi=(dpi, dpi), quality=95)
         else:
-            Image.fromarray(cv2.cvtColor(bgra, cv2.COLOR_BGRA2RGBA)).save(out, dpi=(dpi, dpi))
-        self.banner.show_msg(tr("Gespeichert: {}").format(out), "info", timeout=8)
+            im = Image.fromarray(cv2.cvtColor(bgra, cv2.COLOR_BGRA2RGBA))
+        with self._saving() as ok, atomic_path(out) as tmp:
+            if ext == ".pdf":
+                im.save(tmp, resolution=dpi)
+            elif ext in (".jpg", ".jpeg"):
+                im.save(tmp, dpi=(dpi, dpi), quality=95)
+            else:
+                im.save(tmp, dpi=(dpi, dpi))
+        if ok:
+            self.banner.show_msg(tr("Gespeichert: {}").format(out), "info", timeout=8)
 
     def area_clear_selection(self):
         if self.canvas.sel_rects:

@@ -4,6 +4,7 @@ from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
 import diffxfdf as dx
+from safewrite import SaveError, atomic_open
 
 
 class InlineText(QPlainTextEdit):
@@ -535,7 +536,7 @@ class AnnotationsMixin:
         unit = rep.MEASURE_FMT.get("unit", "mm")
         f = rep.UNITS.get(unit, 1.0)
         page = self.sp_pa.value()
-        with open(path, "w", encoding="utf-8-sig", newline="") as fh:
+        with self._saving() as ok, atomic_open(path, "w", encoding="utf-8-sig", newline="") as fh:
             w = csv.writer(fh, delimiter=";")
             w.writerow([tr("Nr"), tr("Art"), tr("Wert"), tr("Einheit"), tr("Anzeige"), tr("Seite"), tr("Gruppe"),
                         tr("Autor"), tr("Kommentar")])
@@ -558,7 +559,8 @@ class AnnotationsMixin:
                 w.writerow([tr("Anzahl"), self._ann_label_base(dict(type=t, nr=0, text="", x=0, y=0, x2=0, y2=0,
                                                                      size=1, kind="dist", pts=[[0, 0], [0, 0]])
                                                                 ).split(":")[0], c])
-        self._saved(path)
+        if ok:
+            self._saved(path)
 
     def _ann_update_items(self, idx):
         """Listeneintraege (Text, Farbfeld) nach einer Aenderung nachziehen, ohne die Auswahl zu verlieren."""
@@ -692,10 +694,11 @@ class AnnotationsMixin:
     def ann_save(self):
         path = self._save_dialog(tr("Anmerkungen speichern"), tr("Anmerkungen (*.json)"), "anmerkungen.json")
         if path:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump({"version": 3, "coords": "global", "annotations": self._state()["anns"]},
-                          f, ensure_ascii=False, indent=1)
-            self._saved(path)
+            with self._saving():
+                with atomic_open(path, "w", encoding="utf-8") as f:
+                    json.dump({"version": 3, "coords": "global", "annotations": self._state()["anns"]},
+                              f, ensure_ascii=False, indent=1)
+                self._saved(path)
 
     def ann_load(self):
         d = self.settings.value("outdir", "")
@@ -830,5 +833,9 @@ class AnnotationsMixin:
         anns = self._state()["anns"]                 # Blattkoordinaten von A
         mm = self.canvas.mm_px
         name = os.path.basename(self.path_a) if (self.path_a or "").lower().endswith(".pdf") else ""
-        n = dx.write_xfdf(path, anns, k, page_h, name, self.sp_pa.value() - 1, lambda a: rep.measure_text(a, mm))
+        try:
+            n = dx.write_xfdf(path, anns, k, page_h, name, self.sp_pa.value() - 1, lambda a: rep.measure_text(a, mm))
+        except SaveError as e:
+            self._save_failed(e)
+            return
         self.banner.show_msg(tr("{} Markierungen gespeichert: {}. In Acrobat: Kommentare → Importieren (zur PDF der alten Zeichnung).").format(n, path), "info", timeout=15)

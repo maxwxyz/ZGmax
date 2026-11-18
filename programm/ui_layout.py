@@ -81,14 +81,33 @@ class LayoutMixin:
 
     def _build_actions(self):
         self._icon_actions = []
+        self._actions_file()
+        self._actions_edit()
+        self._actions_sheet()
+        self._actions_view()
+        self._actions_tools()
+        self._actions_review()
+        self._actions_help()
+
+    def _actions_file(self):
+        """Datei: oeffnen, Projekt, speichern und exportieren, drucken, Fenster."""
         A = self._act
-        self.act_start = A(tr("Startseite"), self.show_start)
-        self.act_open_a = A(tr("Alte Zeichnung (A) öffnen …"), lambda: self.open_file("A"), "Ctrl+Shift+A", ico="open")
-        self.act_open_b = A(tr("Neue Zeichnung (B) öffnen …"), lambda: self.open_file("B"), "Ctrl+Shift+B")
-        self.act_open_view = A(tr("Einzelne Zeichnung öffnen …"), self.open_view_only, "Ctrl+Shift+O")
-        self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O")
-        self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S")
-        self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S")
+        self.act_start = A(tr("Startseite"), self.show_start,
+                           tip=tr("Übersicht zum Öffnen von Zeichnungen und Projekten mit den zuletzt verwendeten Dateien"))
+        self.act_open_a = A(tr("Alte Zeichnung (A) öffnen …"), lambda: self.open_file("A"), "Ctrl+Shift+A",
+                            tr("Die alte Fassung wählen, mit der die neue verglichen wird (PDF, Bild, SVG, DXF)"), "open")
+        self.act_open_b = A(tr("Neue Zeichnung (B) öffnen …"), lambda: self.open_file("B"), "Ctrl+Shift+B",
+                            tr("Die neue Fassung wählen; sind beide Zeichnungen geöffnet, wird verglichen"))
+        self.act_open_view = A(tr("Einzelne Zeichnung öffnen …"), self.open_view_only, "Ctrl+Shift+O",
+                               tr("Eine Zeichnung ohne Vergleich ansehen, messen und markieren"))
+        self.act_proj_open = A(tr("Projekt öffnen …"), self.project_open, "Ctrl+O",
+                               tr("Gespeicherten Stand (.zgmax) mit Einstellungen, Änderungsliste und Markierungen wieder "
+                                  "laden"))
+        self.act_proj_save = A(tr("Projekt speichern"), self.project_save, "Ctrl+S",
+                               tr("Den aktuellen Stand mit Einstellungen, Änderungsliste und Markierungen als .zgmax-Datei "
+                                  "sichern"))
+        self.act_proj_save_as = A(tr("Projekt speichern unter …"), lambda: self.project_save(True), "Ctrl+Shift+S",
+                                  tr("Den aktuellen Stand unter neuem Namen oder an anderem Ort sichern"))
         self.act_embed = A(tr("Zeichnungen ins Projekt einbetten"), checkable=True,
                            tip=tr("An (Standard): Die .zgmax-Datei enthält auch die Zeichnungen und kann so verschickt "
                                   "und anderswo geöffnet werden. Aus: nur Verweise auf die Dateien (kleiner)."))
@@ -115,12 +134,24 @@ class LayoutMixin:
         self.act_export_svg = A(tr("Als SVG mit Ebenen …"), lambda: self.export_svg(),
                                 tip=tr("Zeichnung, Änderungen und Markierungen als getrennte Ebenen; Markierungen als "
                                        "Vektoren (in Inkscape, Illustrator & Co. bearbeitbar)"))
-        self.act_export_annpdf = A(tr("PDF mit Anmerkungen (Acrobat) …"), self.export_annotated_pdf)
-        self.act_export_pdf = A(tr("PDF-Änderungsbericht …"), self.export_pdf)
-        self.act_export_csv = A(tr("Änderungsliste (CSV) …"), self.export_csv)
-        self.act_print = A(tr("Drucken im Maßstab …"), self.print_scaled, "Ctrl+P", ico="print")
-        self.act_ann_save = A(tr("Markierungen speichern …"), self.ann_save)
-        self.act_ann_load = A(tr("Markierungen laden …"), self.ann_load)
+        self.act_export_annpdf = A(tr("PDF mit Anmerkungen (Acrobat) …"), self.export_annotated_pdf,
+                                   tip=tr("Die angezeigte Ansicht als PDF; Markierungen und Änderungen sind darin echte "
+                                          "Kommentare, die sich in Acrobat & Co. lesen und beantworten lassen"))
+        self.act_export_pdf = A(tr("PDF-Änderungsbericht …"), self.export_pdf,
+                                tip=tr("Bericht zum Weitergeben: Übersicht des Vergleichs und die nummerierten Änderungen "
+                                       "dieser Seite"))
+        self.act_export_csv = A(tr("Änderungsliste (CSV) …"), self.export_csv,
+                                tip=tr("Tabelle aller Änderungen mit Nummer, Typ, Position, Text, Status und Kommentar, "
+                                       "z. B. für Excel"))
+        self.act_print = A(tr("Drucken im Maßstab …"), self.print_scaled, "Ctrl+P",
+                           tr("In Originalgröße, eingepasst oder in Prozent drucken; ein zu großes Blatt wird auf mehrere "
+                              "Seiten verteilt"), "print")
+        self.act_ann_save = A(tr("Markierungen speichern …"), self.ann_save,
+                              tip=tr("Die Markierungen in eine eigene Datei schreiben, z. B. zum Weitergeben oder "
+                                     "Wiederverwenden"))
+        self.act_ann_load = A(tr("Markierungen laden …"), self.ann_load,
+                              tip=tr("Markierungen aus einer zuvor gespeicherten Datei übernehmen; die vorhandenen werden "
+                                     "ersetzt"))
         self.act_import_comments = A(tr("Kommentare einlesen (XFDF, PDF) …"), self.import_comments,
                                      tip=tr("Kommentare aus Acrobat & Co. übernehmen: XFDF-Datei oder kommentierte PDF"))
         self.act_export_all_ann = A(tr("PDF mit Anmerkungen – alle Seiten …"), lambda: self.export_all_pages("annpdf"),
@@ -136,21 +167,29 @@ class LayoutMixin:
         self.act_batch = A(tr("Ordner vergleichen (Stapel) …"), self.open_batch,
                            tip=tr("Alle passenden Zeichnungen zweier Ordner vergleichen, z. B. eigenen Stand gegen "
                                   "Lieferanten-Datensatz: Übersicht, welche Blätter geändert sind oder fehlen"))
-        self.act_revisions = A(tr("Revisionen vergleichen (A → B → C) …"), self.open_revisions)
-        self.act_quit = A(tr("Beenden"), QApplication.instance().closeAllWindows, "Ctrl+Q")
+        self.act_revisions = A(tr("Revisionen vergleichen (A → B → C) …"), self.open_revisions,
+                               tip=tr("Mehrere Stände der Reihe nach vergleichen und je Schritt sehen, wie viel sich "
+                                      "geändert hat"))
+        self.act_quit = A(tr("Beenden"), QApplication.instance().closeAllWindows, "Ctrl+Q",
+                          tr("Alle Fenster schließen und das Programm verlassen"))
         self.act_close = A(tr("Schlie\u00dfen"), self.close_document, "Ctrl+W",
                            tr("Vergleich bzw. Projekt schlie\u00dfen und zur Startseite (das Programm bleibt offen)"))
         self.act_new_window = A(tr("Neues Fenster"), self.new_window, "Ctrl+N",
                                 tr("Weiteres Fenster f\u00fcr einen anderen Vergleich"))
         self.act_quit.setMenuRole(QAction.MenuRole.QuitRole)
 
+    def _actions_edit(self):
+        """Bearbeiten: rueckgaengig, loeschen, Zwischenablage, Ausschnitt und Zuschnitt."""
+        A = self._act
         self.act_undo = A(tr("Rückgängig"), self.undo, "Ctrl+Z", tr("Rückgängig (Markierungen, Maße, Zonen)"), "undo")
-        self.act_redo = A(tr("Wiederholen"), self.redo, "Ctrl+Shift+Z", tr("Wiederholen"), "redo")
+        self.act_redo = A(tr("Wiederholen"), self.redo, "Ctrl+Shift+Z",
+                          tr("Den zuletzt zurückgenommenen Schritt erneut ausführen"), "redo")
         self.act_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self, activated=self.redo)
         self.act_delete = A(tr("Löschen"), self._ann_delete, "Delete", canvas_key=True)
         self.act_delete.setShortcuts([QKeySequence("Delete"), QKeySequence("Backspace")])   # Mac: "delete" = Backspace
         self.act_delete.setToolTip(tr("Gewählte Markierung, Änderung, Zone oder Bereichsauswahl löschen (Entf)"))
-        self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear)
+        self.act_ann_clear = A(tr("Alle Markierungen löschen …"), self._ann_clear,
+                               tip=tr("Sämtliche Markierungen der Zeichnung nach Rückfrage entfernen"))
         self.act_copy = A(tr("Kopieren"), self.copy_result, "Ctrl+C",
                           tr("Bereichsauswahl, gewählte Markierungen oder sonst die ganze Ansicht (wie angezeigt) "
                              "kopieren"), canvas_key=True)
@@ -180,11 +219,20 @@ class LayoutMixin:
         for a in (self.act_frame_clear, self.act_frame_apply):     # erst sichtbar, wenn ein Zuschnitt gesetzt ist
             a.setEnabled(False)
             a.setVisible(False)
-        self.act_rot_cw = A(tr("90° nach rechts drehen"), lambda: self.sheet_rotate(1))
-        self.act_rot_ccw = A(tr("90° nach links drehen"), lambda: self.sheet_rotate(3))
-        self.act_rot_180 = A(tr("180° drehen"), lambda: self.sheet_rotate(2))
-        self.act_adjust = A(tr("Helligkeit und Kontrast …"), lambda: self.sheet_adjust())
-        self.act_size = A(tr("Bildgröße und Auflösung …"), lambda: self.sheet_size())
+
+    def _actions_sheet(self):
+        """Zeichnung selbst bearbeiten: drehen, Helligkeit, Groesse, ausrichten, entzerren."""
+        A = self._act
+        self.act_rot_cw = A(tr("90° nach rechts drehen"), lambda: self.sheet_rotate(1),
+                            tip=tr("Die Zeichnung selbst im Uhrzeigersinn drehen, nicht nur die Anzeige"))
+        self.act_rot_ccw = A(tr("90° nach links drehen"), lambda: self.sheet_rotate(3),
+                             tip=tr("Die Zeichnung selbst gegen den Uhrzeigersinn drehen, nicht nur die Anzeige"))
+        self.act_rot_180 = A(tr("180° drehen"), lambda: self.sheet_rotate(2),
+                             tip=tr("Die Zeichnung selbst auf den Kopf stellen, nicht nur die Anzeige"))
+        self.act_adjust = A(tr("Helligkeit und Kontrast …"), lambda: self.sheet_adjust(),
+                            tip=tr("Blasse oder zu dunkle Scans aufhellen, abdunkeln oder kontrastreicher machen"))
+        self.act_size = A(tr("Bildgröße und Auflösung …"), lambda: self.sheet_size(),
+                          tip=tr("Die Zeichnung auf eine andere Pixelgröße umrechnen oder ihre Auflösung (dpi) festlegen"))
         self.act_background = A(tr("Hintergrund ausgleichen …"), lambda: self.sheet_background(),
                                 tip=tr("Schatten, Falten und vergilbtes Papier eines Scans herausrechnen; Papier weiß "
                                        "oder in eigener Farbe"))
@@ -200,6 +248,9 @@ class LayoutMixin:
                               self.act_rot_180, self.act_straighten, self.act_straighten_line, self.act_perspective,
                               self.act_background, self.act_adjust, self.act_size)
 
+    def _actions_view(self):
+        """Ansicht: Ansichten (Alt, Neu, Vergleich ...), Zoom, Anzeigeoptionen, Seitenleisten, Einstellungen."""
+        A = self._act
         self.mode_actions = {}
         grp = QActionGroup(self)
         for key, label, k, tip in VIEWS + MORE_VIEWS:
@@ -210,7 +261,8 @@ class LayoutMixin:
         self.mode_actions["D"].setChecked(True)
         self.act_fit = A(tr("Ganze Zeichnung"), lambda: self.canvas.fit(), "F", tr("Ganze Zeichnung zeigen (F oder Doppelklick)"),
                          "fit", canvas_key=True)
-        self.act_100 = A(tr("Originalgröße (100 %)"), self._zoom100, "Ctrl+0")
+        self.act_100 = A(tr("Originalgröße (100 %)"), self._zoom100, "Ctrl+0",
+                         tr("Ein Pixel der Zeichnung entspricht einem Pixel am Bildschirm"))
         self.act_zoom_in = A(tr("Vergrößern"), lambda: self.canvas.zoom_step(1.25), "Ctrl++", tr("Vergrößern (Mausrad, +)"), "zoom_in")
         self.act_zoom_out = A(tr("Verkleinern"), lambda: self.canvas.zoom_step(1 / 1.25), "Ctrl+-", tr("Verkleinern (Mausrad, −)"), "zoom_out")
         self.act_zoom_box = A(tr("Zoom-Rahmen"), lambda: self._set_tool("zoom"),
@@ -268,6 +320,9 @@ class LayoutMixin:
         self.act_space = QShortcut(QKeySequence("Space"), self.canvas, activated=self._space)
         self.act_space.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
 
+    def _actions_tools(self):
+        """Werkzeuge der Palette und Befehle des Vergleichs (Zone, Ausschnitt, ausrichten, vergleichen)."""
+        A = self._act
         self.tool_actions = {}
         tgrp = QActionGroup(self)
         for key, label, ico, k, tip in TOOLS:
@@ -277,20 +332,31 @@ class LayoutMixin:
             tgrp.addAction(a)
             self.tool_actions[key] = a
         self.tool_actions["hand"].setChecked(True)
-        self.act_zone = A(tr("Zone zeichnen (nicht vergleichen)"), lambda: self._set_tool("zone"))
-        self.act_crop = A(tr("Ausschnitt wählen"), lambda: self._set_tool("crop"))
-        self.act_crop_off = A(tr("Ganzes Blatt vergleichen"), lambda: self._crop_reset())
-        self.act_match = A(tr("Bereiche zuordnen (A ↔ B) …"), self.match_regions)
+        self.act_zone = A(tr("Zone zeichnen (nicht vergleichen)"), lambda: self._set_tool("zone"),
+                          tip=tr("Rahmen um einen Bereich aufziehen, der beim Vergleich ausgelassen wird, z. B. Schriftfeld "
+                                 "oder Stempel"))
+        self.act_crop = A(tr("Ausschnitt wählen"), lambda: self._set_tool("crop"),
+                          tip=tr("Rahmen aufziehen; nur dieser Teil der Zeichnung wird verglichen (schneller)"))
+        self.act_crop_off = A(tr("Ganzes Blatt vergleichen"), lambda: self._crop_reset(),
+                              tip=tr("Den Ausschnitt aufheben und wieder alles vergleichen"))
+        self.act_match = A(tr("Bereiche zuordnen (A ↔ B) …"), self.match_regions,
+                           tip=tr("Bereich in A und passenden Bereich in B selbst wählen, z. B. wenn eine Ansicht "
+                                  "auf dem Blatt verschoben oder anders skaliert wurde"))
         self.act_align = A(tr("Manuell ausrichten (3 Punkte)"), self.start_manual_align,
                            tip=tr("Wenn die automatische Ausrichtung danebenliegt: drei gleiche Punkte in Alt und Neu "
                                "anklicken"))
-        self.act_align_reset = A(tr("Manuelle Ausrichtung zurücksetzen"), self.reset_manual_align)
+        self.act_align_reset = A(tr("Manuelle Ausrichtung zurücksetzen"), self.reset_manual_align,
+                                 tip=tr("Die angeklickten Punkte verwerfen und wieder automatisch ausrichten"))
         self.act_align_reset.setEnabled(False)
         self.act_auto = A(tr("Automatisch einstellen"), self.auto_params, tip=tr("Toleranz, Schwelle und Suchbereiche aus "
                           "diesem Zeichnungspaar bestimmen"), ico="magic")
         self.act_compare = A(tr("Vergleichen"), self.start_compute, "Ctrl+Return", tr("Vergleich (neu) berechnen"), "compare")
 
-        self.act_find = A(tr("Änderungen suchen"), self.find_regs, "Ctrl+Shift+F")
+    def _actions_review(self):
+        """Aenderungen: suchen, Textsuche, pruefen und bewerten, Berichte und weitere Pruefungen."""
+        A = self._act
+        self.act_find = A(tr("Änderungen suchen"), self.find_regs, "Ctrl+Shift+F",
+                          tr("Unterschiede zu nummerierten Einträgen zusammenfassen und in der Liste zeigen"))
         self.act_renumber = A(tr("Änderungen neu nummerieren"), self.renumber_regs,
                               tip=tr("Liste fortlaufend ab 1 nummerieren (sonst behalten die Einträge ihre Nummer "
                                      "auch nach dem Löschen)"))
@@ -310,7 +376,8 @@ class LayoutMixin:
                             tr("Gewählte Änderung ist nicht in Ordnung (X)"), "reject", canvas_key=True)
         self.act_comment = A(tr("Kommentar …"), self.review_comment, "C", tr("Kommentar zur gewählten Änderung (C)"),
                              canvas_key=True)
-        self.act_pages = A(tr("Alle Seiten vergleichen"), self.compare_all_pages)
+        self.act_pages = A(tr("Alle Seiten vergleichen"), self.compare_all_pages,
+                           tip=tr("Vergleicht jede Seite und zeigt in der Liste, wie viele Änderungen sie hat"))
         self.act_review_start = A(tr("Prüfen starten"), self.review_start, "Ctrl+Shift+R",
                                   tr("Änderungen suchen (falls nötig), die erste offene zeigen und Schritt für Schritt "
                                      "prüfen: N = nächste, G = geprüft, X = abgelehnt, C = Kommentar"), "check")
@@ -324,7 +391,9 @@ class LayoutMixin:
                                        "oder CSV – z. B. für Lieferanten und Fertigung"))
         self.act_rej_zones = A(tr("Abgelehnte als Zonen übernehmen"), self.zones_from_rejected,
                                tip=tr("Als abgelehnt markierte Änderungen künftig nicht mehr vergleichen"))
-        self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block)
+        self.act_title = A(tr("Schriftfeld lesen"), self.read_title_block,
+                           tip=tr("Zeichnungsnummer, Index und Maßstab aus dem Schriftfeld rechts unten lesen (PDF-Text "
+                                  "oder Texterkennung)"))
         self.act_text = A(tr("Geänderten Text finden"), lambda: self.run_text(),
                           tip=tr("Liest den Text jeder Änderung (Alt → Neu) und vergleicht die Maßzahlen (z. B. "
                                  "12,5 → 12,8) – aus dem PDF, wenn es echten Text enthält, sonst per Texterkennung in "
@@ -336,15 +405,27 @@ class LayoutMixin:
                                   "warnt, wenn die Zeichnung geändert, aber Index oder Revisionstabelle nicht "
                                   "nachgezogen wurden – oder der neueste Eintrag nicht zum Index passt."))
 
-        self.act_help = A(tr("Anleitung"), self.open_help, "F1", ico="help")
+    def _actions_help(self):
+        """Hilfe: Anleitungen, Tastenkuerzel, Logdatei, Ueber."""
+        A = self._act
+        self.act_help = A(tr("Anleitung"), self.open_help, "F1",
+                          tr("Die ausführliche Beschreibung aller Funktionen öffnen"), "help")
         self.act_help_cli = A(tr("Anleitung Kommandozeile"),
-                              lambda: self._open_doc(os.path.join(HERE, i18n.doc("Anleitung_Kommandozeile.html"))))
-        self.act_keys = A(tr("Tastenkürzel"), self.show_keys)
-        self.act_logfile = A(tr("Logdatei öffnen"), self.open_logfile)
-        self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli)
-        self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut)
+                              lambda: self._open_doc(os.path.join(HERE, i18n.doc("Anleitung_Kommandozeile.html"))),
+                              tip=tr("Beschreibung für das Vergleichen ohne Oberfläche, z. B. in Skripten und "
+                                     "Stapelläufen"))
+        self.act_keys = A(tr("Tastenkürzel"), self.show_keys,
+                          tip=tr("Übersicht der Tasten und Mausgesten für Ansichten, Werkzeuge und Prüfen"))
+        self.act_logfile = A(tr("Logdatei öffnen"), self.open_logfile,
+                             tip=tr("Aufzeichnung von Meldungen und Fehlern des Programms, hilfreich bei Problemen"))
+        self.act_cli = A(tr("Befehl für Kommandozeile kopieren"), self.copy_cli,
+                         tip=tr("Den aktuellen Vergleich mit seinen Einstellungen als Aufruf für Terminal oder Skript in "
+                                "die Zwischenablage legen"))
+        self.act_shortcut = A(tr("Desktop-Verknüpfung erstellen"), self.make_shortcut,
+                              tip=tr("Ein Symbol auf dem Desktop anlegen, das ZGmax startet"))
         self.act_shortcut.setProperty("platform_only", True)   # nur Windows: nicht in der Menuereferenz
-        self.act_about = A(tr("Über ZGmax"), self.show_about)
+        self.act_about = A(tr("Über ZGmax"), self.show_about,
+                           tip=tr("Version, Lizenz, verwendete Bibliotheken und Ordner der Logdatei"))
         self.act_fileassoc = A(tr("Dateitypen mit ZGmax öffnen …"), self.file_types,
                                tip=tr("Wählen, welche Dateien (PDF, PNG, DXF, Projekte …) per Doppelklick in ZGmax "
                                       "öffnen – auch für die portable App"))
@@ -787,6 +868,24 @@ class LayoutMixin:
         bar.setObjectName("optbar")
         lay = FlowLayout(bar, 10)                    # bricht bei schmalem Bild um, statt abzuschneiden
         lay.setContentsMargins(12, 4, 12, 4)
+        self._options_measure(lay)
+        self._options_ann(lay)
+        self._options_view(lay)
+        self._options_loupe(lay)
+        self._options_area(lay)
+        self._options_float(lay)
+        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view, self.opt_float, self.opt_area):
+            w.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        self.lbl_tool_hint = QLabel("")
+        self.lbl_tool_hint.setObjectName("hint")
+        self.lbl_tool_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        lay.addWidget(self.lbl_tool_hint)
+        self.options_bar = bar
+        self._set_color_btn("#e11d48")
+        return bar
+
+    def _options_measure(self, lay):
+        """Optionen des Werkzeugs Messen: Messart, Einrasten, Einheit, Massstab."""
         self.opt_measure = QWidget()
         l = FlowLayout(self.opt_measure)
         l.setContentsMargins(0, 0, 0, 0)
@@ -835,6 +934,9 @@ class LayoutMixin:
         b.clicked.connect(self.read_title_block)
         l.addWidget(b)
         lay.addWidget(self.opt_measure)
+
+    def _options_ann(self, lay):
+        """Optionen der Markierwerkzeuge: Farbe, Spitzen, Fuellung, Groesse, Vorlagen, Nummer."""
         self.opt_ann = QWidget()
         l = FlowLayout(self.opt_ann)
         l.setContentsMargins(0, 0, 0, 0)
@@ -901,6 +1003,9 @@ class LayoutMixin:
         l.addWidget(self.lbl_stamp)
         l.addWidget(self.sp_stamp)
         lay.addWidget(self.opt_ann)
+
+    def _options_view(self, lay):
+        """Optionen der Ansicht: Blinken, Aenderungen hervorheben, Schieber."""
         self.opt_view = QWidget()                     # Optionen der Ansicht (Blinken, Hervorheben, Schieber)
         l = FlowLayout(self.opt_view)
         l.setContentsMargins(0, 0, 0, 0)
@@ -925,6 +1030,9 @@ class LayoutMixin:
                   self.lbl_slider_hint):
             l.addWidget(w)
         lay.addWidget(self.opt_view)
+
+    def _options_loupe(self, lay):
+        """Optionen der Lupe: Vergroesserung."""
         self.opt_loupe = QWidget()
         l = FlowLayout(self.opt_loupe)
         l.setContentsMargins(0, 0, 0, 0)
@@ -937,6 +1045,9 @@ class LayoutMixin:
             lambda _: setattr(self.canvas, "loupe_zoom", self.cb_loupe.currentData()))
         l.addWidget(self.cb_loupe)
         lay.addWidget(self.opt_loupe)
+
+    def _options_area(self, lay):
+        """Optionen der Bereichsauswahl: kopieren, entfernen, zuschneiden, exportieren, Menue Mehr."""
         self.opt_area = QWidget()                     # Bereichsauswahl
         l = FlowLayout(self.opt_area)
         l.setContentsMargins(0, 0, 0, 0)
@@ -986,6 +1097,9 @@ class LayoutMixin:
         self.btn_area_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         l.addWidget(self.btn_area_more)
         lay.addWidget(self.opt_area)
+
+    def _options_float(self, lay):
+        """Optionen beim Verschieben eines Ausschnitts: nur Linien, uebernehmen, abbrechen."""
         self.opt_float = QWidget()                    # Ausschnitt verschieben
         l = FlowLayout(self.opt_float)
         l.setContentsMargins(0, 0, 0, 0)
@@ -1004,15 +1118,6 @@ class LayoutMixin:
         l.addWidget(self.btn_float_ok)
         l.addWidget(self.btn_float_cancel)
         lay.addWidget(self.opt_float)
-        for w in (self.opt_measure, self.opt_ann, self.opt_loupe, self.opt_view, self.opt_float, self.opt_area):
-            w.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        self.lbl_tool_hint = QLabel("")
-        self.lbl_tool_hint.setObjectName("hint")
-        self.lbl_tool_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        lay.addWidget(self.lbl_tool_hint)
-        self.options_bar = bar
-        self._set_color_btn("#e11d48")
-        return bar
 
     def _seg_clicked(self, key):
         if key in ("A", "B") and self.chk_highlight.isChecked() and not self.view_only:

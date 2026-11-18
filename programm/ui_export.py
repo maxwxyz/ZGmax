@@ -1,5 +1,8 @@
 """Hauptfenster: Bild, Liste, Bericht, Druck."""
 from i18n import tr
+import contextlib
+
+from safewrite import SaveError
 from ui_common import *  # noqa: F401,F403
 from ui_theme import *  # noqa: F401,F403
 from ui_widgets import ApprovalDialog
@@ -28,9 +31,55 @@ class ExportMixin:
             s += tr(", Ausschnitt {}x{}px").format(self.crop[2], self.crop[3])
         return s
 
+    def _save_failed(self, err, parent=None):
+        """Schreibfehler verstaendlich melden (kein allgemeiner Fehlerdialog, kein „Gespeichert“). parent: offener
+        Dialog, ueber dem die Meldung erscheinen soll; sonst Hinweisleiste des Hauptfensters."""
+        msg = str(err)
+        self._log(tr("FEHLER: ") + msg)
+        if parent is not None or self.payload is None:
+            QMessageBox.warning(parent or self, APP, msg)
+        else:
+            self.banner.show_msg(msg, "error")
+
+    @contextlib.contextmanager
+    def _saving(self, parent=None):
+        """with self._saving() as ok: schreiben. Ein Schreibfehler (SaveError) beendet den Block und wird gemeldet;
+        was im Block danach kaeme (z. B. „Gespeichert“), entfaellt. ok ist danach nur bei Erfolg wahr (nicht leer)."""
+        ok = []
+        try:
+            yield ok
+            ok.append(True)
+        except SaveError as e:
+            self._save_failed(e, parent)
+
+    def _is_source(self, path):
+        """Ist path eine der gerade geoeffneten Zeichnungen (A oder B)?"""
+        for src in (self.path_a, self.path_b):
+            if not src:
+                continue
+            try:
+                if os.path.exists(path) and os.path.samefile(path, src):
+                    return True
+            except OSError:
+                pass
+            if os.path.normcase(os.path.abspath(path)) == os.path.normcase(os.path.abspath(src)):
+                return True
+        return False
+
     def _save_dialog(self, title, flt, default):
         d = self.settings.value("outdir", os.path.dirname(self.path_a or ""))
-        path, _ = QFileDialog.getSaveFileName(self, title, os.path.join(d, default), flt)
+        start = os.path.join(d, default)
+        while True:
+            path, _ = QFileDialog.getSaveFileName(self, title, start, flt)
+            if not path or not self._is_source(path):
+                break
+            # Ziel ist die geoeffnete Zeichnung selbst: ausdruecklich nachfragen, sonst neu waehlen lassen
+            yes, no = QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No
+            if QMessageBox.question(self, APP, tr("„{}“ ist die gerade geöffnete Zeichnung. Soll die Originaldatei "
+                                                  "wirklich überschrieben werden?").format(os.path.basename(path)),
+                                    yes | no, no) == yes:
+                break
+            start = path
         if path:
             self.settings.setValue("outdir", os.path.dirname(path))
         return path

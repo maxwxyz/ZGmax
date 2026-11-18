@@ -269,23 +269,25 @@ def save_output(img_bgr, path, fmt, dpi=200, quality=95):
     if fmt == "webp" and max(img_bgr.shape[:2]) > 16383:
         log.warning(tr("  Warnung: WebP erlaubt max. 16383 px je Seite - speichere stattdessen als PNG"))
         path, fmt = os.path.splitext(path)[0] + ".png", "png"
-    if fmt in ("png", "bmp"):
-        ok = imwrite_any(path, img_bgr)
-    elif fmt == "webp":
-        ok = imwrite_any(path, img_bgr, [cv2.IMWRITE_WEBP_QUALITY, quality])
-    elif fmt == "jpg":
-        ok = imwrite_any(path, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
-    else:                                            # tif, pdf -> Pillow
-        from PIL import Image
-        Image.MAX_IMAGE_PIXELS = None
-        im = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
-        if fmt == "tif":
-            im.save(path, compression="tiff_lzw", dpi=(dpi, dpi))
-        else:
-            im.save(path, "PDF", resolution=float(dpi))
-        ok = True
-    if not ok:
-        raise DiffError(tr("Konnte Ergebnis nicht speichern: {}").format(path))
+    from safewrite import atomic_path                # erst fertig schreiben, dann ersetzen
+    with atomic_path(path) as tmp:
+        if fmt in ("png", "bmp"):
+            ok = imwrite_any(tmp, img_bgr)
+        elif fmt == "webp":
+            ok = imwrite_any(tmp, img_bgr, [cv2.IMWRITE_WEBP_QUALITY, quality])
+        elif fmt == "jpg":
+            ok = imwrite_any(tmp, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        else:                                        # tif, pdf -> Pillow
+            from PIL import Image
+            Image.MAX_IMAGE_PIXELS = None
+            im = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+            if fmt == "tif":
+                im.save(tmp, compression="tiff_lzw", dpi=(dpi, dpi))
+            else:
+                im.save(tmp, "PDF", resolution=float(dpi))
+            ok = True
+        if not ok:
+            raise DiffError(tr("Konnte Ergebnis nicht speichern: {}").format(path))
     return path, fmt
 
 

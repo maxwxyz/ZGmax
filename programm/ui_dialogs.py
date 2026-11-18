@@ -6,6 +6,8 @@ from ui_widgets import Job
 import i18n
 import csv
 
+from safewrite import SaveError, atomic_open, atomic_path, write as safe_write
+
 
 # ----------------------------------------------------------------- Ebenen und Farben
 class VectorFilterDialog(QDialog):
@@ -183,7 +185,8 @@ class RevisionDialog(QDialog):
                 if save_img:
                     img = dc.add_legend(dp.render_result(res), row[1], row[2], bool(res.moved.any()), tr("Revision"))
                     rep.draw_marks(img, regs)
-                    cv2.imencode(".png", img)[1].tofile(os.path.join(outdir, f"rev{i:02d}_{os.path.splitext(row[2])[0]}.png"))
+                    with atomic_path(os.path.join(outdir, f"rev{i:02d}_{os.path.splitext(row[2])[0]}.png")) as tmp:
+                        cv2.imencode(".png", img)[1].tofile(tmp)
                 self.rows.append(row)
                 prev = cur
             return len(self.rows)
@@ -223,10 +226,15 @@ class RevisionDialog(QDialog):
         path = self.win._save_dialog(tr("Historie speichern"), tr("CSV (*.csv)"), "revisionen.csv")
         if path:
             import csv
-            with open(path, "w", newline="", encoding="utf-8-sig") as f:
-                w = csv.writer(f, delimiter=";")
-                w.writerow(self.HEAD)
-                w.writerows(self.rows)
+            try:
+                with atomic_open(path, "w", newline="", encoding="utf-8-sig") as f:
+                    w = csv.writer(f, delimiter=";")
+                    w.writerow(self.HEAD)
+                    w.writerows(self.rows)
+            except SaveError as e:
+                self.logbox.appendPlainText(tr("FEHLER: ") + str(e))
+                QMessageBox.warning(self, APP, str(e))
+                return
             self.logbox.appendPlainText(tr("Gespeichert: {}").format(path))
 
 
@@ -466,7 +474,7 @@ class BatchDialog(QDialog):
         if out and self.results:
             try:
                 self._write_overview(out)
-            except OSError as e:
+            except (OSError, SaveError) as e:
                 self.logbox.appendPlainText(tr("FEHLER: ") + str(e))
         self.logbox.appendPlainText(tr("Fertig: {} Paare verglichen.").format(n))
         self._finish()
@@ -477,7 +485,7 @@ class BatchDialog(QDialog):
                  "only_a": tr("nur im alten Stand"), "only_b": tr("nur im neuen Stand")}
         rows = [[r["name"], state[r["state"]], str(r.get("changes", "")) if r["state"] in ("changed", "same") else "",
                  r.get("pages_text", "") or r.get("error", "")] for r in self.results]
-        with open(os.path.join(out, "uebersicht.csv"), "w", newline="", encoding="utf-8-sig") as f:
+        with atomic_open(os.path.join(out, "uebersicht.csv"), "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f, delimiter=";")
             w.writerow([tr("Zeichnung"), tr("Ergebnis"), tr("Änderungen"), tr("Seiten")])
             w.writerows(rows)
@@ -489,7 +497,7 @@ class BatchDialog(QDialog):
                 for row, r in zip(rows, self.results)]
         rep._pdf_table(doc, tr("Ordnervergleich – Übersicht"), head,
                        [(tr("Zeichnung"), 330), (tr("Ergebnis"), 110), (tr("Änderungen"), 70), (tr("Seiten"), 270)], vals)
-        doc.save(os.path.join(out, "uebersicht.pdf"), garbage=3, deflate=True)
+        safe_write(os.path.join(out, "uebersicht.pdf"), lambda t: doc.save(t, garbage=3, deflate=True))
         doc.close()
         self.logbox.appendPlainText(tr("Übersicht: {}").format(os.path.join(out, "uebersicht.pdf")))
 

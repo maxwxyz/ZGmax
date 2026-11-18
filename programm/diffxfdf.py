@@ -9,6 +9,8 @@ import datetime as _dt
 import re
 import xml.etree.ElementTree as ET
 
+from safewrite import atomic_open
+
 
 def escape(text):
     """Fuer XML-Text und Attributwerte in "...": auch Anfuehrungszeichen (sonst bricht ein Name mit " die Datei)."""
@@ -319,6 +321,6 @@ def write_xfdf(path, anns, k, page_h_pt, pdf_name="", page=0, measure_text=None)
     href = f'<f href="{escape(pdf_name)}"/>' if pdf_name else ""
     xml = (f'<?xml version="1.0" encoding="UTF-8"?>\n<xfdf xmlns="{XFDF_NS}" xml:space="preserve">\n'
            f"{href}<annots>\n" + "\n".join(rows) + "\n</annots>\n</xfdf>\n")
-    with open(path, "w", encoding="utf-8") as f:
+    with atomic_open(path, "w", encoding="utf-8") as f:
         f.write(xml)
     return len(rows)

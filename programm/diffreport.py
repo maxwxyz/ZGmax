@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 
 import diffcore as dc
+from safewrite import atomic_open, write as safe_write
 import diffpipe as dp
 
 MARK_BGR = (0, 140, 255)          # Orange: Rahmen und Nummern der Aenderungen
@@ -133,7 +134,7 @@ def review_text(r):
 
 def write_csv(path, regs, dpi=200, scale_n=1.0):
     mm = 25.4 / dpi * scale_n
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+    with atomic_open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         w.writerow([tr("Nr"), tr("Typ"), "x_px", "y_px", tr("Breite_px"), tr("Hoehe_px"), "x_mm", "y_mm",
                     tr("Breite_mm"), tr("Hoehe_mm"), tr("Pixel_nur_A"), tr("Pixel_nur_B"), tr("Pixel_verschoben"),
@@ -1574,7 +1575,7 @@ def build_report_raster(path, res, regs, name_a, name_b, dpi=200, info="", index
             y += PHI + 130
         pages.append(im)
 
-    pages[0].save(path, "PDF", save_all=True, append_images=pages[1:], resolution=150)
+    safe_write(path, lambda t: pages[0].save(t, "PDF", save_all=True, append_images=pages[1:], resolution=150))
     return len(pages)
 
 
@@ -1750,7 +1751,7 @@ def build_report(path, res, regs, name_a, name_b, dpi=200, info="", index=None, 
                 pg.draw_rect(rc, color=(0.75, 0.77, 0.8), width=0.5)
                 pg.insert_text((rc.x0 + 4, rc.y0 + 10), lab, fontsize=8, fontname="helv", color=GREY)
             y += ph_ + 28
-    doc.save(path, deflate=True, garbage=3)
+    safe_write(path, lambda t: doc.save(t, deflate=True, garbage=3))
     n = doc.page_count
     doc.close()
     return n
@@ -2064,7 +2065,7 @@ def build_annotated_pdf(path, img_bgr, regs, anns, dpi=200, mm=None, names=("", 
         an.update()
         _pdf_thread(doc, page, an, a, ocg.get(ann_layer(a)))
     doc.set_metadata({"title": f"Vergleich {names[0]} → {names[1]}", "creator": "ZGmax"})
-    doc.save(path, deflate=True)
+    safe_write(path, lambda t: doc.save(t, deflate=True))
     doc.close()
     return path
 
@@ -2191,7 +2192,7 @@ def build_svg(path, img_bgr, size, regs, anns, dpi=200, mm=None, offset=(0, 0), 
     for key in ("markierungen", "masse", "bilder"):
         layer(key, groups[key])
     out.append("</svg>\n")
-    with open(path, "w", encoding="utf-8") as f:
+    with atomic_open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(out))
     return path
 
@@ -2228,7 +2229,7 @@ def build_searchable_pdf(path, img_bgr, lines, dpi=200, title=""):
                              morph=(pt, pymupdf.Matrix(sx, 1)))
         n += 1
     doc.set_metadata({"title": title, "creator": "ZGmax"})
-    doc.save(path, deflate=True)
+    safe_write(path, lambda t: doc.save(t, deflate=True))
     doc.close()
     return n
 
@@ -2275,7 +2276,7 @@ def dim_rows(regs, mm_px=0.127, page=None):
 
 
 def write_dim_csv(path, rows):
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+    with atomic_open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         w.writerow([tr("Nr"), tr("Seite"), tr("Art"), tr("Maß alt → neu"), tr("Text A"), tr("Text B"),
                     tr("Toleranz alt"), tr("Toleranz neu"), "x_mm", "y_mm", tr("Status"), tr("Kommentar")])
@@ -2359,7 +2360,7 @@ def build_dim_report(path, rows, name_a, name_b, info=""):
         vals.append([str(d["nr"]), str(d["page"] or ""), d["kind"], d["dim"], d["tol_a"], tb,
                      f"{d['x']:.0f} / {d['y']:.0f}", d["status"], d["comment"]])
     _pdf_table(doc, tr("Maßänderungen"), head, cols, vals, info)
-    doc.save(path, garbage=3, deflate=True)
+    safe_write(path, lambda t: doc.save(t, garbage=3, deflate=True))
     doc.close()
     return path
 
@@ -2427,6 +2428,6 @@ def build_protocol_pdf(path, rec):
             for i in rec.get("items", [])]
     foot = tr("Prüfsumme (SHA-256): {}  ·  {} {}").format(rec.get("hash", ""), "ZGmax", rec.get("app_version", ""))
     _pdf_table(doc, tr("Prüfprotokoll"), head, cols, vals, foot)
-    doc.save(path, garbage=3, deflate=True)
+    safe_write(path, lambda t: doc.save(t, garbage=3, deflate=True))
     doc.close()
     return path

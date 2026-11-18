@@ -4,6 +4,7 @@ from i18n import tr
 from ui_common import *  # noqa: F401,F403
 import diffedit as de
 import tableextract as te
+from safewrite import SaveError, atomic_open
 
 SEPS = ((";", tr("Semikolon (;)")), (",", tr("Komma (,)")), ("\t", tr("Tabulator (zum Einfügen in Excel)")))
 
@@ -128,8 +129,11 @@ class TableDialog(QDialog):
             if os.path.splitext(path)[1].lower() == ".xlsx":
                 te.to_xlsx(self.rows(), path, spans=self.spans)
             else:
-                with open(path, "w", encoding="utf-8-sig", newline="") as f:     # mit BOM: Excel erkennt Umlaute
+                with atomic_open(path, "w", encoding="utf-8-sig", newline="") as f:   # mit BOM: Excel erkennt Umlaute
                     f.write(self.text("\r\n"))
+        except SaveError as e:
+            QMessageBox.warning(self, tr("Tabelle speichern"), str(e))
+            return None
         except (OSError, ImportError) as e:
             QMessageBox.warning(self, tr("Tabelle speichern"), tr("Speichern fehlgeschlagen: {}").format(e))
             return None

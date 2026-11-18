@@ -1130,4 +1130,5 @@ def to_xlsx(path, xs, table, header, sheet="Werte", chart_title="", x_title="", 
         for line in notes:
             ws2.append([line])
         ws2.column_dimensions["A"].width = 110
-    wb.save(path)
+    from safewrite import write as safe_write
+    safe_write(path, wb.save)

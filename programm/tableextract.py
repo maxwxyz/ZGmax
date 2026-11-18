@@ -451,5 +451,6 @@ def to_xlsx(rows, path, sheet="Tabelle", spans=()):
         ws.cell(row=r + 1, column=c + 1).alignment = Alignment(vertical="top", wrap_text=True)
     for j, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(j)].width = min(60, max(6, int(np.ceil(w)) + 2))
-    wb.save(path)
+    from safewrite import write as safe_write
+    safe_write(path, wb.save)
     return path
