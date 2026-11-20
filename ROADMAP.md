@@ -127,6 +127,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 ### Technik und Betrieb
 - ✅ Durchsicht (33 Befunde) abgearbeitet: Schwärzung in allen Ausgaben, Ergebnis an die gewählten Dateien gebunden, Mehrseitenbericht aus geprüftem Stand, Prüfprotokoll erkennt Maß- und Dateiänderungen, Projektdateien geprüft (Prüfsumme, Größen), Ordnervergleich ohne Namenskollisionen, hängende Texterkennung wird beendet (1.2)
 - 🔧 Windows-Installer (Inno Setup, `packaging/zgmax.iss`): ohne Adminrechte je Nutzer oder für alle, Dateitypen wählbar, Update durch Darüberinstallieren; GitHub-Bau installiert probeweise (1.1)
+- 🔧 GitHub-Release von selbst beim Taggen einer Version (Workflow „Release“: baut alle Plattformen, lädt Windows portabel + Installer, macOS, Linux x64/ARM hoch); Linux-ARM als Bauziel (1.2)
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)
 - ✅ Texterkennung im Hintergrund (eigener Prozess, niedrige Priorität, halbe Kerne), ganze Seiten 30–40 % schneller,

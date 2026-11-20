@@ -1,0 +1,70 @@
+# Veroeffentlicht eine Version: baut alle Plattformen (build.yml, mit Tests und Selbsttest) und legt auf GitHub ein
+# Release zum Tag an - mit Windows portabel (ZIP), Windows-Installer (Setup.exe), macOS (ZIP), Linux x64 und ARM
+# (tar.gz) als Dateien und den Eintraegen aus der Aenderungshistorie als Text.
+# Startet von selbst, sobald ein Tag v<version> gepusht wird (packaging/release.py + git push origin v<version>).
+# Von Hand: "Actions" -> "Release" -> "Run workflow" mit einem vorhandenen Tag (z. B. um ein Release nachzuholen).
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Vorhandener Tag, z. B. v1.2"
+        type: string
+        required: true
+jobs:
+  bauen:
+    uses: ./.github/workflows/build.yml
+    with:
+      plattform: alle
+      tests: true
+      ref: ${{ inputs.tag || github.ref_name }}
+  release:
+    needs: bauen                    # nur wenn alle Plattformen gebaut und geprueft sind
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write               # Release anlegen und Dateien hochladen
+      actions: read                 # die gebauten Dateien dieses Laufs holen
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: Gebaute Dateien dieses Laufs holen
+        run: |
+          gh run download "$GITHUB_RUN_ID" --dir geladen
+          mkdir artefakte
+          find geladen -type f -exec mv {} artefakte/ \;
+      - name: Version und Text des Release
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          tag = os.environ["TAG"]
+          rel = json.load(open("programm/CHANGELOG.json", encoding="utf-8"))["releases"]
+          hit = [r for r in rel if "v" + str(r["version"]) == tag]
+          if not hit:
+              sys.exit(f"Tag {tag} passt zu keiner Version in programm/CHANGELOG.json")
+          r = hit[0]
+          out = ["## Neu in dieser Version", ""] + [f"- {t}" for t in r["de"]]
+          out += ["", "## New in this version", ""] + [f"- {t}" for t in r["en"]]
+          out += ["", "## Dateien / Files", "",
+                  "- `…-Windows-x64-Setup.exe` – Windows-Installer (ohne Adminrechte, Update durch Darüberinstallieren)",
+                  "- `…-Windows-x64.zip` – Windows portabel (entpacken, `ZGmax.exe` starten)",
+                  "- `…-macOS-arm64.zip` – macOS (Apple-Chip)",
+                  "- `…-Linux-x86_64.tar.gz` / `…-Linux-aarch64.tar.gz` – Linux portabel (x64 / ARM)"]
+          open("notes.md", "w", encoding="utf-8").write("\n".join(out) + "\n")
+          PY
+          ls -l artefakte
+          n=$(ls artefakte | wc -l)
+          if [ "$n" -lt 5 ]; then echo "Es fehlen Dateien (erwartet 5, gefunden $n)"; exit 1; fi
+      - name: Release anlegen bzw. Dateien erneuern
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artefakte/* --clobber
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" artefakte/* --title "ZGmax ${TAG#v}" --notes-file notes.md --verify-tag
+          fi

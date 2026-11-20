@@ -14,7 +14,8 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
 - Änderungshistorie: jede für Nutzer sichtbare Änderung im selben Commit in `programm/CHANGELOG.json` unter
   `unreleased` eintragen (`de` und `en`, gleiche Reihenfolge, kurz, aus Nutzersicht). Version = neuester Eintrag in
   `releases` (App liest ihn, `version.py`). Release: `.venv/bin/python packaging/release.py minor|patch|major --git`
-  (schreibt auch `CHANGELOG.md`/`CHANGELOG_EN.md`, setzt Tag `v<version>`), danach Apps bauen.
+  (schreibt auch `CHANGELOG.md`/`CHANGELOG_EN.md`, setzt Tag `v<version>`). Der gepushte Tag startet auf GitHub
+  den Workflow „Release“ (`.github/workflows/release.yml`): baut alle Plattformen und veröffentlicht sie als Release.
 - Commits enden mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nach jedem Commit pushen**
   (`origin` = github.com/maxwxyz/ZGmax, öffentlich – nichts Vertrauliches einchecken).
 - **Ablauf nach jeder fertigen Aufgabe (immer so):** bauen (lokal: Mac-App) und Tests laufen lassen, abwarten; nur wenn
@@ -26,7 +27,7 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   Aktionen durch). Einzelne: `-k name`. Vor dem Bauen alle Tests grün.
 - Bauen: `packaging/build_mac.sh` / `build_windows.bat` / `build_linux.sh`, danach `ZGmax --selbsttest`.
   Schneller Probebau ohne Tests: `--ohne-tests` (Windows: `ohne-tests`) oder `ZGMAX_OHNE_TESTS=1`.
-  GitHub: Actions → „Apps bauen“ (von Hand).
+  GitHub: Actions → „Apps bauen“ (von Hand; Windows, macOS, Linux x64 und ARM).
 
 ## Cloud-Umgebung (Linux)
 `bash packaging/setup_cloud.sh` richtet `.venv` und die Qt-Systempakete ein (einmal je Umgebung).

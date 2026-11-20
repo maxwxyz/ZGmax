@@ -1,6 +1,6 @@
-# Baut die portablen Apps fuer Windows, macOS (Apple-Chip) und Linux auf den aktuellen GitHub-Systemen.
+# Baut die portablen Apps fuer Windows, macOS (Apple-Chip) und Linux (x64 und ARM) auf den aktuellen GitHub-Systemen.
 # Start von Hand: auf GitHub "Actions" -> "Apps bauen" -> "Run workflow". Die ZIP/TAR-Dateien liegen danach unten im
-# Lauf unter "Artifacts".
+# Lauf unter "Artifacts". Der Workflow "Release" (release.yml) ruft diesen hier auf, sobald eine Version getaggt wird.
 name: Apps bauen
 on:
   workflow_dispatch:
@@ -9,11 +9,23 @@ on:
         description: "Welche Plattform bauen (macOS-Minuten zählen bei privaten Repos zehnfach)"
         type: choice
         default: alle
-        options: [alle, Windows-x64, macOS-arm64, Linux-x64]
+        options: [alle, Windows-x64, macOS-arm64, Linux-x64, Linux-arm64]
       tests:
         description: "Tests vor dem Bauen ausführen (aus = deutlich schneller; Selbsttest der App läuft immer)"
         type: boolean
         default: true
+  workflow_call:                    # Aufruf aus release.yml
+    inputs:
+      plattform:
+        type: string
+        default: alle
+      tests:
+        type: boolean
+        default: true
+      ref:
+        description: "Stand, der gebaut wird (Tag); leer = der Stand des Aufrufs"
+        type: string
+        default: ""
 jobs:
   build:
     strategy:
@@ -26,6 +38,8 @@ jobs:
             name: macOS-arm64
           - os: ubuntu-latest
             name: Linux-x64
+          - os: ubuntu-24.04-arm    # ARM (aarch64), z. B. Raspberry Pi 5, ARM-Notebooks
+            name: Linux-arm64
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen
@@ -34,6 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         if: env.AKTIV == 'true'
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-python@v7
         if: env.AKTIV == 'true'
         with:

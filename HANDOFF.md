@@ -31,7 +31,12 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
   lebenden Lauf den Namen nicht weg, `_edits_trim` (1 GiB), `batch_pairs`/CLI-Stapel ohne Namenskollision + Exitcode 1,
   `export_render` für Y/S/K, Bereichsdruck mit Zuschnitt, XLSX „=“ als Text, `--align off` in der CLI, Golden-Test
   legt fehlende Referenz nicht mehr selbst an, `conftest` setzt `ZV_DATA_DIR` verbindlich.
-- GitHub-Bau „Apps bauen“ (alle, mit Tests) für 1.2 gestartet – Ergebnis prüfen.
+- GitHub-Bau „Apps bauen“ 44791022039 für 1.2: Windows, macOS, Linux x64 grün.
+- Neu: `.github/workflows/release.yml` – startet bei Tag `v*` (oder von Hand mit vorhandenem Tag), ruft `build.yml`
+  (jetzt auch `workflow_call`, Eingabe `ref`) und legt das GitHub-Release mit allen Dateien an (Text aus
+  `CHANGELOG.json`, prüft Tag = Version und 5 Dateien). Bauziel **Linux-arm64** (`ubuntu-24.04-arm`) in `build.yml`.
+  **Noch nicht gelaufen**: Release-Workflow (für v1.2 von Hand starten: `gh workflow run Release -f tag=v1.2` –
+  veröffentlicht öffentlich, nur mit Zustimmung des Nutzers).
 - Offen für den Nutzer: Commit-Zeile (Fable 5.2 vs. CLAUDE.md Opus 5.5), Windows-Test von Hand.
 
 ## Stand 2026-11-18 abends

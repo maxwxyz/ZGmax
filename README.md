@@ -77,8 +77,11 @@ fingerprints of the results. If the comparison is changed on purpose: `UPDATE_GO
 * Quick build without the test run: `packaging/build_mac.sh --ohne-tests` (same for `build_linux.sh`;
   Windows: `packaging\build_windows.bat ohne-tests`), or set `ZGMAX_OHNE_TESTS=1`.
 * On GitHub for all platforms: Actions → "Apps bauen" → "Run workflow" (`.github/workflows/build.yml`) builds and
-  self-tests Windows x64, macOS arm64 and Linux x64 on the latest runner systems; the archives are attached to the run as
-  artifacts.
+  self-tests Windows x64, macOS arm64, Linux x64 and Linux arm64 on the latest runner systems; the archives are attached
+  to the run as artifacts.
+* Releases: pushing a tag `v<version>` starts the workflow "Release" (`.github/workflows/release.yml`). It builds and
+  tests all platforms and publishes a GitHub release with the Windows installer, the portable Windows ZIP, macOS and
+  Linux (x64, arm64) as downloads, with the entries of the change history as release notes.
 
 The app is self-contained (Python, manuals, OCR model, translations). Check a build with `ZGmax --selbsttest`.
 Package versions are pinned in `requirements*.txt`; change them only together and after a test run.
