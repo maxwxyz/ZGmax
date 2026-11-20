@@ -64,7 +64,8 @@ jobs:
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" artefakte/* --clobber
-            gh release edit "$TAG" --notes-file notes.md
+            # auch ein vorhandener Entwurf wird damit veroeffentlicht
+            gh release edit "$TAG" --notes-file notes.md --title "ZGmax ${TAG#v}" --draft=false
           else
             gh release create "$TAG" artefakte/* --title "ZGmax ${TAG#v}" --notes-file notes.md --verify-tag
           fi

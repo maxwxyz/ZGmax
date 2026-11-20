@@ -35,8 +35,8 @@ Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelös
 - Neu: `.github/workflows/release.yml` – startet bei Tag `v*` (oder von Hand mit vorhandenem Tag), ruft `build.yml`
   (jetzt auch `workflow_call`, Eingabe `ref`) und legt das GitHub-Release mit allen Dateien an (Text aus
   `CHANGELOG.json`, prüft Tag = Version und 5 Dateien). Bauziel **Linux-arm64** (`ubuntu-24.04-arm`) in `build.yml`.
-  **Noch nicht gelaufen**: Release-Workflow (für v1.2 von Hand starten: `gh workflow run Release -f tag=v1.2` –
-  veröffentlicht öffentlich, nur mit Zustimmung des Nutzers).
+  Lauf 44793716383 für `v1.2` grün; Release „ZGmax 1.2“ veröffentlicht (5 Dateien). Ein vorhandener Entwurf blieb
+  dabei Entwurf – von Hand veröffentlicht, Workflow setzt jetzt `--draft=false`. Linux-ARM-Bau (44792666140) grün.
 - Offen für den Nutzer: Commit-Zeile (Fable 5.2 vs. CLAUDE.md Opus 5.5), Windows-Test von Hand.
 
 ## Stand 2026-11-18 abends
