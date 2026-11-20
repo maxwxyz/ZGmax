@@ -116,6 +116,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Textsuche über alle Seiten; schräge und kopfstehende Texte; Vorrang in der Hintergrund-Erkennung (1.0)
 
 ### Bedienung
+- ✅ Startseite: Felder warten auf die zweite Datei, Ziele beim Hineinziehen (Nur ansehen, Alt, Neu); neue Zeichnung zuerst und alte später ergibt die richtigen Rollen (1.2)
 - 🔧 Schneller Start: Sofortvorschau des Bildes vor dem Laden des Programms, Übergabe an ein laufendes ZGmax, Startzeit-Messung `--startzeit` (1.1)
 - ✅ Pfeilspitzen wählbar (Ende, Anfang, beide, keine); Drag & Drop mit Zielen bei offener Zeichnung (1.0)
 - ✅ Wolke und Formen in einem Knopf der Werkzeugleiste, merkt das zuletzt gewählte Werkzeug (0.9)
@@ -124,6 +125,7 @@ später           💡 3D-Modelle (eigenes Werkzeug)
 - ✅ Keine falsche Wiederherstellen-Frage mehr beim Start (Windows-Prozessprüfung, nur bei echtem Inhalt) (0.9)
 
 ### Technik und Betrieb
+- ✅ Durchsicht (33 Befunde) abgearbeitet: Schwärzung in allen Ausgaben, Ergebnis an die gewählten Dateien gebunden, Mehrseitenbericht aus geprüftem Stand, Prüfprotokoll erkennt Maß- und Dateiänderungen, Projektdateien geprüft (Prüfsumme, Größen), Ordnervergleich ohne Namenskollisionen, hängende Texterkennung wird beendet (1.2)
 - 🔧 Windows-Installer (Inno Setup, `packaging/zgmax.iss`): ohne Adminrechte je Nutzer oder für alle, Dateitypen wählbar, Update durch Darüberinstallieren; GitHub-Bau installiert probeweise (1.1)
 - ✅ Portable Apps für macOS, Windows und Linux (GitHub-Workflow mit Wahl von Plattform und Tests, alle Tests grün) (0.6–0.8)
 - ✅ Selbsttest der fertigen App (`--selbsttest`), Logdatei, Absturz-Meldungen statt Absturz (0.5)

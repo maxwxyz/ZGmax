@@ -1,4 +1,4 @@
-# Übergabe (Stand 2026-11-18, lokal) – **Version 1.1** (Tag `v1.1`), alles auf `main`, keine offenen Branches
+# Übergabe (Stand 2026-11-20, lokal) – **Version 1.2** (Tag `v1.2`), alles auf `main`, keine offenen Branches
 
 **Versionsnummern neu (2026-10-26):** aktuelle Version **0.8**. Die früheren 2.0/2.1/2.2 heißen jetzt 0.5/0.6/0.7
 (CHANGELOG, Git-Tags `v0.6`, `v0.7`, `v0.8`; die alten Tags `v2.1`/`v2.2` sind gelöscht). `version.OLD_NUMBERS`
@@ -7,11 +7,32 @@ ordnet alte Nummern in Projekten und Einstellungen richtig ein. Wo unten „2.1�
 Der Cloud-Branch `wip/ui-runde-8d9lrn` ist per Fast-Forward in `main` und gelöscht.
 
 ## Plan und Roadmap
-- `ROADMAP.md` abgeglichen (2026-11-18): **1.1 veröffentlicht** (Tag `v1.1`). Offen für 1.2: Windows/Linux von Hand
-  prüfen (Installer mit echtem Nutzerkonto, Übergabe an laufendes Programm, Drag & Drop, graue Menüs), echte
-  Testzeichnungen in `tests/real/`, Absturz-Fix „Schriftfeld lesen“ mit Originaldatei. Ideen: Prüfplan mit
-  Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen Positionsnummern, Ordnervergleich als
-  ein PDF, Tastenkürzel, Signatur (macOS und Windows-Installer). Keine Firma/Zielgruppe nennen.
+- `ROADMAP.md` abgeglichen (2026-11-20): **1.2 veröffentlicht** (Tag `v1.2`): Durchsicht mit 33 Befunden abgearbeitet,
+  Startseite neu (Felder warten, Ziele beim Hineinziehen). Offen: Windows/Linux von Hand prüfen (Installer mit echtem
+  Nutzerkonto, Übergabe an laufendes Programm, Drag & Drop auch auf der Startseite, graue Menüs), echte
+  Testzeichnungen in `tests/real/` (Repo ist **öffentlich** – nur Unvertrauliches), Absturz-Fix „Schriftfeld lesen“
+  mit Originaldatei. Ideen: Prüfplan mit Ballonnummern + ISO-286-Passungen, Schriftfeld als Daten, Stückliste gegen
+  Positionsnummern, Ordnervergleich als ein PDF, Tastenkürzel, Signatur. Keine Firma/Zielgruppe nennen.
+
+## Stand 2026-11-20 (Durchsicht F-001 … F-033, Release 1.2)
+- Alle 33 Befunde am Code geprüft; bestätigt und behoben bis auf: Zonen im Ordnervergleich (bewusst nur fürs offene
+  Blatt – jetzt Hinweis im Protokoll des Ordnervergleichs). Tests dazu in `tests/test_audit.py` (16), gesamt 221 grün.
+- Startseite: `start_choose/start_browse/start_view_only` (drawing_viewer) – ein Feld füllen startet nichts, verglichen
+  wird mit beiden. Hineinziehen einer Datei zeigt `DropOverlay` mit `_start_targets()` (view/A/B; außerhalb = ansehen),
+  `_start_waiting()` = Startseite ohne geladenes Ergebnis. Zwei Dateien/Projekt öffnen direkt.
+- Einzelne NEUE Zeichnung: liegt intern in Rolle A, Merker `_single_is_b`; `_set_file("A", …)` rückt sie per
+  `_single_to_b()` nach B; `open_other()` fragt dann nach der alten. `_start_files()` liefert, was die Felder zeigen.
+- Ergebnis an Dateien gebunden: `_src_now()`, `result_current()`, `_need_result()` sperrt Ausgaben.
+- Schwärzung: `rep.strip_redacted`, `rep.in_redaction`, Snapshot malt Schwärzungen immer.
+- Projekt: `read_project` prüft Größen (`MAX_JSON`, `MAX_EMBED`) und SHA-256 der eingebetteten Dateien, Temp-Name
+  eindeutig, Textcache-Import nur für die Dateien des Projekts, `_want_vec` (Vektormodus nach Hintergrundprüfung),
+  `page_scales` mit Schlüssel Seite (`_page_scales` übernimmt altes „Pfad#Seite“).
+- Sonst: `textstore.file_id` Vollhash, `ocrservice._abandon` (Timeout beendet Prozess), `quickstart.serve` nimmt einem
+  lebenden Lauf den Namen nicht weg, `_edits_trim` (1 GiB), `batch_pairs`/CLI-Stapel ohne Namenskollision + Exitcode 1,
+  `export_render` für Y/S/K, Bereichsdruck mit Zuschnitt, XLSX „=“ als Text, `--align off` in der CLI, Golden-Test
+  legt fehlende Referenz nicht mehr selbst an, `conftest` setzt `ZV_DATA_DIR` verbindlich.
+- GitHub-Bau „Apps bauen“ (alle, mit Tests) für 1.2 gestartet – Ergebnis prüfen.
+- Offen für den Nutzer: Commit-Zeile (Fable 5.2 vs. CLAUDE.md Opus 5.5), Windows-Test von Hand.
 
 ## Stand 2026-11-18 abends
 - Alle sieben Review-Befunde erledigt und zusammengeführt (drei Agenten-Branches, gelöscht): Speichern absichern

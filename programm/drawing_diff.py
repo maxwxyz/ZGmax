@@ -137,9 +137,10 @@ def main():
                         "Linien, aber mehr Rauschen (Standard: 128)")
 
     g = p.add_argument_group("Ausrichtung")
-    g.add_argument("--align", choices=["none", "translation", "euclidean", "affine"],
+    g.add_argument("--align", choices=["off", "none", "translation", "euclidean", "affine"],
                    default="affine",
-                   help="globale Ausrichtung: none = keine; translation = nur Verschiebung; "
+                   help="globale Ausrichtung: off = gar nicht ausrichten (B liegt links oben auf A); none = keine; "
+                        "translation = nur Verschiebung; "
                         "euclidean = + Drehung; affine = + Skalierung (Standard: affine)")
     g.add_argument("--tiles", default="auto", metavar="auto|SxZ",
                    help="lokale Feinausrichtung in Kacheln: auto = Kacheln von ca. --cell px; "
@@ -218,8 +219,12 @@ def run_batch(args):
     exts = RASTER_EXT | VECTOR_EXT
 
     def scan(folder):
-        return {os.path.splitext(f)[0].lower(): f for f in sorted(os.listdir(folder))
-                if os.path.splitext(f)[1].lower() in exts}
+        files = [f for f in sorted(os.listdir(folder)) if os.path.splitext(f)[1].lower() in exts]
+        stems = [os.path.splitext(f)[0].lower() for f in files]
+        # gleicher Name in mehreren Formaten (a.pdf und a.png): dann zaehlt der Name mit Endung, sonst verdraengt
+        # eine Datei still die andere
+        return {(s if stems.count(s) == 1 else f.lower() if [x.lower() for x in files].count(f.lower()) == 1 else f): f
+                for f, s in zip(files, stems)}
     fa, fb = scan(args.a), scan(args.b)
     names = sorted(set(fa) & set(fb))
     if not names:
@@ -237,7 +242,8 @@ def run_batch(args):
         print(f"\n=== [{i}/{len(names)}] {fa[n]} <-> {fb[n]} ===")
         a2 = copy.copy(args)
         a2.a, a2.b = os.path.join(args.a, fa[n]), os.path.join(args.b, fb[n])
-        a2.out = os.path.join(outdir, os.path.splitext(fa[n])[0] + "_diff." + ext)
+        stem = os.path.splitext(fa[n])[0] if n == os.path.splitext(fa[n])[0].lower() else fa[n].replace(".", "_")
+        a2.out = os.path.join(outdir, stem + "_diff." + ext)
         a2.select, a2.crop_a, a2.crop_b = False, None, None
         a2.list = "" if args.list is not None else None
         a2.report = "" if args.report is not None else None
@@ -247,6 +253,8 @@ def run_batch(args):
         except (Exception, SystemExit) as e:             # noqa: BLE001
             print(f"  FEHLER bei {n}: {e}", file=sys.stderr)
     print(f"\nStapel fertig: {ok} von {len(names)} Paaren, Ergebnisse in: {os.path.abspath(outdir)}")
+    if ok < len(names):                                  # Teilfehler: fuer Skripte am Rueckgabewert erkennbar
+        sys.exit(1)
 
 
 def run(args):

@@ -71,5 +71,7 @@ def test_real_drawing(case, pa, pb):
         rep.dim_changes(regs, lambda *_: None)
         found = " | ".join(r.get("dim", "") for r in regs)
         norm = lambda s: s.replace(",", ".").replace(" ", "")   # noqa: E731
-        for old, new in spec["masse"]:
-            assert norm(old) in norm(found) and norm(new) in norm(found), f"{old} → {new} nicht in: {found}"
+        dims = [norm(r.get("dim", "")) for r in regs if r.get("dim")]
+        for old, new in spec["masse"]:                           # beide Werte in DERSELBEN Aenderung, alt vor neu
+            assert any(norm(old) in d and norm(new) in d[d.index(norm(old)) + len(norm(old)):] for d in dims), \
+                f"{old} → {new} nicht in: {found}"

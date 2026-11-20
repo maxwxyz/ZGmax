@@ -1,5 +1,31 @@
 # ZGmax – Änderungshistorie
 
+## Version 1.2 vom 20.11.2026
+
+- Texterkennung robuster: Jede Erkennung (auch Schriftfeld, Text je Änderung, Tabellen, Diagramm-Achsen) läuft im eigenen Prozess. Stürzt sie ab, läuft das Programm weiter und meldet die übersprungenen Stellen.
+- Das Fenster öffnet in der Lage und Größe vom letzten Mal.
+- Sicherheit: Eingebettete Zeichnungen aus Projektdateien werden immer im Datenordner abgelegt; alte entpackte Kopien werden nach 30 Tagen entfernt.
+- Gelesener Text wird dauerhaft gemerkt und am Inhalt der Datei erkannt: dieselbe Zeichnung ist beim nächsten Öffnen sofort durchsuchbar, auch umbenannt; die Ablage räumt sich selbst auf und wandert mit dem Projekt mit.
+- Schriftfeld lesen, Als Tabelle und Text kopieren nutzen den schon gelesenen Text (waagerecht, senkrecht, schräg) statt neu zu erkennen.
+- Nach dem Bearbeiten einer Zeichnung (Drehen, Entzerren …) sucht die Textsuche im gezeigten Bild statt im Text der Originaldatei.
+- Speichern abgesichert: Exporte entstehen erst vollständig und ersetzen dann die Zieldatei; schlägt das Speichern fehl (Datei geöffnet, kein Platz, keine Rechte), bleibt die alte Datei unverändert und es gibt eine klare Meldung. Vor dem Überschreiben der geöffneten Zeichnung wird nachgefragt.
+- Alle Menübefehle haben jetzt eine kurze Erklärung (Tooltip, Statuszeile, Menüreferenz).
+- Startseite: Eine Zeichnung in ein Feld legen startet nichts mehr vorzeitig – verglichen wird, sobald beide Felder belegt sind. Beim Hineinziehen einer Datei erscheinen die Ziele „Nur ansehen“, „Alte Zeichnung (A)“ und „Neue Zeichnung (B)“.
+- Wer mit der neuen Zeichnung beginnt und später die alte dazunimmt, bekommt die richtigen Rollen (alt = A, neu = B).
+- Schwärzungen wirken in allen Ausgaben: auch in „Kopieren wie angezeigt“, im Mehrseitenbericht, in PDF-Kommentaren, der CSV-Liste, der Maßtabelle und bei „Als Tabelle“.
+- Lässt sich eine neu gewählte Datei nicht laden, sind Speichern und Berichte gesperrt, bis das angezeigte Ergebnis wieder zu den gewählten Dateien gehört.
+- Mehrseitenbericht nutzt den geprüften Stand je Seite (Status, Kommentare, Zonen, Maßstab); ungeprüfte Seiten sind als automatisch gekennzeichnet.
+- Ungleiche Seitenzahl: „Alle Seiten vergleichen“ meldet hinzugekommene bzw. entfallene Seiten.
+- Prüfprotokoll: erkennt nachträgliche Änderungen an Maß, Lage, Typ und an den Dateien selbst.
+- Schließen und Wiederherstellen berücksichtigen auch Markierungen und Prüfstände anderer Seiten.
+- Dieselbe Datei als alt und neu (z. B. zwei Seiten) vergleicht und speichert korrekt.
+- Einzelne PDF: Eine geänderte Auflösung lädt die Zeichnung neu, Messwerte stimmen wieder.
+- Ordnervergleich: gleichnamige Dateien in anderen Formaten oder Unterordnern verdrängen sich nicht mehr, weder bei der Zuordnung noch bei den Ausgabedateien; die Befehlszeile meldet Teilfehler über den Rückgabewert.
+- Projekte: Vektorvergleich wird beim Öffnen zuverlässig wiederhergestellt; eingebettete Zeichnungen werden gegen ihre Prüfsumme geprüft; Größengrenzen beim Öffnen; Maßstäbe je Seite bleiben auch auf einem anderen Rechner erhalten.
+- „Als Bild speichern“ liefert in Nebeneinander, Schieber und Blinken, was zu sehen ist; Bereichsdruck stimmt auch mit Zuschnitt-Rahmen.
+- Excel-Ausgabe: Text mit führendem „=“ bleibt Text. Der Hinweis auf ein sehr großes Blatt bleibt stehen, bis er gelesen ist.
+- Texterkennung: Ein hängender Erkennungsprozess wird nach der Zeitgrenze beendet und blockiert nichts mehr.
+
 ## Version 1.1 vom 18.11.2026
 
 - Schneller Start per Doppelklick: Das Bild erscheint sofort als Vorschau, während das Programm lädt.

@@ -16,6 +16,7 @@ import time
 VER = 1                       # erhoehen, wenn sich die Erkennung so aendert, dass alte Ergebnisse nicht mehr gelten
 MAX_FILES, MAX_MB, MAX_DAYS = 400, 40, 120
 PARTS = ("h", "v", "s")
+MAX_LINES = 100000            # mehr Textzeilen je Teil nimmt der Import aus einem Projekt nicht an
 _ids = {}                     # (Pfad, Aenderungszeit, Groesse) -> Pruefsumme
 _NAME = re.compile(r"^[0-9a-f]{40}-p\d+-d\d+\.json\.gz$")
 
@@ -28,7 +29,7 @@ def _dir():
 
 
 def file_id(path):
-    """Pruefsumme des Dateiinhalts (SHA-1; sehr grosse Dateien: Groesse + Anfang, Mitte, Ende je 4 MB) oder None."""
+    """Pruefsumme des ganzen Dateiinhalts (SHA-1, je Datei und Aenderungszeit nur einmal gerechnet) oder None."""
     try:
         st = os.stat(path)
     except OSError:
@@ -36,16 +37,10 @@ def file_id(path):
     key = (os.path.abspath(path), st.st_mtime_ns, st.st_size)
     if key not in _ids:
         h = hashlib.sha1(str(st.st_size).encode())
-        chunk = 4 << 20
         try:
-            with open(path, "rb") as f:
-                if st.st_size <= 64 << 20:
-                    for block in iter(lambda: f.read(1 << 20), b""):
-                        h.update(block)
-                else:
-                    for pos in (0, st.st_size // 2, max(0, st.st_size - chunk)):
-                        f.seek(pos)
-                        h.update(f.read(chunk))
+            with open(path, "rb") as f:                  # immer der ganze Inhalt: Stichproben uebersehen Aenderungen
+                for block in iter(lambda: f.read(1 << 20), b""):
+                    h.update(block)
         except OSError:
             return None
         if len(_ids) > 200:
@@ -156,7 +151,9 @@ def import_(fname, data):
     clean = {"ver": VER}
     for k in PARTS:
         if isinstance(data.get(k), list):
-            clean[k] = [ln for ln in data[k] if isinstance(ln, list) and len(ln) >= 5]
+            clean[k] = [ln for ln in data[k][:MAX_LINES] if isinstance(ln, list) and 5 <= len(ln) <= 12
+                        and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in ln[:4])
+                        and isinstance(ln[4], str) and len(ln[4]) <= 2000]
     tmp = f"{p}.{os.getpid()}.tmp"
     try:
         with gzip.open(tmp, "wt", encoding="utf-8") as f:

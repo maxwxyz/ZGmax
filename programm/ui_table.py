@@ -199,6 +199,8 @@ class TableMixin:
             for it in items:
                 r = self._to_view(side, it[:4])
                 cx, cy = (r[0] + r[2]) / 2, (r[1] + r[3]) / 2
+                if rep.in_redaction(self.anns, *r[:4]):      # geschwaerzt: nicht aus PDF-/gelesenem Text holen
+                    continue
                 if any(q[0] <= cx <= q[2] and q[1] <= cy <= q[3] for q in rects):
                     out.append((r[0] - x0, r[1] - y0, r[2] - x0, r[3] - y0, it[4]))
             return out

@@ -67,7 +67,7 @@ class PanelsMixin:
         self.btn_add_b = QPushButton(tr("Mit anderer Zeichnung vergleichen …"))   # nur beim Ansehen
         self.btn_add_b.setObjectName("primary")
         self.btn_add_b.setToolTip(tr("Zweite Zeichnung (neu) öffnen; dann wird verglichen"))
-        self.btn_add_b.clicked.connect(lambda: self.open_file("B"))
+        self.btn_add_b.clicked.connect(self.open_other)
         self.btn_add_b.setVisible(False)
         sec.body.addWidget(self.btn_add_b)
         lay.addWidget(sec)

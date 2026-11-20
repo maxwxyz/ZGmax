@@ -8,6 +8,7 @@ import re
 import time
 from version import VERSION, version_key
 import shutil
+import uuid
 import zipfile
 
 
@@ -22,18 +23,38 @@ def file_sha256(path):
     return h.hexdigest()
 
 
+MAX_JSON = 256 << 20          # groesste Projektbeschreibung, die gelesen wird
+MAX_EMBED = 2 << 30           # groesste eingebettete Zeichnung
+
+
 def write_project(path, data, embed=True):
     """Projekt schreiben. embed=True: Container (ZIP) mit projekt.json und den Zeichnungen, damit es samt Dateien
     verschickt und anderswo geoeffnet werden kann; sonst nur JSON mit Dateipfaden. Erst fertig schreiben, dann
     ersetzen."""
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"   # eindeutig: zwei Fenster/Programme stoeren sich nicht
+    try:
+        _write_project(tmp, data, embed)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):                          # Schreiben oder Ersetzen misslungen: keinen Rest lassen
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+
+def _write_project(tmp, data, embed):
     if embed:
         data = copy.deepcopy(data)
         fl = data["files"]
         with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             for k in ("a", "b"):
                 p = fl.get(k)
-                if not p or not os.path.isfile(p) or (k == "b" and p == fl.get("a")):
+                if not p or not os.path.isfile(p):
+                    continue
+                if k == "b" and p == fl.get("a") and fl.get("a_embedded"):
+                    # dieselbe Datei in beiden Rollen (z. B. zwei Seiten): nur einmal einpacken, B verweist darauf
+                    fl["b_embedded"], fl["b_sha256"] = fl["a_embedded"], fl["a_sha256"]
                     continue
                 name = f"dateien/{k.upper()}_{os.path.basename(p)}"
                 z.write(p, name)
@@ -42,18 +63,25 @@ def write_project(path, data, embed=True):
     else:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
 
 
 def read_project(path):
     """Projekt lesen (Container oder reines JSON). Eingebettete Zeichnungen werden bei Bedarf in den Datenordner
     entpackt; Rueckgabe (data, {"a": pfad, "b": pfad} der eingebetteten Fassungen)."""
     if not zipfile.is_zipfile(path):
+        if os.path.getsize(path) > MAX_JSON:
+            raise ValueError(tr("die Projektdatei ist zu groß"))
         with open(path, encoding="utf-8") as f:
             return json.load(f), {}
     embedded = {}
     with zipfile.ZipFile(path) as z:
+        # Groessen pruefen, BEVOR etwas entpackt wird: die Datei kann von fremder Hand stammen (stark gepackter
+        # Inhalt wuerde sonst Arbeitsspeicher bzw. Platte fuellen)
+        if z.getinfo(PROJECT_JSON).file_size > MAX_JSON:
+            raise ValueError(tr("die Projektdatei ist zu groß"))
         data = json.loads(z.read(PROJECT_JSON).decode("utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError(tr("keine Projektdatei dieses Programms"))
         fl = data.get("files", {})
         for k in ("a", "b"):
             name, sha = fl.get(k + "_embedded"), fl.get(k + "_sha256", "")
@@ -66,10 +94,27 @@ def read_project(path):
             fname = os.path.basename(name.replace("\\", "/")).split("_", 1)[-1] or k
             out = os.path.join(out_dir, fname)
             if not (os.path.isfile(out) and (not sha or file_sha256(out) == sha)):
+                if z.getinfo(name).file_size > MAX_EMBED:
+                    raise ValueError(tr("die eingebettete Zeichnung {} ist zu groß").format(k.upper()))
                 os.makedirs(out_dir, exist_ok=True)
-                with z.open(name) as src, open(out + ".tmp", "wb") as dst:
-                    shutil.copyfileobj(src, dst)
-                os.replace(out + ".tmp", out)
+                tmp = f"{out}.{os.getpid()}.tmp"
+                try:
+                    h, size = hashlib.sha256(), 0
+                    with z.open(name) as src, open(tmp, "wb") as dst:
+                        for block in iter(lambda: src.read(1 << 20), b""):
+                            size += len(block)
+                            if size > MAX_EMBED:         # die Angabe im Verzeichnis der Datei kann luegen
+                                raise ValueError(tr("die eingebettete Zeichnung {} ist zu groß").format(k.upper()))
+                            h.update(block)
+                            dst.write(block)
+                    if re.fullmatch(r"[0-9a-fA-F]{64}", sha or "") and h.hexdigest() != sha.lower():
+                        # Inhalt passt nicht zur vermerkten Pruefsumme: beschaedigt oder ausgetauscht
+                        raise ValueError(tr("die eingebettete Zeichnung {} passt nicht zu ihrer Prüfsumme "
+                                            "(Projektdatei beschädigt oder verändert)").format(k.upper()))
+                    os.replace(tmp, out)
+                finally:
+                    if os.path.exists(tmp):
+                        os.remove(tmp)
             embedded[k] = out
             try:
                 os.utime(out_dir)                    # zuletzt benutzt (fuer das Aufraeumen)
@@ -77,6 +122,20 @@ def read_project(path):
                 pass
     prune_project_files(keep={os.path.dirname(p) for p in embedded.values()})
     return data, embedded
+
+
+def _page_scales(raw, path_a):
+    """Massstaebe je Seite aus dem Projekt: {"Seite": Wert}. Aeltere Projekte fuehrten "Pfad#Seite" - daraus die
+    Seite nehmen, bevorzugt die Eintraege der Zeichnung A dieses Projekts."""
+    out, own = {}, {}
+    for k, v in (raw.items() if isinstance(raw, dict) else ()):
+        try:
+            head, _, page = str(k).rpartition("#")
+            (own if head and head == path_a else out)[str(int(page))] = float(v)
+        except (TypeError, ValueError):
+            continue
+    out.update(own)
+    return out
 
 
 def prune_project_files(keep=(), days=30):
@@ -302,8 +361,6 @@ class ProjectMixin:
         except (OSError, ValueError, KeyError, zipfile.BadZipFile) as ex:
             QMessageBox.warning(self, APP, tr("Projekt konnte nicht gelesen werden:\n{}").format(ex))
             return
-        for fname, item in (data.get("text_cache") or {}).items():    # mitgegebener Text (Name wird geprueft)
-            textstore.import_(fname, item)
         base_dir = os.path.dirname(os.path.abspath(path))
         fl = data.get("files", {})
         found = {}
@@ -313,6 +370,13 @@ class ProjectMixin:
             found[k] = next((c for c in cands if c and os.path.isfile(c)), None)
             if k in embedded and (found[k] is None or file_sha256(found[k]) != fl.get(k + "_sha256")):
                 found[k] = embedded[k]            # Original fehlt oder wurde seitdem geaendert: eingebettete Fassung
+        # mitgegebener gelesener Text: nur fuer die Zeichnungen dieses Projekts (Pruefsumme des Inhalts im Namen) -
+        # eine fremde Projektdatei kann so keinen Text fuer andere Dateien unterschieben
+        own = {textstore.file_id(p) for p in found.values() if p}
+        tc = data.get("text_cache")
+        for fname, item in (tc.items() if isinstance(tc, dict) else ()):
+            if str(fname)[:40] in own:
+                textstore.import_(fname, item)
         missing = [k.upper() for k in ("a", "b") if fl.get(k) and not found[k]]
         if missing:
             QMessageBox.warning(self, APP, tr("Zeichnung ") + tr(" und ").join(missing) + tr(" wurde nicht gefunden. Das Projekt "
@@ -354,7 +418,7 @@ class ProjectMixin:
         quiet(self.cb_lines, lambda: self.cb_lines.setCurrentIndex(max(0, i)))
         self.row_lines.setVisible(self.cb_lines.currentData() == "custom")
         self.pdf_off = set(data.get("pdf_layers_off") or [])
-        self.page_scales = dict(data.get("page_scales") or {})
+        self.page_scales = _page_scales(data.get("page_scales"), fl.get("a"))
         self.page_anns = copy.deepcopy(data.get("page_annotations") or {})
         self.page_regs = copy.deepcopy(data.get("page_regions") or {})
         self.page_views = copy.deepcopy(data.get("page_views") or {})
@@ -369,8 +433,13 @@ class ProjectMixin:
         if "tol" in vc:
             quiet(self.sp_vtol, lambda: self.sp_vtol.setValue(float(vc["tol"])))
         self._vec_status()
+        self._want_vec = None
         if vc.get("on") and self.chk_vec.isEnabled():
             quiet(self.chk_vec, lambda: self.chk_vec.setChecked(True))
+        elif vc.get("on"):
+            # die PDF werden noch im Hintergrund auf Vektordaten geprueft: sobald das fertig ist, einschalten und
+            # neu vergleichen (_vec_inspect) - sonst oeffnet ein Vektorprojekt still als Pixelvergleich
+            self._want_vec = (self.path_a, self.path_b)
         cr = data.get("crop")
         cb = data.get("crop_b")
         if cr and len(cr) == 4:
@@ -405,6 +474,16 @@ class ProjectMixin:
         if self.path_a or self.path_b:                 # auch Projekte mit nur einer Zeichnung (Ansehen) gleich zeigen
             self.start_compute()
 
+    def _has_work(self):
+        """Gibt es Pruefarbeit, die verloren gehen kann? Markierungen, Zonen, Status/Kommentare - auch auf anderen
+        Seiten - und abgeschlossene Pruefungen. (Bei einem schon gespeicherten Projekt zaehlt jede Aenderung, auch
+        das Loeschen des letzten Eintrags.)"""
+        done = lambda regs: any(r.get("status") or r.get("comment") or r.get("manual") for r in regs or [])  # noqa: E731
+        return bool(self.anns or self.zones or (self.payload and done(self.payload["regs"]))
+                    or any(getattr(self, "page_anns", {}).values())
+                    or any(done(v) for v in getattr(self, "page_regs", {}).values())
+                    or getattr(self, "protocols", None))
+
     def _maybe_save(self):
         """Ungespeicherte Markierungen/Pruefung: fragen. False = Abbrechen gewaehlt."""
         if self.drawing_edited():
@@ -415,8 +494,7 @@ class ProjectMixin:
             if r == QMessageBox.StandardButton.Cancel or (
                     r == QMessageBox.StandardButton.Save and not self.save_drawing()):
                 return False
-        reviewed = bool(self.payload and any(r.get("status") or r.get("comment") for r in self.payload["regs"]))
-        if getattr(self, "_dirty", False) and (self.anns or self.zones or reviewed):
+        if getattr(self, "_dirty", False) and (self.project_path or self._has_work()):
             r = QMessageBox.question(self, APP, tr("Es gibt ungespeicherte \u00c4nderungen (Markierungen, Zonen oder "
                                      "Pr\u00fcfergebnisse). Als Projekt speichern?"),
                                      QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard

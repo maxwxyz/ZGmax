@@ -54,9 +54,11 @@ def test_identical_has_no_diff(pair):
 def check_golden(key, d):
     """Ergebnis-Fingerabdruck; nach gewollter Aenderung des Verfahrens mit UPDATE_GOLDEN=1 neu schreiben."""
     gold = json.load(open(GOLDEN)) if os.path.isfile(GOLDEN) else {}
-    if os.environ.get("UPDATE_GOLDEN") or key not in gold:
+    if os.environ.get("UPDATE_GOLDEN"):
         gold[key] = d
         json.dump(gold, open(GOLDEN, "w"), indent=1)
+    # fehlt die Referenz, ist das ein Fehler - sonst schriebe der Test sie selbst und bestuende immer
+    assert key in gold, f"{key}: keine Referenz in golden.json (bewusst mit UPDATE_GOLDEN=1 anlegen)"
     g = gold[key]
     if d["sha"] == (g["sha"] if isinstance(g, dict) else g):
         return

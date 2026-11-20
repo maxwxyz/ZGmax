@@ -123,6 +123,13 @@ def serve(on_files):
     srv = QLocalServer()
     srv.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     if not srv.listen(SERVER):
+        from PySide6.QtNetwork import QLocalSocket
+        probe = QLocalSocket()
+        probe.connectToServer(SERVER)
+        alive = probe.waitForConnected(300)
+        probe.abort()
+        if alive:                                # ein anderer Programmlauf bedient den Namen: ihm nicht wegnehmen
+            return None
         QLocalServer.removeServer(SERVER)        # Rest eines abgestuerzten Laufs
         if not srv.listen(SERVER):
             return None

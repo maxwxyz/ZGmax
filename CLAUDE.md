@@ -16,7 +16,7 @@ Code in `programm/`, Tests in `tests/`, Bau in `packaging/`. **Vor jeder Arbeit 
   `releases` (App liest ihn, `version.py`). Release: `.venv/bin/python packaging/release.py minor|patch|major --git`
   (schreibt auch `CHANGELOG.md`/`CHANGELOG_EN.md`, setzt Tag `v<version>`), danach Apps bauen.
 - Commits enden mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nach jedem Commit pushen**
-  (`origin` = github.com/maxwxyz/ZGmax, privat).
+  (`origin` = github.com/maxwxyz/ZGmax, öffentlich – nichts Vertrauliches einchecken).
 - **Ablauf nach jeder fertigen Aufgabe (immer so):** bauen (lokal: Mac-App) und Tests laufen lassen, abwarten; nur wenn
   alles grün: committen, nach `main` mergen (möglichst Fast-Forward), pushen, alle anderen Feature-/`wip/...`-Branches
   lokal und auf GitHub löschen (vorher mit `git log main..origin/<branch>` prüfen, ob dort noch Commits fehlen).

@@ -1197,11 +1197,11 @@ class LayoutMixin:
     def _build_center(self):
         self.stack = QStackedWidget()
         self.start = StartPage()
-        self.start.fileChosen.connect(lambda w, p: self._set_file(w, p))
-        self.start.browse.connect(self.open_file)
+        self.start.fileChosen.connect(self.start_choose)       # Feld fuellen; Vergleich erst mit beiden
+        self.start.browse.connect(self.start_browse)
         self.start.recentChosen.connect(self.open_recent)
         self.start.projectRequested.connect(self.project_open)
-        self.start.viewOnly.connect(lambda: self.start_compute())
+        self.start.viewOnly.connect(self.start_view_only)
         self.start.backRequested.connect(self.show_work)
         self.start.introClosed.connect(lambda: self.settings.setValue("intro_done", "true"))
         self.start.set_intro(self.settings.value("intro_done", "") != "true")    # nur beim ersten Start
@@ -1565,7 +1565,7 @@ class LayoutMixin:
     def _fill_chip_menu(self, m):
         m.clear()
         if self.view_only:
-            m.addAction(tr("Mit anderer Zeichnung vergleichen …"), lambda: self.open_file("B"))
+            m.addAction(tr("Mit anderer Zeichnung vergleichen …"), self.open_other)
             m.addAction(tr("Andere Zeichnung ansehen …"), self.open_view_only)
         else:
             m.addAction(self.act_compare)

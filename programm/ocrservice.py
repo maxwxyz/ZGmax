@@ -161,6 +161,7 @@ def call(name, args=(), kwargs=None, cancel=None, timeout=600.0):
                 fut.cancel()
                 raise dc.Cancelled()
             if time.time() - t0 > timeout:
+                _abandon(fut)                            # haengenden Prozess beenden, sonst blockiert er alles Weitere
                 raise Crashed(name)
             _dispatch()
     except BrokenProcessPool:
@@ -297,6 +298,26 @@ def _preempt(key, prio):
         _pending.append(run[:5] + [True] + run[6:7])   # True = Future laeuft schon (nicht erneut starten)
         pool = _pool
         procs = list(getattr(pool, "_processes", {}).values()) if pool is not None else []
+    _drop_pool()
+    for p in procs:
+        try:
+            p.kill()
+        except Exception:                        # noqa: BLE001
+            pass
+
+
+def _abandon(fut):
+    """Ein Aufruf hat die Zeit ueberschritten: aus der Warteschlange nehmen; laeuft er gerade, den (haengenden)
+    Prozess beenden - sonst bliebe _running fuer immer belegt und kein weiterer Auftrag kaeme dran."""
+    global _running
+    with _lock:
+        _pending[:] = [j for j in _pending if j[4] is not fut]
+        if _running is None or _running[4] is not fut:
+            return
+        _running = None
+        pool = _pool
+        procs = list(getattr(pool, "_processes", {}).values()) if pool is not None else []
+    _freeze(False)
     _drop_pool()
     for p in procs:
         try:

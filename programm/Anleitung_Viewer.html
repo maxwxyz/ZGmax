@@ -74,8 +74,11 @@ speichern. Für Automatisierung gibt es zusätzlich die <a href="Anleitung_Komma
 <ol>
   <li><b>Starten:</b> Programm <i>ZGmax</i> öffnen. Es erscheint die Startseite; beim ersten Start mit einer kurzen
 Einführung in drei Schritten (<i>Verstanden</i> blendet sie aus, <i>Hilfe → Einführung zeigen</i> wieder ein).</li>
-  <li><b>Zeichnungen wählen:</b> Links die <b>alte</b>, rechts die <b>neue</b> Zeichnung wählen – oder beide Dateien
-      zusammen ins Fenster ziehen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt.</li>
+  <li><b>Zeichnungen wählen:</b> Links die <b>alte</b>, rechts die <b>neue</b> Zeichnung wählen oder ablegen – oder beide
+      Dateien zusammen ins Fenster ziehen. Der Vergleich startet, sobald <b>beide Felder</b> belegt sind; ein einzelnes
+      belegtes Feld wartet auf das zweite. Wer eine Datei ins Fenster zieht, sieht die Ziele <i>Nur ansehen</i>,
+      <i>Alte Zeichnung (A)</i> und <i>Neue Zeichnung (B)</i>. <b>Nur eine Zeichnung?</b> <i>Nur ansehen</i> wählen
+      (als Ziel beim Hineinziehen oder als Knopf unter den Feldern).</li>
   <li><b>Ansehen:</b> <span class="sw" style="background:#e5173f"></span><b>Rot</b> = nur in der alten Zeichnung
       (entfernt), <span class="sw" style="background:#1f3fff"></span><b>Blau</b> = nur in der neuen (neu),
       <span class="sw" style="background:#969696"></span>Grau = gleich, <span class="sw" style="background:#00aa00"></span>Grün =
@@ -202,11 +205,13 @@ für die Anzeige; gespeicherte Bilder und Ausdrucke bleiben normal. Unabhängig 
 
 <h2 id="ansehen">Nur ansehen, mehrere Fenster, Schließen</h2>
 <ul>
-<li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei öffnen oder auf die Startseite ziehen – oder <i>Datei → Einzelne
+<li><b>Eine Zeichnung ansehen:</b> eine einzelne Datei auf die Startseite ziehen und <i>Nur ansehen</i> wählen (oder
+neben den Feldern ablegen), ein Feld füllen und unten <i>Nur ansehen</i> klicken – oder <i>Datei → Einzelne
 Zeichnung öffnen …</i> (<kbd>Strg</kbd>+<kbd>Umschalt</kbd>+<kbd>O</kbd>). Dann gibt es keinen Vergleich, aber Zoomen, Messen,
 Markieren, Drucken und Speichern. Das Schild oben zeigt <i>Ansehen: datei</i>; Vergleichsansichten und -einstellungen
 sind ausgeblendet. Klick auf das Schild → <i>Mit anderer Zeichnung vergleichen …</i> (oder in der Seitenleiste) öffnet eine
-zweite Zeichnung und vergleicht.</li>
+zweite Zeichnung und vergleicht. Wurde die Zeichnung auf der Startseite als <b>neue (B)</b> gewählt, fragt das Programm
+dabei nach der <b>alten</b> – die Rollen stimmen also auch, wenn man mit dem neuen Stand beginnt.</li>
 <li><b>Schneller Start, ein Programm:</b> Beim Doppelklick auf ein Bild (PNG, JPG, TIFF …) erscheint es sofort als
 Vorschau, während das Programm lädt. Läuft ZGmax schon, öffnet ein weiterer Doppelklick die Datei dort in einem neuen
 Fenster, ohne zweiten Programmstart.</li>
@@ -616,7 +621,9 @@ klicken oder die Seitenzahl eintippen. <kbd>Bild ↑</kbd> / <kbd>Bild ↓</kbd>
 blättern zur vorigen bzw. nächsten Seite, ebenso <i>Ansicht → Vorige Seite / Nächste Seite</i>. Links erscheint
 zusätzlich der Bereich <i>Seiten</i> (bei PDF mit Vorschaubildern): Seite anklicken oder <i>Seite A / Seite B</i>
 einzeln einstellen; <i>A und B gemeinsam blättern</i> ist Standard. <b>Alle Seiten vergleichen</b>
-vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (rot = geändert, grün = gleich).</p>
+vergleicht jede Seite und schreibt in die Liste, wie viele Änderungen sie hat (rot = geändert, grün = gleich). Haben
+die Dateien unterschiedlich viele Seiten, werden die gemeinsamen verglichen und die übrigen als <i>hinzugekommen</i>
+bzw. <i>entfallen</i> gemeldet.</p>
 <p><b>Markierungen gehören zur Seite:</b> Jede Seite (im Vergleich jedes Seitenpaar) hat ihre eigenen Markierungen; beim
 Blättern bleiben sie erhalten, die Seitenliste zeigt ihre Anzahl, das Projekt speichert alle. Auch der Maßstab und die
 Kalibrierung gelten je Seite. Ebenso die <b>Änderungsliste mit Prüfstand</b>: Wer

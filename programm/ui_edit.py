@@ -268,6 +268,7 @@ class EditMixin:
         del self._edits[self._edit_ver:]                   # nach Rueckgaengig: alte Wiederholung verwerfen
         self._edits.append(dict(path=path, rect=u, before=before, after=after))
         self._edit_ver = len(self._edits)
+        self._edits_trim()
         self._edit_saved = False
         self._edit_refresh(u)
         self._commit()
@@ -294,12 +295,31 @@ class EditMixin:
             update_levels(pc, r, _half)
         self.canvas.update()
 
+    EDITS_MAX = 1 << 30                # Speicher fuer Rueckgaengig von Bildaenderungen (ganze Blaetter sind gross)
+
+    def _edits_trim(self):
+        """Aelteste Bildaenderungen vergessen, wenn ihre Kopien zu viel Speicher halten. Der Platz in der Liste
+        bleibt (die Zaehlung der Staende darf sich nicht verschieben), nur die Bilder gehen - weiter zurueck als
+        bis dorthin laesst sich dann nicht mehr rueckgaengig machen."""
+        def size(e):
+            return sum(im.nbytes for k in ("before", "after") for im in e[k]) if e else 0
+        total = sum(size(e) for e in self._edits)
+        for i in range(len(self._edits) - 1):                # die juengste bleibt immer
+            if total <= self.EDITS_MAX:
+                break
+            total -= size(self._edits[i])
+            self._edits[i] = None
+
     def _edit_goto(self, ver):
         """Rueckgaengig/Wiederholen der Bildaenderungen bis zum Stand ver."""
         ver = max(0, min(ver, len(self._edits)))
         while self._edit_ver != ver:
             back = self._edit_ver > ver
             e = self._edits[self._edit_ver - 1] if back else self._edits[self._edit_ver]
+            if e is None:                                  # zu alt, Bilder schon freigegeben
+                self.statusBar().showMessage(tr("Ältere Bildänderungen lassen sich nicht mehr rückgängig machen "
+                                                "(Speichergrenze)."), 8000)
+                break
             if e.get("full"):                              # ganze Zeichnung (zuschneiden, drehen ...): tauschen
                 if e["path"] == (self.path_a or self.path_b):
                     self._set_sheet(e["path"], e["before"] if back else e["after"], e["dpi"][0 if back else 1])
@@ -862,6 +882,7 @@ class SheetEditMixin:
         del self._edits[self._edit_ver:]
         self._edits.append(dict(path=path, full=True, before=imgs, after=new, dpi=(dpi0, dpi or dpi0)))
         self._edit_ver = len(self._edits)
+        self._edits_trim()
         self._edit_saved = False
         self._set_sheet(path, new, dpi or dpi0)
         self.canvas.sel_rects = []

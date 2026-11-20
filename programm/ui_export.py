@@ -21,6 +21,11 @@ class ExportMixin:
         if not self.payload:
             QMessageBox.information(self, APP, tr("Bitte zuerst vergleichen."))
             return False
+        if not self.running and not self.result_current():
+            # z. B. neu gewaehlte Datei liess sich nicht laden: das alte Ergebnis traegt sonst die neuen Dateinamen
+            QMessageBox.warning(self, APP, tr("Das angezeigte Ergebnis gehört nicht zu den gewählten Dateien bzw. "
+                                              "Seiten. Bitte zuerst neu vergleichen oder die Datei neu wählen."))
+            return False
         return True
 
     def _info(self):
@@ -91,7 +96,22 @@ class ExportMixin:
             legend = self.act_legend.isChecked()
         pl = self.payload
         res = pl["res"]
-        if mode in ("A", "B", "K"):
+        if mode == "K":                                  # Blinken: der Stand, der gerade zu sehen ist
+            mode = "B" if self.canvas.blink_b else "A"
+        if mode in ("Y", "S") and not self.view_only:
+            # Nebeneinander / Schieber: aus Alt und Neu zusammensetzen (frueher kam hier das Vergleichsbild heraus)
+            a, b = self.export_render("A", overlays, False), self.export_render("B", overlays, False)
+            if a.shape != b.shape:
+                return a
+            if mode == "Y":
+                gap = np.full((a.shape[0], max(8, a.shape[1] // 100), 3), 255, np.uint8)
+                return np.hstack([a, gap, b])
+            x = self.canvas.to_img(QPointF(self.canvas.split * self.canvas.width(), 0))[0]
+            f = self._frame_local()                      # Zuschnitt: das Bild beginnt am Rahmen, nicht am Blattrand
+            cut = int(np.clip(x - (f[0] if f else 0), 0, a.shape[1]))
+            a[:, cut:] = b[:, cut:]
+            return a
+        if mode in ("A", "B"):
             col = pl.get("color", (None, None))[1 if mode == "B" else 0] if self.canvas.show_color else None
             if col is None:
                 col = 255 - (res.b if mode == "B" else res.a)
@@ -177,6 +197,14 @@ class ExportMixin:
         mode = self.canvas.mode if self.canvas.mode in ("A", "B", "D", "O", "N", "R") else "D"
         out = self.export_render(mode, True, False)
         box = self._print_box(what)
+        f = self._frame_local()
+        if box is not None and f is not None:
+            # das Bild ist schon auf den Zuschnitt-Rahmen gebracht: der Bereich (Blattkoordinaten) muss mitwandern,
+            # sonst wird die falsche Stelle gedruckt
+            hh, ww = out.shape[:2]
+            box = (max(0, box[0] - f[0]), max(0, box[1] - f[1]), min(ww, box[2] - f[0]), min(hh, box[3] - f[1]))
+            if box[2] <= box[0] or box[3] <= box[1]:
+                box = None
         if box is not None:
             out = out[box[1]:box[3], box[0]:box[2]]
         out = np.ascontiguousarray(out)
@@ -254,7 +282,8 @@ class ExportMixin:
 
         def work(log):
             self._ensure_regs(log)
-            rep.write_csv(path, self.filter_regs(pl["regs"], spec), dpi, sn)   # wie die Liste: Filter, ohne Geloeschte
+            # wie die Liste: Filter, ohne Geloeschte; Text/Masse unter Schwaerzungen bleiben weg
+            rep.write_csv(path, rep.strip_redacted(self.filter_regs(pl["regs"], spec), self.anns), dpi, sn)
             return path
         self._run_job(work, tr("Speichere \u2026"), lambda p: (self._fill_table(), self._saved(p)))
 
@@ -270,10 +299,8 @@ class ExportMixin:
 
         def work(log):
             self._ensure_regs(log)
-            boxes = rep.redaction_boxes(self.anns)        # geschwaerzte Bereiche: auch im Bericht unkenntlich
-            regs = [dict(g, text_a="", text_b="", dim="") if any(
-                g["x"] < b[2] and g["x"] + g["w"] > b[0] and g["y"] < b[3] and g["y"] + g["h"] > b[1] for b in boxes)
-                else g for g in self.filter_regs(pl["regs"], spec)]   # nur was in der Liste steht
+            # nur was in der Liste steht; geschwaerzte Bereiche: auch im Bericht unkenntlich
+            regs = rep.strip_redacted(self.filter_regs(pl["regs"], spec), self.anns)
             rep.build_report(path, rep.redact_result(pl["res"], self.anns), regs, names[0], names[1], dpi, info, idx,
                              40, log, anns=anns, scale_n=sn)
             return path
@@ -297,6 +324,9 @@ class ExportMixin:
             parts += [tr("--crop-a"), ",".join(map(str, self.crop))]
         if self.dpi_value() != 200:
             parts += [tr("--dpi"), str(self.dpi_value())]
+        for spin, flag in ((self.sp_pa, "--page-a"), (self.sp_pb, "--page-b")):   # sonst vergleicht der Befehl Seite 1
+            if spin.value() != 1:
+                parts += [flag, str(spin.value())]
         if not p.edge_noise:
             parts += [tr("--keep-edges")]
         cmd = " ".join(f'"{x}"' if (" " in x or "\\" in x) else x for x in parts)

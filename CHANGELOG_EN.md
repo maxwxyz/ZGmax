@@ -1,5 +1,31 @@
 # ZGmax – Change history
 
+## Version 1.2 of 2026-11-20
+
+- More robust text recognition: every recognition (also title block, text per change, tables, chart axes) runs in its own process. If it crashes, the program keeps running and reports the skipped places.
+- The window opens at the position and size of the last time.
+- Security: embedded drawings from project files are always stored in the data folder; old unpacked copies are removed after 30 days.
+- Recognised text is remembered permanently and identified by the content of the file: the same drawing is searchable at once the next time, also when renamed; the store tidies itself and travels with the project.
+- Read title block, As table and Copy text use the text already read (horizontal, vertical, skewed) instead of recognising again.
+- After editing a drawing (rotating, deskewing …) the text search searches the displayed image instead of the text of the original file.
+- Safer saving: exports are written completely first and then replace the target file; if saving fails (file open, no space, no permission), the old file stays unchanged and there is a clear message. Overwriting the drawing that is currently open asks for confirmation.
+- All menu commands now have a short explanation (tooltip, status bar, menu reference).
+- Start page: putting a drawing into a field no longer starts anything early – the comparison runs as soon as both fields are filled. Dragging a file in shows the targets “View only”, “Old drawing (A)” and “New drawing (B)”.
+- Starting with the new drawing and adding the old one later gives the right roles (old = A, new = B).
+- Redactions apply to every output: also “Copy as shown”, the multi-page report, PDF comments, the CSV list, the dimension table and “As table”.
+- If a newly chosen file cannot be loaded, saving and reports are locked until the result shown belongs to the selected files again.
+- The multi-page report uses the reviewed state per page (status, comments, zones, scale); pages not reviewed are marked as automatic.
+- Different page counts: “Compare all pages” reports added or removed pages.
+- Review record: detects later changes to dimension, position, type and to the files themselves.
+- Closing and recovery also take markups and review states of other pages into account.
+- The same file as old and new (e.g. two pages) compares and saves correctly.
+- Single PDF: changing the resolution reloads the drawing, so measurements are right again.
+- Folder comparison: files with the same name in other formats or subfolders no longer displace each other, neither when pairing nor in the output files; the command line reports partial failures via its exit code.
+- Projects: vector comparison is restored reliably when opening; embedded drawings are checked against their checksum; size limits when opening; per-page scales survive on another computer.
+- “Save as image” delivers what is shown in side-by-side, slider and blink views; printing an area is correct with a crop frame too.
+- Excel output: text with a leading “=” stays text. The hint about a very large sheet stays until it has been read.
+- Text recognition: a hanging recognition process is ended after the time limit and no longer blocks anything.
+
 ## Version 1.1 of 2026-11-18
 
 - Faster start by double-click: the image appears at once as a preview while the program loads.

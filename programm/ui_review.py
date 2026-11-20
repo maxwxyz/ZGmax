@@ -150,6 +150,26 @@ class ReviewMixin:
                 files.append(dict(role=role, name=os.path.basename(p), sha256=file_sha256(p)))
         return rep.make_protocol(self.payload["regs"], name, result, remark, files, self._protocol_key(), VERSION)
 
+    def _protocol_files_match(self, rec):
+        """Gehoert das Protokoll zu den gerade geladenen Zeichnungen (gleicher Inhalt)? Pruefsummen werden je Datei
+        und Dateistand gemerkt, damit die Anzeige nicht bei jedem Auffrischen grosse Dateien liest."""
+        cache = self.__dict__.setdefault("_sha_cache", {})
+        now = {"A": self.path_a, "B": self.path_b}
+        for f in rec.get("files", []):
+            p = now.get(f.get("role"))
+            if not p or not f.get("sha256"):
+                continue
+            try:
+                st = os.stat(p)
+            except OSError:
+                return False
+            key = (p, st.st_mtime_ns, st.st_size)
+            if key not in cache:
+                cache[key] = file_sha256(p)
+            if cache[key] != f["sha256"]:
+                return False
+        return True
+
     def _update_protocol_label(self):
         """Hinweis in der Aenderungsliste: zuletzt abgeschlossen von ... (und ob der Stand seitdem geaendert wurde)."""
         if not hasattr(self, "lbl_protocol"):
@@ -170,6 +190,9 @@ class ReviewMixin:
             bad = True
         elif not rep.protocol_matches(rec, pl["regs"]):
             txt += tr("  ·  Prüfstand seitdem geändert – erneut abschließen")
+            bad = True
+        elif not self._protocol_files_match(rec):
+            txt += tr("  ·  gilt für eine andere Fassung der Zeichnung – erneut abschließen")
             bad = True
         self.lbl_protocol.setText(txt)
         self.lbl_protocol.setObjectName("warn" if bad else "ok")
@@ -240,7 +263,7 @@ class ReviewMixin:
         path = self._save_dialog(tr("Maßänderungen speichern"), tr("PDF (*.pdf);;CSV (*.csv)"), "massaenderungen.pdf")
         if not path:
             return
-        rows = rep.dim_rows(self.payload["regs"], self.canvas.mm_px,
+        rows = rep.dim_rows(rep.strip_redacted(self.payload["regs"], self.anns), self.canvas.mm_px,
                             self.sp_pa.value() if max(self.n_pages_a, self.n_pages_b) > 1 else None)
         names = (os.path.basename(self.path_a), os.path.basename(self.path_b))
         with self._saving():

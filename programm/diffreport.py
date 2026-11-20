@@ -850,6 +850,25 @@ def redaction_boxes(anns):
     return [_redact_box(a) for a in anns or [] if a.get("type") in REDACT_TYPES]
 
 
+def in_redaction(anns, x0, y0, x1, y1):
+    """Liegt das Rechteck (Bildpixel) ganz oder teilweise unter einer Schwaerzung/Verpixelung?"""
+    return any(x0 < b[2] and x1 > b[0] and y0 < b[3] and y1 > b[1] for b in redaction_boxes(anns))
+
+
+def strip_redacted(regs, anns):
+    """Aenderungen fuer eine Ausgabe nach aussen: wo eine Aenderung eine Schwaerzung beruehrt, bleiben gelesener Text
+    und Masse weg (Kopie; die Liste im Programm bleibt). Sonst stuende der geschwaerzte Inhalt weiter im
+    PDF-Kommentar, in der CSV-Liste oder in der Masstabelle. Eigene Kommentare des Pruefers bleiben stehen."""
+    if not redaction_boxes(anns):
+        return list(regs)
+    out = []
+    for g in regs:
+        if in_redaction(anns, g["x"], g["y"], g["x"] + g["w"], g["y"] + g["h"]):
+            g = dict(g, text_a="", text_b="", dim="", dim_kind="")
+        out.append(g)
+    return out
+
+
 def redact_result(res, anns):
     """Kopie des Vergleichsergebnisses, in der geschwaerzte/verpixelte Bereiche leer sind (fuer Berichte)."""
     import copy as _copy
@@ -2506,10 +2525,19 @@ def protocol_valid(rec):
 
 
 def protocol_matches(rec, regs):
-    """True, wenn der aktuelle Pruefstand noch dem protokollierten entspricht (Status und Kommentare)."""
-    cur = {r["nr"]: (reg_status(r), r.get("comment", "")) for r in regs if r["typ"] != "verschoben"}
-    old = {i["nr"]: (i["status"], i["comment"]) for i in rec.get("items", [])}
-    return cur == old
+    """True, wenn der aktuelle Pruefstand noch dem protokollierten entspricht: je Aenderung Status, Kommentar, Typ,
+    Mass und Lage - alles, was das Protokoll festhaelt (aeltere Protokolle: nur die dort vorhandenen Felder)."""
+    cur = {r["nr"]: r for r in regs if r["typ"] != "verschoben"}
+    old = {i["nr"]: i for i in rec.get("items", [])}
+    if set(cur) != set(old):
+        return False
+    for nr, i in old.items():
+        r = cur[nr]
+        now = dict(status=reg_status(r), comment=r.get("comment", ""), typ=r["typ"], dim=r.get("dim", ""),
+                   x=r["x"], y=r["y"], w=r["w"], h=r["h"])
+        if any(k in i and i[k] != now[k] for k in now):
+            return False
+    return True
 
 
 def build_protocol_pdf(path, rec):

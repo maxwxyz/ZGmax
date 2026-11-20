@@ -647,13 +647,21 @@ def batch_pairs(dir_a, dir_b, exts, sub=False, ignore_index=False):
         km = {}
         for rel in files:
             km.setdefault(k(rel), []).append(rel)
+        full = {}
+        for rel in files:                       # gleicher Name in mehreren Formaten (a.pdf und a.png)?
+            full.setdefault(os.path.splitext(rel)[0].replace("\\", "/").lower(), []).append(rel)
         res = {}
         for key, rels in km.items():            # nicht eindeutig: dann den vollen Namen nehmen
             if len(rels) == 1:
                 res[key] = rels[0]
-            else:
-                for rel in rels:
-                    res[os.path.splitext(rel)[0].replace("\\", "/").lower()] = rel
+                continue
+            for rel in rels:
+                stem = os.path.splitext(rel)[0].replace("\\", "/").lower()
+                if len(full[stem]) == 1:
+                    res[stem] = rel
+                else:                           # auch der volle Name ist mehrdeutig: mit Endung (und Schreibweise)
+                    k2 = rel.replace("\\", "/").lower()
+                    res[k2 if k2 not in res else rel.replace("\\", "/")] = rel
         return res
     fa, fb = scan(dir_a), scan(dir_b)
     ka, kb = keys(fa), keys(fb)

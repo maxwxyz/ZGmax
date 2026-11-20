@@ -84,8 +84,9 @@ class StartPage(QWidget):
         lay.addLayout(top)
         h = QLabel(tr("Zeichnungen vergleichen oder ansehen"))
         h.setObjectName("bigtitle")
-        sub = QLabel(tr("Zwei Dateien hierher ziehen (alt und neu) – oder links die alte und rechts die neue "
-                     "Zeichnung wählen. Der Vergleich startet von selbst. Eine einzelne Datei wird nur angezeigt."))
+        sub = QLabel(tr("Links die alte, rechts die neue Zeichnung ablegen oder wählen – der Vergleich startet, sobald "
+                     "beide da sind. Zwei Dateien auf einmal hierher ziehen geht auch. Nur eine Zeichnung? Beim "
+                     "Hineinziehen „Nur ansehen“ wählen – oder in ein Feld legen und unten „Nur ansehen“."))
         sub.setObjectName("hint")
         sub.setWordWrap(True)
         lay.addWidget(h)
@@ -104,6 +105,7 @@ class StartPage(QWidget):
         row = QHBoxLayout()
         self.btn_view = QPushButton(tr("Nur ansehen"))
         self.btn_view.setToolTip(tr("Die gewählte Zeichnung ohne Vergleich anzeigen (zoomen, messen, markieren)"))
+        self.btn_view.setObjectName("primary")       # sobald genau ein Feld belegt ist: der naechste Schritt
         self.btn_view.clicked.connect(self.viewOnly.emit)
         self.btn_view.setEnabled(False)
         b = QPushButton(tr("Projekt öffnen …"))
@@ -146,10 +148,10 @@ class StartPage(QWidget):
         row = QHBoxLayout()
         row.setSpacing(18)
         for nr, title, text in (
-                ("1", tr("Öffnen"), tr("Alte Zeichnung links, neue rechts ablegen. Eine einzelne Datei wird nur "
-                                       "angezeigt – zum Messen und Markieren.")),
-                ("2", tr("Vergleichen"), tr("Startet von selbst. Rot = nur in alt, blau = nur in neu, grün = nur "
-                                            "verschoben, grau = gleich.")),
+                ("1", tr("Öffnen"), tr("Zeichnung hineinziehen und das Ziel wählen: Alt (A), Neu (B) oder „Nur "
+                                       "ansehen“ – zum Messen und Markieren.")),
+                ("2", tr("Vergleichen"), tr("Startet, sobald beide Felder belegt sind. Rot = nur in alt, blau = nur "
+                                            "in neu, grün = nur verschoben, grau = gleich.")),
                 ("3", tr("Prüfen"), tr("„Prüfen starten“ zeigt jede Änderung: G = geprüft, X = abgelehnt, "
                                        "C = Kommentar. Am Ende „Prüfung abschließen“."))):
             col = QVBoxLayout()
@@ -229,19 +231,22 @@ class DropOverlay(QWidget):
         self.title.setObjectName("cardtitle")
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         outer.addWidget(self.title)
-        sub = QLabel(tr("Auf ein Feld ziehen – außerhalb der Felder ablegen öffnet in einem neuen Fenster."))
-        sub.setObjectName("hint")
-        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        outer.addWidget(sub)
+        self._hint = tr("Auf ein Feld ziehen – außerhalb der Felder ablegen öffnet in einem neuen Fenster.")
+        self.default = "window"                           # Ziel beim Ablegen ausserhalb der Felder
+        self.sub = QLabel(self._hint)
+        self.sub.setObjectName("hint")
+        self.sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(self.sub)
         self.row = QHBoxLayout()
         self.row.setSpacing(16)
         outer.addLayout(self.row)
         outer.addStretch(1)
         outer.setContentsMargins(40, 40, 40, 40)
 
-    def open(self, files, targets):
-        """targets: [(Schluessel, Titel, Hinweis), ...]"""
-        self.files = files
+    def open(self, files, targets, default="window", hint=None):
+        """targets: [(Schluessel, Titel, Hinweis), ...]; default = Ziel beim Ablegen ausserhalb der Felder."""
+        self.files, self.default = files, default
+        self.sub.setText(hint or self._hint)
         while self.row.count():
             w = self.row.takeAt(0).widget()
             if w:
@@ -320,7 +325,7 @@ class DropOverlay(QWidget):
         files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()] or self.files
         self.hide()
         e.acceptProposedAction()
-        self.chosen.emit(hit._key if hit else "window", files)
+        self.chosen.emit(hit._key if hit else self.default, files)
 
     def keyPressEvent(self, e):
         self.hide()                                       # jede Taste (z. B. Esc) schliesst die Ziele

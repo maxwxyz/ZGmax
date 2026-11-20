@@ -9,7 +9,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 # (Importname, pip-Name, Pflicht?)
 PACKAGES = [("cv2", "opencv-python", True), ("numpy", "numpy", True), ("PIL", "pillow", True),
-            ("PySide6", "PySide6-Essentials", True), ("pymupdf", "pymupdf", False), ("ezdxf", "ezdxf", False)]
+            ("PySide6", "PySide6-Essentials", True), ("pymupdf", "pymupdf", False), ("ezdxf", "ezdxf", False),
+            ("openpyxl", "openpyxl", False)]
 
 
 def missing():
@@ -21,7 +22,7 @@ def main():
     if miss:
         print("ZGmax: Es fehlen Programmpakete:")
         for imp, pip, must in miss:
-            print(f"  - {pip}" + ("" if must else "   (nur fuer PDF/SVG noetig)"))
+            print(f"  - {pip}" + ("" if must else "   (nur fuer PDF, SVG, DXF bzw. Excel noetig)"))
         print("\nSie werden jetzt automatisch installiert (Internetverbindung noetig). Bitte warten ...\n")
         req = os.path.join(os.path.dirname(HERE), "requirements.txt")   # getestete, feste Versionen
         cmd = [sys.executable, "-m", "pip", "install", "--user"] + (

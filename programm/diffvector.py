@@ -195,6 +195,12 @@ def _grid(items, cell):
     return g
 
 
+def _area(pts):
+    """Flaecheninhalt eines Punktzugs (Gauss)."""
+    x, y = pts[:, 0], pts[:, 1]
+    return 0.5 * abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))))
+
+
 def _same(a, b, tol):
     if a["kind"] != b["kind"]:
         return False
@@ -203,7 +209,14 @@ def _same(a, b, tol):
     if len(a["pts"]) != len(b["pts"]):
         if a["kind"] != "f":
             return False
-        return abs(len(a["pts"]) - len(b["pts"])) < 3 and abs(a["pts"].mean(0) - b["pts"].mean(0)).max() <= tol * 2
+        # Flaechen mit leicht anderer Punktzahl (anders zerlegte Kurve): gleich nur, wenn Schwerpunkt, Umriss
+        # (Ausdehnung) UND Flaecheninhalt passen - ein aehnlicher Schwerpunkt allein sagt nichts ueber die Kontur
+        if abs(len(a["pts"]) - len(b["pts"])) >= 3 or abs(a["pts"].mean(0) - b["pts"].mean(0)).max() > tol * 2:
+            return False
+        if max(np.abs(a["pts"].min(0) - b["pts"].min(0)).max(), np.abs(a["pts"].max(0) - b["pts"].max(0)).max()) > tol * 2:
+            return False
+        fa, fb = _area(a["pts"]), _area(b["pts"])
+        return abs(fa - fb) <= 0.02 * max(fa, fb) + tol * tol
     if np.abs(a["pts"] - b["pts"]).max() <= tol:
         return True
     return a["kind"] in ("l", "c") and np.abs(a["pts"] - b["pts"][::-1]).max() <= tol

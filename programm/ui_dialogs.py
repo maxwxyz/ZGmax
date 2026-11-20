@@ -367,7 +367,11 @@ class BatchDialog(QDialog):
         self._summary()
 
     def _summary(self):
-        n = {k: sum(1 for r in self.results if r["state"] == k) for k in ("changed", "same", "only_a", "only_b", "error")}
+        if len(self.results) <= 1:                           # neuer Lauf: Zaehler von vorn
+            self._counts = dict.fromkeys(("changed", "same", "only_a", "only_b", "error"), 0)
+        n = self._counts
+        if self.results:                                     # nur die neue Zeile zaehlen (nicht jedes Mal alle)
+            n[self.results[-1]["state"]] += 1
         self.lbl_sum.setText(tr("{} geändert · {} gleich · {} nur alt · {} nur neu · {} Fehler").format(
             n["changed"], n["same"], n["only_a"], n["only_b"], n["error"]))
 
@@ -405,8 +409,28 @@ class BatchDialog(QDialog):
         job = Job(None, self)
         self.job = job
 
+        zones = bool(self.win.zones)
+        used = set()                                         # vergebene Ausgabenamen (klein geschrieben)
+
+        def out_stem(name, pa_):
+            """Ausgabename je Paar: Dateiname; gibt es ihn schon (anderer Unterordner, anderes Format), mit
+            Unterordner bzw. Endung - sonst ueberschreibt ein Ergebnis das andere."""
+            rel = name.split("  ↔  ")[0]
+            cands = [os.path.splitext(os.path.basename(pa_))[0],
+                     os.path.splitext(rel)[0].replace("\\", "_").replace("/", "_"),
+                     rel.replace("\\", "_").replace("/", "_").replace(".", "_")]
+            k = 2
+            while all(c.lower() in used for c in cands):
+                cands.append(f"{cands[2]}_{k}")
+                k += 1
+            stem = next(c for c in cands if c.lower() not in used)
+            used.add(stem.lower())
+            return stem
+
         def work(ctx):
             quiet = lambda *_: None                          # noqa: E731
+            if zones:
+                ctx(tr("Hinweis: Zonen gelten nur für das geöffnete Blatt – im Ordnervergleich zählt jede Änderung."))
             for name in only_a:
                 ctx.preview(dict(name=name, state="only_a", a=os.path.join(da, name), b=None))
             for name in only_b:
@@ -419,6 +443,7 @@ class BatchDialog(QDialog):
                 try:
                     na, nb = dp.page_count(pa_), dp.page_count(pb_)
                     per_page, total = [], 0
+                    pair_stem = out_stem(name, pa_)
                     for pg in range(1, min(na, nb) + 1):
                         a = dp.ink_from_gray(dp.load_gray(pa_, pg, dpi), params.thr, params.flatten)
                         b = dp.ink_from_gray(dp.load_gray(pb_, pg, dpi), params.thr, params.flatten)
@@ -430,7 +455,7 @@ class BatchDialog(QDialog):
                         total += cnt
                         if not cnt or not out:
                             continue
-                        stem = os.path.splitext(os.path.basename(pa_))[0] + (f"_S{pg}" if min(na, nb) > 1 else "")
+                        stem = pair_stem + (f"_S{pg}" if min(na, nb) > 1 else "")
                         base = os.path.join(out, stem + "_diff")
                         if img_on:
                             info = tr("Toleranz {}px, Schraffur {}, Ausrichtung {}").format(params.tol, params.hatch,

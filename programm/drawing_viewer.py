@@ -246,6 +246,11 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             if (self.path_a if which == "A" else self.path_b) == path:
                 self.vinfo[which] = info
                 self._vec_status()
+                if getattr(self, "_want_vec", None) == (self.path_a, self.path_b) and self.chk_vec.isEnabled():
+                    self._want_vec = None                # Projekt war ein Vektorvergleich: jetzt moeglich
+                    self.chk_vec.setChecked(True)
+                    self.start_compute()
+                    return
                 self._suggest_vector()
         self.run_background(work, done)
 
@@ -405,13 +410,23 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return
         if ext == ".pdf" and not self._unlock_pdf(path):
             return
+        if which == "B" and not self.path_a and compute:
+            # Nur die neue Zeichnung, und sie soll gleich gezeigt werden: Eine einzelne Zeichnung liegt im Programm
+            # immer in Rolle A (Seiten, Suche, Markierungen rechnen damit). Gemerkt wird, dass sie die NEUE ist -
+            # kommt spaeter die alte dazu, rueckt sie nach B (siehe unten).
+            which, lbl = "A", self.lbl_a
+            self._single_is_b = True
+        elif which == "A" and getattr(self, "_single_is_b", False) and self.path_a and not self.path_b:
+            self._single_to_b()                          # die bisher allein gezeigte neue Zeichnung wird B
+        elif which == "B":
+            self._single_is_b = False
         if which == "A":
             self.path_a = path
         else:
             self.path_b = path
         lbl.setText(os.path.basename(path))
         lbl.setToolTip(path)
-        self.start.set_files(self.path_a, self.path_b)
+        self.start.set_files(*self._start_files())
         self.crop_b = None
         self.manual_tf = None
         if hasattr(self, "act_align_reset"):
@@ -419,6 +434,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self._trim_cache()
         self._vec_inspect(which, path)
         if which == "A":
+            self.page_scales = {}                        # Massstaebe je Seite gehoeren zu dieser Datei
             self._detect_dpi(path)
             self._crop_reset(silent=True)
             self.canvas.reset_rotation()
@@ -426,6 +442,68 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self.page_regs, self._regs_stale = {}, True       # Pruefstand je Seite gilt nur fuer dieses Zeichnungspaar
         self._big_sheet_hint(which, path)
         if compute:
+            self.start_compute()
+
+    def _start_files(self):
+        """Was die Felder der Startseite zeigen: (alt, neu). Eine allein gezeigte NEUE Zeichnung steht rechts."""
+        if getattr(self, "_single_is_b", False) and not self.path_b:
+            return None, self.path_a
+        return self.path_a, self.path_b
+
+    def _single_to_b(self):
+        """Die allein gezeigte Zeichnung (im Programm Rolle A) ist die neue: nach B ruecken, A wird frei."""
+        old, page = self.path_a, self.sp_pa.value()
+        self._single_is_b = False
+        self.path_b = old
+        self.lbl_b.setText(os.path.basename(old))
+        self.lbl_b.setToolTip(old)
+        self._vec_inspect("B", old)
+        self._setup_pages("B", old)
+        self.sp_pb.blockSignals(True)
+        self.sp_pb.setValue(min(page, self.sp_pb.maximum()))
+        self.sp_pb.blockSignals(False)
+
+    def open_other(self):
+        """Beim Ansehen: die zweite Zeichnung dazu oeffnen und vergleichen - die alte, wenn die gezeigte die neue
+        ist, sonst die neue."""
+        self.open_file("A" if getattr(self, "_single_is_b", False) else "B")
+
+    def start_choose(self, which, path):
+        """Startseite: Datei in ein Feld gelegt. Verglichen wird erst, wenn beide Felder belegt sind - eine einzelne
+        oeffnet „Nur ansehen“. Ist schon etwas offen (Startseite nur davor geblendet), gilt es sofort."""
+        if not self._start_waiting():
+            return self._set_file(which, path)
+        if getattr(self, "_single_is_b", False) and not self.path_b and which == "B":
+            self._start_clear()                          # die allein gefuehrte neue Zeichnung wird ersetzt
+        if getattr(self, "_single_is_b", False) and not self.path_b:
+            other = self.path_a                          # sie rueckt in _set_file nach B
+        else:
+            other = self.path_b if which == "A" else self.path_a
+        self._set_file(which, path, compute=bool(other))
+        if not other:
+            self.show_start()
+
+    def _start_clear(self):
+        """Wartende Dateien der Startseite vergessen (noch nichts geladen)."""
+        self._single_is_b = False
+        self.path_a = self.path_b = None
+        for lbl in (self.lbl_a, self.lbl_b):
+            lbl.setText(tr("(nicht gewählt)"))
+            lbl.setToolTip("")
+
+    def start_browse(self, which):
+        d = self.settings.value("dir", "")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Zeichnung {} öffnen").format(which), d, FILE_FILTER)
+        if path:
+            self.start_choose(which, path)
+
+    def start_view_only(self):
+        """Startseite „Nur ansehen“: die eine gewaehlte Zeichnung allein zeigen."""
+        if self.path_b and not self.path_a:              # nur die neue liegt im Feld: als Einzelzeichnung fuehren
+            p = self.path_b
+            self._start_clear()
+            self._set_file("B", p)                       # merkt sich, dass sie die neue ist
+        else:
             self.start_compute()
 
     def _restore_window(self):
@@ -459,6 +537,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if not wh or wh[0] * wh[1] <= dp.BIG_SHEET_PX:
             return
         mp = wh[0] * wh[1] / 1e6
+        self._hint_keep = True                           # der gleich folgende Start blendet den Hinweis nicht aus
         if dp.is_vector(path):
             d = dp.lighter_dpi(path, page, dpi)
             if d:
@@ -577,11 +656,12 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
     def _remember_page_scale(self, val):
         """Massstab/Kalibrierung gilt je Seite (mehrseitige Dateien haben oft verschiedene Massstaebe)."""
         if self.path_a and not getattr(self, "_page_scale_loading", False):
-            self.__dict__.setdefault("page_scales", {})[f"{self.path_a}#{self.sp_pa.value()}"] = float(val)
+            self.__dict__.setdefault("page_scales", {})[str(self.sp_pa.value())] = float(val)
 
     def _apply_page_scale(self):
-        key = f"{self.path_a}#{self.sp_pa.value()}"
-        val = getattr(self, "page_scales", {}).get(key)
+        # Schluessel = Seitennummer (nicht der Dateipfad: sonst gehen die Massstaebe verloren, sobald das Projekt
+        # auf einem anderen Rechner oder mit der eingebetteten Zeichnung geoeffnet wird)
+        val = getattr(self, "page_scales", {}).get(str(self.sp_pa.value()))
         if val is not None and abs(val - self.scale_n()) > 1e-9:
             self._page_scale_loading = True
             self.sp_scale.setValue(val)
@@ -687,10 +767,38 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
     def _drag_overlay(self, e):
         """Datei wird hineingezogen, waehrend schon etwas offen ist: Ziele zeigen statt gleich ein neues Fenster."""
         files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()]
-        if not files or self.payload is None or not (self.path_a or self.path_b):
+        if not files:
+            return False
+        if self._start_waiting():
+            # Startseite, noch nichts offen: eine einzelne Zeichnung fragt, wohin (alt, neu oder nur ansehen). Zwei
+            # Dateien oder ein Projekt sind eindeutig und oeffnen ohne Rueckfrage.
+            if len(files) != 1 or files[0].lower().endswith(PROJECT_EXT):
+                return False
+            self.drop_overlay.open(files, self._start_targets(), default="view",
+                                   hint=tr("Auf ein Feld ziehen – außerhalb der Felder ablegen zeigt die Zeichnung "
+                                           "allein."))
+            return True
+        if self.payload is None or not (self.path_a or self.path_b):
             return False
         self.drop_overlay.open(files, self._drop_targets(files))
         return True
+
+    def _start_waiting(self):
+        """Die Startseite ist zu sehen und es ist noch nichts geladen (hoechstens liegt eine Datei in einem Feld)."""
+        return self.payload is None and not self.running and self.stack.currentWidget() is self.start
+
+    def _start_targets(self):
+        a, b = self._start_files()
+        name = os.path.basename
+        view = ("view", tr("Nur ansehen"), tr("Ohne Vergleich zeigen – zoomen, messen, markieren."))
+        if a and not b:
+            return [view, ("A", tr("Alt (A) ersetzen"), tr("Statt {}").format(name(a))),
+                    ("B", tr("Als Neu (B) vergleichen"), tr("{} = Alt, neue Datei = Neu").format(name(a)))]
+        if b and not a:
+            return [view, ("A", tr("Als Alt (A) vergleichen"), tr("Neue Datei = Alt, {} = Neu").format(name(b))),
+                    ("B", tr("Neu (B) ersetzen"), tr("Statt {}").format(name(b)))]
+        wait = tr("Wartet dann auf die zweite Zeichnung.")
+        return [view, ("A", tr("Alte Zeichnung (A)"), wait), ("B", tr("Neue Zeichnung (B)"), wait)]
 
     def _drop_targets(self, files):
         new_win = ("window", tr("In neuem Fenster öffnen"), tr("Zusätzlich öffnen; dieses Fenster bleibt, wie es ist."))
@@ -711,6 +819,13 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
     def _drop_chosen(self, key, files):
         if not files:
             return
+        if self._start_waiting():                        # Ziele der Startseite
+            if key in ("A", "B"):
+                self.start_choose(key, files[0])
+            else:
+                self._start_clear()
+                self._set_file("A", files[0])
+            return
         if key == "window":
             self._doc_window()._files_dropped(files)
         elif key == "replace":
@@ -718,6 +833,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             if self.payload is None and not (self.path_a or self.path_b):
                 self._files_dropped(files)
         elif self.view_only:                             # Einzelansicht -> Vergleich mit der neuen Datei
+            self._single_is_b = False                    # Rollen werden hier ausdruecklich gesetzt
             cur = self.path_a or self.path_b
             a, b = (files[0], cur) if key == "A" else (cur, files[0])
             self._set_file("A", a, compute=False)
@@ -726,7 +842,13 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self._set_file(key, files[0])
 
     def _files_dropped(self, files):
-        if self.payload is not None or self.path_a or self.path_b:   # schon etwas offen: neues Fenster
+        if self._start_waiting():
+            if len(files) == 1 and not files[0].lower().endswith(PROJECT_EXT) and (self.path_a or self.path_b):
+                self.start_choose("B" if self._start_files()[0] else "A", files[0])   # ins freie Feld
+                return
+            if len(files) >= 2:
+                self._start_clear()                      # zwei auf einmal ersetzen, was in den Feldern wartet
+        elif self.payload is not None or self.path_a or self.path_b:   # schon etwas offen: neues Fenster
             self._doc_window()._files_dropped(files)
             return
         proj = [f for f in files if f.lower().endswith(PROJECT_EXT)]
@@ -767,8 +889,14 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
 
     def _dpi_changed(self):
         self._update_units()
-        if self.path_a and self.path_b and any(dp.is_vector(p) for p in (self.path_a, self.path_b)):
+        if not any(dp.is_vector(p) for p in (self.path_a, self.path_b) if p):
+            return
+        if self.path_a and self.path_b:
             self._param_changed()
+        else:
+            # Einzelne PDF/SVG/DXF: das Bild ist noch in der alten Aufloesung gerechnet, die Masse rechnen aber schon
+            # mit der neuen - gleich neu laden, sonst stimmen Messwerte und Massstab nicht
+            self.debounce.start(500)
 
     def _calibrate(self, d=None):
         """Massstab so setzen, dass eine gemessene Strecke ihre wahre Laenge hat. Ohne Messung: erst messen
@@ -1000,6 +1128,22 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         if text:
             self.lbl_status.setText(f"{text} \u2026  {frac * 100:.0f} %")
 
+    def _src_now(self):
+        """Welche Dateien und Seiten gerade gewaehlt sind: (Datei A, Datei B, Seite A, Seite B) - bei nur einer Datei
+        steht sie in beiden Rollen. Das Ergebnis merkt sich diesen Stand (_result_src)."""
+        single = not (self.path_a and self.path_b)
+        pa_, pb_ = self.path_a or self.path_b, self.path_b or self.path_a
+        if self.path_a:
+            ga_, gb_ = self.sp_pa.value(), self.sp_pa.value() if single else self.sp_pb.value()
+        else:
+            ga_ = gb_ = self.sp_pb.value()
+        return pa_, pb_, ga_, gb_
+
+    def result_current(self):
+        """Gehoert das gezeigte Ergebnis zu den gerade gewaehlten Dateien und Seiten? Nicht, wenn eine neu gewaehlte
+        Datei sich nicht laden liess: dann steht noch das alte Ergebnis da, die Namen sind aber schon die neuen."""
+        return self.payload is not None and getattr(self, "_result_src", None) == self._src_now()
+
     def start_compute(self):
         if not (self.path_a or self.path_b):
             self.show_start()
@@ -1009,11 +1153,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return
         self.debounce.stop()
         single = not (self.path_a and self.path_b)
-        pa_, pb_ = self.path_a or self.path_b, self.path_b or self.path_a
-        if self.path_a:
-            ga_, gb_ = self.sp_pa.value(), self.sp_pa.value() if single else self.sp_pb.value()
-        else:
-            ga_ = gb_ = self.sp_pb.value()
+        pa_, pb_, ga_, gb_ = self._src_now()
         snap = dict(pa=pa_, pb=pb_, page_a=ga_, page_b=gb_,
                     dpi=self.dpi_value(), params=self.params(), crop=self.crop, crop_b=self.crop_b,
                     manual=self.manual_tf,
@@ -1027,7 +1167,10 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         self.btn_run.setText(tr("Vergleichen"))
         self.act_compare.setText(tr("Vergleichen"))
         self._update_mode_chip()
-        self.banner.hide()
+        if getattr(self, "_hint_keep", False):
+            self._hint_keep = False                      # Hinweis „grosses Blatt“ (mit Knopf) stehen lassen
+        else:
+            self.banner.hide()
         if self.payload is None:
             self.stack.setCurrentWidget(self.work)
         self.canvas.preview_text = tr("Zeichnung wird geladen …") if single else tr("Vergleich läuft …")
@@ -1088,6 +1231,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             return self._compute_vec(snap, log)
         log.progress(0.01, tr("Lade ") + os.path.basename(snap["pa"]))
         ga = self._gray(snap["pa"], snap["page_a"], snap["dpi"], log, snap["vf"], snap.get("pdf_off", ()))
+        # Schluessel und Farbfassung von A gleich festhalten: der Zwischenspeicher fuehrt je DATEI nur einen Platz -
+        # ist B dieselbe Datei (andere Seite), ueberschreibt ihr Laden diesen Platz
+        key_a, col_a = self.cache.get("gk_" + snap["pa"]), self._color(snap["pa"])
         log.check()
         if self.payload is None:                     # erste Berechnung: schon mal Zeichnung A zeigen
             k = min(1.0, 2400 / max(ga.shape))
@@ -1109,7 +1255,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
         log.progress(0.12, tr("Lade ") + os.path.basename(snap["pb"]))
         gb = self._gray(snap["pb"], snap["page_b"], snap["dpi"], log, snap["vf"], snap.get("pdf_off", ()))
         log.check()
-        key = (self.cache.get("gk_" + snap["pa"]), self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
+        key = (key_a, self.cache.get("gk_" + snap["pb"]), p.thr, p.flatten, p.align,
                snap["crop"], snap.get("crop_b"), repr(snap.get("manual")))
         if self.cache.get("key") != key:
             self.cache["key"] = None
@@ -1131,7 +1277,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.cache["tf"], self.cache["box_b"] = tf, box_b     # fuer Suchtreffer in B (Punkte ausrichten)
             # Farbfassungen (nur Anzeige von Alt/Neu) genauso zuschneiden und ausrichten wie die Tinte
             # Originalfassungen fuer Alt/Neu (Farbe, sonst Graustufen) genauso zuschneiden und ausrichten
-            ca, cb = self._color(snap["pa"]), self._color(snap["pb"])
+            ca, cb = col_a, self._color(snap["pb"])
             if (ca is None) != (cb is None):                 # eine farbig, eine grau: beide farbig fuehren
                 ca = ca if ca is not None else cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR)
                 cb = cb if cb is not None else cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR)
@@ -1214,6 +1360,7 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
     def _computed(self, r, snap):
         keep = self.payload is not None and snap["crop"] == self._crop_seen
         self.payload = r
+        self._result_src = (snap["pa"], snap["pb"], snap["page_a"], snap["page_b"])   # dazu gehoert das Ergebnis
         self.index_info = None
         self.canvas.selected = None
         self._set_origin(snap["origin"])           # Anmerkungen/Zonen haften am Blatt, nicht am Ausschnitt
@@ -1276,6 +1423,9 @@ class MainWindow(LayoutMixin, PanelsMixin, ReviewMixin, FeaturesMixin, SearchMix
             self.show_start()
             QMessageBox.warning(self, APP, msg)
         else:
+            if not self.result_current():            # altes Ergebnis, neue Namen: nicht als Beleg ausgeben
+                msg += "\n" + tr("Angezeigt wird noch das vorige Ergebnis. Speichern und Berichte sind gesperrt, bis "
+                                 "eine lesbare Datei gewählt ist.")
             self.banner.show_msg(msg, "error", details)
 
     def _busy(self, on, text):
@@ -1763,6 +1913,12 @@ def main(app=None, preview=None):
         top.activateWindow()
     if not timing:
         app._zgmax_server = qs.serve(from_other_start)               # Referenz halten
+
+        def serve_later():                                           # nach „Neu starten“: der alte Lauf endet erst
+            if app._zgmax_server is None:
+                app._zgmax_server = qs.serve(from_other_start)
+        if app._zgmax_server is None and "--neu" in sys.argv:
+            QTimer.singleShot(5000, serve_later)
     app.aboutToQuit.connect(ocrservice.stop)
     app.aboutToQuit.connect(MainWindow.clear_process_autosaves)   # normales Ende: keine Wiederherstellen-Frage
     sys.exit(app.exec())

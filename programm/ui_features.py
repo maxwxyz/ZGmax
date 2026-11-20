@@ -96,7 +96,7 @@ class FeaturesMixin:
 
     # ----------------------------------------------------------------- Startseite, Zuletzt verwendet
     def show_start(self):
-        self.start.set_files(self.path_a, self.path_b)
+        self.start.set_files(*self._start_files())
         self.start.set_recent(recent_list(self.settings))
         self.start.set_back(self.payload is not None)
         self.stack.setCurrentWidget(self.start)
@@ -210,11 +210,14 @@ class FeaturesMixin:
         if not (self.path_a and self.path_b):
             QMessageBox.information(self, APP, tr("Bitte zuerst beide Zeichnungen öffnen."))
             return
-        n = min(self.n_pages_a, self.n_pages_b)
-        if n < 2:
+        na, nb = self.n_pages_a, self.n_pages_b
+        n = min(na, nb)                                   # gemeinsame Seiten; weitere gibt es nur in einer Datei
+        if max(na, nb) < 2:
             QMessageBox.information(self, APP, tr("Die Dateien haben nur eine Seite."))
             return
-        pa, pb, dpi, params = self.path_a, self.path_b, self.dpi_value(), self.params().copy(ignore=[])
+        # ganzes Blatt je Seite: Zonen in Blattkoordinaten (gelten fuer alle Seiten)
+        pa, pb, dpi = self.path_a, self.path_b, self.dpi_value()
+        params = self.params().copy(ignore=[tuple(z) for z in self.zones])
 
         def work(ctx):
             out = {}
@@ -243,8 +246,14 @@ class FeaturesMixin:
             changed = [str(i) for i, c in out.items() if c]
             self.sec_pages.set_open(True)
             self.act_left.setChecked(True)
-            self.banner.show_msg((tr("Geänderte Seiten: ") + ", ".join(changed)) if changed else
-                                 tr("Alle Seiten sind gleich."), "info", timeout=30)
+            msg = (tr("Geänderte Seiten: ") + ", ".join(changed)) if changed else tr("Alle Seiten sind gleich.")
+            if na != nb:                                  # unterschiedlich lang: das ist selbst eine Aenderung
+                extra = f"{n + 1}" if max(na, nb) == n + 1 else f"{n + 1}–{max(na, nb)}"
+                only = tr("Seite {} gibt es nur in Neu (hinzugekommen).") if nb > na else \
+                    tr("Seite {} gibt es nur in Alt (entfallen).")
+                msg = (tr("Geänderte Seiten: ") + ", ".join(changed) if changed else
+                       tr("Die gemeinsamen Seiten 1–{} sind gleich.").format(n)) + "  " + only.format(extra)
+            self.banner.show_msg(msg, "warn" if na != nb else "info", timeout=30)
         self._run_job(work, tr("Vergleiche alle Seiten …"), done)
 
     def _anns_of_page(self, n, single):
@@ -260,7 +269,7 @@ class FeaturesMixin:
         'report' = Aenderungsbericht ueber alle Seiten (nur im Vergleich)."""
         single = not (self.path_a and self.path_b) or self.view_only
         n = self.n_pages_a if single else min(self.n_pages_a, self.n_pages_b)
-        if not self.payload:
+        if not self._need_result():
             return
         if kind == "report" and single:
             QMessageBox.information(self, APP, tr("Der Änderungsbericht braucht zwei Zeichnungen."))
@@ -269,12 +278,34 @@ class FeaturesMixin:
         path = self._save_dialog(tr("Alle Seiten speichern"), tr("PDF (*.pdf)"), name)
         if not path:
             return
-        pa, pb, dpi, mm = self.path_a or self.path_b, self.path_b, self.dpi_value(), self.canvas.mm_px
-        params = self.params().copy(ignore=[])
+        pa, pb, dpi = self.path_a or self.path_b, self.path_b, self.dpi_value()
+        # ganzes Blatt je Seite: Zonen in Blattkoordinaten (sie gelten fuer alle Seiten)
+        params = self.params().copy(ignore=[tuple(z) for z in self.zones])
         hidden = tuple(sorted(getattr(self, "pdf_off", set())))
-        anns = {i: [a for a in self._anns_of_page(i, single) if not a.get("hidden")] for i in range(1, n + 1)}
+        # alle Markierungen der Seite (auch ausgeblendete: deren Schwaerzungen muessen trotzdem eingebrannt werden)
+        anns_all = {i: self._anns_of_page(i, single) for i in range(1, n + 1)}
+        anns = {i: [a for a in anns_all[i] if not a.get("hidden")] for i in range(1, n + 1)}
         names = (os.path.basename(pa or ""), os.path.basename(pb or ""))
         info = self._info()
+        # Massstab je Seite (mehrseitige Dateien haben oft verschiedene); ohne eigenen Wert der gerade eingestellte
+        scales = {i: float(getattr(self, "page_scales", {}).get(str(i), self.scale_n()))
+                  for i in range(1, n + 1)}
+        # Aenderungsliste je Seite wie geprueft (Status, Kommentare, Geloeschtes, eigene Eintraege, Filter); nur fuer
+        # Seiten ohne gepruefte Liste wird sie automatisch erzeugt und im Bericht so benannt
+        ox, oy = self.origin
+        spec = self._filter_spec() if not single else None
+        listed = {}
+        if not single:
+            cur, pl = self._page_key(), self.payload
+            for i in range(1, n + 1):
+                key = f"{i}:{i}"
+                src = None
+                if key == cur and pl.get("regs_done") and not getattr(self, "_regs_stale", False):
+                    src = pl["regs"]
+                elif key in getattr(self, "page_regs", {}):
+                    src = self.page_regs[key]
+                if src is not None:
+                    listed[i] = [dict(g, x=g["x"] + ox, y=g["y"] + oy) for g in self.filter_regs(src, spec)]
 
         def work(ctx):
             import tempfile
@@ -293,15 +324,18 @@ class FeaturesMixin:
                         b = dp.prepare_pair(a, dp.ink_from_gray(dp.load_gray(pb, i, dpi), params.thr, params.flatten),
                                             params.align, quiet)
                         res = dp.run_compare(a, b, params, quiet, cancel=ctx.cancelled)
-                        regs = [r for r in rep.find_regions(res) if r["typ"] != "verschoben"]
+                        auto = i not in listed
+                        regs = [r for r in rep.find_regions(res) if r["typ"] != "verschoben"] if auto else listed[i]
+                        regs = rep.strip_redacted(regs, anns_all[i])   # nichts Geschwaerztes in Text/Kommentaren
                         img = dp.render_result(res)
-                    rep.apply_redactions(img, anns[i])
+                    rep.apply_redactions(img, anns_all[i])
                     f = os.path.join(tmp, f"p{i}.pdf")
                     if kind == "report":
-                        rep.build_report(f, rep.redact_result(res, anns[i]), regs, names[0], names[1], dpi, info,
-                                         None, 40, quiet, anns=anns[i], scale_n=self.scale_n())
+                        note = tr(" · Seite {}: automatische Liste (nicht geprüft)").format(i) if auto else ""
+                        rep.build_report(f, rep.redact_result(res, anns_all[i]), regs, names[0], names[1], dpi,
+                                         info + note, None, 40, quiet, anns=anns[i], scale_n=scales[i])
                     else:
-                        rep.build_annotated_pdf(f, img, regs, anns[i], dpi, mm, names)
+                        rep.build_annotated_pdf(f, img, regs, anns[i], dpi, 25.4 / max(1, dpi) * scales[i], names)
                     with pymupdf.open(f) as part:
                         out.insert_pdf(part, annots=True)
                 safe_write(path, lambda t: out.save(t, deflate=True))
@@ -565,9 +599,10 @@ class FeaturesMixin:
     def _worth_restoring(data):
         """Lohnt sich das Wiederherstellen? Nur bei Markierungen, Zonen oder Pruefergebnissen (wie beim Schliessen
         gefragt wird); Ansicht, Zoom oder Einstellungen allein nicht."""
-        regs = data.get("regions") or []
+        done = lambda regs: any(r.get("status") or r.get("comment") or r.get("manual") for r in regs or [])  # noqa: E731
         return bool(data.get("annotations") or data.get("zones") or any(data.get("page_annotations", {}).values())
-                    or any(r.get("status") or r.get("comment") for r in regs))
+                    or done(data.get("regions")) or any(done(v) for v in (data.get("page_regions") or {}).values())
+                    or data.get("protocols"))
 
     def autosave(self):
         """Sichert ungespeicherte Markierungen/Pruefung jede Minute (fuer den Fall eines Absturzes)."""
@@ -690,6 +725,7 @@ class FeaturesMixin:
             job.cancel()
             job.wait(15000)
         self.running = self.pending = False
+        self._single_is_b = False
         self.path_a = self.path_b = None
         self.payload = None
         self.cache.clear()
@@ -898,7 +934,8 @@ class FeaturesMixin:
         # Nur was angezeigt wird: Aenderungen nur, wenn gesucht wurde, und nur die nach dem Filter sichtbaren
         shown = (self.act_overlays.isChecked() and self.canvas.show_regs and pl.get("regs_done") is not False
                  and self.canvas.layer_on.get("aenderungen", True))
-        regs = copy.deepcopy(self._shown_regs()) if shown else []
+        # Text und Masse unter Schwaerzungen duerfen nicht im PDF-Kommentar stehen
+        regs = copy.deepcopy(rep.strip_redacted(self._shown_regs(), self.anns)) if shown else []
 
         f = self._frame_local()
         if f is not None:                              # Zuschnitt: Lage der Kommentare mitverschieben

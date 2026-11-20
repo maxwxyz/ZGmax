@@ -441,6 +441,8 @@ def to_xlsx(rows, path, sheet="Tabelle", spans=()):
             v = "" if v is None else str(v)
             num = as_number(v)
             c = ws.cell(row=i, column=j, value=num if num is not None else (v or None))
+            if num is None and v.startswith("="):         # gelesener Text, keine Formel: als Text ablegen
+                c.data_type = "s"
             if i == 1:
                 c.font = bold
             longest = max((len(t) for t in v.split("\n")), default=0)

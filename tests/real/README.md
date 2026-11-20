@@ -32,5 +32,5 @@ Statusleiste ablesen):
 - `max_sekunden`: Vergleich darf nicht länger dauern (Tempo bei großen Blättern).
 
 Wichtig: Nur Zeichnungen ohne vertrauliche Inhalte ablegen (Schriftfeld, Firmen- und Personennamen unkenntlich, z. B.
-mit ZGmax → Schwärzen und *Bearbeitete Zeichnung speichern*). Das Repository ist privat, aber Dateien bleiben in der
+mit ZGmax → Schwärzen und *Bearbeitete Zeichnung speichern*). Das Repository ist öffentlich, und Dateien bleiben in der
 Git-Geschichte.

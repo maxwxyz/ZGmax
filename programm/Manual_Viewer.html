@@ -74,8 +74,11 @@ For automation, see the <a href="Manual_CommandLine.html">command line manual</a
 <ol>
   <li><b>Start:</b> open <i>ZGmax</i>. The start page appears; at the first start with a short introduction in three
       steps (<i>Got it</i> hides it, <i>Help → Show introduction</i> shows it again).</li>
-  <li><b>Choose drawings:</b> choose the <b>old</b> drawing on the left and the <b>new</b> one on the right, or drag both
-      files into the window together. The comparison starts by itself. A single file is just displayed.</li>
+  <li><b>Choose drawings:</b> choose or drop the <b>old</b> drawing on the left and the <b>new</b> one on the right, or
+      drag both files into the window together. The comparison starts as soon as <b>both fields</b> are filled; a
+      single filled field waits for the second one. Dragging one file into the window shows the targets <i>View
+      only</i>, <i>Old drawing (A)</i> and <i>New drawing (B)</i>. <b>Just one drawing?</b> Choose <i>View only</i>
+      (as a target while dragging, or the button below the fields).</li>
   <li><b>Look:</b> <span class="sw" style="background:#e5173f"></span><b>Red</b> = only in the old drawing
       (removed), <span class="sw" style="background:#1f3fff"></span><b>Blue</b> = only in the new one (added),
       <span class="sw" style="background:#969696"></span>Gray = unchanged, <span class="sw" style="background:#00aa00"></span>Green =
@@ -194,10 +197,12 @@ prints stay normal. Separately, <i>View → Settings … → Appearance</i> (Aut
 
 <h2 id="viewing">Viewing only, several windows, closing</h2>
 <ul>
-<li><b>View a single drawing:</b> open a single file or drop it on the start page – or <i>File → Open single drawing …</i>
+<li><b>View a single drawing:</b> drag a single file onto the start page and choose <i>View only</i> (or drop it beside
+the fields), fill one field and click <i>View only</i> below – or <i>File → Open single drawing …</i>
 (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd>). There is no comparison, but zooming, measuring, markups, printing and
 saving work. The chip at the top shows <i>Viewing: file</i>; comparison views and settings are hidden. Click the chip → <i>Compare with another
-drawing …</i> (or the side panel) opens a second drawing and compares.</li>
+drawing …</i> (or the side panel) opens a second drawing and compares. If the drawing was chosen as the <b>new one (B)</b>
+on the start page, the program asks for the <b>old</b> one – the roles are right even when you start with the new state.</li>
 <li><b>Fast start, one program:</b> when you double-click an image (PNG, JPG, TIFF …) it appears at once as a preview
 while the program loads. If ZGmax is already running, another double-click opens the file there in a new window, without
 starting the program a second time.</li>
@@ -587,7 +592,8 @@ arrows or type the page number. <kbd>Page Up</kbd> / <kbd>Page Down</kbd> (Mac: 
 go to the previous or next page, as do <i>View → Previous page / Next page</i>. In addition the section <i>Pages</i>
 appears on the left (with thumbnails for PDFs): click a page or set <i>Page A / Page B</i> separately; <i>Turn pages of A
 and B together</i> is the default. <b>Compare all pages</b> compares every page
-and writes the number of changes per page into the list (red = changed, green = identical).</p>
+and writes the number of changes per page into the list (red = changed, green = identical). If the files have
+different page counts, the shared pages are compared and the others are reported as <i>added</i> or <i>removed</i>.</p>
 <p><b>Markups belong to the page:</b> each page (in a comparison each page pair) has its own markups; they are kept while
 turning pages, the page list shows their count and the project saves all of them. Scale and calibration also apply per
 page, and so does the <b>change list with its review state</b>: if you review page 1, move on to page 2 and come back,

@@ -1012,9 +1012,8 @@ def test_measure_chain_sums_export_and_page_scale(app, win, pair, tmp_path):
     rows = list(csv.reader(open(out, encoding="utf-8-sig"), delimiter=";"))
     assert rows[1][1] == "Länge" and float(rows[1][2].replace(",", ".")) == pytest.approx(200 * mm, rel=1e-3)
     win.sp_scale.setValue(5.0)                                          # Massstab je Seite
-    key = f"{win.path_a}#1"
-    assert win.page_scales[key] == 5.0
-    win.page_scales[f"{win.path_a}#2"] = 2.0
+    assert win.page_scales["1"] == 5.0                                  # Schluessel = Seite, nicht der Dateipfad
+    win.page_scales["2"] = 2.0
     win._page_scale_loading = False
     win.sp_pa.setMaximum(2)
     win.sp_pa.setValue(2)

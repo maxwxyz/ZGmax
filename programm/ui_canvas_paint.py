@@ -263,6 +263,12 @@ class CanvasPaintMixin:
         a, b = self.to_wid(0, 0), self.to_wid(w, h)
         p.fillRect(QRectF(QPointF(*a), QPointF(*b)).normalized(), QColor(26, 24, 22) if self.invert else QColor("white"))
 
+    def _paint_redactions(self, p):
+        """Nur die Schwaerzungen/Verpixelungen zeichnen - auch ausgeblendete (fuer Ausgaben nach aussen)."""
+        for i in rep.layer_order(self.anns):
+            if self.anns[i].get("type") in rep.REDACT_TYPES:
+                self._paint_ann(p, self.anns[i], False)
+
     def ann_visible(self, a):
         return self.layer_on.get(rep.ann_layer(a), True) and not a.get("hidden")
 
@@ -680,6 +686,8 @@ class CanvasPaintMixin:
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.drawRect(r)
         if not self.show_overlays:
+            if self._snapshot:                             # Kopie "wie angezeigt": Schwaerzungen trotzdem einbrennen
+                self._paint_redactions(p)
             return
         for k, (x, y, zw, zh) in enumerate(self.zones if self.layer_on.get("zonen", True) else []):
             a = self.to_wid(x, y)
@@ -731,6 +739,8 @@ class CanvasPaintMixin:
             a = self.anns[i]
             if i != self.editing and self.ann_visible(a):   # nicht: gerade direkt bearbeiteter Text, aus. Ebene
                 self._paint_ann(p, a, i in chosen)
+            elif self._snapshot and a.get("type") in rep.REDACT_TYPES:
+                self._paint_ann(p, a, False)                # ausgeblendete Schwaerzung: in der Kopie trotzdem
         if getattr(self, "_guides", None) and self._drag is not None and self._drag[0] in ("move", "handle"):
             self._paint_guides(p)
         if self._ann_prev:
